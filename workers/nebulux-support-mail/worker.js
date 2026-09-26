@@ -7,6 +7,7 @@ import PostalMime from "postal-mime";
 import { createMimeMessage } from "mimetext";
 import { EmailMessage } from "cloudflare:email";
 import { isAutomatic } from "./automatic.js";
+import { watchdog } from "./watchdog.js";
 
 const OWNER = "thebluedragonstriker@gmail.com";
 const SUPPORT = "support@nebuluxai.com";
@@ -14,6 +15,10 @@ const API = "https://nebuluxai.pages.dev/api/support-reply";
 
 
 export default {
+  // The site watchdog (watchdog.js), run by the cron trigger.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(watchdog(env));
+  },
   async email(message, env, ctx) {
     // The owner always gets the email.
     await message.forward(OWNER).catch(() => {});

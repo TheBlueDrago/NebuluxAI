@@ -8,3 +8,18 @@ workers_dev = false
 
 [observability]
 enabled = true
+
+# Site watchdog (watchdog.js): checks the site every 15 minutes, emails the owner if it's down.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[send_email]]
+name = "WATCHDOG_MAIL"
+destination_address = "thebluedragonstriker@gmail.com"
+
+[vars]
+WATCHDOG_TO = "thebluedragonstriker@gmail.com"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "3ae4e5a66e7f459296bf6c6b99951436"
