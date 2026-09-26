@@ -166,7 +166,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       const data = e?.response?.data;
       if (data?.credits) spend?.[ai]?.(data.credits);
       // Out-of-credits and "AI is busy" come back with a message worth showing as-is.
-      addMessage(convId, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "Sorry, something went wrong. Please try again." });
+      addMessage(convId, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "⚠ Sorry, something went wrong. Please try again." });
     } finally {
       if (reqIdRef.current === myId) {
         setLoading(false);
@@ -372,6 +372,15 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 ) : (
                   <>
                     <Markdown text={m.content} />
+                    {i === messages.length - 1 && !loading && !isExhausted && m.content.startsWith("⚠") && (
+                      <button
+                        type="button"
+                        onClick={retryLast}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-[#fff]"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> Try again
+                      </button>
+                    )}
                     <div className="flex flex-wrap justify-end gap-1 mt-1 -mb-1">
                       {i === messages.length - 1 && !loading && !isExhausted && (
                         <button
