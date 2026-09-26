@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Hash, Users, UserPlus, Settings, Send, Reply, Pencil, Trash2, Flag, X, Menu, ArrowLeft, Check, Ban, MessageCircle, ShoppingBag, Loader2, Sparkles, Plus, Copy, LogOut, Trophy, Gem, Link2 } from "lucide-react";
+import { Hash, Users, UserPlus, Settings, Send, Reply, Pencil, Trash2, Flag, X, Menu, ArrowLeft, Check, Ban, MessageCircle, ShoppingBag, Loader2, Plus, Copy, LogOut, Trophy, Gem, Link2 } from "lucide-react";
 import { chatApi, connectChat, onChatEvent, sendTyping, addNotification } from "@/lib/nebuluxChat";
 import { askConfirm } from "@/lib/dialogs";
 import NotificationBell from "@/components/NotificationBell";
@@ -74,7 +74,7 @@ export default function Community() {
   const [server, setServer] = useState(params.get("s") || "nebulux");
   const [channels, setChannels] = useState([]);
   const [dms, setDms] = useState([]);
-  const [view, setView] = useState(params.get("tab") === "friends" ? "friends" : "server");
+  const [view, setView] = useState(["friends", "quests", "shop"].includes(params.get("tab")) ? params.get("tab") : "server");
   const [channel, setChannel] = useState(params.get("c") || "");
   const [messages, setMessages] = useState([]);
   const [more, setMore] = useState(false);
@@ -86,12 +86,13 @@ export default function Community() {
   const [typing, setTyping] = useState({});
   const [people, setPeople] = useState([]);
   const [drawer, setDrawer] = useState(false);
-  const [profileTab, setProfileTab] = useState(params.get("tab") === "quests" ? "quests" : "");
+  const [profileTab, setProfileTab] = useState("");
   const [groupOpen, setGroupOpen] = useState(false);
   const [viewUser, setViewUser] = useState(null);
   const [notice, setNotice] = useState("");
   const [away, setAway] = useState(false); // scrolled up: show "Jump to newest"
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [showMembers, setShowMembers] = useState(null); // null: the screen size decides (shown on wide screens)
   const listRef = useRef(null);
   const boxRef = useRef(null);
   const typingSent = useRef(0);
@@ -179,6 +180,11 @@ export default function Community() {
     },
     [setParams, server]
   );
+  const openPage = (p) => {
+    setView(p);
+    setDrawer(false);
+    setParams({ tab: p }, { replace: true });
+  };
   const openServer = (id) => {
     setView("server");
     setDrawer(false);
@@ -348,7 +354,7 @@ export default function Community() {
         <button onClick={() => setGroupOpen(true)} title="Make or join a group" aria-label="Make or join a group" className={`${railBtn(false)} bg-[#1b1640] text-emerald-400 hover:bg-emerald-600 hover:text-[#fff]`}>
           <Plus className="w-5 h-5" />
         </button>
-        <button onClick={() => setProfileTab("quests")} className="mt-auto flex flex-col items-center gap-0.5 rounded-lg px-1 py-1 hover:bg-[#1b1640]" title="Your stars: do quests to earn more">
+        <button onClick={() => openPage("quests")} className="mt-auto flex flex-col items-center gap-0.5 rounded-lg px-1 py-1 hover:bg-[#1b1640]" title="Your stars: do quests to earn more">
           <span className="text-base">⭐</span>
           <span className="text-[10px] font-bold text-amber-200">{stars}</span>
         </button>
@@ -364,10 +370,10 @@ export default function Community() {
           )}
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 text-sm">
-          <button onClick={() => setProfileTab("quests")} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-amber-200 ${C.hover}`}>
+          <button onClick={() => openPage("quests")} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-amber-200 ${C.hover}`}>
             <Trophy className="w-4 h-4" /> <span className="flex-1 text-left">Quests</span> <span className="text-[10px] rounded bg-amber-400/15 px-1.5">earn ⭐</span>
           </button>
-          <button onClick={() => setProfileTab("shop")} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-fuchsia-200 ${C.hover}`}>
+          <button onClick={() => openPage("shop")} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-fuchsia-200 ${C.hover}`}>
             <ShoppingBag className="w-4 h-4" /> <span className="flex-1 text-left">Star shop</span> <span className="text-[10px]">⭐ {stars}</span>
           </button>
           <button onClick={() => setProfileTab("profile")} className={`w-full flex items-center gap-2 px-2 py-1.5 mb-2 rounded-md text-indigo-200 ${C.hover}`}>
@@ -437,7 +443,7 @@ export default function Community() {
               <span className="block text-[10px] text-slate-400">⭐ {stars} stars{meta?.plus?.plus ? " · 💎 Plus" : ""}</span>
             </span>
           </button>
-          <button onClick={() => setProfileTab("quests")} title="Quests" aria-label="Quests" className={`p-1.5 rounded-md text-amber-200 ${C.hover}`}>
+          <button onClick={() => openPage("quests")} title="Quests" aria-label="Quests" className={`p-1.5 rounded-md text-amber-200 ${C.hover}`}>
             <Trophy className="w-4 h-4" />
           </button>
           <button onClick={() => setProfileTab("profile")} title="Profile, looks and Star shop" aria-label="Profile settings" className={`p-1.5 rounded-md text-slate-300 ${C.hover}`}>
@@ -493,7 +499,7 @@ export default function Community() {
               <Avatar user={m.user} size={40} />
             </button>
             <div className="min-w-0">
-              <p className="leading-5 text-sm">
+              <p className="leading-5 text-[13px]">
                 <Name user={m.user} /> <span className="text-slate-400">says hi{reply && reply.user.id !== m.user.id ? <> to <Name user={reply.user} /></> : ""}</span>
                 <span className="ml-2 text-[10px] text-slate-500">{time(m.at)}</span>
               </p>
@@ -525,7 +531,7 @@ export default function Community() {
               </p>
             )}
             {!grouped && (
-              <p className="leading-5 text-sm">
+              <p className="leading-5 text-[13px]">
                 <button onClick={() => setViewUser(m.user)} className="hover:underline">
                   <Name user={m.user} />
                 </button>
@@ -535,7 +541,7 @@ export default function Community() {
             {m.deleted ? (
               <p className="text-xs italic text-slate-500">This message was deleted.</p>
             ) : (
-              <p className="text-sm leading-5 text-slate-100 whitespace-pre-wrap break-words">
+              <p className="text-[13px] leading-5 text-slate-100 whitespace-pre-wrap break-words">
                 {renderText(m.text)}
                 {m.edited && <span className="ml-1 text-[9px] text-slate-500">(edited)</span>}
               </p>
@@ -583,7 +589,7 @@ export default function Community() {
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex text-slate-200 text-sm" style={GALAXY}>
+    <div className="fixed inset-0 z-20 flex text-slate-200 text-[13px]" style={GALAXY}>
       <div className="hidden md:flex">{sidebarList}</div>
       {drawer && (
         <div className="md:hidden fixed inset-0 z-40 flex">
@@ -598,7 +604,11 @@ export default function Community() {
           <button onClick={() => setDrawer(true)} className={`md:hidden p-1.5 -ml-1 rounded-md text-slate-300 ${C.hover}`} aria-label="Channels">
             <Menu className="w-5 h-5" />
           </button>
-          {view === "friends" ? (
+          {view === "quests" || view === "shop" ? (
+            <p className="font-bold text-white flex items-center gap-2">
+              {view === "quests" ? <Trophy className="w-4 h-4 text-amber-200" /> : <ShoppingBag className="w-4 h-4 text-fuchsia-200" />} {view === "quests" ? "Quests" : "Star shop"}
+            </p>
+          ) : view === "friends" ? (
             <p className="font-bold text-white flex items-center gap-2">
               <Users className="w-4 h-4 text-slate-400" /> Friends
             </p>
@@ -610,6 +620,11 @@ export default function Community() {
             </p>
           )}
           <div className="ml-auto flex items-center gap-2">
+            {view === "server" && !isDm && (
+              <button onClick={() => setShowMembers((s) => !s)} title="Show members" aria-label="Show members" className={`p-1.5 rounded-md ${showMembers ? "text-white" : "text-slate-400"} ${C.hover}`}>
+                <Users className="w-5 h-5" />
+              </button>
+            )}
             <NotificationBell />
             <button onClick={() => shell?.openProfile?.()} className="keep-color w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold" aria-label="Your Nebulux AI account">
               {shell?.avatarInitial || "U"}
@@ -619,7 +634,21 @@ export default function Community() {
 
         {notice && <div className="mx-3 mt-2 rounded-lg bg-amber-500/15 border border-amber-500/40 px-3 py-2 text-xs text-amber-200">{notice}</div>}
 
-        {view === "friends" ? (
+        {view === "quests" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <PageBanner icon="🏆" title="Quests" text="Finish quests to earn stars, then spend them in the Star shop. Each quest pays once." stars={stars} />
+            <div className="max-w-3xl -mt-4">
+              <Quests meta={meta} onStars={(s) => setStars(s)} flash={flash} />
+            </div>
+          </div>
+        ) : view === "shop" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <PageBanner icon="🛍" title="Star shop" text="Name colors, glowing frames and badges. Earn stars from Quests." stars={stars} />
+            <div className="-mt-4">
+              <Shop shop={meta?.shop || {}} owned={meta?.owned || []} stars={stars} onStars={(s, owned) => { setStars(s); if (owned) setMeta((m) => ({ ...m, owned: [...new Set([...(m.owned || []), ...owned])] })); }} />
+            </div>
+          </div>
+        ) : view === "friends" ? (
           <Friends me={me} onOpenDm={(id) => loadChannels().then(() => openChannel(id))} onView={setViewUser} flash={flash} />
         ) : (
           <div className="flex-1 min-h-0 flex">
@@ -681,7 +710,7 @@ export default function Community() {
                     maxLength={2000}
                     disabled={!channel}
                     placeholder={isDm ? `Message @${title}` : `Message #${title}`}
-                    className="flex-1 bg-transparent resize-none outline-none py-2.5 text-sm text-slate-100 placeholder:text-slate-500 max-h-40"
+                    className="flex-1 bg-transparent resize-none outline-none py-2.5 text-[13px] text-slate-100 placeholder:text-slate-500 max-h-40"
                   />
                   <span className="relative">
                     <button onClick={() => setEmojiOpen((o) => !o)} aria-label="Emoji" title="Emoji" className="p-2 text-lg leading-none grayscale hover:grayscale-0">
@@ -706,7 +735,7 @@ export default function Community() {
             </div>
             {/* Members of this group */}
             {!isDm && (
-              <div className={`hidden lg:block w-56 shrink-0 ${C.side} overflow-y-auto px-2 py-3`}>
+              <div className={`${showMembers === false ? "hidden" : showMembers ? "fixed inset-y-0 right-0 z-40 shadow-2xl lg:static lg:shadow-none block" : "hidden lg:block"} w-56 shrink-0 ${C.side} overflow-y-auto px-2 py-3`}>
                 {[["Online", people.filter((p) => p.online)], ["Offline", people.filter((p) => !p.online)]].map(([label, list]) =>
                   list.length ? (
                     <div key={label} className="mb-4">
@@ -1171,38 +1200,84 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
           </div>
         </div>
       ) : (
-        <div className="p-5">
-          <p className="text-xs text-slate-400 mb-3 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-fuchsia-300" /> Spend stars on name tag colors, avatar frames and badges.
-          </p>
-          {err && <p className="mb-3 text-xs text-red-400">{err}</p>}
-          <div className="grid sm:grid-cols-2 gap-2">
-            {Object.entries(shop).map(([id, it]) => {
-              const have = owned.includes(id);
-              return (
-                <div key={id} className="flex items-center gap-3 rounded-xl bg-[#1b1640] p-2.5">
-                  <span className="keep-color w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-base" style={{ background: it.kind === "name_color" ? it.value : "#07061a" }}>
-                    {it.kind === "badge" ? it.value : it.kind === "frame" ? <span className={`w-6 h-6 rounded-full bg-slate-600 ${FRAME[it.value]}`} /> : ""}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-xs font-medium text-white">{it.name}</span>
-                    <span className="block text-[11px] text-amber-200">{it.plusOnly ? "💎 Free with Pro and up" : `⭐ ${it.price}`}</span>
-                  </span>
-                  {!it.plusOnly || have ? (
-                    <button
-                      disabled={have || stars < it.price}
-                      onClick={() => { setErr(""); chatApi("/shop/buy", "POST", { item: id }).then((r) => onStars(r.stars ?? r.orbs, r.owned)).catch((e) => setErr(e.message)); }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600 text-[#fff] text-[11px] font-semibold disabled:opacity-40"
-                    >
-                      {have ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />} {have ? "Owned" : "Buy"}
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <Shop shop={shop} owned={owned} stars={stars} onStars={onStars} />
       )}
     </Modal>
+  );
+}
+
+// The Star shop: name colors, avatar frames and badges, bought with stars from quests.
+const SHOP_GROUPS = [
+  ["name_color", "Name tag colors", "Your name shows in this color everywhere in the chat."],
+  ["frame", "Avatar frames", "A glowing ring around your avatar."],
+  ["badge", "Badges", "Shown next to your name."],
+];
+function Shop({ shop, owned, stars, onStars }) {
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState("");
+  const buy = (id) => {
+    setErr("");
+    setBusy(id);
+    chatApi("/shop/buy", "POST", { item: id })
+      .then((r) => onStars(r.stars ?? r.orbs, r.owned))
+      .catch((e) => setErr(e.message))
+      .finally(() => setBusy(""));
+  };
+  return (
+    <div className="p-4 space-y-5">
+      {err && <p className="text-xs text-red-400">{err}</p>}
+      {SHOP_GROUPS.map(([kind, title, text]) => (
+        <section key={kind}>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-300">{title}</p>
+          <p className="text-[11px] text-slate-500 mb-2">{text}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+            {Object.entries(shop)
+              .filter(([, it]) => it.kind === kind)
+              .map(([id, it]) => {
+                const have = owned.includes(id);
+                const short = stars < it.price;
+                return (
+                  <div key={id} className={`rounded-xl border p-3 flex flex-col items-center text-center gap-1.5 ${have ? "border-emerald-400/30 bg-emerald-500/5" : "border-indigo-400/15 bg-[#1b1640]"}`}>
+                    <span className="keep-color w-12 h-12 rounded-full flex items-center justify-center text-xl" style={{ background: kind === "name_color" ? it.value : "#07061a" }}>
+                      {kind === "badge" ? it.value : kind === "frame" ? <span className={`w-9 h-9 rounded-full bg-slate-600 ${FRAME[it.value]}`} /> : ""}
+                    </span>
+                    <span className="text-xs font-medium text-white leading-tight" style={kind === "name_color" ? { color: it.value } : undefined}>
+                      {it.name}
+                    </span>
+                    {have ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-300">
+                        <Check className="w-3.5 h-3.5" /> Owned
+                      </span>
+                    ) : it.plusOnly ? (
+                      <a href="/chat/plans" className="text-[11px] text-fuchsia-200 hover:underline">💎 Free with Pro and up</a>
+                    ) : (
+                      <button disabled={short || busy === id} onClick={() => buy(id)} title={short ? `You need ${it.price - stars} more stars. Do quests to earn them.` : ""} className="w-full rounded-md bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-1 text-[11px] font-semibold text-[#fff] disabled:opacity-40">
+                        ⭐ {it.price}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      ))}
+      <p className="text-[11px] text-slate-500">To wear what you bought, open Profile and perks.</p>
+    </div>
+  );
+}
+
+// Full-page Quests and Shop (like Discord's own pages), with a galaxy banner on top.
+function PageBanner({ icon, title, text, stars }) {
+  return (
+    <div className="m-4 rounded-2xl bg-gradient-to-br from-indigo-600/40 via-fuchsia-600/25 to-transparent border border-indigo-400/20 p-4 flex items-center gap-4">
+      <img src="/logo.png" alt="" className="w-14 h-14 rounded-full animate-[spin_8s_linear_infinite] shadow-[0_0_18px_rgba(168,85,247,0.6)]" />
+      <div className="flex-1 min-w-0">
+        <p className="text-base font-bold text-white">
+          {icon} {title}
+        </p>
+        <p className="text-[11px] text-slate-300">{text}</p>
+      </div>
+      <span className="rounded-full bg-black/30 px-3 py-1 text-xs font-bold text-amber-200 whitespace-nowrap">⭐ {stars}</span>
+    </div>
   );
 }
