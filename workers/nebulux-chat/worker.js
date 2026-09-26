@@ -33,7 +33,7 @@ async function whoIs(token) {
   const key = new Request(`https://nebulux-chat.internal/who/${hash}`);
   const hit = await caches.default.match(key).catch(() => null);
   if (hit) return hit.json();
-  const res = await fetch(`${BASE44}/api/apps/${APP_ID}/entities/User/me`, { headers: { authorization: `Bearer ${token}`, "X-App-Id": APP_ID } }).catch(() => null);
+  const res = await fetch(`${BASE44}/api/apps/${APP_ID}/entities/User/me`, { headers: { authorization: `Bearer ${token}`, "X-App-Id": APP_ID }, signal: AbortSignal.timeout(6000) }).catch(() => null);
   if (!res || !res.ok) return null;
   const u = await res.json().catch(() => null);
   if (!u || !u.id) return null;
@@ -98,7 +98,7 @@ async function plusOf(token, userId) {
   let plan = "free";
   let source = "";
   try {
-    const r = await fetch(`https://nebuluxai.pages.dev/api/apps/${APP_ID}/functions/credits`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "X-App-Id": APP_ID }, body: "{}" });
+    const r = await fetch(`https://nebuluxai.pages.dev/api/apps/${APP_ID}/functions/credits`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "X-App-Id": APP_ID }, body: "{}", signal: AbortSignal.timeout(4000) });
     if (r.ok) {
       const j = await r.json();
       plan = String(j.plan || "free");
@@ -254,7 +254,7 @@ async function route(request, env, who, token) {
       env,
       userId: who.id,
       base44Get: async (entity, filter) => {
-        const r = await fetch(`${BASE44}/api/apps/${APP_ID}/entities/${entity}?q=${encodeURIComponent(JSON.stringify(filter))}&limit=1`, { headers: { authorization: `Bearer ${token}`, "X-App-Id": APP_ID } }).catch(() => null);
+        const r = await fetch(`${BASE44}/api/apps/${APP_ID}/entities/${entity}?q=${encodeURIComponent(JSON.stringify(filter))}&limit=1`, { headers: { authorization: `Bearer ${token}`, "X-App-Id": APP_ID }, signal: AbortSignal.timeout(6000) }).catch(() => null);
         const rows = r && r.ok ? await r.json().catch(() => []) : [];
         return Array.isArray(rows) ? rows.length : 0;
       },

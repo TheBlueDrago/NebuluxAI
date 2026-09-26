@@ -128,7 +128,15 @@ export default function Community() {
     const invite = params.get("invite") || "";
     const join = params.get("join") || "";
     (async () => {
-      await loadMe(invite);
+      // A slow first answer is asked again instead of spinning forever.
+      for (let i = 0; ; i++) {
+        try {
+          await Promise.race([loadMe(invite), new Promise((_, no) => setTimeout(() => no(Object.assign(new Error("Nebulux Chat is taking too long. Check your internet and try again."), { slow: true })), 10000))]);
+          break;
+        } catch (e) {
+          if (i >= 2 || e.status === 401) throw e;
+        }
+      }
       connectChat();
       if (join) {
         const r = await chatApi("/servers/join", "POST", { code: join }).catch((e) => (flash(e.message), null));
@@ -276,6 +284,11 @@ export default function Community() {
     return (
       <div className="fixed inset-0 z-20 flex flex-col items-center justify-center gap-3 text-slate-200 p-6 text-center" style={GALAXY}>
         <p className="text-base font-semibold">{error || "Nebulux Chat couldn't load."}</p>
+        {!/Sign in/.test(error) && (
+          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-[#2a2160] text-[#fff] text-sm">
+            Try again
+          </button>
+        )}
         <button onClick={() => navigate("/chat")} className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-[#fff] text-sm">
           Back to Nebulux AI
         </button>
