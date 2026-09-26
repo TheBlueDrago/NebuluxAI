@@ -6,18 +6,18 @@ import { askConfirm } from "@/lib/dialogs";
 import NotificationBell from "@/components/NotificationBell";
 import { useAppShell } from "@/components/AppShellContext";
 
-// Nebulux Chat: laid out like Discord (group rail, channels, messages, members), in the galaxy
-// colors of the homepage. Groups work like Discord servers: you only chat with people in groups
+// Nebulux Chat: laid out and colored like Discord (group rail, channels, messages, members), with
+// the Nebulux nebula as its logo. Groups work like Discord servers: you only chat with people in groups
 // you share, and private messages are only between friends. The chat server is workers/nebulux-chat.
 const C = {
-  rail: "bg-[#07061a]",
-  side: "bg-[#0d0b24]",
-  main: "bg-[#120f2e]",
-  input: "bg-[#1b1640]",
-  hover: "hover:bg-[#1f1947]",
-  active: "bg-[#2a2160]",
-  me: "bg-[#0a0920]",
-  field: "bg-[#07061a]",
+  rail: "bg-[#1e1f22]",
+  side: "bg-[#2b2d31]",
+  main: "bg-[#313338]",
+  input: "bg-[#383a40]",
+  hover: "hover:bg-[#35373c]",
+  active: "bg-[#404249]",
+  me: "bg-[#232428]",
+  field: "bg-[#1e1f22]",
 };
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀"];
 const EMOJI = ["😀", "😂", "🥹", "😍", "😎", "🤔", "😭", "😡", "👍", "👎", "👏", "🙏", "💪", "👋", "🤝", "✌️", "❤️", "💜", "🔥", "✨", "⭐", "🌌", "🪐", "🚀", "🎉", "🎮", "🎨", "📚", "💡", "✅", "❌", "💀"];
@@ -26,7 +26,7 @@ const FRAME = {
   stars: "ring-2 ring-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.8)]",
   fire: "ring-2 ring-orange-500 shadow-[0_0_14px_rgba(249,115,22,0.95)]",
 };
-const GALAXY = { background: "radial-gradient(ellipse at 20% 0%, rgba(99,102,241,0.18), transparent 55%), radial-gradient(ellipse at 90% 100%, rgba(217,70,239,0.14), transparent 50%), #120f2e" };
+const GALAXY = { background: "#313338" }; // Discord's own colors
 const WELCOMES = ["just landed in the chat!", "joined the party.", "arrived from a faraway galaxy.", "is here. Say hi!", "just showed up. Everyone wave!"];
 
 // The spinning nebula (the Nebulux logo turning all the way round), with "hi" underneath.
@@ -46,7 +46,7 @@ function Avatar({ user, size = 40, online }) {
       <span className={`keep-color w-full h-full rounded-full flex items-center justify-center select-none ${FRAME[user.frame] || ""}`} style={{ background: user.avatarBg || "#6366f1", fontSize: size * 0.5 }}>
         {user.avatar || "🌌"}
       </span>
-      {online !== undefined && <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0d0b24] ${online ? "bg-emerald-500" : "bg-slate-500"}`} />}
+      {online !== undefined && <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#2b2d31] ${online ? "bg-emerald-500" : "bg-slate-500"}`} />}
     </span>
   );
 }
@@ -55,7 +55,7 @@ const Name = ({ user, className = "" }) => (
   <span className={`font-semibold ${className}`} style={{ color: user?.nameColor || "#e2e8f0" }}>
     {user?.name}
     {user?.badge ? <span className="ml-1">{user.badge}</span> : null}
-    {user?.admin ? <span className="ml-1.5 align-middle rounded bg-indigo-600 px-1 text-[9px] font-bold text-[#fff]">STAFF</span> : null}
+    {user?.admin ? <span className="ml-1.5 align-middle rounded bg-[#5865f2] px-1 text-[9px] font-bold text-[#fff]">STAFF</span> : null}
   </span>
 );
 
@@ -317,11 +317,11 @@ export default function Community() {
       <div className="fixed inset-0 z-20 flex flex-col items-center justify-center gap-3 text-slate-200 p-6 text-center" style={GALAXY}>
         <p className="text-base font-semibold">{error || "Nebulux Chat couldn't load."}</p>
         {!/Sign in/.test(error) && (
-          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-[#2a2160] text-[#fff] text-sm">
+          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-[#404249] text-[#fff] text-sm">
             Try again
           </button>
         )}
-        <button onClick={() => navigate("/chat")} className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-[#fff] text-sm">
+        <button onClick={() => navigate("/chat")} className="px-4 py-2 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] text-[#fff] text-sm">
           Back to Nebulux AI
         </button>
       </div>
@@ -332,29 +332,29 @@ export default function Community() {
     <div className="flex h-full">
       {/* Group rail */}
       <div className={`w-[64px] shrink-0 ${C.rail} flex flex-col items-center gap-2 py-3 overflow-y-auto`}>
-        <button onClick={() => navigate("/chat")} title="Back to Nebulux AI" aria-label="Back to Nebulux AI" className={`${railBtn(false)} bg-[#1b1640] hover:bg-indigo-600 text-slate-200`}>
+        <button onClick={() => navigate("/chat")} title="Back to Nebulux AI" aria-label="Back to Nebulux AI" className={`${railBtn(false)} bg-[#383a40] hover:bg-[#5865f2] text-slate-200`}>
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="w-7 h-0.5 bg-[#241d52] rounded" />
-        <button onClick={() => { setView("friends"); setDrawer(false); }} title="Friends and private messages" aria-label="Friends and private messages" className={`${railBtn(view === "friends")} ${view === "friends" ? "bg-indigo-600" : "bg-[#1b1640] hover:bg-indigo-600"}`}>
+        <div className="w-7 h-0.5 bg-[#35363c] rounded" />
+        <button onClick={() => { setView("friends"); setDrawer(false); }} title="Friends and private messages" aria-label="Friends and private messages" className={`${railBtn(view === "friends")} ${view === "friends" ? "bg-[#5865f2]" : "bg-[#383a40] hover:bg-[#5865f2]"}`}>
           <MessageCircle className="w-5 h-5 text-[#fff]" />
         </button>
-        <div className="w-7 h-0.5 bg-[#241d52] rounded" />
+        <div className="w-7 h-0.5 bg-[#35363c] rounded" />
         {servers.map((s) => {
           const on = view === "server" && !isDm && server === s.id;
           return (
             <span key={s.id} className="relative">
               {on && <span className="absolute -left-[10px] top-1.5 w-1 h-8 rounded-r bg-white" />}
-              <button onClick={() => openServer(s.id)} title={s.name} aria-label={s.name} className={`${railBtn(on)} ${s.id === "nebulux" ? "" : on ? "bg-indigo-600" : "bg-[#1b1640] hover:bg-indigo-600"} text-xl`}>
+              <button onClick={() => openServer(s.id)} title={s.name} aria-label={s.name} className={`${railBtn(on)} ${s.id === "nebulux" ? "" : on ? "bg-[#5865f2]" : "bg-[#383a40] hover:bg-[#5865f2]"} text-xl`}>
                 {s.id === "nebulux" ? <img src="/logo.png" alt="" className="w-full h-full object-cover" /> : s.icon}
               </button>
             </span>
           );
         })}
-        <button onClick={() => setGroupOpen(true)} title="Make or join a group" aria-label="Make or join a group" className={`${railBtn(false)} bg-[#1b1640] text-emerald-400 hover:bg-emerald-600 hover:text-[#fff]`}>
+        <button onClick={() => setGroupOpen(true)} title="Make or join a group" aria-label="Make or join a group" className={`${railBtn(false)} bg-[#383a40] text-emerald-400 hover:bg-emerald-600 hover:text-[#fff]`}>
           <Plus className="w-5 h-5" />
         </button>
-        <button onClick={() => openPage("quests")} className="mt-auto flex flex-col items-center gap-0.5 rounded-lg px-1 py-1 hover:bg-[#1b1640]" title="Your stars: do quests to earn more">
+        <button onClick={() => openPage("quests")} className="mt-auto flex flex-col items-center gap-0.5 rounded-lg px-1 py-1 hover:bg-[#383a40]" title="Your stars: do quests to earn more">
           <span className="text-base">⭐</span>
           <span className="text-[10px] font-bold text-amber-200">{stars}</span>
         </button>
@@ -463,9 +463,9 @@ export default function Community() {
     const mine = m.user.id === me.id;
     const divider = newDay && (
       <div className="flex items-center gap-2 px-4 my-3">
-        <div className="flex-1 h-px bg-indigo-300/15" />
+        <div className="flex-1 h-px bg-[#3f4147]" />
         <span className="text-[10px] font-semibold text-slate-400">{day(m.at)}</span>
-        <div className="flex-1 h-px bg-indigo-300/15" />
+        <div className="flex-1 h-px bg-[#3f4147]" />
       </div>
     );
     if (m.text === "::join::" && !m.deleted) {
@@ -481,7 +481,7 @@ export default function Community() {
                 <span className="ml-2 text-[10px] text-slate-500">{time(m.at)}</span>
               </p>
               {!mine && (
-                <button onClick={() => wave(m)} className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-[#1b1640] border border-indigo-400/30 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-indigo-600/40">
+                <button onClick={() => wave(m)} className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-[#383a40] border border-indigo-400/30 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-[#5865f2]/40">
                   <span className="text-base">👋</span> Wave to say hi to {m.user.name}
                 </button>
               )}
@@ -549,7 +549,7 @@ export default function Community() {
             {Object.keys(m.reactions || {}).length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {Object.entries(m.reactions).map(([emo, users]) => (
-                  <button key={emo} onClick={() => react(m, emo)} className={`px-1.5 py-0.5 rounded-md text-[11px] border ${users.includes(me.id) ? "bg-indigo-500/25 border-indigo-400" : "bg-[#1b1640] border-transparent hover:border-slate-500"}`}>
+                  <button key={emo} onClick={() => react(m, emo)} className={`px-1.5 py-0.5 rounded-md text-[11px] border ${users.includes(me.id) ? "bg-indigo-500/25 border-indigo-400" : "bg-[#383a40] border-transparent hover:border-slate-500"}`}>
                     {emo} {users.length}
                   </button>
                 ))}
@@ -557,27 +557,27 @@ export default function Community() {
             )}
           </div>
           {!m.deleted && (
-            <div className="absolute -top-3 right-4 hidden group-hover:flex items-center rounded-md bg-[#1b1640] border border-black/40 shadow-lg">
+            <div className="absolute -top-3 right-4 hidden group-hover:flex items-center rounded-md bg-[#383a40] border border-black/40 shadow-lg">
               {REACTIONS.slice(0, 4).map((emo) => (
-                <button key={emo} title={`React ${emo}`} onClick={() => react(m, emo)} className="px-1.5 py-1 hover:bg-[#2a2160] text-sm">
+                <button key={emo} title={`React ${emo}`} onClick={() => react(m, emo)} className="px-1.5 py-1 hover:bg-[#404249] text-sm">
                   {emo}
                 </button>
               ))}
-              <button title="Reply" aria-label="Reply" onClick={() => setReplyTo(m)} className="p-1.5 hover:bg-[#2a2160] text-slate-300">
+              <button title="Reply" aria-label="Reply" onClick={() => setReplyTo(m)} className="p-1.5 hover:bg-[#404249] text-slate-300">
                 <Reply className="w-3.5 h-3.5" />
               </button>
               {mine && (
-                <button title="Edit" aria-label="Edit" onClick={() => { setEditing(m); setText(m.text); }} className="p-1.5 hover:bg-[#2a2160] text-slate-300">
+                <button title="Edit" aria-label="Edit" onClick={() => { setEditing(m); setText(m.text); }} className="p-1.5 hover:bg-[#404249] text-slate-300">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
               {(mine || me.admin) && (
-                <button title="Delete" aria-label="Delete" onClick={async () => { if (await askConfirm("Delete this message?")) chatApi(`/messages/${m.id}`, "DELETE").catch((e) => flash(e.message)); }} className="p-1.5 hover:bg-[#2a2160] text-red-400">
+                <button title="Delete" aria-label="Delete" onClick={async () => { if (await askConfirm("Delete this message?")) chatApi(`/messages/${m.id}`, "DELETE").catch((e) => flash(e.message)); }} className="p-1.5 hover:bg-[#404249] text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
               {!mine && (
-                <button title="Report" aria-label="Report" onClick={async () => { if (await askConfirm("Report this message to the Nebulux team?")) chatApi(`/messages/${m.id}/report`, "POST", {}).then(() => flash("Thanks, we'll take a look.")).catch((e) => flash(e.message)); }} className="p-1.5 hover:bg-[#2a2160] text-slate-300">
+                <button title="Report" aria-label="Report" onClick={async () => { if (await askConfirm("Report this message to the Nebulux team?")) chatApi(`/messages/${m.id}/report`, "POST", {}).then(() => flash("Thanks, we'll take a look.")).catch((e) => flash(e.message)); }} className="p-1.5 hover:bg-[#404249] text-slate-300">
                   <Flag className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -673,12 +673,12 @@ export default function Community() {
               {/* Composer */}
               <div className="relative px-4 pb-3">
                 {away && (
-                  <button onClick={jumpDown} className="absolute -top-10 left-1/2 -translate-x-1/2 z-10 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-[#fff] shadow-lg">
+                  <button onClick={jumpDown} className="absolute -top-10 left-1/2 -translate-x-1/2 z-10 rounded-full bg-[#5865f2] hover:bg-[#4752c4] px-3 py-1.5 text-xs font-semibold text-[#fff] shadow-lg">
                     ↓ Jump to newest
                   </button>
                 )}
                 {(replyTo || editing) && (
-                  <div className="flex items-center justify-between rounded-t-lg bg-[#0d0b24] px-3 py-1.5 text-xs text-slate-300">
+                  <div className="flex items-center justify-between rounded-t-lg bg-[#2b2d31] px-3 py-1.5 text-xs text-slate-300">
                     <span className="truncate">{editing ? "Editing your message" : <>Replying to <Name user={replyTo.user} className="text-xs" /></>}</span>
                     <button onClick={() => { setReplyTo(null); setEditing(null); setText(""); }} aria-label="Cancel" className="text-slate-400 hover:text-white">
                       <X className="w-4 h-4" />
@@ -717,9 +717,9 @@ export default function Community() {
                       😊
                     </button>
                     {emojiOpen && (
-                      <div className="absolute bottom-11 right-0 z-30 w-64 grid grid-cols-8 gap-0.5 rounded-xl bg-[#0d0b24] border border-indigo-400/25 p-2 shadow-2xl">
+                      <div className="absolute bottom-11 right-0 z-30 w-64 grid grid-cols-8 gap-0.5 rounded-xl bg-[#2b2d31] border border-black/30 p-2 shadow-2xl">
                         {EMOJI.map((emo) => (
-                          <button key={emo} onClick={() => addEmoji(emo)} className="h-7 rounded hover:bg-[#2a2160] text-base">
+                          <button key={emo} onClick={() => addEmoji(emo)} className="h-7 rounded hover:bg-[#404249] text-base">
                             {emo}
                           </button>
                         ))}
@@ -797,8 +797,8 @@ function Modal({ children, onClose, wide }) {
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" className={`relative w-full ${wide ? "max-w-2xl" : "max-w-sm"} max-h-[90vh] overflow-y-auto rounded-2xl bg-[#120f2e] border border-indigo-400/20 shadow-2xl text-sm`}>
-        <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-slate-400 hover:bg-[#2a2160] hover:text-white">
+      <div role="dialog" aria-modal="true" className={`relative w-full ${wide ? "max-w-2xl" : "max-w-sm"} max-h-[90vh] overflow-y-auto rounded-2xl bg-[#313338] border border-black/30 shadow-2xl text-sm`}>
+        <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-slate-400 hover:bg-[#404249] hover:text-white">
           <X className="w-5 h-5" />
         </button>
         {children}
@@ -827,19 +827,19 @@ function GroupDialog({ avatars, onClose, onDone }) {
           <p className="text-xs text-slate-400">A place for you and your friends. Only people you send the invite link to can join.</p>
           <div className="mt-3 flex flex-wrap gap-1">
             {avatars.slice(0, 16).map((a) => (
-              <button key={a} onClick={() => setIcon(a)} className={`w-8 h-8 rounded-lg text-base ${icon === a ? "bg-indigo-600" : "bg-[#07061a] hover:bg-[#2a2160]"}`}>
+              <button key={a} onClick={() => setIcon(a)} className={`w-8 h-8 rounded-lg text-base ${icon === a ? "bg-[#5865f2]" : "bg-[#1e1f22] hover:bg-[#404249]"}`}>
                 {a}
               </button>
             ))}
           </div>
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={24} placeholder="Group name" className="mt-2 w-full rounded-lg bg-[#07061a] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500" />
-          <button disabled={busy || name.trim().length < 2} onClick={() => run(chatApi("/servers", "POST", { name, icon }))} className="mt-2 w-full rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-2 font-semibold text-[#fff] disabled:opacity-40">
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={24} placeholder="Group name" className="mt-2 w-full rounded-lg bg-[#1e1f22] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button disabled={busy || name.trim().length < 2} onClick={() => run(chatApi("/servers", "POST", { name, icon }))} className="mt-2 w-full rounded-lg bg-[#5865f2] hover:bg-[#4752c4] py-2 font-semibold text-[#fff] disabled:opacity-40">
             Make group
           </button>
         </div>
-        <div className="border-t border-indigo-400/15 pt-4">
+        <div className="border-t border-black/30 pt-4">
           <p className="text-base font-bold text-white">Join a group</p>
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste an invite link or code" className="mt-2 w-full rounded-lg bg-[#07061a] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste an invite link or code" className="mt-2 w-full rounded-lg bg-[#1e1f22] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500" />
           <button disabled={busy || !code.trim()} onClick={() => run(chatApi("/servers/join", "POST", { code: (code.match(/join=([\w-]+)/) || [, code.trim()])[1] }))} className="mt-2 w-full rounded-lg bg-emerald-600 py-2 font-semibold text-[#fff] disabled:opacity-40">
             Join group
           </button>
@@ -877,7 +877,7 @@ function UserCard({ user, me, onClose, flash, onMessage }) {
             >
               <UserPlus className="w-4 h-4" /> Add friend
             </button>
-            <button onClick={() => onMessage(`dm:${[me.id, user.id].sort().join(":")}`)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 text-[#fff] text-xs font-medium hover:bg-indigo-500">
+            <button onClick={() => onMessage(`dm:${[me.id, user.id].sort().join(":")}`)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#5865f2] text-[#fff] text-xs font-medium hover:bg-[#4752c4]">
               <MessageCircle className="w-4 h-4" /> Message
             </button>
             <button
@@ -885,7 +885,7 @@ function UserCard({ user, me, onClose, flash, onMessage }) {
                 if (!(await askConfirm(`Block ${user.name}? They won't be able to message you or add you.`))) return;
                 chatApi("/blocks", "POST", { userId: user.id }).then(() => { flash(`${user.name} is blocked.`); onClose(); }).catch((e) => flash(e.message));
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#2a2160] text-[#fff] text-xs font-medium hover:bg-[#3a2f80]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#404249] text-[#fff] text-xs font-medium hover:bg-[#4e5058]"
             >
               <Ban className="w-4 h-4" /> Block
             </button>
@@ -924,7 +924,7 @@ function Friends({ me, onOpenDm, onView, flash }) {
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-black/40">
         {[["online", "Online"], ["all", "All"], ["pending", `Pending${pending ? ` (${pending})` : ""}`]].map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} className={`px-2.5 py-1 rounded-md text-xs ${tab === id ? "bg-[#2a2160] text-white" : "text-slate-400 hover:bg-[#1f1947] hover:text-slate-200"}`}>
+          <button key={id} onClick={() => setTab(id)} className={`px-2.5 py-1 rounded-md text-xs ${tab === id ? "bg-[#404249] text-white" : "text-slate-400 hover:bg-[#35373c] hover:text-slate-200"}`}>
             {label}
           </button>
         ))}
@@ -945,11 +945,11 @@ function Friends({ me, onOpenDm, onView, flash }) {
                 else setFound([]);
               }}
               placeholder="Their name"
-              className="mt-3 w-full rounded-lg bg-[#07061a] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+              className="mt-3 w-full rounded-lg bg-[#1e1f22] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <div className="mt-3 space-y-1">
               {found.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-[#1f1947]">
+                <div key={p.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-[#35373c]">
                   <Avatar user={p} size={30} online={p.online} />
                   <Name user={p} className="flex-1 truncate" />
                   <button onClick={() => chatApi("/friends", "POST", { userId: p.id }).then((r) => { flash(r.status === "friend" ? "You're friends now!" : "Friend request sent."); load(); }).catch((e) => flash(e.message))} className="px-3 py-1 rounded-md bg-emerald-600 text-[#fff] text-xs font-medium">
@@ -967,7 +967,7 @@ function Friends({ me, onOpenDm, onView, flash }) {
         ) : (
           <div className="space-y-1">
             {shown.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-[#1f1947] border-t border-indigo-300/10">
+              <div key={f.id} className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-[#35373c] border-t border-indigo-300/10">
                 <button onClick={() => onView(f)}>
                   <Avatar user={f} size={34} online={f.online} />
                 </button>
@@ -976,16 +976,16 @@ function Friends({ me, onOpenDm, onView, flash }) {
                   <span className="text-[11px] text-slate-400">{f.status === "incoming" ? "Wants to be friends" : f.status === "sent" ? "Request sent" : f.online ? "Online" : "Offline"}</span>
                 </span>
                 {f.status === "friend" && (
-                  <button onClick={() => onOpenDm(f.dm)} title="Message" aria-label={`Message ${f.name}`} className="p-2 rounded-full bg-[#0d0b24] text-slate-300 hover:text-white">
+                  <button onClick={() => onOpenDm(f.dm)} title="Message" aria-label={`Message ${f.name}`} className="p-2 rounded-full bg-[#2b2d31] text-slate-300 hover:text-white">
                     <MessageCircle className="w-4 h-4" />
                   </button>
                 )}
                 {f.status === "incoming" && (
-                  <button onClick={() => chatApi("/friends", "POST", { userId: f.id }).then(load).catch((e) => flash(e.message))} title="Accept" aria-label="Accept" className="p-2 rounded-full bg-[#0d0b24] text-emerald-400">
+                  <button onClick={() => chatApi("/friends", "POST", { userId: f.id }).then(load).catch((e) => flash(e.message))} title="Accept" aria-label="Accept" className="p-2 rounded-full bg-[#2b2d31] text-emerald-400">
                     <Check className="w-4 h-4" />
                   </button>
                 )}
-                <button onClick={async () => { if (await askConfirm(f.status === "friend" ? `Remove ${f.name} as a friend?` : "Cancel this request?")) chatApi(`/friends/${f.id}`, "DELETE").then(load); }} title="Remove" aria-label="Remove" className="p-2 rounded-full bg-[#0d0b24] text-slate-400 hover:text-red-400">
+                <button onClick={async () => { if (await askConfirm(f.status === "friend" ? `Remove ${f.name} as a friend?` : "Cancel this request?")) chatApi(`/friends/${f.id}`, "DELETE").then(load); }} title="Remove" aria-label="Remove" className="p-2 rounded-full bg-[#2b2d31] text-slate-400 hover:text-red-400">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1009,14 +1009,14 @@ function Quests({ meta, onStars, flash }) {
   const mult = meta.plus?.mult || 1;
   return (
     <div className="p-5 space-y-4">
-      <div className="rounded-xl bg-gradient-to-br from-indigo-600/30 via-fuchsia-600/20 to-transparent border border-indigo-400/20 p-4">
+      <div className="rounded-xl bg-gradient-to-br from-indigo-600/30 via-fuchsia-600/20 to-transparent border border-black/30 p-4">
         <p className="font-bold text-white flex items-center gap-1.5">
           <Link2 className="w-4 h-4" /> Your chat invite link
         </p>
         <p className="text-xs text-slate-300">When someone joins Nebulux Chat with it, your invite quest is done. If they upgrade later, you get free credits too.</p>
         <div className="mt-2 flex gap-2">
-          <input readOnly value={link} className="flex-1 min-w-0 rounded-lg bg-[#07061a] px-3 py-1.5 text-xs text-slate-200" onFocus={(e) => e.target.select()} />
-          <button onClick={() => { copy(link); flash("Invite link copied!"); }} className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-[#fff]">
+          <input readOnly value={link} className="flex-1 min-w-0 rounded-lg bg-[#1e1f22] px-3 py-1.5 text-xs text-slate-200" onFocus={(e) => e.target.select()} />
+          <button onClick={() => { copy(link); flash("Invite link copied!"); }} className="inline-flex items-center gap-1 rounded-lg bg-[#5865f2] px-3 text-xs font-semibold text-[#fff]">
             <Copy className="w-3.5 h-3.5" /> Copy
           </button>
         </div>
@@ -1033,7 +1033,7 @@ function Quests({ meta, onStars, flash }) {
       ) : (
         <div className="space-y-2">
           {list.map((q) => (
-            <div key={q.id} className={`flex items-center gap-3 rounded-xl p-3 ${q.status === "claimed" ? "bg-[#0d0b24] opacity-60" : "bg-[#1b1640]"}`}>
+            <div key={q.id} className={`flex items-center gap-3 rounded-xl p-3 ${q.status === "claimed" ? "bg-[#2b2d31] opacity-60" : "bg-[#383a40]"}`}>
               <span className="text-xl">{q.status === "claimed" ? "✅" : q.status === "ready" ? "🎁" : "🎯"}</span>
               <span className="flex-1 min-w-0">
                 <span className="block font-semibold text-white">{q.title}</span>
@@ -1059,7 +1059,7 @@ function Quests({ meta, onStars, flash }) {
                   Claim
                 </button>
               ) : q.status === "todo" && q.link ? (
-                <a href={q.link} className="rounded-md bg-[#2a2160] px-3 py-1.5 text-xs text-slate-200 hover:bg-[#3a2f80]">
+                <a href={q.link} className="rounded-md bg-[#404249] px-3 py-1.5 text-xs text-slate-200 hover:bg-[#4e5058]">
                   Go
                 </a>
               ) : null}
@@ -1093,13 +1093,13 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
       .catch((e) => setErr(e.message))
       .finally(() => setSaving(false));
   };
-  const field = "mt-1 w-full rounded-lg bg-[#07061a] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500";
+  const field = "mt-1 w-full rounded-lg bg-[#1e1f22] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500";
 
   return (
     <Modal onClose={onClose} wide>
-      <div className="flex border-b border-indigo-400/15 px-5 pt-4 gap-4">
+      <div className="flex border-b border-black/30 px-5 pt-4 gap-4">
         {[["profile", "My profile"], ["quests", "Quests"], ["shop", "Star shop"]].map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} className={`pb-3 text-xs font-semibold border-b-2 ${tab === id ? "border-fuchsia-400 text-white" : "border-transparent text-slate-400"}`}>
+          <button key={id} onClick={() => setTab(id)} className={`pb-3 text-xs font-semibold border-b-2 ${tab === id ? "border-[#5865f2] text-white" : "border-transparent text-slate-400"}`}>
             {label}
           </button>
         ))}
@@ -1118,7 +1118,7 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
               <span className="text-[10px] font-bold uppercase text-slate-400">Avatar</span>
               <div className="mt-1 flex flex-wrap gap-1">
                 {(meta.avatars || []).map((a) => (
-                  <button key={a} onClick={() => setDraft({ ...draft, avatar: a })} className={`w-8 h-8 rounded-lg text-base ${draft.avatar === a ? "bg-indigo-600" : "bg-[#07061a] hover:bg-[#2a2160]"}`}>
+                  <button key={a} onClick={() => setDraft({ ...draft, avatar: a })} className={`w-8 h-8 rounded-lg text-base ${draft.avatar === a ? "bg-[#5865f2]" : "bg-[#1e1f22] hover:bg-[#404249]"}`}>
                     {a}
                   </button>
                 ))}
@@ -1145,7 +1145,7 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
               {[["frame", "Avatar frame"], ["badge", "Badge"]].map(([f, label]) => (
                 <label key={f} className="block">
                   <span className="text-[10px] font-bold uppercase text-slate-400">{label}</span>
-                  <select value={draft[f]} onChange={(e) => setDraft({ ...draft, [f]: e.target.value })} className="mt-1 w-full rounded-lg bg-[#07061a] px-2 py-2 text-xs text-white outline-none">
+                  <select value={draft[f]} onChange={(e) => setDraft({ ...draft, [f]: e.target.value })} className="mt-1 w-full rounded-lg bg-[#1e1f22] px-2 py-2 text-xs text-white outline-none">
                     <option value="">None</option>
                     {Object.entries(shop)
                       .filter(([id, it]) => it.kind === f && owned.includes(id))
@@ -1165,7 +1165,7 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase text-slate-400">Preview</span>
-            <div className="mt-1 rounded-xl bg-[#07061a] overflow-hidden">
+            <div className="mt-1 rounded-xl bg-[#1e1f22] overflow-hidden">
               <div className="h-14" style={{ background: draft.avatarBg }} />
               <div className="px-4 pb-4 -mt-8">
                 <Avatar user={preview} size={60} online />
@@ -1185,12 +1185,12 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
                   : "Pro and up get every name color, the Glow frame and the 💎 badge free, plus 1.5× to 2× stars from quests."}
               </p>
               {!plus.plus && (
-                <a href="/chat/plans" className="mt-2 inline-block rounded-md bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-1 text-xs font-semibold text-[#fff]">
+                <a href="/chat/plans" className="mt-2 inline-block rounded-md bg-[#5865f2] hover:bg-[#4752c4] px-3 py-1 text-xs font-semibold text-[#fff]">
                   See plans
                 </a>
               )}
             </div>
-            <button onClick={() => setTab("quests")} className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#2a2160] text-[#fff] text-xs font-semibold hover:bg-[#3a2f80]">
+            <button onClick={() => setTab("quests")} className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#404249] text-[#fff] text-xs font-semibold hover:bg-[#4e5058]">
               <Trophy className="w-4 h-4 text-amber-200" /> Do quests to earn stars
             </button>
             {err && <p className="mt-3 text-xs text-red-400">{err}</p>}
@@ -1237,8 +1237,8 @@ function Shop({ shop, owned, stars, onStars }) {
                 const have = owned.includes(id);
                 const short = stars < it.price;
                 return (
-                  <div key={id} className={`rounded-xl border p-3 flex flex-col items-center text-center gap-1.5 ${have ? "border-emerald-400/30 bg-emerald-500/5" : "border-indigo-400/15 bg-[#1b1640]"}`}>
-                    <span className="keep-color w-12 h-12 rounded-full flex items-center justify-center text-xl" style={{ background: kind === "name_color" ? it.value : "#07061a" }}>
+                  <div key={id} className={`rounded-xl border p-3 flex flex-col items-center text-center gap-1.5 ${have ? "border-emerald-400/30 bg-emerald-500/5" : "border-black/30 bg-[#383a40]"}`}>
+                    <span className="keep-color w-12 h-12 rounded-full flex items-center justify-center text-xl" style={{ background: kind === "name_color" ? it.value : "#1e1f22" }}>
                       {kind === "badge" ? it.value : kind === "frame" ? <span className={`w-9 h-9 rounded-full bg-slate-600 ${FRAME[it.value]}`} /> : ""}
                     </span>
                     <span className="text-xs font-medium text-white leading-tight" style={kind === "name_color" ? { color: it.value } : undefined}>
@@ -1251,7 +1251,7 @@ function Shop({ shop, owned, stars, onStars }) {
                     ) : it.plusOnly ? (
                       <a href="/chat/plans" className="text-[11px] text-fuchsia-200 hover:underline">💎 Free with Pro and up</a>
                     ) : (
-                      <button disabled={short || busy === id} onClick={() => buy(id)} title={short ? `You need ${it.price - stars} more stars. Do quests to earn them.` : ""} className="w-full rounded-md bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-1 text-[11px] font-semibold text-[#fff] disabled:opacity-40">
+                      <button disabled={short || busy === id} onClick={() => buy(id)} title={short ? `You need ${it.price - stars} more stars. Do quests to earn them.` : ""} className="w-full rounded-md bg-[#5865f2] hover:bg-[#4752c4] py-1 text-[11px] font-semibold text-[#fff] disabled:opacity-40">
                         ⭐ {it.price}
                       </button>
                     )}
@@ -1269,7 +1269,7 @@ function Shop({ shop, owned, stars, onStars }) {
 // Full-page Quests and Shop (like Discord's own pages), with a galaxy banner on top.
 function PageBanner({ icon, title, text, stars }) {
   return (
-    <div className="m-4 rounded-2xl bg-gradient-to-br from-indigo-600/40 via-fuchsia-600/25 to-transparent border border-indigo-400/20 p-4 flex items-center gap-4">
+    <div className="m-4 rounded-2xl bg-gradient-to-br from-indigo-600/40 via-fuchsia-600/25 to-transparent border border-black/30 p-4 flex items-center gap-4">
       <img src="/logo.png" alt="" className="w-14 h-14 rounded-full animate-[spin_8s_linear_infinite] shadow-[0_0_18px_rgba(168,85,247,0.6)]" />
       <div className="flex-1 min-w-0">
         <p className="text-base font-bold text-white">

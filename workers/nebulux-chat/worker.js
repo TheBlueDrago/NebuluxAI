@@ -92,24 +92,27 @@ async function profileOf(env, who, invite = "") {
 
 // The person's Nebulux AI plan (Pro and up = Plus perks), checked at most every 10 minutes.
 async function plusOf(token, userId) {
-  const key = new Request(`https://nebulux-chat.internal/plan/${userId}`);
+  const key = new Request(`https://nebulux-chat.internal/plan2/${userId}`);
   const hit = await caches.default.match(key).catch(() => null);
   if (hit) return hit.json();
   let plan = "free";
   let source = "";
+  let known = false;
   try {
-    const r = await fetch(`https://nebuluxai.pages.dev/api/apps/${APP_ID}/functions/credits`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "X-App-Id": APP_ID }, body: "{}", signal: AbortSignal.timeout(4000) });
+    const r = await fetch(`https://nebuluxai.pages.dev/api/apps/${APP_ID}/functions/credits`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "X-App-Id": APP_ID }, body: "{}", signal: AbortSignal.timeout(8000) });
     if (r.ok) {
       const j = await r.json();
       plan = String(j.plan || "free");
       source = String(j.planSource || "");
+      known = true;
     }
   } catch {
     // Unknown: no perks this time.
   }
   const mult = source === "trial" ? 1 : STAR_MULTIPLIER[plan] || 1;
   const out = { plan, plus: mult > 1, mult };
-  await caches.default.put(key, new Response(JSON.stringify(out), { headers: { "cache-control": "max-age=600" } })).catch(() => {});
+  // Only a real answer is remembered: a failed check must not take perks away for 10 minutes.
+  if (known) await caches.default.put(key, new Response(JSON.stringify(out), { headers: { "cache-control": "max-age=600" } })).catch(() => {});
   return out;
 }
 const ownedWithPlus = (me, plus) => [...new Set([...JSON.parse(me.owned || "[]"), ...(plus.plus ? PLUS_FREE : [])])];
