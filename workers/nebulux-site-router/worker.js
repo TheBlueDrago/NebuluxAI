@@ -30,6 +30,8 @@ const PAGE_HEADERS = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Strict-Transport-Security": "max-age=31536000",
   "Permissions-Policy": "camera=(), microphone=(), usb=(), payment=()",
+  // No plugins (old Flash-style embeds), and no <base> tag sending every link somewhere else.
+  "Content-Security-Policy": "object-src 'none'; base-uri 'self'",
 };
 
 function escapeHtml(s) {
