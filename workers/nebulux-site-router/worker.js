@@ -40,6 +40,40 @@ function escapeHtml(s) {
   });
 }
 
+// Published games at their own address get the same start-up help as games inside the app
+// (src/lib/previewShim.js): a "the screen size changed" nudge once loaded (phones lay the page
+// out late, so a game that measured the screen at start stayed 0x0 and black), and if the page
+// still shows nothing a few seconds later, one automatic reload.
+var GAME_KICK = "<script>(function(){function k(){try{dispatchEvent(new Event('resize'))}catch(_){}}" +
+  "function flat(c){try{if(!c.width||!c.height)return true;var x=c.getContext('2d');if(!x)return false;var f=null;for(var i=1;i<8;i++)for(var j=1;j<8;j++){var p=x.getImageData(Math.floor(c.width*i/8),Math.floor(c.height*j/8),1,1).data;var s=p.join();if(f===null)f=s;else if(s!==f)return false}return true}catch(_){return false}}" +
+  "function blank(){try{var b=document.body;if(!b)return true;var w=document.createTreeWalker(b,4),n;while((n=w.nextNode())){var p=n.parentNode&&n.parentNode.nodeName;if(p!=='SCRIPT'&&p!=='STYLE'&&p!=='NOSCRIPT'&&p!=='TEMPLATE'&&n.nodeValue.trim())return false}if(b.querySelector('img,video,svg,iframe'))return false;var cs=b.querySelectorAll('canvas');if(!cs.length)return b.getBoundingClientRect().height<5;for(var i=0;i<cs.length;i++)if(!flat(cs[i]))return false;return true}catch(_){return false}}" +
+  "addEventListener('load',function(){k();setTimeout(k,250);setTimeout(k,1000);setTimeout(function(){try{if(blank()&&!sessionStorage.getItem('nx-reloaded')){sessionStorage.setItem('nx-reloaded','1');location.reload()}}catch(_){}},4000)})})();</script>";
+
+function withGameKick(html) {
+  var head = html.match(/<head[^>]*>/i);
+  if (head) return html.slice(0, head.index + head[0].length) + GAME_KICK + html.slice(head.index + head[0].length);
+  return GAME_KICK + html;
+}
+
+// Asks the app for a site or game, once more after a moment if it had a hiccup (5xx or no
+// answer), so a brief problem doesn't show "Site not found" for a site that exists.
+async function lookup(kind, name) {
+  for (var attempt = 0; attempt < 2; attempt++) {
+    try {
+      var res = await fetch(API_BASE + kind, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name }),
+      });
+      if (res.status < 500) return res;
+    } catch (err) {
+      // Try again below.
+    }
+    await new Promise(function (r) { setTimeout(r, 400); });
+  }
+  return null;
+}
+
 function notFoundPage(rawName) {
   var name = escapeHtml(rawName);
   return (
@@ -64,35 +98,25 @@ export default {
     }
     var name = host.slice(0, host.length - root.length - 1);
     if (name.indexOf(".") >= 0) return new Response("Not found", { status: 404 });
-    var apiRes;
-    try {
-      apiRes = await fetch(API_BASE + "get-site-html", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name }),
-      });
-    } catch (err) {
-      return new Response(notFoundPage(name), { status: 502, headers: PAGE_HEADERS });
-    }
-    if (!apiRes.ok) {
+    var isGame = false;
+    var apiRes = await lookup("get-site-html", name);
+    if (!apiRes || !apiRes.ok) {
       // No website by that name: it may be a game (games share the same addresses).
-      try {
-        apiRes = await fetch(API_BASE + "get-game-html", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name }),
-        });
-      } catch (err) {
+      var gameRes = await lookup("get-game-html", name);
+      if (gameRes && gameRes.ok) {
+        apiRes = gameRes;
+        isGame = true;
+      } else if (!apiRes && !gameRes) {
         return new Response(notFoundPage(name), { status: 502, headers: PAGE_HEADERS });
-      }
+      } else apiRes = gameRes || apiRes;
     }
     if (!apiRes.ok) {
       return new Response(notFoundPage(name), { status: 404, headers: PAGE_HEADERS });
     }
-    var data = await apiRes.json();
+    var data = await apiRes.json().catch(function () { return null; });
     if (!data || !data.html) {
       return new Response(notFoundPage(name), { status: 404, headers: PAGE_HEADERS });
     }
-    return new Response(data.html, { status: 200, headers: PAGE_HEADERS });
+    return new Response(isGame ? withGameKick(data.html) : data.html, { status: 200, headers: PAGE_HEADERS });
   },
 };
