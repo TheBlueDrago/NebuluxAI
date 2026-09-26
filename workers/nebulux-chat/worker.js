@@ -3,8 +3,8 @@
 // and one Durable Object (Hub) holds everyone's live connection, so new messages, typing and
 // notifications arrive instantly. People are recognised by their Nebulux AI (Base44) sign-in.
 import { cleanMessage, cleanName } from "./safety.js";
-import { SHOP, FREE_COLORS, AVATAR_EMOJI, AVATAR_BG, PLUS_FREE, STAR_MULTIPLIER } from "./shop.js";
-import { QUESTS, questDone } from "./quests.js";
+import { SHOP, FREE_COLORS, AVATAR_EMOJI, AVATAR_BG, PLUS_FREE, STAR_MULTIPLIER, STAR_PACKS } from "./shop.js";
+import { MILESTONES, DAILY_CLAIMS, weeklyQuests, weeklyProgress, milestoneDone, weekStart, weekEnds } from "./quests.js";
 
 const APP_ID = "6a8b5eb7787b8a4d6a18f662";
 const BASE44 = "https://blackhole-ai.base44.app";
@@ -51,6 +51,9 @@ const rowToProfile = (p) =>
     nameColor: p.name_color,
     frame: p.frame,
     badge: p.badge,
+    banner: p.banner || "",
+    deco: p.deco || "",
+    effect: p.effect || "",
     bio: p.bio,
     admin: !!p.is_admin,
   };
@@ -166,6 +169,11 @@ async function push(env, event, to = null) {
   await hub.fetch("https://hub/push", { method: "POST", body: JSON.stringify({ event, to }) }).catch(() => {});
 }
 
+// Things quests count besides messages. A reaction counts once per message.
+async function logEvent(env, userId, kind) {
+  await env.DB.prepare("INSERT INTO events (user_id, kind, created_at) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM events WHERE user_id = ? AND kind = ? AND kind LIKE 'react:%')").bind(userId, kind, now(), userId, kind).run().catch(() => {});
+}
+
 async function notify(env, userId, kind, text, link) {
   await env.DB.prepare("INSERT INTO notifications (user_id, kind, text, link, created_at) VALUES (?, ?, ?, ?, ?)").bind(userId, kind, text.slice(0, 200), link || "", now()).run();
   await push(env, { type: "notification", kind, text: text.slice(0, 200), link: link || "" }, [userId]);
@@ -204,7 +212,7 @@ async function route(request, env, who, token) {
   if (path === "/me" && method === "GET") {
     await env.DB.prepare("UPDATE profiles SET last_seen = ? WHERE user_id = ?").bind(now(), who.id).run();
     const plus = await plusOf(token, who.id);
-    return json(request, { me: rowToProfile(me), orbs: me.orbs, stars: me.orbs, owned: ownedWithPlus(me, plus), plus, inviteCode: me.invite_code, shop: SHOP, freeColors: FREE_COLORS, avatars: AVATAR_EMOJI, avatarBgs: AVATAR_BG });
+    return json(request, { me: rowToProfile(me), orbs: me.orbs, stars: me.orbs, owned: ownedWithPlus(me, plus), plus, inviteCode: me.invite_code, shop: SHOP, freeColors: FREE_COLORS, avatars: AVATAR_EMOJI, avatarBgs: AVATAR_BG, starPacks: STAR_PACKS });
   }
   if (path === "/me" && method === "PATCH") {
     const owned = ownedWithPlus(me, await plusOf(token, who.id));
@@ -234,7 +242,7 @@ async function route(request, env, who, token) {
       sets.push("name_color = ?");
       vals.push(body.nameColor);
     }
-    for (const [field, kind] of [["frame", "frame"], ["badge", "badge"]]) {
+    for (const [field, kind] of [["frame", "frame"], ["badge", "badge"], ["banner", "banner"], ["deco", "deco"], ["effect", "effect"]]) {
       if (body[field] === undefined) continue;
       const ok = body[field] === "" || Object.entries(SHOP).some(([id, it]) => it.kind === kind && it.value === body[field] && owned.includes(id));
       if (!ok) return fail(request, `Get that ${kind} in the Star shop first.`);
@@ -248,6 +256,7 @@ async function route(request, env, who, token) {
       vals.push(body.bio ? c.text.slice(0, 190) : "");
     }
     if (sets.length) await env.DB.prepare(`UPDATE profiles SET ${sets.join(", ")} WHERE user_id = ?`).bind(...vals, who.id).run();
+    if (sets.length) await logEvent(env, who.id, "profile");
     const p = await env.DB.prepare("SELECT * FROM profiles WHERE user_id = ?").bind(who.id).first();
     return json(request, { me: rowToProfile(p) });
   }
@@ -267,21 +276,53 @@ async function route(request, env, who, token) {
       },
     };
     const claimed = new Set(((await env.DB.prepare("SELECT quest_id FROM quests_done WHERE user_id = ?").bind(who.id).all()).results || []).map((x) => x.quest_id));
+    const week = weeklyQuests();
+    const dayStart = `${today()}T00:00:00.000Z`;
+    const claimedToday = (await env.DB.prepare("SELECT COUNT(*) AS n FROM quests_done WHERE user_id = ? AND created_at >= ?").bind(who.id, dayStart).first())?.n || 0;
+    const progress = await weeklyProgress(env, who.id, weekStart());
+    const statusOf = async (q) => {
+      if (claimed.has(q.key || q.id)) return { status: "claimed" };
+      if (q.weekly) {
+        const have = Math.min(q.need, progress[q.count] || 0);
+        return { status: have >= q.need ? "ready" : "todo", have };
+      }
+      return { status: (await milestoneDone(q.id, ctx).catch(() => false)) ? "ready" : "todo" };
+    };
     if (method === "GET") {
-      const list = [];
-      for (const q of QUESTS) list.push({ ...q, status: claimed.has(q.id) ? "claimed" : (await questDone(q.id, ctx).catch(() => false)) ? "ready" : "todo" });
-      return json(request, { quests: list, inviteCode: me.invite_code, orbs: me.orbs, stars: me.orbs });
+      const out = async (list) => Promise.all(list.map(async (q) => ({ ...q, id: q.key || q.id, ...(await statusOf(q)) })));
+      return json(request, { weekly: await out(week), milestones: await out(MILESTONES), claimsLeft: Math.max(0, DAILY_CLAIMS - claimedToday), dailyClaims: DAILY_CLAIMS, weekEnds: weekEnds(), inviteCode: me.invite_code, orbs: me.orbs, stars: me.orbs });
     }
-    const q = QUESTS.find((x) => x.id === body.id);
-    if (!q) return fail(request, "That quest doesn't exist.");
-    if (claimed.has(q.id)) return fail(request, "You already got the stars for this quest.");
-    if (!(await questDone(q.id, ctx).catch(() => false))) return fail(request, "Finish the quest first!");
+    const q = week.find((x) => x.key === body.id) || MILESTONES.find((x) => x.id === body.id);
+    if (!q) return fail(request, "That quest isn't available anymore. Quests change every Monday.");
+    const qid = q.key || q.id;
+    if (claimed.has(qid)) return fail(request, "You already got the stars for this quest.");
+    if (claimedToday >= DAILY_CLAIMS) return fail(request, `You can claim ${DAILY_CLAIMS} quests a day. Come back tomorrow for more!`);
+    if ((await statusOf(q)).status !== "ready") return fail(request, "Finish the quest first!");
     const plus = await plusOf(token, who.id);
     const got = Math.round(q.stars * plus.mult);
-    const ins = await env.DB.prepare("INSERT OR IGNORE INTO quests_done (user_id, quest_id, orbs, created_at) VALUES (?, ?, ?, ?)").bind(who.id, q.id, got, now()).run();
-    if (!ins.meta.changes) return fail(request, "You already got the stars for this quest.");
+    // One statement, so two claims sent at once can't get past the daily limit.
+    const ins = await env.DB.prepare("INSERT OR IGNORE INTO quests_done (user_id, quest_id, orbs, created_at) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM quests_done WHERE user_id = ? AND created_at >= ?) < ?").bind(who.id, qid, got, now(), who.id, dayStart, DAILY_CLAIMS).run();
+    if (!ins.meta.changes) return fail(request, "You can't claim that right now. Try again tomorrow.");
     await env.DB.prepare("UPDATE profiles SET orbs = orbs + ? WHERE user_id = ?").bind(got, who.id).run();
     return json(request, { orbs: me.orbs + got, stars: me.orbs + got, got, mult: plus.mult });
+  }
+  // Stars bought with money (create-checkout, ids credits-stars-<n>). Base44Purchase rows are only
+  // written by the payment functions, so a paid row can be trusted; each is added once.
+  if (path === "/stars/sync" && method === "POST") {
+    const r = await fetch(`${BASE44}/api/apps/${APP_ID}/entities/Base44Purchase?q=${encodeURIComponent(JSON.stringify({ appUserId: who.id }))}`, { headers: { authorization: `Bearer ${token}`, "X-App-Id": APP_ID }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+    const rows = r && r.ok ? await r.json().catch(() => []) : [];
+    let added = 0;
+    for (const p of Array.isArray(rows) ? rows : []) {
+      const n = STAR_PACKS[String(p.productId || "").replace("credits-stars-", "")];
+      if (!n || p.status !== "paid" || !p.id || p.appUserId !== who.id) continue;
+      const stars = n.stars * Math.min(10, Math.max(1, Math.trunc(Number(p.quantity)) || 1));
+      const ins = await env.DB.prepare("INSERT OR IGNORE INTO star_buys (purchase_id, user_id, stars, created_at) VALUES (?, ?, ?, ?)").bind(String(p.id), who.id, stars, now()).run();
+      if (!ins.meta.changes) continue;
+      await env.DB.prepare("UPDATE profiles SET orbs = orbs + ? WHERE user_id = ?").bind(stars, who.id).run();
+      added += stars;
+    }
+    if (added) await notify(env, who.id, "purchase", `${added} stars were added to your account. Have fun in the Star shop!`, "/chat/community?tab=shop");
+    return json(request, { added, stars: me.orbs + added, orbs: me.orbs + added });
   }
   if (path === "/shop/buy" && method === "POST") {
     const item = SHOP[body.item];
@@ -292,6 +333,7 @@ async function route(request, env, who, token) {
     if (me.orbs < item.price) return fail(request, `You need ${item.price - me.orbs} more stars.`);
     owned.push(body.item);
     const r = await env.DB.prepare("UPDATE profiles SET orbs = orbs - ?, owned = ? WHERE user_id = ? AND orbs >= ?").bind(item.price, JSON.stringify(owned), who.id, item.price).run();
+    if (r.meta.changes) await logEvent(env, who.id, "buy");
     if (!r.meta.changes) return fail(request, "Not enough stars.");
     return json(request, { orbs: me.orbs - item.price, stars: me.orbs - item.price, owned });
   }
@@ -437,6 +479,7 @@ async function route(request, env, who, token) {
       r[emoji] = list.includes(who.id) ? list.filter((u) => u !== who.id) : [...list, who.id];
       if (!r[emoji].length) delete r[emoji];
       await env.DB.prepare("UPDATE messages SET reactions = ? WHERE id = ?").bind(JSON.stringify(r), id).run();
+      if (r[emoji] && r[emoji].includes(who.id)) await logEvent(env, who.id, `react:${id}`);
       await push(env, { type: "react", id, channel: row.channel_id, reactions: r }, pair);
       return json(request, { reactions: r });
     }

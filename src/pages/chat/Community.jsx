@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Hash, Users, UserPlus, Settings, Send, Reply, Pencil, Trash2, Flag, X, Menu, ArrowLeft, Check, Ban, MessageCircle, ShoppingBag, Loader2, Plus, Copy, LogOut, Trophy, Gem, Link2 } from "lucide-react";
 import { chatApi, connectChat, onChatEvent, sendTyping, addNotification } from "@/lib/nebuluxChat";
 import { askConfirm } from "@/lib/dialogs";
+import { base44 } from "@/api/base44Client";
 import NotificationBell from "@/components/NotificationBell";
 import { useAppShell } from "@/components/AppShellContext";
 
@@ -25,6 +26,24 @@ const FRAME = {
   glow: "ring-2 ring-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.9)]",
   stars: "ring-2 ring-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.8)]",
   fire: "ring-2 ring-orange-500 shadow-[0_0_14px_rgba(249,115,22,0.95)]",
+  rainbow: "ring-[3px] ring-fuchsia-400 shadow-[0_0_10px_#f472b6,0_0_18px_#60a5fa,0_0_26px_#facc15]",
+  ice: "ring-2 ring-cyan-200 shadow-[0_0_14px_rgba(165,243,252,0.95)]",
+};
+// Profile banners (the strip at the top of a profile card).
+const BANNER = {
+  aurora: "linear-gradient(120deg,#22d3ee,#a78bfa,#34d399)",
+  sunset: "linear-gradient(120deg,#f97316,#ec4899,#8b5cf6)",
+  ocean: "linear-gradient(120deg,#0ea5e9,#1e3a8a,#14b8a6)",
+  space: "radial-gradient(circle at 30% 40%,#a855f7 0,transparent 35%),radial-gradient(circle at 75% 60%,#3b82f6 0,transparent 30%),#0b0a1f",
+  candy: "linear-gradient(120deg,#f9a8d4,#fde68a,#a5f3fc)",
+  lava: "linear-gradient(120deg,#7f1d1d,#ef4444,#f59e0b)",
+};
+const bannerOf = (u) => (u?.banner && BANNER[u.banner]) || u?.avatarBg || "#5865f2";
+// Name effects.
+const EFFECT = {
+  shimmer: { backgroundImage: "linear-gradient(90deg,#fff,#c4b5fd,#fff)", WebkitBackgroundClip: "text", color: "transparent" },
+  rainbow: { backgroundImage: "linear-gradient(90deg,#f87171,#fbbf24,#4ade80,#60a5fa,#c084fc)", WebkitBackgroundClip: "text", color: "transparent" },
+  glow: { textShadow: "0 0 8px currentColor" },
 };
 const GALAXY = { background: "#313338" }; // Discord's own colors
 const WELCOMES = ["just landed in the chat!", "joined the party.", "arrived from a faraway galaxy.", "is here. Say hi!", "just showed up. Everyone wave!"];
@@ -46,6 +65,11 @@ function Avatar({ user, size = 40, online }) {
       <span className={`keep-color w-full h-full rounded-full flex items-center justify-center select-none ${FRAME[user.frame] || ""}`} style={{ background: user.avatarBg || "#6366f1", fontSize: size * 0.5 }}>
         {user.avatar || "🌌"}
       </span>
+      {user.deco && (
+        <span className="absolute pointer-events-none select-none" style={{ top: -size * 0.28, right: -size * 0.18, fontSize: Math.max(10, size * 0.42) }}>
+          {user.deco}
+        </span>
+      )}
       {online !== undefined && <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#2b2d31] ${online ? "bg-emerald-500" : "bg-slate-500"}`} />}
     </span>
   );
@@ -53,7 +77,7 @@ function Avatar({ user, size = 40, online }) {
 
 const Name = ({ user, className = "" }) => (
   <span className={`font-semibold ${className}`} style={{ color: user?.nameColor || "#e2e8f0" }}>
-    {user?.name}
+    <span style={EFFECT[user?.effect]}>{user?.name}</span>
     {user?.badge ? <span className="ml-1">{user.badge}</span> : null}
     {user?.admin ? <span className="ml-1.5 align-middle rounded bg-[#5865f2] px-1 text-[9px] font-bold text-[#fff]">STAFF</span> : null}
   </span>
@@ -645,7 +669,7 @@ export default function Community() {
           <div className="flex-1 min-h-0 overflow-y-auto">
             <PageBanner icon="🛍" title="Star shop" text="Name colors, glowing frames and badges. Earn stars from Quests." stars={stars} />
             <div className="-mt-4">
-              <Shop shop={meta?.shop || {}} owned={meta?.owned || []} stars={stars} onStars={(s, owned) => { setStars(s); if (owned) setMeta((m) => ({ ...m, owned: [...new Set([...(m.owned || []), ...owned])] })); }} />
+              <Shop packs={meta?.starPacks} shop={meta?.shop || {}} owned={meta?.owned || []} stars={stars} onStars={(s, owned) => { setStars(s); if (owned) setMeta((m) => ({ ...m, owned: [...new Set([...(m.owned || []), ...owned])] })); }} />
             </div>
           </div>
         ) : view === "friends" ? (
@@ -855,7 +879,7 @@ function UserCard({ user, me, onClose, flash, onMessage }) {
   const self = user.id === me.id;
   return (
     <Modal onClose={onClose}>
-      <div className="h-20 rounded-t-2xl" style={{ background: user.avatarBg }} />
+      <div className="h-20 rounded-t-2xl" style={{ background: bannerOf(user) }} />
       <div className="px-5 pb-5 -mt-10">
         <Avatar user={user} size={76} />
         <p className="mt-2 text-lg">
@@ -999,14 +1023,25 @@ function Friends({ me, onOpenDm, onView, flash }) {
 
 // Quests: the way to earn stars. Each one is checked on the chat server when claimed.
 function Quests({ meta, onStars, flash }) {
-  const [list, setList] = useState(null);
   const [busy, setBusy] = useState("");
-  const load = useCallback(() => chatApi("/quests").then((r) => setList(r.quests || [])).catch((e) => flash(e.message)), [flash]);
+  const [data, setData] = useState(null);
+  const load = useCallback(() => chatApi("/quests").then(setData).catch((e) => flash(e.message)), [flash]);
   useEffect(() => {
     load();
   }, [load]);
   const link = `${location.origin}/chat/community?invite=${meta.inviteCode || ""}`;
   const mult = meta.plus?.mult || 1;
+  const claim = (q) => {
+    setBusy(q.id);
+    chatApi("/quests/claim", "POST", { id: q.id })
+      .then((r) => {
+        onStars(r.stars ?? r.orbs);
+        addNotification({ kind: "reward", text: `Quest done: you got ${r.got} stars!` });
+        load();
+      })
+      .catch((e) => flash(e.message))
+      .finally(() => setBusy(""));
+  };
   return (
     <div className="p-5 space-y-4">
       <div className="rounded-xl bg-gradient-to-br from-indigo-600/30 via-fuchsia-600/20 to-transparent border border-black/30 p-4">
@@ -1026,53 +1061,75 @@ function Quests({ meta, onStars, flash }) {
           <Gem className="w-4 h-4" /> Plus perk: you get {mult}× stars from every quest.
         </p>
       )}
-      {!list ? (
+      {!data ? (
         <div className="flex justify-center py-8">
           <Loader2 className="w-6 h-6 text-indigo-300 animate-spin" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {list.map((q) => (
-            <div key={q.id} className={`flex items-center gap-3 rounded-xl p-3 ${q.status === "claimed" ? "bg-[#2b2d31] opacity-60" : "bg-[#383a40]"}`}>
-              <span className="text-xl">{q.status === "claimed" ? "✅" : q.status === "ready" ? "🎁" : "🎯"}</span>
-              <span className="flex-1 min-w-0">
-                <span className="block font-semibold text-white">{q.title}</span>
-                <span className="block text-[11px] text-slate-400">{q.text}</span>
-              </span>
-              <span className="text-xs font-bold text-amber-200 whitespace-nowrap">⭐ {Math.round(q.stars * mult)}</span>
-              {q.status === "ready" ? (
-                <button
-                  disabled={busy === q.id}
-                  onClick={() => {
-                    setBusy(q.id);
-                    chatApi("/quests/claim", "POST", { id: q.id })
-                      .then((r) => {
-                        onStars(r.stars ?? r.orbs);
-                        addNotification({ kind: "reward", text: `Quest done: you got ${r.got} stars!` });
-                        load();
-                      })
-                      .catch((e) => flash(e.message))
-                      .finally(() => setBusy(""));
-                  }}
-                  className="rounded-md bg-gradient-to-r from-amber-400 to-fuchsia-500 px-3 py-1.5 text-xs font-bold text-[#fff]"
-                >
-                  Claim
-                </button>
-              ) : q.status === "todo" && q.link ? (
-                <a href={q.link} className="rounded-md bg-[#404249] px-3 py-1.5 text-xs text-slate-200 hover:bg-[#4e5058]">
-                  Go
-                </a>
-              ) : null}
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`rounded-full px-3 py-1 font-semibold ${data.claimsLeft ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
+              {data.claimsLeft ? `You can claim ${data.claimsLeft} more today` : "No claims left today. Come back tomorrow!"}
+            </span>
+            <span className="text-slate-400">Up to {data.dailyClaims} claims a day · new weekly quests in {untilText(data.weekEnds)}</span>
+          </div>
+          <QuestList title="This week's quests" items={data.weekly} {...{ mult, busy, claim, canClaim: data.claimsLeft > 0 }} />
+          <QuestList title="Milestones (once ever)" items={data.milestones} {...{ mult, busy, claim, canClaim: data.claimsLeft > 0 }} />
+        </>
       )}
     </div>
   );
 }
 
+const untilText = (iso) => {
+  const ms = Date.parse(iso) - Date.now();
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  return d > 0 ? `${d}d ${h}h` : `${Math.max(1, h)}h`;
+};
+
+function QuestList({ title, items, mult, busy, claim, canClaim }) {
+  const sorted = [...items].sort((a, b) => ({ ready: 0, todo: 1, claimed: 2 })[a.status] - ({ ready: 0, todo: 1, claimed: 2 })[b.status]);
+  return (
+    <section>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-300">{title}</p>
+      <div className="space-y-1.5">
+        {sorted.map((q) => (
+          <div key={q.id} className={`flex items-center gap-3 rounded-lg p-2.5 ${q.status === "claimed" ? "bg-[#2b2d31] opacity-55" : "bg-[#2b2d31] border border-black/20"}`}>
+            <span className="text-lg">{q.status === "claimed" ? "✅" : q.status === "ready" ? "🎁" : q.weekly ? "📅" : "🎯"}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-xs font-semibold text-white">{q.title}</span>
+              <span className="block text-[11px] text-slate-400">{q.text}</span>
+              {q.weekly && q.status !== "claimed" && (
+                <span className="mt-1 flex items-center gap-2">
+                  <span className="h-1.5 flex-1 max-w-[160px] rounded-full bg-[#1e1f22] overflow-hidden">
+                    <span className="block h-full bg-[#5865f2]" style={{ width: `${Math.round(((q.have || 0) / q.need) * 100)}%` }} />
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {q.have || 0}/{q.need}
+                  </span>
+                </span>
+              )}
+            </span>
+            <span className="text-xs font-bold text-amber-200 whitespace-nowrap">⭐ {Math.round(q.stars * mult)}</span>
+            {q.status === "ready" ? (
+              <button disabled={busy === q.id || !canClaim} onClick={() => claim(q)} title={canClaim ? "" : "You've claimed 2 quests today. Come back tomorrow!"} className="rounded-md bg-[#248046] hover:bg-[#1a6334] px-3 py-1.5 text-xs font-bold text-[#fff] disabled:opacity-40">
+                Claim
+              </button>
+            ) : q.status === "todo" && q.link ? (
+              <a href={q.link} className="rounded-md bg-[#4e5058] px-3 py-1.5 text-xs text-slate-100 hover:bg-[#6d6f78]">
+                Go
+              </a>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, onStars }) {
-  const [draft, setDraft] = useState({ name: me.name, avatar: me.avatar, avatarBg: me.avatarBg, nameColor: me.nameColor, frame: me.frame || "", badge: me.badge || "", bio: me.bio || "" });
+  const [draft, setDraft] = useState({ name: me.name, avatar: me.avatar, avatarBg: me.avatarBg, nameColor: me.nameColor, frame: me.frame || "", badge: me.badge || "", banner: me.banner || "", deco: me.deco || "", effect: me.effect || "", bio: me.bio || "" });
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
   const owned = meta.owned || [];
@@ -1142,7 +1199,7 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
               <p className="mt-1 text-[10px] text-slate-500">Get more colors in the Star shop{plus.plus ? "" : ", or all of them free with Pro and up"}.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {[["frame", "Avatar frame"], ["badge", "Badge"]].map(([f, label]) => (
+              {[["frame", "Avatar frame"], ["badge", "Badge"], ["banner", "Profile banner"], ["deco", "Decoration"], ["effect", "Name effect"]].map(([f, label]) => (
                 <label key={f} className="block">
                   <span className="text-[10px] font-bold uppercase text-slate-400">{label}</span>
                   <select value={draft[f]} onChange={(e) => setDraft({ ...draft, [f]: e.target.value })} className="mt-1 w-full rounded-lg bg-[#1e1f22] px-2 py-2 text-xs text-white outline-none">
@@ -1166,7 +1223,7 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
           <div>
             <span className="text-[10px] font-bold uppercase text-slate-400">Preview</span>
             <div className="mt-1 rounded-xl bg-[#1e1f22] overflow-hidden">
-              <div className="h-14" style={{ background: draft.avatarBg }} />
+              <div className="h-14" style={{ background: bannerOf(preview) }} />
               <div className="px-4 pb-4 -mt-8">
                 <Avatar user={preview} size={60} online />
                 <p className="mt-2 text-base">
@@ -1200,7 +1257,7 @@ function ProfileEditor({ tab, setTab, me, stars, meta, flash, onClose, onSaved, 
           </div>
         </div>
       ) : (
-        <Shop shop={shop} owned={owned} stars={stars} onStars={onStars} />
+        <Shop packs={meta.starPacks} shop={shop} owned={owned} stars={stars} onStars={onStars} />
       )}
     </Modal>
   );
@@ -1211,8 +1268,11 @@ const SHOP_GROUPS = [
   ["name_color", "Name tag colors", "Your name shows in this color everywhere in the chat."],
   ["frame", "Avatar frames", "A glowing ring around your avatar."],
   ["badge", "Badges", "Shown next to your name."],
+  ["banner", "Profile banners", "The picture strip at the top of your profile."],
+  ["deco", "Avatar decorations", "A little extra sitting on your avatar."],
+  ["effect", "Name effects", "Make your name shimmer, shine or glow."],
 ];
-function Shop({ shop, owned, stars, onStars }) {
+function Shop({ shop, owned, stars, onStars, packs }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
   const buy = (id) => {
@@ -1238,8 +1298,8 @@ function Shop({ shop, owned, stars, onStars }) {
                 const short = stars < it.price;
                 return (
                   <div key={id} className={`rounded-xl border p-3 flex flex-col items-center text-center gap-1.5 ${have ? "border-emerald-400/30 bg-emerald-500/5" : "border-black/30 bg-[#383a40]"}`}>
-                    <span className="keep-color w-12 h-12 rounded-full flex items-center justify-center text-xl" style={{ background: kind === "name_color" ? it.value : "#1e1f22" }}>
-                      {kind === "badge" ? it.value : kind === "frame" ? <span className={`w-9 h-9 rounded-full bg-slate-600 ${FRAME[it.value]}`} /> : ""}
+                    <span className="keep-color w-12 h-12 rounded-full flex items-center justify-center text-xl" style={{ background: kind === "name_color" ? it.value : kind === "banner" ? BANNER[it.value] : "#1e1f22" }}>
+                      {kind === "badge" || kind === "deco" ? it.value : kind === "frame" ? <span className={`w-9 h-9 rounded-full bg-slate-600 ${FRAME[it.value]}`} /> : kind === "effect" ? <span className="text-sm font-bold" style={EFFECT[it.value]}>Aa</span> : ""}
                     </span>
                     <span className="text-xs font-medium text-white leading-tight" style={kind === "name_color" ? { color: it.value } : undefined}>
                       {it.name}
@@ -1261,6 +1321,7 @@ function Shop({ shop, owned, stars, onStars }) {
           </div>
         </section>
       ))}
+      <BuyStars packs={packs} onStars={onStars} />
       <p className="text-[11px] text-slate-500">To wear what you bought, open Profile and perks.</p>
     </div>
   );
@@ -1279,5 +1340,46 @@ function PageBanner({ icon, title, text, stars }) {
       </div>
       <span className="rounded-full bg-black/30 px-3 py-1 text-xs font-bold text-amber-200 whitespace-nowrap">⭐ {stars}</span>
     </div>
+  );
+}
+
+// Stars for money, through the same checkout as plans and credit packs. When the payment
+// is done, the chat server adds the stars (POST /stars/sync, run each time the shop opens).
+function BuyStars({ packs, onStars }) {
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    chatApi("/stars/sync", "POST")
+      .then((r) => r.added && onStars(r.stars ?? r.orbs))
+      .catch(() => {});
+  }, []);
+  if (!packs) return null;
+  const buy = async (key) => {
+    setErr("");
+    setBusy(key);
+    try {
+      const res = await base44.functions.invoke("create-checkout", { productId: `credits-stars-${key}` });
+      if (!res.data?.redirectUrl) throw new Error();
+      window.location.href = res.data.redirectUrl;
+    } catch (e) {
+      setErr(e?.response?.data?.error || "Couldn't start the payment. Try again in a minute.");
+      setBusy("");
+    }
+  };
+  return (
+    <section className="rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-400/10 to-transparent p-3">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-amber-200">Get more stars</p>
+      <p className="text-[11px] text-slate-400 mb-2">Can't wait for quests? Buy stars. Ask a parent first if you're under 18.</p>
+      <div className="grid grid-cols-3 gap-2">
+        {Object.entries(packs).map(([key, p], i) => (
+          <button key={key} disabled={!!busy} onClick={() => buy(key)} className="rounded-lg bg-[#2b2d31] border border-black/20 p-2.5 text-center hover:border-amber-300/40 disabled:opacity-50">
+            <span className="block text-lg">{["⭐", "🌟", "💫"][i] || "⭐"}</span>
+            <span className="block text-xs font-bold text-white">{p.stars} stars</span>
+            <span className="mt-1 block rounded-md bg-[#5865f2] py-1 text-[11px] font-semibold text-[#fff]">{busy === key ? "Opening…" : `$${p.price}`}</span>
+          </button>
+        ))}
+      </div>
+      {err && <p className="mt-2 text-[11px] text-red-400">{err}</p>}
+    </section>
   );
 }

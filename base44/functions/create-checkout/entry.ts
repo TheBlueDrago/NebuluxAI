@@ -129,6 +129,12 @@ Deno.serve(async (req: Request) => {
         CREDIT_PACKS[`credits-${slug}-${size}`] = { name: `${size} ${PACK_NAMES[slug]} credits`, price, currency: "USD" };
       }
     }
+    // Nebulux Chat stars (spent in the chat's Star shop). Ids start with "credits-" so the webhook
+    // treats them like packs (no plan change); the chat server (workers/nebulux-chat) adds the
+    // stars once it sees the paid row. Keep in step with STAR_PACKS in workers/nebulux-chat/shop.js.
+    const STAR_PACKS: Record<string, string> = { "100": "0.99", "300": "1.99", "800": "4.99" };
+    for (const [n, price] of Object.entries(STAR_PACKS)) CREDIT_PACKS[`credits-stars-${n}`] = { name: `${n} Nebulux Chat stars`, price, currency: "USD" };
+    const isStars = productId.startsWith("credits-stars-");
     const isPack = Object.prototype.hasOwnProperty.call(CREDIT_PACKS, productId);
     // Packs go to an account, so the buyer must be signed in (the credit server finds them by appUserId).
     if (isPack && !appUser?.id) {
@@ -165,7 +171,7 @@ Deno.serve(async (req: Request) => {
       if (created >= OFFER_START && now < created + TRIAL_MS + DISCOUNT_MS) {
         const past = await base44.asServiceRole.entities.Base44Purchase.filter({ appUserId: appUser.id });
         const used = (past || []).some((p: any) => (p.status === "paid" || p.status === "canceled") && String(p.productName || "").includes(OFFER_TAG));
-        if (!used) discountPct = isPack ? PACK_DISCOUNT_PCT : DISCOUNT_PCT;
+        if (!used && !isStars) discountPct = isPack ? PACK_DISCOUNT_PCT : DISCOUNT_PCT;
       }
     }
     // A discount promo code (optional). Checked and counted by the Cloudflare app with the buyer's
@@ -173,6 +179,9 @@ Deno.serve(async (req: Request) => {
     // new-member offer: the bigger discount wins, and only that one is tagged as used.
     const promoCode = String(body.promoCode ?? "").trim().toUpperCase();
     let promoPct = 0;
+    if (promoCode && isStars) {
+      return new Response(JSON.stringify({ error: "Promo codes don't work on stars." }), { status: 400 });
+    }
     if (promoCode) {
       if (!appUser?.id) {
         return new Response(JSON.stringify({ error: "Please sign in to use a promo code." }), { status: 401 });
