@@ -13,7 +13,7 @@ export const PAID_PLANS = ["pro", "team", "enterprise", "secret", "admin"];
 
 export async function questDone(id, ctx) {
   const { env, userId } = ctx;
-  if (id === "say-hi") return !!(await env.DB.prepare("SELECT 1 FROM messages WHERE user_id = ? AND deleted = 0 LIMIT 1").bind(userId).first());
+  if (id === "say-hi") return !!(await env.DB.prepare("SELECT 1 FROM messages WHERE user_id = ? AND deleted = 0 AND text != '::join::' LIMIT 1").bind(userId).first());
   if (id === "first-friend") return !!(await env.DB.prepare("SELECT 1 FROM friends WHERE status = 'accepted' AND (a = ? OR b = ?) LIMIT 1").bind(userId, userId).first());
   if (id === "invite") return !!(await env.DB.prepare("SELECT 1 FROM profiles WHERE invited_by = ? LIMIT 1").bind(userId).first());
   if (id === "first-website") return (await ctx.base44Get("PublishedSite", { created_by_id: userId })) > 0;

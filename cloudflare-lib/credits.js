@@ -197,12 +197,14 @@ export async function entitlement(kv, request, user, { other = false } = {}) {
     : null;
   // Enterprise: everyone in the organization draws every kind of credit from one pool.
   const orgId = team && plan === "enterprise" ? team.teamId : null;
+  const seats = orgId ? await seatsOf(kv, orgId) : null;
+  if (details.source === "paid" && UPGRADE_REWARD[base]) await rewardReferrers(kv, user, base, base === "enterprise" ? seats : 0).catch(() => {});
   return {
     user,
     plan,
     teamId: team && (plan === "team" || plan === "secret") ? team.teamId : null,
     orgId,
-    seats: orgId ? await seatsOf(kv, orgId) : null,
+    seats,
     bonus,
     blocked,
     blockedUntil,
@@ -329,6 +331,41 @@ export async function adjustBonus(kv, request, user, tier, delta, once) {
   b[tier] = Math.max(0, (Number(b[tier]) || 0) + Math.trunc(Number(delta) || 0));
   await putJSON(kv, `bonus:${user.id}`, b);
   return b;
+}
+
+// Gives bonus credits to SOMEONE ELSE (a referrer) during another person's request. It never
+// calls syncBonus, which would read promo codes and purchases with the wrong person's sign-in:
+// a missing balance is seeded like syncBonus does, and their own next request applies the rest.
+export async function giveBonusTo(kv, userId, amounts, once) {
+  const key = `bonus:${userId}`;
+  let b = await getJSON(kv, key, null);
+  if (!b) {
+    const grant = await getJSON(kv, `grant:${userId}`, null);
+    b = { ai: 0, aiCode: 0, galaxy5: 0, space5: 0, applied: [] };
+    if (grant && grant.bonus) for (const t of TIERS) b[t] = Math.max(0, Number(grant.bonus[t]) || 0);
+  }
+  b.applied = b.applied || [];
+  if (b.applied.includes(`once:${once}`)) return false;
+  b.applied.push(`once:${once}`);
+  for (const t of TIERS) b[t] = Math.max(0, (Number(b[t]) || 0) + Math.trunc(Number(amounts[t]) || 0));
+  await putJSON(kv, key, b);
+  return true;
+}
+
+// Referral upgrade rewards: when someone who joined through a referral link (the sign-up one,
+// or a Nebulux Chat invite) starts paying, whoever referred them gets credits of every AI:
+// Pro 25 each, Team 50 each, Enterprise 5 each per seat. Once per plan per referred person.
+export const UPGRADE_REWARD = { pro: 25, team: 50, enterprise: 5 };
+async function rewardReferrers(kv, user, plan, seats) {
+  const per = UPGRADE_REWARD[plan];
+  if (!per) return;
+  const each = plan === "enterprise" ? per * Math.max(1, Number(seats) || 1) : per;
+  const seen = `refupgrade:${user.id}:${plan}`;
+  if (await kv.get(seen)) return;
+  await kv.put(seen, "1");
+  const referrers = new Set([await kv.get(`referredby:${user.id}`), await kv.get(`chatreferredby:${user.id}`)].filter((r) => r && r !== user.id));
+  const amounts = Object.fromEntries(TIERS.map((t) => [t, each]));
+  for (const r of referrers) await giveBonusTo(kv, r, amounts, `${seen}`);
 }
 
 // Admin-only: record plan grants, bans/blocks and (for the one-time snapshot) bonus balances.

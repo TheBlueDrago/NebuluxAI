@@ -21,3 +21,9 @@ new_sqlite_classes = ["Hub"]
 
 [observability]
 enabled = true
+
+# The site's KV (same namespace as the Pages app): chat invites are recorded as
+# chatreferredby:<userId> so the inviter gets credits when that person upgrades.
+[[kv_namespaces]]
+binding = "KV"
+id = "3ae4e5a66e7f459296bf6c6b99951436"
