@@ -272,7 +272,7 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
 
       {/* Credits */}
       <div className="mt-16 w-full max-w-4xl mx-auto">
-        <SectionTitle title="Credits" sub="Rather not subscribe? Buy 5 to 50 credits for any AI, whatever your plan." />
+        <SectionTitle title="Credits" sub="Rather not subscribe? Buy 10 to 50 credits for any AI, whatever your plan." />
         <div className="mt-8">
           <CreditPacks discount={discount} onBuy={onBuyPack || ((id) => navigate("/billing", { state: { productId: id } }))} />
         </div>
