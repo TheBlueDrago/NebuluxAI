@@ -70,7 +70,7 @@ for (const file of files) {
     assert(rel === "src/components/ui/chart.jsx", `${rel} doesn't set raw HTML`);
   }
 }
-assert(frames >= 7, `found the app's frames (${frames})`);
+assert(frames >= 5, `found the app's frames (${frames})`);
 
 const pkg = JSON.parse(readFileSync(join(R, "package.json"), "utf8"));
 const deps = { ...pkg.dependencies, ...pkg.devDependencies };

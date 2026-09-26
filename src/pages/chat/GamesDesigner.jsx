@@ -27,7 +27,7 @@ import { useLocation } from "react-router-dom";
 import { STARTER_GAME_HTML } from "@/lib/gameTemplate";
 import { GAME_TLDS } from "@/lib/blackholeDomain";
 import { gameLimit, inThisMonth } from "@/lib/publishLimits";
-import { withPreviewShim, PREVIEW_SANDBOX } from "@/lib/previewShim";
+import PreviewFrame from "@/components/PreviewFrame";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import { TIER_OF_AI } from "@/lib/creditRefresh";
 import OutOfCredits from "@/components/chat/OutOfCredits";
@@ -786,7 +786,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
                 </p>
               </div>
             ) : previewHtml ? (
-              <iframe key={reloadKey} srcDoc={withPreviewShim(previewHtml)} title="Game preview" sandbox={PREVIEW_SANDBOX} className="w-full h-full bg-black" />
+              <PreviewFrame key={reloadKey} html={previewHtml} title="Game preview" className="w-full h-full bg-black" />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-center p-6">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-500 flex items-center justify-center mb-3">

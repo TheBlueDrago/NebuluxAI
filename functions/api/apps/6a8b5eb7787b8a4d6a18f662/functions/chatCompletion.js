@@ -281,7 +281,9 @@ async function generateWithEffort(apiKey, model, prompt, effort, timeoutMs, maxT
 
 // Runs the fallback chain. Once any text has been sent to the user we can't switch
 // models, so a failure after that point is reported instead of retried.
+// `apiKey`: one Gemini key, or a list of them (GEMINI_API_KEY, then _2, _3, _4 if set).
 async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
+  const keys = (Array.isArray(apiKey) ? apiKey : [apiKey]).filter(Boolean);
   let lastErr = null;
   let started = false;
   const onDelta = opts.onDelta
@@ -294,12 +296,17 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 0; i < chain.length; i++) {
       const isLast = i === chain.length - 1;
-      try {
-        const r = await generateWithEffort(apiKey, chain[i], prompt, effort, isLast ? 0 : HEADERS_TIMEOUT_MS, maxTokens, { ...opts, onDelta });
-        return { ...r, model: chain[i] };
-      } catch (err) {
-        lastErr = err;
-        if (started || !(err instanceof GeminiError) || !err.retryable) throw err;
+      // Each key is a separate free allowance: when Google says a key's limit is used up (429),
+      // the same model is tried with the next key before moving to a weaker model.
+      for (let k = 0; k < keys.length; k++) {
+        try {
+          const r = await generateWithEffort(keys[k], chain[i], prompt, effort, isLast && k === keys.length - 1 ? 0 : HEADERS_TIMEOUT_MS, maxTokens, { ...opts, onDelta });
+          return { ...r, model: chain[i] };
+        } catch (err) {
+          lastErr = err;
+          if (started || !(err instanceof GeminiError) || !(err.retryable || (err.status === 403 && k < keys.length - 1))) throw err;
+          if (err.status !== 429 && err.status !== 403) break;
+        }
       }
     }
     // Every model said no quickly (per-minute rate limits, which clear in seconds, rather
@@ -309,6 +316,9 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
   }
   throw lastErr || new GeminiError("No model available");
 }
+
+// Extra free keys (from other Google accounts or projects) can be added as Cloudflare secrets.
+export const geminiKeys = (env) => [env.GEMINI_API_KEY, env.GEMINI_API_KEY_2, env.GEMINI_API_KEY_3, env.GEMINI_API_KEY_4].filter(Boolean);
 
 function failure(err) {
   const busy = err instanceof GeminiError && err.retryable;
@@ -420,7 +430,7 @@ export async function onRequestPost(context) {
 
     if (!body.stream) {
       try {
-        const r = await runChain(env.GEMINI_API_KEY, chain, input, effort, maxTokens, { maxChars, search });
+        const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
         return json({ content: r.text, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut)) });
       } catch (err) {
         // 503 rather than 502: Cloudflare replaces 502 bodies on the custom domain with a
@@ -446,7 +456,7 @@ export async function onRequestPost(context) {
     context.waitUntil(
       (async () => {
         try {
-          const r = await runChain(env.GEMINI_API_KEY, chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
+          const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });
         } catch (err) {
           await send({ ...failure(err), status: 503 });

@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, Gamepad2, Flag, Wand2 } from "lucide-react";
 import { loadGame } from "@/lib/loadGame";
 import { useAppShell } from "@/components/AppShellContext";
 import { findBuiltInGame } from "@/lib/builtInGames";
-import { withPreviewShim, PREVIEW_SANDBOX } from "@/lib/previewShim";
+import PreviewFrame from "@/components/PreviewFrame";
 import ShareLink from "@/components/designer/ShareLink";
 
 export default function GameView() {
@@ -104,7 +104,7 @@ export default function GameView() {
             <p className="px-6 text-center">{typeof notFound === "string" ? notFound : "Game not found."}</p>
           </div>
         ) : (
-          <iframe srcDoc={withPreviewShim(html)} title={name} sandbox={PREVIEW_SANDBOX} className="w-full h-full" />
+          <PreviewFrame html={html} title={name} />
         )}
       </div>
     </div>

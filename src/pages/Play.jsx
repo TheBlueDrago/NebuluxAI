@@ -4,7 +4,7 @@ import { Loader2, Gamepad2, Flag, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { loadGame } from "@/lib/loadGame";
 import { findBuiltInGame } from "@/lib/builtInGames";
-import { withPreviewShim, PREVIEW_SANDBOX } from "@/lib/previewShim";
+import PreviewFrame from "@/components/PreviewFrame";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import ShareLink from "@/components/designer/ShareLink";
 
@@ -82,7 +82,7 @@ export default function Play() {
             <Link to="/" className="mt-4 text-sm text-indigo-300 hover:text-indigo-200">Make your own game with Nebulux AI</Link>
           </div>
         ) : (
-          <iframe srcDoc={withPreviewShim(game.html)} title={game.title || name} sandbox={PREVIEW_SANDBOX} className="w-full h-full" />
+          <PreviewFrame html={game.html} title={game.title || name} />
         )}
       </div>
     </div>

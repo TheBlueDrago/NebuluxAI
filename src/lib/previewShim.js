@@ -12,6 +12,15 @@ const SHIM = `<script>(function(){
   // Phones lay the frame out after the game's code first runs, so a game that measures the screen
   // once at start (canvas.width = innerWidth) got 0x0 and stayed black. Tell it the size changed
   // once the page has loaded, again a moment later, and whenever the frame's size changes.
+  // Health check for the black-screen problem: tell the app if the page crashed while starting or
+  // still shows nothing (no visible text, and every canvas empty or one flat color) a few seconds
+  // after loading. The app (components/PreviewFrame.jsx) then reloads it or offers a Reload button.
+  var crashed="";
+  addEventListener("error",function(e){if(!crashed)crashed=String((e&&e.message)||"error").slice(0,200)});
+  addEventListener("unhandledrejection",function(e){if(!crashed)crashed=String((e&&e.reason&&e.reason.message)||"error").slice(0,200)});
+  function flat(c){try{if(!c.width||!c.height)return true;var x=c.getContext("2d");if(!x)return false;var first=null;for(var i=1;i<8;i++)for(var j=1;j<8;j++){var p=x.getImageData(Math.floor(c.width*i/8),Math.floor(c.height*j/8),1,1).data;var k=p[0]+","+p[1]+","+p[2]+","+p[3];if(first===null)first=k;else if(k!==first)return false}return true}catch(_){return false}}
+  function blank(){try{var b=document.body;if(!b)return true;if((b.innerText||"").trim().length>0)return false;if(b.querySelector("img,video,svg,iframe"))return false;var cs=b.querySelectorAll("canvas");if(!cs.length)return b.getBoundingClientRect().height<5;for(var i=0;i<cs.length;i++)if(!flat(cs[i]))return false;return true}catch(_){return false}}
+  addEventListener("load",function(){setTimeout(function(){var bad=blank();try{parent.postMessage({type:"nebulux-health",blank:bad,crashed:bad?crashed:""},"*")}catch(_){}},3500)});
   function kick(){try{dispatchEvent(new Event("resize"))}catch(_){}}
   addEventListener("load",function(){kick();setTimeout(kick,250);setTimeout(kick,1000);setTimeout(kick,2500)});
   try{var lastW=innerWidth,lastH=innerHeight;setInterval(function(){if(innerWidth!==lastW||innerHeight!==lastH){lastW=innerWidth;lastH=innerHeight;kick()}},500)}catch(_){}
