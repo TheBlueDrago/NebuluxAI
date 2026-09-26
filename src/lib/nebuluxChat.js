@@ -1,4 +1,4 @@
-// Nebulux Chat in the app: talks to the chat server (workers/nebulux-chat at chat.nebuluxai.com),
+// Notifications in the app (the bell): the AI finishing while you were on another tab, purchases,
 // keeps one live connection for new messages, typing and notifications, and plays the
 // notification sound. The bell (components/NotificationBell.jsx) also shows things that happen
 // in the app itself: the AI finishing while you're on another tab, purchases, updates.

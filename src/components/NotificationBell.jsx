@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Bell, MessageCircle, UserPlus, Gift, Sparkles, ShoppingBag, Bot, Volume2, VolumeX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { chatApi, connectChat, onBell, localNotifications, markLocalRead, soundOn, setSound } from "@/lib/nebuluxChat";
+import { onBell, localNotifications, markLocalRead, soundOn, setSound } from "@/lib/nebuluxChat";
 
 const ICON = { message: MessageCircle, friend: UserPlus, reward: Gift, update: Sparkles, purchase: ShoppingBag, ai: Bot };
 const ago = (iso) => {
@@ -9,7 +9,7 @@ const ago = (iso) => {
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)}m` : s < 86400 ? `${Math.floor(s / 3600)}h` : `${Math.floor(s / 86400)}d`;
 };
 
-// The bell next to the profile button: chat messages, friend requests, rewards, purchases, the AI
+// The bell next to the profile button: purchases, the AI
 // finishing while you were away, and updates. A dot shows how many are new.
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -18,17 +18,8 @@ export default function NotificationBell() {
   const box = useRef(null);
   const navigate = useNavigate();
 
-  const load = () =>
-    chatApi("/notifications")
-      .then((r) => {
-        const merged = [...(r.notifications || []), ...localNotifications()].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 40);
-        setItems(merged);
-      })
-      .catch(() => setItems(localNotifications()));
 
   useEffect(() => {
-    connectChat();
-    load();
     const off = onBell((n) => setItems((cur) => [n, ...cur].slice(0, 40)));
     const onDoc = (e) => box.current && !box.current.contains(e.target) && setOpen(false);
     document.addEventListener("mousedown", onDoc);
@@ -43,7 +34,6 @@ export default function NotificationBell() {
     const next = !open;
     setOpen(next);
     if (next && unread) {
-      chatApi("/notifications/read", "POST").catch(() => {});
       markLocalRead();
       setTimeout(() => setItems((cur) => cur.map((n) => ({ ...n, read: true }))), 1500);
     }

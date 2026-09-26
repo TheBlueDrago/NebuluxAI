@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { pinnedIds, togglePin, onPinsChange, withPinsFirst } from "@/lib/pinnedChats";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pen, Plus, Code, Sparkles, Gem, Star, Check, X, ShoppingBag, Globe, Gamepad2, Search, Pin, PinOff, MessagesSquare } from "lucide-react";
+import { Pen, Plus, Code, Sparkles, Gem, Star, Check, X, ShoppingBag, Globe, Gamepad2, Search, Pin, PinOff } from "lucide-react";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import PullToRefresh from "@/components/PullToRefresh";
-import { useAppShell } from "@/components/AppShellContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const SKIP_KEY = "infinity-ai-skip-delete-confirm";
@@ -32,7 +31,6 @@ function CreditBar({ icon, label, used, total, gradient }) {
 }
 
 export default function Sidebar({ conversations, activeId, onSelect, onRename, onDelete, onRefresh, onGoHome, onGoCode, onNewChat, onGoSubscriptions, onGoDesigner, onGoGames, onGoMonitor, isAdmin, credits = {}, gapAfter = 0 }) {
-  const shell = useAppShell();
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [confirmId, setConfirmId] = useState(null);
@@ -137,16 +135,6 @@ export default function Sidebar({ conversations, activeId, onSelect, onRename, o
                 <Gamepad2 className="w-3.5 h-3.5 text-fuchsia-300" />
               </div>
               <span className="text-[13px] font-medium">Nebulux Games</span>
-            </button>
-            <button
-              onClick={() => shell?.goCommunity?.()}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800/70 transition-colors"
-            >
-              <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center">
-                <MessagesSquare className="w-3.5 h-3.5 text-violet-300" />
-              </div>
-              <span className="text-[13px] font-medium">Nebulux Chat</span>
-              <span className="ml-auto rounded bg-violet-600 px-1 text-[9px] font-bold text-[#fff]">NEW</span>
             </button>
             <button
               onClick={onGoSubscriptions}

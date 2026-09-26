@@ -84,7 +84,6 @@ export function AppShellProvider({ children }) {
   }, [navigate]);
   const goDesigner = useCallback(() => { navigate("/chat/designer"); setSidebarOpen(false); }, [navigate]);
   const goGames = useCallback(() => { navigate("/chat/games"); setSidebarOpen(false); }, [navigate]);
-  const goCommunity = useCallback(() => { navigate("/chat/community"); setSidebarOpen(false); }, [navigate]);
   const goGameDesigner = useCallback(() => { navigate("/chat/game-designer", { state: { fresh: Date.now() } }); setSidebarOpen(false); }, [navigate]);
   const goPlans = useCallback(() => { navigate("/chat/shop"); setSidebarOpen(false); }, [navigate]);
   const goMonitor = useCallback(() => { navigate("/chat/monitor"); setSidebarOpen(false); }, [navigate]);
@@ -114,7 +113,7 @@ export function AppShellProvider({ children }) {
     currentUser, conv, credits, lightMode, toggleLight,
     isAdmin, isBanned, isBlocked, isUnverified, blockedUntil, effPlan, avatarInitial,
     sidebarOpen, setSidebarOpen,
-    navigate, goHome, goCode, goDesigner, goGames, goCommunity, goGameDesigner, goPlans, goMonitor, goPromos, newChat, goBilling, openProfile, closeProfile, goBack,
+    navigate, goHome, goCode, goDesigner, goGames, goGameDesigner, goPlans, goMonitor, goPromos, newChat, goBilling, openProfile, closeProfile, goBack,
   };
 
   return (
