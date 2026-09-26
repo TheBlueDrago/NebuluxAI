@@ -338,6 +338,15 @@ export default function Community() {
           )}
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 text-sm">
+          <button onClick={() => setProfileTab("quests")} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-amber-200 ${C.hover}`}>
+            <Trophy className="w-4 h-4" /> <span className="flex-1 text-left">Quests</span> <span className="text-[10px] rounded bg-amber-400/15 px-1.5">earn ⭐</span>
+          </button>
+          <button onClick={() => setProfileTab("shop")} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-fuchsia-200 ${C.hover}`}>
+            <ShoppingBag className="w-4 h-4" /> <span className="flex-1 text-left">Star shop</span> <span className="text-[10px]">⭐ {stars}</span>
+          </button>
+          <button onClick={() => setProfileTab("profile")} className={`w-full flex items-center gap-2 px-2 py-1.5 mb-2 rounded-md text-indigo-200 ${C.hover}`}>
+            <Gem className="w-4 h-4" /> <span className="flex-1 text-left">Profile and perks</span>
+          </button>
           {view === "server" && (
             <>
               <div className="flex items-center px-1.5 pb-1 pt-1">
