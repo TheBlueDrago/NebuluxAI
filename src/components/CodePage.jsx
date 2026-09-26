@@ -70,7 +70,7 @@ export default function CodePage({ aiCodeExhausted, aiCodeRemaining, onSpendAICo
       setLive("");
       const data = e?.response?.data;
       if (data?.credits) onSpendAICode?.(data.credits);
-      setMessages((m) => [...m, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "Sorry, something went wrong. Please try again." }]);
+      setMessages((m) => [...m, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "⚠ Sorry, something went wrong. Please try again." }]);
     } finally {
       if (reqIdRef.current === myId) {
         setLoading(false);
@@ -163,6 +163,11 @@ export default function CodePage({ aiCodeExhausted, aiCodeRemaining, onSpendAICo
                 ) : (
                   <>
                     <Markdown text={m.content} />
+                    {i === messages.length - 1 && !loading && !aiCodeExhausted && m.content.startsWith("⚠") && (
+                      <button type="button" onClick={retryLast} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-[#fff]">
+                        <RotateCcw className="w-3.5 h-3.5" /> Try again
+                      </button>
+                    )}
                     <div className="flex flex-wrap justify-end gap-1 mt-1 -mb-1">
                       {i === messages.length - 1 && !loading && !aiCodeExhausted && (
                         <button
