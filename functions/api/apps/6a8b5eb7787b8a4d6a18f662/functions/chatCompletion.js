@@ -216,6 +216,13 @@ async function generate(apiKey, model, prompt, generationConfig, timeoutMs, { on
     const code = Number(streamError.code) || 0;
     throw new GeminiError(streamError.message || "Gemini stream error", { status: code, retryable: RETRYABLE.has(code) });
   }
+  // Google sometimes finishes without writing anything. That looked like the AI "not working"
+  // (a blank reply), so it's treated as busy and the next model or key is tried; an answer
+  // Google held back for safety gets a clear message instead.
+  if (!out && !stopped && !cut) {
+    if (/SAFETY|PROHIBITED|BLOCKLIST|SPII|RECITATION/.test(finishReason)) throw new GeminiError(`blocked: ${finishReason}`, { status: 451 });
+    throw new GeminiError(`${model} returned an empty answer (${finishReason || "no reason"})`, { status: 503, retryable: true });
+  }
   // Searched answers end with where they came from.
   if (out && sources.length && !cut && !stopped) {
     const links = sources
@@ -325,7 +332,9 @@ function failure(err) {
   return {
     error: busy
       ? "Nebulux AI is very busy right now. Please try again in a minute."
-      : "The AI couldn't answer that request.",
+      : err instanceof GeminiError && err.status === 451
+        ? "The AI can't help with that one. Try asking in a different way."
+        : "The AI couldn't answer that request. Try again, or ask it a little differently.",
     // The app waits a few seconds and asks again by itself when this is set (lib/aiStream.js).
     ...(busy ? { busy: true } : {}),
     detail: err ? String(err.message).slice(0, 500) : "",

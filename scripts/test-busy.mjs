@@ -48,6 +48,39 @@ assert(/very busy/.test(b.error) && !/Google|free tier/i.test(b.error), "the mes
 const before = charged();
 assert(before <= 1, "busy answers aren't charged");
 
+// Google finishing with an empty answer: the next model answers instead of a blank reply.
+{
+  let n = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("generativelanguage") && n++ === 0) return new Response('data: {"candidates":[{"finishReason":"OTHER","content":{"parts":[]}}]}\n\n', { status: 200 });
+    return realFetch(url, init);
+  };
+  models.length = 0;
+  failFirst = 0;
+  const [s2, b2] = await call({ prompt: "hi", model: "automatic" });
+  assert(s2 === 200 && b2.content === "Hello!", "an empty answer from Google falls through to the next model");
+  globalThis.fetch = realFetch;
+}
+// A second free key: when the first key's limit is used up, the same model is asked with it.
+{
+  const keysSeen = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("generativelanguage")) {
+      const key = init.headers["x-goog-api-key"];
+      keysSeen.push(key + "@" + String(url).split("/models/")[1].split(":")[0]);
+      if (key === "k") return new Response('{"error":{"code":429}}', { status: 429 });
+      return new Response('data: {"candidates":[{"content":{"parts":[{"text":"From key 2"}]}}]}\n\n', { status: 200 });
+    }
+    return realFetch(url, init);
+  };
+  const r = await onRequestPost({ request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify({ prompt: "hi", model: "automatic" }) }), env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k", GEMINI_API_KEY_2: "k2" }, waitUntil: () => {} });
+  const j = await r.json();
+  assert(j.content === "From key 2" && keysSeen.length === 2 && keysSeen[0].split("@")[1] === keysSeen[1].split("@")[1], "a used-up key moves to the next key on the same model");
+  globalThis.fetch = realFetch;
+}
+
 // ---- chat titles ----
 const { chatTitle } = await import(pathToFileURL(R + "src/lib/chatTitle.js").href);
 assert(chatTitle("Hey, can you explain photosynthesis?") === "Explain photosynthesis", "filler words are dropped");
