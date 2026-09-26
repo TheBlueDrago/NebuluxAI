@@ -2,7 +2,9 @@
 # in cloudflare-lib/pageserve.js).
 # - Other websites can't show the app inside a frame (stops click-jacking tricks such as a
 #   hidden "Buy" or "Delete" button under a fake page).
-# - Browsers only ever use HTTPS for the app after the first visit.
+# - Browsers only ever use HTTPS for the app (and every *.nebuluxai.com site) after the first visit.
+# - Pages from other websites that this app opens, or that open it, can't control this tab
+#   (window.opener tricks that swap the tab for a fake sign-in page).
 # - No plugins (<object>/<embed>), and no <base> tag pointing links somewhere else.
 # - Browsers never guess a file's type (a file can't be passed off as a script).
 # - Other websites aren't told which page of the app someone came from.
@@ -12,7 +14,8 @@
 #   previews or pages people make shown inside it.
 /*
   X-Frame-Options: SAMEORIGIN
-  Strict-Transport-Security: max-age=31536000
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
   Content-Security-Policy: frame-ancestors 'self'; object-src 'none'; base-uri 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
