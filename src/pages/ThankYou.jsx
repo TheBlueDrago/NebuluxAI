@@ -5,7 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { siteUrl } from "@/lib/blackholeDomain";
 import MotionPrefs from "@/components/MotionPrefs";
 import usePageTitle from "@/hooks/usePageTitle";
-import { addNotification } from "@/lib/nebuluxChat";
+import { addNotification } from "@/lib/notifications";
 
 // After paying. Plans and credit packs come back here from create-checkout; purchases on a
 // site someone made come back with ?site=<name> from site-checkout (older checkouts without

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Bell, MessageCircle, UserPlus, Gift, Sparkles, ShoppingBag, Bot, Volume2, VolumeX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { onBell, localNotifications, markLocalRead, soundOn, setSound } from "@/lib/nebuluxChat";
+import { onBell, localNotifications, markLocalRead, soundOn, setSound } from "@/lib/notifications";
 
 const ICON = { message: MessageCircle, friend: UserPlus, reward: Gift, update: Sparkles, purchase: ShoppingBag, ai: Bot };
 const ago = (iso) => {

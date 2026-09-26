@@ -352,8 +352,8 @@ export async function giveBonusTo(kv, userId, amounts, once) {
   return true;
 }
 
-// Referral upgrade rewards: when someone who joined through a referral link (the sign-up one,
-// or an old Nebulux Chat invite) starts paying, whoever referred them gets credits of every AI:
+// Referral upgrade rewards: when someone who joined through a referral link
+// starts paying, whoever referred them gets credits of every AI:
 // Pro 25 each, Team 50 each, Enterprise 5 each per seat. Once per plan per referred person.
 export const UPGRADE_REWARD = { pro: 25, team: 50, enterprise: 5 };
 async function rewardReferrers(kv, user, plan, seats) {
@@ -363,7 +363,7 @@ async function rewardReferrers(kv, user, plan, seats) {
   const seen = `refupgrade:${user.id}:${plan}`;
   if (await kv.get(seen)) return;
   await kv.put(seen, "1");
-  const referrers = new Set([await kv.get(`referredby:${user.id}`), await kv.get(`chatreferredby:${user.id}`)].filter((r) => r && r !== user.id));
+  const referrers = new Set([await kv.get(`referredby:${user.id}`)].filter((r) => r && r !== user.id));
   const amounts = Object.fromEntries(TIERS.map((t) => [t, each]));
   for (const r of referrers) await giveBonusTo(kv, r, amounts, `${seen}`);
 }

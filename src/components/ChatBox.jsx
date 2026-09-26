@@ -23,7 +23,7 @@ import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
 import { streamChat } from "@/lib/aiStream";
 import { chatTitle } from "@/lib/chatTitle";
-import { addNotification } from "@/lib/nebuluxChat";
+import { addNotification } from "@/lib/notifications";
 import { followUps } from "@/lib/followUps";
 import { wantsFlashcards, FLASHCARD_NOTE } from "@/lib/flashcards";
 import { wantsQuiz, QUIZ_NOTE } from "@/lib/quiz";
