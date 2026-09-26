@@ -20,6 +20,7 @@ const C = {
   field: "bg-[#07061a]",
 };
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀"];
+const EMOJI = ["😀", "😂", "🥹", "😍", "😎", "🤔", "😭", "😡", "👍", "👎", "👏", "🙏", "💪", "👋", "🤝", "✌️", "❤️", "💜", "🔥", "✨", "⭐", "🌌", "🪐", "🚀", "🎉", "🎮", "🎨", "📚", "💡", "✅", "❌", "💀"];
 const FRAME = {
   glow: "ring-2 ring-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.9)]",
   stars: "ring-2 ring-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.8)]",
@@ -89,7 +90,10 @@ export default function Community() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [viewUser, setViewUser] = useState(null);
   const [notice, setNotice] = useState("");
+  const [away, setAway] = useState(false); // scrolled up: show "Jump to newest"
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const listRef = useRef(null);
+  const boxRef = useRef(null);
   const typingSent = useRef(0);
   const channelRef = useRef(channel);
   channelRef.current = channel;
@@ -264,6 +268,28 @@ export default function Community() {
     setMore(!!r.more);
     requestAnimationFrame(() => (el.scrollTop = el.scrollHeight - h));
   };
+
+  // @mentions: yours glow gold like on Discord, everyone's are shown as a chip.
+  const myTag = `@${me?.name || ""}`.toLowerCase();
+  const mentionsMe = (m) => !!me && m.user.id !== me.id && !m.deleted && m.text.toLowerCase().includes(myTag);
+  const renderText = (t) =>
+    t.split(/(@[\p{L}\p{N}_.-]{2,24})/gu).map((part, i) =>
+      i % 2 ? (
+        <span key={i} className={`rounded px-0.5 font-medium ${part.toLowerCase() === myTag ? "bg-amber-400/25 text-amber-100" : "bg-indigo-500/25 text-indigo-100"}`}>
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  const addEmoji = (emo) => {
+    const el = boxRef.current;
+    const at = el ? el.selectionStart : text.length;
+    setText((t) => t.slice(0, at) + emo + t.slice(at));
+    setEmojiOpen(false);
+    requestAnimationFrame(() => el && (el.focus(), el.setSelectionRange(at + emo.length, at + emo.length)));
+  };
+  const jumpDown = () => listRef.current && listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
 
   const react = (m, emo) => chatApi(`/messages/${m.id}/react`, "POST", { emoji: emo }).then((r) => setMessages((cur) => cur.map((x) => (x.id === m.id ? { ...x, reactions: r.reactions } : x)))).catch((e) => flash(e.message));
   const isDm = channel.startsWith("dm:");
@@ -482,7 +508,7 @@ export default function Community() {
     return (
       <React.Fragment key={m.id}>
         {divider}
-        <div className={`group relative flex gap-3 px-4 hover:bg-white/[0.03] ${grouped ? "py-0.5" : "pt-2 pb-0.5 mt-1.5"}`}>
+        <div className={`group relative flex gap-3 px-4 ${mentionsMe(m) ? "bg-amber-400/10 border-l-2 border-amber-400 hover:bg-amber-400/15" : "hover:bg-white/[0.03]"} ${grouped ? "py-0.5" : "pt-2 pb-0.5 mt-1.5"}`}>
           <div className="w-10 shrink-0">
             {!grouped ? (
               <button onClick={() => setViewUser(m.user)} aria-label={`${m.user.name}'s profile`}>
@@ -510,7 +536,7 @@ export default function Community() {
               <p className="text-xs italic text-slate-500">This message was deleted.</p>
             ) : (
               <p className="text-sm leading-5 text-slate-100 whitespace-pre-wrap break-words">
-                {m.text}
+                {renderText(m.text)}
                 {m.edited && <span className="ml-1 text-[9px] text-slate-500">(edited)</span>}
               </p>
             )}
@@ -598,7 +624,7 @@ export default function Community() {
         ) : (
           <div className="flex-1 min-h-0 flex">
             <div className="flex-1 min-w-0 flex flex-col">
-              <div ref={listRef} className="flex-1 overflow-y-auto py-3">
+              <div ref={listRef} onScroll={(e) => setAway(e.currentTarget.scrollHeight - e.currentTarget.scrollTop - e.currentTarget.clientHeight > 400)} className="flex-1 overflow-y-auto py-3">
                 {more && (
                   <div className="text-center pb-3">
                     <button onClick={loadOlder} className="text-xs text-indigo-300 hover:underline">
@@ -616,7 +642,12 @@ export default function Community() {
                 {messages.map(renderMessage)}
               </div>
               {/* Composer */}
-              <div className="px-4 pb-3">
+              <div className="relative px-4 pb-3">
+                {away && (
+                  <button onClick={jumpDown} className="absolute -top-10 left-1/2 -translate-x-1/2 z-10 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-[#fff] shadow-lg">
+                    ↓ Jump to newest
+                  </button>
+                )}
                 {(replyTo || editing) && (
                   <div className="flex items-center justify-between rounded-t-lg bg-[#0d0b24] px-3 py-1.5 text-xs text-slate-300">
                     <span className="truncate">{editing ? "Editing your message" : <>Replying to <Name user={replyTo.user} className="text-xs" /></>}</span>
@@ -627,6 +658,7 @@ export default function Community() {
                 )}
                 <div className={`flex items-end gap-2 ${C.input} px-3 ${replyTo || editing ? "rounded-b-lg" : "rounded-lg"}`}>
                   <textarea
+                    ref={boxRef}
                     value={text}
                     onChange={(e) => {
                       setText(e.target.value);
@@ -651,6 +683,20 @@ export default function Community() {
                     placeholder={isDm ? `Message @${title}` : `Message #${title}`}
                     className="flex-1 bg-transparent resize-none outline-none py-2.5 text-sm text-slate-100 placeholder:text-slate-500 max-h-40"
                   />
+                  <span className="relative">
+                    <button onClick={() => setEmojiOpen((o) => !o)} aria-label="Emoji" title="Emoji" className="p-2 text-lg leading-none grayscale hover:grayscale-0">
+                      😊
+                    </button>
+                    {emojiOpen && (
+                      <div className="absolute bottom-11 right-0 z-30 w-64 grid grid-cols-8 gap-0.5 rounded-xl bg-[#0d0b24] border border-indigo-400/25 p-2 shadow-2xl">
+                        {EMOJI.map((emo) => (
+                          <button key={emo} onClick={() => addEmoji(emo)} className="h-7 rounded hover:bg-[#2a2160] text-base">
+                            {emo}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </span>
                   <button onClick={send} disabled={!text.trim()} aria-label="Send" className="p-2 text-slate-300 hover:text-white disabled:opacity-40">
                     <Send className="w-4 h-4" />
                   </button>
