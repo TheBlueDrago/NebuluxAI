@@ -353,7 +353,7 @@ export async function giveBonusTo(kv, userId, amounts, once) {
 }
 
 // Referral upgrade rewards: when someone who joined through a referral link (the sign-up one,
-// or a Nebulux Chat invite) starts paying, whoever referred them gets credits of every AI:
+// or an old Nebulux Chat invite) starts paying, whoever referred them gets credits of every AI:
 // Pro 25 each, Team 50 each, Enterprise 5 each per seat. Once per plan per referred person.
 export const UPGRADE_REWARD = { pro: 25, team: 50, enterprise: 5 };
 async function rewardReferrers(kv, user, plan, seats) {

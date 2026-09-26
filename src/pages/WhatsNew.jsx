@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, ShieldCheck, Zap, BookOpen, Globe } from "lucide-react";
+import { Sparkles, ShieldCheck, Zap, BookOpen, Globe, Gift } from "lucide-react";
 import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 
 // What changed lately, newest first, in plain words. Add to the top when something people
@@ -9,6 +9,8 @@ const UPDATES = [
   {
     date: "September 2026",
     items: [
+      { icon: ShieldCheck, text: "Safer everywhere: the app and every published site on nebuluxai.com only open over a secure connection, other websites can't take over your tab, and published pages can't load old plugins or redirect all their links somewhere else." },
+      { icon: Gift, text: "Refer a friend and get more: if someone you referred upgrades, you get free credits for every AI (25 each for Pro, 50 each for Team, 5 each per seat for Enterprise)." },
       { icon: BookOpen, text: "Tap-to-answer quizzes: say Quiz me (or tap Quiz me on this) and answer multiple-choice questions right in the chat, with the reason for each answer and your score at the end." },
       { icon: Globe, text: "QR codes: after you publish, or from your list of websites, show a QR code so people nearby can scan it and open your site or game on their phone." },
       { icon: Sparkles, text: "One-tap improvements in the Website and Game Designers: Make it harder, Add sound effects, Add a high score, Make it look more modern, Add a contact form and more." },

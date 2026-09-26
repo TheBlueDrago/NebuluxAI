@@ -75,7 +75,7 @@ export default function ReferFriends({ onBack }) {
         <h3 className="text-lg font-semibold text-white">Refer friends</h3>
       </div>
       <p className="text-sm text-slate-400 mb-4">
-        Share your link — <span className="text-amber-200">you both get free credits.</span> Every friend who signs up with it picks a welcome bonus, and you pick a reward for each one. Credits work even without a plan.
+        Share your link — <span className="text-amber-200">you both get free credits.</span> Every friend who signs up with it picks a welcome bonus, and you pick a reward for each one. Credits work even without a plan. <span className="text-amber-200">If a friend later upgrades, you get more: 25 credits of every AI for Pro, 50 for Team, 5 per seat for Enterprise.</span>
       </p>
 
       {welcome && !welcome.reward && !welcome.revoked && (
