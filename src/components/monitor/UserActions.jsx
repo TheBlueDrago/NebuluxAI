@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { askConfirm } from "@/lib/dialogs";
-import { Crown, Ban, Clock, ShieldCheck, EyeOff, UserX, RotateCcw, MailWarning } from "lucide-react";
+import { Crown, Clock, ShieldCheck, EyeOff, UserX, RotateCcw, MailWarning } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const UNIT_MS = { days: 86400000, months: 30 * 86400000, years: 365 * 86400000 };
@@ -48,10 +48,6 @@ export default function UserActions({ user, onApply }) {
     run(plan === "enterprise" ? { plan, planExpiresAt, seats } : { plan, planExpiresAt });
   };
 
-  const ban = async () => {
-    if (!(await askConfirm(`Ban ${who} forever? They can't use Nebulux AI until you unban them.`, { confirmLabel: "Ban", danger: true }))) return;
-    run({ banned: true, blockedUntil: null });
-  };
   const block = () =>
     run({ banned: false, blockedUntil: new Date(Date.now() + bN * UNIT_MS[bUnit]).toISOString() });
   const unblock = () => run({ banned: false, blockedUntil: null });
@@ -153,24 +149,17 @@ export default function UserActions({ user, onApply }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={ban}
-          disabled={busy || isBanned}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-700 text-[#fff] text-xs font-medium hover:bg-red-600 disabled:opacity-50"
-        >
-          <Ban className="w-3.5 h-3.5" /> Ban forever
-        </button>
         <input
           type="number"
           min={1}
           value={bN}
-          aria-label="Block for how long"
+          aria-label="Ban for how long"
           onChange={(e) => setBN(Math.max(1, Number(e.target.value) || 1))}
           className="w-14 bg-slate-800 border border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-white outline-none"
         />
         <select
           value={bUnit}
-          aria-label="Block length unit"
+          aria-label="Ban length unit"
           onChange={(e) => setBUnit(e.target.value)}
           className="bg-slate-800 border border-slate-700/60 rounded-lg px-2 py-1.5 text-xs text-white outline-none"
         >
@@ -183,7 +172,7 @@ export default function UserActions({ user, onApply }) {
           disabled={busy || isBlocked}
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-700 text-[#fff] text-xs font-medium hover:bg-orange-600 disabled:opacity-50"
         >
-          <Clock className="w-3.5 h-3.5" /> Block
+          <Clock className="w-3.5 h-3.5" /> Ban for this long
         </button>
         {(isBanned || isBlocked) && (
           <button
