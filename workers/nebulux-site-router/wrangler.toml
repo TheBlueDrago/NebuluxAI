@@ -6,6 +6,8 @@ compatibility_date = "2026-09-22"
 routes = [
   { pattern = "*.blackhole-ai-tech.com/*", zone_name = "blackhole-ai-tech.com" },
   { pattern = "*.nebuluxai.com/*", zone_name = "nebuluxai.com" },
+  # People's own domains (Cloudflare for SaaS custom hostnames) reach the zone as any hostname.
+  { pattern = "*/*", zone_name = "nebuluxai.com" },
 ]
 
 [observability]
@@ -16,6 +18,3 @@ enabled = true
 binding = "KV"
 id = "3ae4e5a66e7f459296bf6c6b99951436"
 
-# Custom domains (Cloudflare for SaaS): once Custom Hostnames is switched on for nebuluxai.com,
-# add this route too, so requests for people's own domains reach this Worker:
-#   { pattern = "*/*", zone_name = "nebuluxai.com" }

@@ -208,6 +208,10 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const [nameTaken, setNameTaken] = useState(false);
   const [isRepublish, setIsRepublish] = useState(false);
   const opusAllowed = hasProFeatures(plan);
+  // Custom domains: Pro and up, not the free trial week (the server checks too).
+  const domainAllowed = hasProFeatures(plan) && shell?.credits?.planSource !== "trial";
+  const [domainInput, setDomainInput] = useState("");
+  const [domainOpen, setDomainOpen] = useState({ key: 0, host: "" });
   const fableAllowed = hasSpace(plan);
   const [selectedAi, setSelectedAi] = useState(fableAllowed ? "fable" : opusAllowed ? "opus5" : "ai");
   const [files, setFiles] = useState([]);
@@ -599,6 +603,8 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
       list.push({ name: n, projectId });
       localStorage.setItem(TAKEN_KEY, JSON.stringify(list));
       setPublishUrl(`https://${n}.nebuluxai.com`);
+      // Typed a custom domain in the publish box (Pro and up): connect it now and show the DNS steps.
+      if (domainAllowed && domainInput.trim()) setDomainOpen({ key: Date.now(), host: domainInput.trim() });
       setShowPublish(false);
       setPublished(true);
       setTimeout(() => setPublished(false), 8000);
@@ -720,7 +726,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             }}
           />
           <GitHubPush html={previewHtml} siteName={siteName} plan={plan} onUpgrade={onUpgrade} />
-          <CustomDomain siteName={siteName} plan={plan} onUpgrade={onUpgrade} />
+          <CustomDomain siteName={siteName} plan={plan} onUpgrade={onUpgrade} openKey={domainOpen.key} initialHost={domainOpen.host} />
           <DownloadZip html={previewHtml} name={siteName} plan={plan} onUpgrade={onUpgrade} />
           <button
             onClick={() => setShowPublish(true)}
@@ -1036,6 +1042,31 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 </span>
               </div>
               <p className="text-slate-400 text-xs mt-2">You pick the name — the .nebuluxai.com ending always stays.</p>
+              {/* Their own domain (Pro and up). Grey with an Upgrade button on the free plan. */}
+              <div className="mt-4">
+                <p className={`text-sm ${domainAllowed ? "text-slate-300" : "text-slate-500"}`}>Connect your custom domain</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <input
+                    value={domainInput}
+                    onChange={(e) => setDomainInput(e.target.value)}
+                    disabled={!domainAllowed}
+                    placeholder="www.yourdomain.com"
+                    aria-label="Your custom domain"
+                    spellCheck={false}
+                    className={`flex-1 min-w-0 rounded-xl px-3 py-2 text-sm outline-none border ${domainAllowed ? "bg-slate-800 border-slate-700/50 focus:border-indigo-500/60 text-white" : "bg-slate-800/40 border-slate-700/30 text-slate-500 placeholder:text-slate-600 cursor-not-allowed"}`}
+                  />
+                  {!domainAllowed && (
+                    <button type="button" onClick={onUpgrade} className="shrink-0 rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-2 text-xs font-semibold text-[#fff] hover:opacity-90">
+                      Upgrade
+                    </button>
+                  )}
+                </div>
+                <p className="text-slate-500 text-xs mt-1.5">
+                  {domainAllowed
+                    ? "Optional. After you publish, we'll show the one setting to add where you bought the domain."
+                    : "Use your own address (like www.mybakery.com) with Pro and higher plans."}
+                </p>
+              </div>
               <p className="text-slate-400 text-xs mt-2">
                 Anyone on the internet can see it, so leave out private things like your home address, passwords or card numbers.
               </p>

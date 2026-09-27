@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Globe, Loader2, X, RefreshCw, Copy, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAppShell } from "@/components/AppShellContext";
@@ -6,11 +6,15 @@ import { hasProFeatures } from "@/lib/plans";
 
 // Connect your own domain (www.mybakery.com) to your published website: Pro and up, not the
 // free trial week. The server side is functions/.../custom-domain.js.
-export default function CustomDomain({ siteName, plan, onUpgrade }) {
+export default function CustomDomain({ siteName, plan, onUpgrade, openKey = 0, initialHost = "" }) {
   const shell = useAppShell();
   const trial = shell?.credits?.planSource === "trial";
   const allowed = hasProFeatures(plan) && !trial;
   const [open, setOpen] = useState(false);
+  // Opened from the Publish box right after publishing, with the domain they typed there.
+  useEffect(() => {
+    if (openKey) setOpen(true);
+  }, [openKey]);
   return (
     <>
       <button
@@ -21,11 +25,24 @@ export default function CustomDomain({ siteName, plan, onUpgrade }) {
       >
         <Globe className="w-4 h-4" /> <span className="hidden sm:inline">Domain</span>
       </button>
-      {open && <DomainDialog siteName={siteName} allowed={allowed} trial={trial} onUpgrade={onUpgrade} onClose={() => setOpen(false)} />}
+      {open && <DomainDialog key={openKey} siteName={siteName} allowed={allowed} trial={trial} onUpgrade={onUpgrade} initialHost={initialHost} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
+
+// Where each domain seller keeps its DNS settings, so people know exactly where to go.
+const SELLERS = {
+  godaddy: { name: "GoDaddy", where: "Sign in to GoDaddy, go to My Products, find your domain and click DNS (Manage DNS). Click Add New Record" },
+  namecheap: { name: "Namecheap", where: "Sign in to Namecheap, open Domain List, click Manage next to your domain, then the Advanced DNS tab. Click Add New Record" },
+  porkbun: { name: "Porkbun", where: "Sign in to Porkbun, open Domain Management, and click DNS under your domain" },
+  cloudflare: { name: "Cloudflare", where: "Sign in to Cloudflare, pick your domain, open DNS, then Records, and click Add record. Set Proxy status to DNS only (grey cloud)" },
+  squarespace: { name: "Squarespace (Google Domains)", where: "Sign in to Squarespace, open Domains, pick your domain, then DNS, then DNS Settings. Add a custom record" },
+  ionos: { name: "IONOS", where: "Sign in to IONOS, open Domains & SSL, click the gear next to your domain, then DNS, and Add record" },
+  hostinger: { name: "Hostinger", where: "Sign in to Hostinger, open Domains, click Manage next to your domain, then DNS / Nameservers" },
+  wix: { name: "Wix", where: "Sign in to Wix, open Domains, click the ... next to your domain, then Manage DNS Records" },
+  other: { name: "Somewhere else", where: "Sign in where you bought the domain and look for DNS settings (sometimes called DNS Records, Zone Editor or Advanced DNS)" },
+};
 const call = (body) =>
   base44.functions.invoke("custom-domain", body).then(
     (r) => r.data,
@@ -51,17 +68,26 @@ function CopyText({ text }) {
   );
 }
 
-function DomainDialog({ siteName, allowed, trial, onUpgrade, onClose }) {
+function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClose }) {
   const [info, setInfo] = useState(null);
-  const [host, setHost] = useState("");
+  const [host, setHost] = useState(initialHost || "");
+  const [seller, setSeller] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  const autoAdd = useRef(initialHost || "");
   const load = useCallback(() => {
     if (!allowed || !siteName) return;
     setErr("");
     setBusy(true);
     call({ action: "get", site: siteName })
+      .then((r) => {
+        // Came from the Publish box with a domain: connect it straight away (once).
+        const h = autoAdd.current;
+        autoAdd.current = "";
+        if (!r.domain && h) return call({ action: "add", site: siteName, hostname: h });
+        return r;
+      })
       .then(setInfo)
       .catch((e) => setErr(e.message))
       .finally(() => setBusy(false));
@@ -136,7 +162,20 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, onClose }) {
               </p>
             ) : (
               <>
-                <p className="text-slate-300">At the company you bought the domain from, open its <b>DNS settings</b> and add this record:</p>
+                <label className="block">
+                  <span className="text-slate-300">Where did you buy your domain?</span>
+                  <select value={seller} onChange={(e) => setSeller(e.target.value)} className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-white outline-none">
+                    <option value="">Pick one…</option>
+                    {Object.entries(SELLERS).map(([k, s]) => (
+                      <option key={k} value={k}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="text-slate-300">
+                  {seller ? SELLERS[seller].where : "At the company you bought the domain from, open its DNS settings"}, then add this record:
+                </p>
                 <div className="rounded-lg bg-slate-800 border border-slate-700 p-3 font-mono text-xs space-y-1">
                   <p>Type: <b>CNAME</b></p>
                   <p>Name / Host: <b>{sub || "@"}</b><CopyText text={sub || "@"} /></p>
