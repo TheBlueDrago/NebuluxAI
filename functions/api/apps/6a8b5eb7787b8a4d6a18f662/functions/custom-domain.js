@@ -98,7 +98,7 @@ export async function onRequestPost(context) {
       if (current) return json({ error: "This website already has a domain. Remove it first to use a different one." }, 400);
       const hostname = cleanHostname(body.hostname);
       if (!hostname) {
-        const ours = /(^|.)(nebuluxai.com|blackhole-ai-tech.com).?$/i.test(String(body.hostname || "").trim().replace(/^https?:///, "").replace(/[/?#].*$/, ""));
+        const ours = /(^|\.)(nebuluxai\.com|blackhole-ai-tech\.com)\.?$/i.test(String(body.hostname || "").trim().replace(/^https?:\/\//, "").replace(/[/?#].*$/, ""));
         return json({ error: ours ? "That's a Nebulux address, so it can't be connected. Use a domain you bought yourself, like www.mybakery.com." : "Type a domain like www.mybakery.com (without https://)." }, 400);
       }
       if (await kv.get(`domain:${hostname}`)) return json({ error: "That domain is already connected to a website." }, 400);
