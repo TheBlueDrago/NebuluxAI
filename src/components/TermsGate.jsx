@@ -143,7 +143,7 @@ export default function TermsGate({ user, onDone }) {
             <Link to="/privacy" target="_blank" className="text-indigo-300 underline">
               Privacy Policy
             </Link>
-            .
+            , and I understand that I take full responsibility for how I use Nebulux AI and for everything I make, publish or share with it. I'm allowed to use it (if I'm under 18, a parent or guardian said yes).
           </span>
         </label>
         {meta.deadline && (
