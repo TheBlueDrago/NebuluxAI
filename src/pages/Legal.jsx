@@ -64,9 +64,7 @@ export function Terms() {
 
       <h2>New-member offer</h2>
       <ul>
-        <li>Accounts created on or after September 24, 2026 get the Pro plan free for 7 days. When the week ends the account goes back to the Free plan unless you choose a paid plan. We don't ask for payment details to start the free week.</li>
-        <li>From sign-up until 48 hours after the free week, one purchase gets a discount: 30% off a plan (that lower price continues for as long as that subscription stays active) or 20% off a one-time credit pack. It can be used once: after a plan or credit pack is bought at the lower price, later purchases are at the normal price, even within the 48 hours.</li>
-        <li>We may change or end this offer for new accounts at any time.</li>
+        <li>Paid plans and credit packs are coming soon and can't be bought yet. There is no free trial.</li>
       </ul>
 
       <h2>Enterprise</h2>
@@ -168,7 +166,7 @@ export function Privacy() {
         <li>To run your account and the features you use, and to count and enforce credits.</li>
         <li>To keep Nebulux AI safe: stopping abuse, reviewing reported content and preventing fraud.</li>
         <li>To handle payments and pay site owners for their sales.</li>
-        <li>To give new accounts their free week and one-time discount, and to check Enterprise applications.</li>
+        <li>To check Enterprise applications.</li>
       </ul>
       <p>We don't sell your personal information and we don't show you ads.</p>
 

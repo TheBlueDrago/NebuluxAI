@@ -18,20 +18,22 @@ assert(waitText(oct1 - now) === "6 days 4 hours", "wait shown in days and hours"
 assert(waitText(3 * 3600000 + 12 * 60000) === "3 hours 12 minutes" && waitText(5 * 60000) === "5 minutes" && waitText(1000) === "1 minute", "shorter waits");
 
 let o = outOfCreditsOptions("ai", { plan: "free" }, now);
-assert(o.upgrade.id === "pro" && o.upgrade.price === 15 && o.upgrade.extra === 50 && !o.upgrade.salePrice, "Free, Nebulux AI: Pro for $15, 50 more now");
-assert(o.refresh.at === oct1 && o.refresh.amount === 50, "Free, Nebulux AI: 50 come back on the 1st");
+assert(o.upgrade === null && o.pack === null && o.refresh.amount === 100, "plans and packs coming soon: nothing to buy, Free's 100 come back on the 1st");
+o = outOfCreditsOptions("ai", { plan: "free" }, now, true);
+assert(o.upgrade.id === "team" && o.upgrade.price === 20 && o.upgrade.extra === 50 && !o.upgrade.salePrice, "(when buying opens) Free, Nebulux AI: Team for $20, 50 more now");
+assert(o.refresh.at === oct1 && o.refresh.amount === 100, "Free, Nebulux AI: 100 come back on the 1st");
 
-o = outOfCreditsOptions("galaxy5", { plan: "free" }, now);
-assert(o.upgrade.id === "pro" && o.upgrade.extra === 50 && o.refresh === null, "Free has no Galaxy credits: upgrade only, nothing to wait for");
+o = outOfCreditsOptions("galaxy5", { plan: "free" }, now, true);
+assert(o.upgrade.id === "team" && o.upgrade.extra === 50 && o.refresh.amount === 50, "Free has 50 Galaxy: Team for more, or wait for 50");
 
-o = outOfCreditsOptions("space5", { plan: "pro", planSource: "paid" }, now);
+o = outOfCreditsOptions("space5", { plan: "pro", planSource: "paid" }, now, true);
 assert(o.upgrade.id === "team" && o.upgrade.price === 20 && o.upgrade.extra === 50 && o.refresh.amount === 50, "Pro: Team for $20, or wait for 50");
 
-o = outOfCreditsOptions("ai", { plan: "free", offer: { discountAvailable: true, discountPct: 30 } }, now);
-assert(o.upgrade.salePrice === "10.50", "new-member offer: Pro shown at $10.50 (30% off $15)");
+o = outOfCreditsOptions("ai", { plan: "free", offer: { discountAvailable: true, discountPct: 30 } }, now, true);
+assert(o.upgrade.salePrice === "14.00", "a member offer: Team shown at $14.00 (30% off $20)");
 
-o = outOfCreditsOptions("ai", { plan: "pro", planSource: "trial", planEndsAt: "2026-09-28T00:00:00Z" }, now);
-assert(o.upgrade.id === "team" && o.refresh.amount === 50, "free Pro week ending before the 1st: Free's 50 come back");
+o = outOfCreditsOptions("ai", { plan: "pro", planSource: "grant", planEndsAt: "2026-09-28T00:00:00Z" }, now, true);
+assert(o.upgrade.id === "team" && o.refresh.amount === 100, "a plan ending before the 1st: Free's 100 come back");
 
 o = outOfCreditsOptions("aiCode", { plan: "team" }, now);
 assert(o.upgrade === null && o.refresh.amount === 100, "Team: nothing to upgrade to, just wait");
@@ -39,11 +41,11 @@ assert(o.upgrade === null && o.refresh.amount === 100, "Team: nothing to upgrade
 o = outOfCreditsOptions("space5", { plan: "enterprise", shared: true, seats: 4 }, now);
 assert(o.upgrade === null && o.refresh.amount === 100, "Enterprise: the pool refills 25 Space per seat");
 
-o = outOfCreditsOptions("ai", { plan: "free" }, now);
+o = outOfCreditsOptions("ai", { plan: "free" }, now, true);
 assert(o.pack && o.pack.id === "credits-ai-25" && o.pack.min === 25 && o.pack.max === 100 && Number(o.pack.from) === 0.99, "Nebulux AI packs of 25-100 credits, from $0.99, starting on 25");
-o = outOfCreditsOptions("space5", { plan: "team" }, now);
+o = outOfCreditsOptions("space5", { plan: "team" }, now, true);
 assert(o.upgrade === null && o.pack.id === "credits-space-25", "Team, nothing to upgrade to: can still buy a Space pack");
-o = outOfCreditsOptions("galaxy5", { plan: "free" }, now);
+o = outOfCreditsOptions("galaxy5", { plan: "free" }, now, true);
 assert(o.pack.id === "credits-galaxy-25", "Free can buy Galaxy packs without a plan");
 const P = await import(R + "cloudflare-lib/creditPacks.js");
 const ids = Object.keys(P.CREDIT_PACKS);

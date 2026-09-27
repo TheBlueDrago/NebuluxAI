@@ -13,12 +13,11 @@
 //   domain:<hostname>   -> { site, owner, id }   (read by the router)
 //   sitedomain:<site>   -> { hostname, id }
 import { json } from "../../../../../cloudflare-lib/published.js";
-import { currentUser, entitlement } from "../../../../../cloudflare-lib/credits.js";
+import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { pageFor } from "../../../../../cloudflare-lib/pagesource.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 
 export const CNAME_TARGET = "customers.nebuluxai.com";
-const PAID = ["pro", "team", "secret", "enterprise", "admin"];
 
 // A real public hostname that isn't ours: letters, digits and dashes, at least one dot.
 export function cleanHostname(raw) {
@@ -90,9 +89,7 @@ export async function onRequestPost(context) {
     const site = String(body.site || "").toLowerCase();
     if (!/^[a-z0-9-]{1,63}$/.test(site)) return json({ error: "Publish your website first." }, 400);
 
-    // Only the site's owner, on Pro or higher (not the free trial week).
-    const ent = await entitlement(kv, request, user);
-    if (!PAID.includes(ent.plan) || ent.planSource === "trial") return json({ error: "Custom domains come with Pro and higher plans.", upgrade: true }, 403);
+    // Only the site's owner (every plan, Free included: owner, 2026-09-27).
     const page = await pageFor(request, kv, "site", site);
     if (!page || !page.rec || page.rec.created_by_id !== user.id) return json({ error: "You can only connect a domain to a website you published." }, 403);
 

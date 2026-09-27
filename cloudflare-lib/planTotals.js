@@ -9,7 +9,7 @@ export const TIER_NAMES = { ai: "Nebulux AI", aiCode: "Nebulux Code", galaxy5: "
 // $30 a seat a month, $25 from 10 seats, $20 from 25.
 // Secret can no longer be bought; accounts that already have it keep it.
 export const PLAN_TOTALS = {
-  free: { ai: 50, aiCode: 0, galaxy5: 0, space5: 0 },
+  free: { ai: 100, aiCode: 75, galaxy5: 50, space5: 25 }, // 2026-09-27: plans are "coming soon", Free is generous
   pro: { ai: 100, aiCode: 50, galaxy5: 50, space5: 50 },
   team: { ai: 150, aiCode: 100, galaxy5: 100, space5: 100 },
   secret: { ai: 150, aiCode: 100, galaxy5: 100, space5: 100 },

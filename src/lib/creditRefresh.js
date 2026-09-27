@@ -1,6 +1,7 @@
 // What to offer someone who has run out of credits, like Base44 does: upgrade now for a
 // price, buy a one-time pack of credits, or wait until the monthly credits come back. Uses relative imports so the offline
 // test (scripts/test-refresh.mjs) can load it with plain node.
+import { SALES_OPEN } from "./salesOpen.js";
 import { PLAN_TOTALS, TIER_NAMES } from "../../cloudflare-lib/planTotals.js";
 import { discounted } from "../../cloudflare-lib/offers.js";
 import { packsForTier, DEFAULT_PACK_SIZE } from "../../cloudflare-lib/creditPacks.js";
@@ -37,7 +38,9 @@ export function waitText(ms) {
 // -> { name, upgrade: { id, name, price, salePrice, extra } | null,
 //      pack: { id, min, max, from } | null (id = the pack a picker starts on, from = lowest price),
 //      refresh: { at, amount } | null }
-export function outOfCreditsOptions(tier, credits, now = Date.now()) {
+// While plans and packs are "coming soon" (lib/salesOpen.js) there's nothing to buy: only when
+// the credits come back.
+export function outOfCreditsOptions(tier, credits, now = Date.now(), salesOpen = SALES_OPEN) {
   const plan = PLAN_TOTALS[credits?.plan] ? credits.plan : "free";
   const has = PLAN_TOTALS[plan][tier] || 0;
 
@@ -71,5 +74,5 @@ export function outOfCreditsOptions(tier, credits, now = Date.now()) {
       }
     : null;
 
-  return { name: TIER_NAMES[tier] || "Nebulux AI", upgrade, pack, refresh };
+  return { name: TIER_NAMES[tier] || "Nebulux AI", upgrade: salesOpen ? upgrade : null, pack: salesOpen ? pack : null, refresh };
 }

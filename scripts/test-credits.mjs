@@ -40,9 +40,9 @@ const fresh = () => {
 // Plans
 fresh();
 let s = await status({ id: "u1" });
-assert(s.plan === "free" && s.tiers.ai.total === 50 && s.tiers.aiCode.total === 0 && s.tiers.space5.remaining === 0, "free plan: 50 AI, nothing else");
+assert(s.plan === "free" && s.tiers.ai.total === 100 && s.tiers.aiCode.total === 75 && s.tiers.galaxy5.total === 50 && s.tiers.space5.remaining === 25, "free plan: 100 AI, 75 Code, 50 Galaxy, 25 Space");
 s = await status({ id: "u1", plan: "secret", bonus: { ai: 999 } });
-assert(s.plan === "free" && s.tiers.ai.total === 50, "self-edited User.plan / User.bonus are ignored");
+assert(s.plan === "free" && s.tiers.ai.total === 100, "self-edited User.plan / User.bonus are ignored");
 db.purchases = [{ appUserId: "u1", productId: "pro", status: "paid" }, { appUserId: "u1", productId: "team", status: "pending" }];
 s = await status({ id: "u1" });
 assert(s.plan === "pro" && s.tiers.aiCode.total === 50 && s.tiers.ai.total === 100, "paid purchase gives pro; pending purchase ignored");
@@ -72,12 +72,12 @@ await C.adjustBonus(kv, req, { id: "u3" }, "ai", 5);
 ent = await C.entitlement(kv, req, { id: "u3" });
 await C.charge(kv, ent, "ai", 7);
 s = await C.creditStatus(kv, await C.entitlement(kv, req, { id: "u3" }));
-assert(s.tiers.ai.used === 2 && s.tiers.ai.remaining === 48 && s.tiers.ai.total === 50, "7 credits: 5 from bonus, 2 from the allowance");
+assert(s.tiers.ai.used === 2 && s.tiers.ai.remaining === 98 && s.tiers.ai.total === 100, "7 credits: 5 from bonus, 2 from the allowance");
 await C.adjustBonus(kv, req, { id: "u3" }, "ai", -100);
 s = await status({ id: "u3" });
-assert(s.tiers.ai.remaining === 48, "removing more bonus than exists stops at zero");
+assert(s.tiers.ai.remaining === 98, "removing more bonus than exists stops at zero");
 ent = await C.entitlement(kv, req, { id: "u3" });
-await C.charge(kv, ent, "ai", 60);
+await C.charge(kv, ent, "ai", 200);
 s = await status({ id: "u3" });
 assert(s.tiers.ai.remaining === 0, "remaining never goes below zero");
 
@@ -86,7 +86,7 @@ fresh();
 db.redemptions = [{ id: "r1", userId: "u4", aiModel: "aiCode", credits: 20, redeemedAt: new Date().toISOString() }];
 s = await status({ id: "u4" });
 const again = await status({ id: "u4" });
-assert(s.tiers.aiCode.total === 20 && again.tiers.aiCode.total === 20, "a promo redemption adds its credits exactly once");
+assert(s.tiers.aiCode.total === 95 && again.tiers.aiCode.total === 95, "a promo redemption adds its credits exactly once");
 
 // Team (kept in KV, cloudflare-lib/teams.js): Nebulux Code uses the owner's shared pool
 fresh();
@@ -145,14 +145,14 @@ db.purchases = [
   { id: "b2", appUserId: "u9", productId: "credits-ai-50", status: "pending", quantity: 1 },
 ];
 s = await status({ id: "u9" });
-assert(s.plan === "free" && s.tiers.galaxy5.remaining === 50 && s.tiers.ai.remaining === 50, "2 paid Galaxy packs add 50 Galaxy credits; a pending pack adds nothing; plan stays Free");
+assert(s.plan === "free" && s.tiers.galaxy5.remaining === 100 && s.tiers.ai.remaining === 100, "2 paid Galaxy packs add 50 Galaxy credits (on top of Free's 50); a pending pack adds nothing; plan stays Free");
 s = await status({ id: "u9" });
-assert(s.tiers.galaxy5.remaining === 50, "a pack is only added once");
+assert(s.tiers.galaxy5.remaining === 100, "a pack is only added once");
 ent = await C.entitlement(kv, req, { id: "u9" });
 await C.charge(kv, ent, "galaxy5", 10);
 db.purchases[1].status = "paid";
 s = await status({ id: "u9" });
-assert(s.tiers.galaxy5.remaining === 40 && s.tiers.ai.remaining === 100, "spending uses bought credits; a pack that gets paid later is added then");
+assert(s.tiers.galaxy5.remaining === 90 && s.tiers.ai.remaining === 150, "spending uses bought credits; a pack that gets paid later is added then");
 
 // Settings → Download my data asks for this month's activity record: your own, and only yours.
 {

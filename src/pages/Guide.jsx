@@ -67,7 +67,7 @@ export default function Guide() {
 
         <div className="mt-14 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/20 border border-indigo-400/30 p-6 sm:p-8 text-center">
           <p className="text-xl font-semibold text-white">Ready to try it?</p>
-          <p className="mt-1 text-slate-300">It's free to start, and new accounts get a free week of Pro.</p>
+          <p className="mt-1 text-slate-300">It's free: all 4 AIs, 3 websites and unlimited games.</p>
           <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               to={g.cta.to}

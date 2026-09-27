@@ -77,6 +77,12 @@ Deno.serve(async (req: Request) => {
     // product identifier; look up the authoritative price here (a Product entity, a config map,
     // etc.). For a subscription, set `subscriptionInfo` (frequency/interval/billingCycles).
     const productId = String(body.productId ?? "");
+    // Plans and credit packs are "coming soon" (owner, 2026-09-27): nothing can be bought for now.
+    // Set to true to open buying again (and turn the Shop's buttons back on: src/lib/salesOpen.js).
+    const SALES_OPEN = false;
+    if (!SALES_OPEN) {
+      return new Response(JSON.stringify({ error: "Plans and credits are coming soon in a later update." }), { status: 403 });
+    }
     // Quantity is buyer-controlled, so VALIDATE it server-side. Check the RAW value is a positive
     // integer BEFORE using it — do NOT Math.trunc first, or a fractional POST (e.g. 1.9) silently
     // passes as 1 and charges a quantity the UI never allowed. For a plan / fixed-entitlement product,

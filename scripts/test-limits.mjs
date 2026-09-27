@@ -14,12 +14,11 @@ assert(app.siteLimit === siteLimit && app.gameLimit === gameLimit, "the app show
 
 const now = new Date("2026-09-24T12:00:00Z");
 const site = (n) => ({ name: n, created_date: "2026-01-01T00:00:00" });
-assert(limitError("site", "free", [], now) === "", "Free can publish its first website");
-assert(/allows 1 website\b/.test(limitError("site", "free", [site("a")], now)), "but not a second");
+assert(limitError("site", "free", [site("a"), site("b")], now) === "" && /allows 3 websites/.test(limitError("site", "free", [site("a"), site("b"), site("c")], now)), "Free keeps up to 3 websites");
 assert(limitError("site", "pro", [site("a"), site("b")], now) === "" && /3 websites/.test(limitError("site", "pro", [site("a"), site("b"), site("c")], now)), "Pro keeps 3");
 const game = (d) => ({ name: "g" + d, created_date: d });
 assert(limitError("game", "free", [game("2026-08-30T10:00:00")], now) === "", "last month's game doesn't count this month");
-assert(/1 new game per month/.test(limitError("game", "free", [game("2026-09-02T10:00:00")], now)), "one new game a month on Free");
+assert(limitError("game", "free", Array.from({ length: 50 }, (_, i) => game(`2026-09-${String((i % 20) + 1).padStart(2, "0")}T10:00:00`)), now) === "", "games: no limit on Free");
 
 // The publish functions, with a faked Base44 and KV.
 const store = new Map();
@@ -65,7 +64,7 @@ const call = async (fn, body) => {
 const html = "<!DOCTYPE html><html><body><h1>My page</h1></body></html>";
 
 let r = await call(publishSite, { name: "second", html });
-assert(r.status === 403 && /allows 1 website/.test(r.data.error) && !store.has("site:second"), "a Free account can't publish a second website by calling publish directly");
+assert(r.status === 200 && store.has("site:second"), "Free can publish a second website (up to 3)");
 r = await call(publishSite, { name: "first", html });
 assert(r.status === 200 && r.data.republished, "republishing its own website still works");
 store.set("grant:kid1", JSON.stringify({ plan: "pro" }));
@@ -77,7 +76,7 @@ r = await call(publishGame, { name: "game-one", html, title: "One", plays: 99999
 assert(r.status === 200, "a Free account's first game this month publishes");
 assert(!("plays" in (rows.PublishedGame[0] || {})), "and a play count sent with it is ignored");
 r = await call(publishGame, { name: "game-two", html, title: "Two" });
-assert(r.status === 403 && /1 new game per month/.test(r.data.error), "a second new game this month is refused");
+assert(r.status === 200, "a second new game this month publishes too (no game limit)");
 
 me = { ...me, role: "admin" };
 r = await call(publishSite, { name: "third", html });

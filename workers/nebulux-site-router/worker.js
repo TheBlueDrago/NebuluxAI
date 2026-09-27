@@ -105,11 +105,58 @@ function notFoundPage(rawName) {
   );
 }
 
+// Maintenance: the whole site (app, installed app, old address, published sites, custom domains)
+// shows "temporarily down" to everyone except the owner. The owner opens /__owner/<OWNER_KEY>
+// once (OWNER_KEY is a secret on this Worker); that sets a cookie for their browser. Set
+// MAINTENANCE to "off" in wrangler.toml and redeploy to open the site again.
+// On while env.MAINTENANCE is "on" (wrangler.toml [vars]).
+var DOWN_PAGE =
+  "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex'><title>Nebulux AI</title><style>body{background:#05060f;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}h1{font-size:22px;font-weight:600;max-width:420px;line-height:1.4}</style></head><body><h1>Sorry, this website is temporarily down. Come back later.</h1></body></html>";
+
+function cookieOf(request, name) {
+  var m = (request.headers.get("cookie") || "").match(new RegExp("(?:^|;\\s*)" + name + "=([^;]+)"));
+  return m ? m[1] : "";
+}
+
+async function sameText(a, b) {
+  var enc = new TextEncoder();
+  var ha = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(String(a))));
+  var hb = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(String(b))));
+  var diff = 0;
+  for (var i = 0; i < ha.length; i++) diff |= ha[i] ^ hb[i];
+  return diff === 0;
+}
+
+// -> a Response to send instead (down page, or the owner's unlock), or null to carry on.
+async function maintenance(request, env, url) {
+  if (!env || env.MAINTENANCE !== "on") return null;
+  var key = (env && env.OWNER_KEY) || "";
+  var path = url.pathname;
+  if (key && path.indexOf("/__owner/") === 0) {
+    if (await sameText(path.slice(9), key)) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: "/chat",
+          "set-cookie": "nx_owner=" + key + "; Path=/; Max-Age=7776000; Secure; HttpOnly; SameSite=Lax",
+          "cache-control": "no-store",
+        },
+      });
+    }
+  }
+  if (key && (await sameText(cookieOf(request, "nx_owner"), key))) return null;
+  // The owner's Google sign-in passes through the old address.
+  if (url.hostname === "blackhole-ai-tech.com" && /^\/(auth-start|auth-bounce|api\/apps\/auth)/.test(path)) return null;
+  return new Response(DOWN_PAGE, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "retry-after": "86400", "x-robots-tag": "noindex" } });
+}
+
 export default {
   async fetch(request, env) {
     DOMAINS = (env && env.KV) || null;
     var url = new URL(request.url);
     var host = url.hostname.toLowerCase();
+    var down = await maintenance(request, env, url);
+    if (down) return down;
     var root = ROOTS.find(function (r) {
       return host === r || host.endsWith("." + r);
     });

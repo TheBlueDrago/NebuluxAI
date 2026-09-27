@@ -209,8 +209,8 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const [nameTaken, setNameTaken] = useState(false);
   const [isRepublish, setIsRepublish] = useState(false);
   const opusAllowed = hasProFeatures(plan);
-  // Custom domains: Pro and up, not the free trial week (the server checks too).
-  const domainAllowed = hasProFeatures(plan) && shell?.credits?.planSource !== "trial";
+  // Custom domains: everyone.
+  const domainAllowed = true; // every plan, Free included (owner, 2026-09-27)
   const [domainInput, setDomainInput] = useState("");
   const [domainOpen, setDomainOpen] = useState({ key: 0, host: "" });
   const fableAllowed = hasSpace(plan);

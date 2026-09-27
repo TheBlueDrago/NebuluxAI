@@ -17,7 +17,11 @@ export const OFFER_TAG = "new member 30% off";
 const utc = (d) => Date.parse(/Z|[+-]\d\d:?\d\d$/.test(String(d || "")) ? d : `${d}Z`);
 
 // -> null for accounts from before the offer, else its dates and what's active now.
+// The free week and new-member discount are switched off (owner, 2026-09-27: plans are coming soon).
+export const OFFERS_ON = false;
+
 export function offerFor(user, now = Date.now()) {
+  if (!OFFERS_ON) return null;
   const created = utc(user && user.created_date);
   if (!Number.isFinite(created) || created < Date.parse(OFFER_START)) return null;
   const trialEnds = created + TRIAL_DAYS * 86400000;

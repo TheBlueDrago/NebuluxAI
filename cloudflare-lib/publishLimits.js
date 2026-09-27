@@ -2,11 +2,12 @@
 // Deleting frees a slot, since limits are counted from what currently exists. Shared by the
 // app (src/lib/publishLimits.js re-exports it) and the publish functions, which enforce it:
 // anyone can call those directly, so the app's own check isn't enough.
-const GAME_LIMITS = { free: 1, pro: 3, team: 5, secret: 10, enterprise: 10, admin: 10 };
-const SITE_LIMITS = { free: 1, pro: 3, team: 3, secret: 5, enterprise: 10, admin: 10 };
+// Games: no limit on any plan (owner, 2026-09-27).
+const GAME_LIMITS = { free: Infinity, pro: Infinity, team: Infinity, secret: Infinity, enterprise: Infinity, admin: Infinity };
+const SITE_LIMITS = { free: 3, pro: 3, team: 3, secret: 5, enterprise: 10, admin: 10 };
 
-export const gameLimit = (plan) => GAME_LIMITS[plan] ?? 1;
-export const siteLimit = (plan) => SITE_LIMITS[plan] ?? 1;
+export const gameLimit = (plan) => GAME_LIMITS[plan] ?? Infinity;
+export const siteLimit = (plan) => SITE_LIMITS[plan] ?? 3;
 
 // Same months the credits use (UTC), so everyone's new-game allowance resets together.
 export const sameMonth = (date, now = new Date()) => {

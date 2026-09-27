@@ -56,7 +56,7 @@ const team = card("TeamCard");
 const has = (src, t) => src.includes(`${t.ai} Nebulux AI credits`) && src.includes(`${t.aiCode} Nebulux Code credits`) && src.includes(`${t.galaxy5} Galaxy credits`) && src.includes(`${t.space5} Space credits`);
 assert(has(pro, PLAN_TOTALS.pro), "the Shop's Pro card lists the credits Pro gives");
 assert(has(team, PLAN_TOTALS.team), "the Shop's Team card lists the credits Team gives");
-assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWith(`${PLAN_TOTALS.free.ai} Nebulux AI credits`)), "public pricing lists Free's credits");
+assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWith(`${PLAN_TOTALS.free.ai} Nebulux AI, ${PLAN_TOTALS.free.aiCode} Code`)), "public pricing lists Free's credits");
 
 // Credit packs: checkout's price table matches the app's.
 const { PACK_PRICES } = await load("cloudflare-lib/creditPacks.js");

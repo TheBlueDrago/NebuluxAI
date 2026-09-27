@@ -2,15 +2,14 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Globe, Loader2, X, RefreshCw, Copy, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAppShell } from "@/components/AppShellContext";
-import { hasProFeatures } from "@/lib/plans";
 
 // Connect your own domain (www.mybakery.com) to your published website: Pro and up, not the
 // free trial week. The server side is functions/.../custom-domain.js.
 // No button of its own: it opens from the Publish box (openKey).
-export default function CustomDomain({ siteName, plan, onUpgrade, openKey = 0, initialHost = "" }) {
+export default function CustomDomain({ siteName, onUpgrade, openKey = 0, initialHost = "" }) {
   const shell = useAppShell();
   const trial = shell?.credits?.planSource === "trial";
-  const allowed = hasProFeatures(plan) && !trial;
+  const allowed = true; // every plan, Free included (owner, 2026-09-27)
   const [open, setOpen] = useState(false);
   // Opened from the Publish box right after publishing, with the domain they typed there.
   useEffect(() => {

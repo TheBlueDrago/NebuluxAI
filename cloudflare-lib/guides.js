@@ -295,7 +295,7 @@ export const GUIDES = [
         heading: "Step 4: Publish and share",
         paragraphs: [
           "Press Publish and choose a name. Your site goes live at yourname.nebuluxai.com, a link you can text, post or print on a flyer. Every page is checked for scams and harmful content before it goes live, so visitors can trust it.",
-          "The free plan keeps one website online. Pro, at $15 a month, keeps three and lets you download your site's code as a ZIP or push it to GitHub.",
+          "The Free plan keeps up to three websites online. Pro (coming soon, $15 a month) will also let you download your site's code as a ZIP or push it to GitHub.",
         ],
       },
       {

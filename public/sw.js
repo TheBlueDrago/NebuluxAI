@@ -12,7 +12,7 @@
 // v2: v1 served its saved page first, which after a new version pointed at code that was gone.
 // v4: a fresh start for everyone after the stuck "just updated" screen (app pages are now sent
 // with "always check with the server", so the browser never hands back an old one).
-const SHELL = "bh-shell-v4";
+const SHELL = "bh-shell-v5";
 const NETWORK_WAIT_MS = 4000;
 const ASSETS = "bh-assets-v1";
 const MAX_ASSETS = 250;
@@ -81,6 +81,8 @@ self.addEventListener("fetch", (event) => {
         const slow = new Promise((resolve) => (timer = setTimeout(resolve, NETWORK_WAIT_MS, "slow")));
         const first = await Promise.race([network.catch(() => "offline"), slow]);
         clearTimeout(timer);
+        // The site is down for maintenance (503): show that, never the saved app.
+        if (first !== "slow" && first !== "offline" && first.status === 503) return first;
         if (first !== "slow" && first !== "offline" && first.ok) {
           event.waitUntil(refreshShell(first.clone()).catch(() => {}));
           return first;

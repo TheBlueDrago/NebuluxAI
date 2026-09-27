@@ -1,7 +1,7 @@
 // Offline test for the new-account offer (cloudflare-lib/offers.js): a free week of Pro,
 // then 48 hours of 30% off. Run: node scripts/test-offers.mjs
 const R = new URL("../", import.meta.url).pathname;
-const { offerFor, discounted, OFFER_START } = await import(R + "cloudflare-lib/offers.js");
+const { offerFor, discounted, OFFER_START, OFFERS_ON } = await import(R + "cloudflare-lib/offers.js");
 const assert = (c, m) => {
   if (!c) {
     console.error("FAIL", m);
@@ -9,6 +9,11 @@ const assert = (c, m) => {
   } else console.log("ok", m);
 };
 const DAY = 86400000;
+// Switched off for now (no free week, no new-member discount): nobody gets it.
+if (!OFFERS_ON) {
+  assert(offerFor({ created_date: new Date().toISOString() }) === null, "the free week and discount are off: new accounts get nothing extra");
+  process.exit(process.exitCode || 0);
+}
 const start = Date.parse(OFFER_START);
 const joined = new Date(start + DAY).toISOString().replace("Z", ""); // Base44 style, no time zone
 

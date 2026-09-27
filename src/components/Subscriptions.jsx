@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState } from "react";
 import PaymentsNotice from "@/components/PaymentsNotice";
+import { SALES_OPEN, COMING_SOON } from "@/lib/salesOpen";
 import { motion } from "framer-motion";
 import { Check, ArrowRight, Loader2, Gift, Lock, X } from "lucide-react";
 
@@ -12,7 +13,7 @@ import { savedDiscount, saveDiscount, promoPctFor } from "@/lib/promoDiscount";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
 
 function FreeCard({ onFree }) {
-  const features = ["50 Nebulux AI credits"];
+  const features = ["100 Nebulux AI credits", "75 Code, 50 Galaxy and 25 Space credits", "3 websites and unlimited games", "ZIP, GitHub and custom domains"];
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-indigo-500/60 rounded-3xl p-6 shadow-2xl shadow-indigo-500/10 flex flex-col">
       <div className="flex items-center justify-between">
@@ -187,6 +188,19 @@ function SectionTitle({ title, sub }) {
 
 // The Shop: plans at the top, then one-time credit packs for every AI, then promo codes.
 // offer: the signed-in user's new-member offer (from the credit status), if any.
+// Greyed out and unclickable while plans and packs are "coming soon" (lib/salesOpen.js).
+function Soon({ children }) {
+  if (SALES_OPEN) return children;
+  return (
+    <div className="relative">
+      <div aria-hidden="true" className="opacity-40 grayscale pointer-events-none select-none h-full">
+        {children}
+      </div>
+      <span className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-slate-900/90 border border-indigo-400/40 px-3 py-1 text-xs font-semibold text-indigo-200 whitespace-nowrap">Coming soon</span>
+    </div>
+  );
+}
+
 // onBuyPack(productId): open Billing on a credit pack.
 export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer }) {
   const pct = offer?.discountAvailable ? offer.discountPct : 0;
@@ -251,6 +265,9 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
       <div className="mt-10">
         <SectionTitle title="Plans" sub="Monthly credits for every AI, plus more features" />
       </div>
+      {!SALES_OPEN && (
+        <p className="mt-4 px-4 py-2 rounded-full bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-sm text-center">{COMING_SOON} For now, everyone gets the Free plan.</p>
+      )}
       {pct > 0 && (
         <p className="mt-4 px-4 py-2 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-100 text-sm text-center">
           New-member offer: {pct}% off any plan, and you keep that price as long as you stay subscribed.
@@ -259,9 +276,15 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-8 max-w-7xl w-full">
         <FreeCard onFree={onFree} />
-        <Plan2Card onPro={onPro} pct={planPct("pro")} />
-        <TeamCard onTeam={onTeam} pct={planPct("team")} />
-        <EnterpriseCard onEnterprise={() => setEnterpriseOpen(true)} />
+        <Soon>
+          <Plan2Card onPro={onPro} pct={planPct("pro")} />
+        </Soon>
+        <Soon>
+          <TeamCard onTeam={onTeam} pct={planPct("team")} />
+        </Soon>
+        <Soon>
+          <EnterpriseCard onEnterprise={() => setEnterpriseOpen(true)} />
+        </Soon>
         {enterpriseOpen && (
           <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && setEnterpriseOpen(false)}>
             <div role="dialog" aria-modal="true" aria-label="Apply for Enterprise" className="relative w-full max-w-xl my-8">
@@ -288,9 +311,11 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
 
       {/* Credits */}
       <div className="mt-16 w-full max-w-4xl mx-auto">
-        <SectionTitle title="Credits" sub="Rather not subscribe? Buy 10 to 50 credits for any AI, whatever your plan." />
+        <SectionTitle title="Credits" sub={SALES_OPEN ? "Rather not subscribe? Buy 25 to 100 credits for any AI, whatever your plan." : "Credit packs are coming soon in later updates."} />
         <div className="mt-8">
+          <Soon>
           <CreditPacks discount={discount} onBuy={onBuyPack || ((id) => navigate("/billing", { state: { productId: id } }))} />
+          </Soon>
         </div>
       </div>
 

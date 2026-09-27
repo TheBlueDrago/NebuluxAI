@@ -9,14 +9,14 @@ export const PUBLIC_PLANS = [
     price: "$0",
     period: "",
     blurb: "Try everything and publish your first site and game.",
-    features: ["50 Nebulux AI credits every month", "1 published website", "1 new game a month", "Free web address"],
+    features: ["100 Nebulux AI, 75 Code, 50 Galaxy and 25 Space credits every month", "3 published websites", "Unlimited games", "ZIP download, GitHub and custom domains", "Free web address"],
   },
   {
     id: "pro",
     name: "Pro",
     price: "$15",
     period: "/month",
-    blurb: "More credits, all 4 AI models and your code to keep. New accounts get a free week (ZIP and GitHub come with the paid plan).",
+    blurb: "More credits, all 4 AI models and your code to keep. Coming soon in a later update.",
     features: [
       "100 Nebulux AI credits a month",
       "50 each of Code, Galaxy and Space credits",

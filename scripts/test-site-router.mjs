@@ -82,3 +82,18 @@ assert(res.status === 404, "deeper addresses aren't sites");
   const r = await worker.fetch(new Request("https://www.unproven.com/"), env);
   assert(r.status === 404, "a domain whose owner hasn't proven it yet isn't served");
 }
+
+// Maintenance: everyone gets "temporarily down" except the owner with the unlock cookie.
+{
+  const env = { MAINTENANCE: "on", OWNER_KEY: "owner-secret-123", KV: { get: async () => null } };
+  let r = await worker.fetch(new Request("https://nebuluxai.com/chat"), env);
+  assert(r.status === 503 && (await r.text()).includes("temporarily down"), "maintenance: visitors see the down page");
+  r = await worker.fetch(new Request("https://nova.nebuluxai.com/"), env);
+  assert(r.status === 503, "maintenance: published sites are down too");
+  r = await worker.fetch(new Request("https://nebuluxai.com/__owner/wrong"), env);
+  assert(r.status === 503, "a wrong unlock link doesn't get in");
+  r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123"), env);
+  assert(r.status === 302 && /nx_owner=owner-secret-123/.test(r.headers.get("set-cookie") || ""), "the owner's link unlocks this browser");
+  r = await worker.fetch(new Request("https://nova.nebuluxai.com/", { headers: { cookie: "nx_owner=owner-secret-123" } }), env);
+  assert(r.status === 200, "the owner gets in");
+}
