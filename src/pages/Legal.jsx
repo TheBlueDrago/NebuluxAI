@@ -114,8 +114,7 @@ export function Terms() {
       <p>
         Nebulux AI is provided "as is". We work to keep it running, but it may change, have errors or be
         unavailable, and features, plans and prices can change. To the fullest extent the law allows, we are not
-        liable for indirect or lost-profit damages, and our total liability to you is limited to what you paid us in
-        the 3 months before the problem.
+        liable for any damages or losses of any kind that come from using (or not being able to use) Nebulux AI.
       </p>
 
       <h2>Ending</h2>
