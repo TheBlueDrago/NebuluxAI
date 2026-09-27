@@ -8,12 +8,12 @@ const assert = (c, m) => {
     process.exitCode = 1;
   } else console.log("ok", m);
 };
-const { termsVersion, isOverdue, STARTED } = await import(pathToFileURL(R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/accept-terms.js").href);
+const { termsVersion, isOverdue, STARTED, TERMS_VERSION } = await import(pathToFileURL(R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/accept-terms.js").href);
 const D = 86400000;
-assert(termsVersion(new Date("2026-10-03T10:00:00Z")) === "2026-10", "the agreement is renewed every month");
+assert(termsVersion() === TERMS_VERSION, "accepted once: the version doesn't change by itself each month");
 assert(!isOverdue(null, STARTED - 400 * D, STARTED + 10 * D), "nobody is overdue in the first 30 days");
 assert(isOverdue(null, STARTED - 400 * D, STARTED + 31 * D), "an old account that never accepted is overdue after 30 days");
 assert(!isOverdue(null, STARTED + 20 * D, STARTED + 40 * D), "a new account gets 30 days from signing up");
 const now = STARTED + 90 * D;
 assert(!isOverdue({ at: new Date(now - 10 * D).toISOString() }, 0, now), "accepted 10 days ago: fine");
-assert(isOverdue({ at: new Date(now - 45 * D).toISOString() }, 0, now), "last accepted 45 days ago: inactive");
+assert(!isOverdue({ at: new Date(now - 45 * D).toISOString() }, 0, now), "accepted once, long ago: still fine (not asked again)");

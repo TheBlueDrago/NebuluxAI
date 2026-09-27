@@ -1,6 +1,6 @@
-// The user agreement (components/TermsGate.jsx). Everyone accepts it before using the app, and
-// again every month ("new terms for <month>"): the version is the month, so on the 1st everyone
-// is asked again. An account that hasn't accepted in 30 days counts as inactive: it's listed for
+// The user agreement (components/TermsGate.jsx). Everyone accepts it once before using the app;
+// after that they are not asked again (unless TERMS_VERSION is changed on purpose for a big
+// change to the Terms). An account that never accepted within 30 days counts as inactive: it's listed for
 // admins in Monitor (action "overdue") to delete. Nothing is deleted automatically.
 //
 // { action: "get" }               -> { accepted, version, returning, deadline }
@@ -11,7 +11,9 @@
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 
-export const termsVersion = (d = new Date()) => d.toISOString().slice(0, 7); // "2026-09"
+// Accepted once, kept: this only changes when the owner wants everyone to accept again.
+export const TERMS_VERSION = "2026-09";
+export const termsVersion = () => TERMS_VERSION;
 export const GRACE_DAYS = 30;
 // Nobody is counted overdue before 30 days after the agreement started (2026-09-26).
 export const STARTED = Date.parse("2026-09-26T00:00:00Z");
@@ -21,13 +23,12 @@ const parse = (s) => {
   return Number.isNaN(t) ? 0 : t;
 };
 
-// Overdue: nothing accepted in the last 30 days, the account is over 30 days old, and the
+// Overdue: never accepted, the account is over 30 days old, and the
 // agreement has existed for 30 days.
 export function isOverdue(rec, createdAt, now = Date.now()) {
   if (now - STARTED < GRACE_DAYS * DAY) return false;
   if (createdAt && now - createdAt < GRACE_DAYS * DAY) return false;
-  const last = rec && rec.at ? Date.parse(rec.at) : 0;
-  return !last || now - last > GRACE_DAYS * DAY;
+  return !rec;
 }
 
 export async function onRequestPost(context) {
@@ -62,7 +63,7 @@ export async function onRequestPost(context) {
     const rec = await kv.get(key, "json");
     const since = Math.max(rec && rec.at ? Date.parse(rec.at) : 0, parse(user.created_date), STARTED);
     return json({
-      accepted: !!rec && rec.version === version,
+      accepted: !!rec,
       version,
       returning: !!rec,
       deadline: new Date(since + GRACE_DAYS * DAY).toISOString(),

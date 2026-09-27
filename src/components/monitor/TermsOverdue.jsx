@@ -25,12 +25,12 @@ export default function TermsOverdue({ onOpenUser }) {
     <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4">
       <div className="flex items-center gap-2">
         <FileWarning className="w-5 h-5 text-amber-300" />
-        <h3 className="font-semibold text-white flex-1">Didn't accept the user agreement (30+ days)</h3>
+        <h3 className="font-semibold text-white flex-1">Never accepted the user agreement (30+ days)</h3>
         <button onClick={load} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">
           {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} {data ? "Check again" : "Check"}
         </button>
       </div>
-      <p className="mt-1 text-xs text-slate-400">Everyone is asked to accept every month. Accounts on this list are inactive and can be deleted (open one to delete it). Nobody is listed until 30 days after the agreement started.</p>
+      <p className="mt-1 text-xs text-slate-400">Everyone accepts it once. Accounts on this list never accepted it and are inactive and can be deleted (open one to delete it). Nobody is listed until 30 days after the agreement started.</p>
       {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
       {data && (
         <div className="mt-3">
