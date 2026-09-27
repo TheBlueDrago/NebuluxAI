@@ -18,7 +18,6 @@ import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 
 export const CNAME_TARGET = "customers.nebuluxai.com";
 const PAID = ["pro", "team", "secret", "enterprise", "admin"];
-const MAX_DOMAINS = 90; // Cloudflare's free allowance is 100
 
 // A real public hostname that isn't ours: letters, digits and dashes, at least one dot.
 export function cleanHostname(raw) {
@@ -100,8 +99,9 @@ export async function onRequestPost(context) {
       const hostname = cleanHostname(body.hostname);
       if (!hostname) return json({ error: "Type a domain like www.mybakery.com (without https://)." }, 400);
       if (await kv.get(`domain:${hostname}`)) return json({ error: "That domain is already connected to a website." }, 400);
+      // No limit: Cloudflare includes 100 domains, then about $0.10 each a month (the owner chose
+      // no cap on 2026-09-27; every domain belongs to someone on Pro or higher).
       const list = (await kv.get("customdomains", "json")) || [];
-      if (list.length >= MAX_DOMAINS) return json({ error: "We can't add more custom domains right now. Contact us and we'll help." }, 503);
       let result;
       try {
         result = await cf(env, "POST", "", { hostname, ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2" } } });
