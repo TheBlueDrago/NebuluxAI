@@ -89,13 +89,20 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
     setErr("");
     setBusy(true);
     call({ ...body, site: siteName })
-      .then(setInfo)
+      .then((r) => {
+        setInfo(r);
+        if (r.error) setErr(r.error); // e.g. the TXT record isn't there yet
+      })
       .catch((e) => setErr(e.message))
       .finally(() => setBusy(false));
   };
 
   const d = info?.domain;
+  const root = d ? d.split(".").slice(-2).join(".") : "";
   const sub = d ? d.split(".").slice(0, -2).join(".") : "";
+  // Sellers want the name without the main domain ("_nebulux-verify.www", not the full name).
+  const rel = (name) => (name.endsWith(`.${root}`) ? name.slice(0, -(root.length + 1)) : name);
+  const verifying = info?.status === "verify";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 p-5 text-sm text-slate-200 shadow-2xl">
@@ -141,7 +148,7 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
             <div className="flex items-center gap-2">
               <span className="font-semibold text-white break-all">{d}</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${info.live ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-200"}`}>
-                {info.live ? "Live" : info.status === "securing" ? "Almost ready" : "Waiting for your DNS"}
+                {info.live ? "Live" : verifying ? "Prove it's yours" : info.status === "securing" ? "Almost ready" : "Waiting for your DNS"}
               </span>
             </div>
             {info.live ? (
@@ -165,14 +172,24 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
                   </select>
                 </label>
                 <p className="text-slate-300">
-                  {seller ? SELLERS[seller].where : "At the company you bought the domain from, open its DNS settings"}, then add this record:
+                  {seller ? SELLERS[seller].where : "At the company you bought the domain from, open its DNS settings"}, then add {verifying ? "these two records" : "this record"}:
                 </p>
+                {verifying && (
+                  <div className="rounded-lg bg-slate-800 border border-amber-400/30 p-3 font-mono text-xs space-y-1">
+                    <p className="font-sans text-amber-200 font-semibold">1. Prove the domain is yours</p>
+                    <p>Type: <b>TXT</b></p>
+                    <p>Name / Host: <b className="break-all">{rel(info.verify.name)}</b><CopyText text={rel(info.verify.name)} /></p>
+                    <p>Value: <b className="break-all">{info.verify.value}</b><CopyText text={info.verify.value} /></p>
+                  </div>
+                )}
                 <div className="rounded-lg bg-slate-800 border border-slate-700 p-3 font-mono text-xs space-y-1">
+                  {verifying && <p className="font-sans text-slate-300 font-semibold">2. Point it at your website</p>}
                   <p>Type: <b>CNAME</b></p>
                   <p>Name / Host: <b>{sub || "@"}</b><CopyText text={sub || "@"} /></p>
                   <p>Value / Target: <b>{info.target}</b><CopyText text={info.target} /></p>
                 </div>
                 {info.apex && <p className="text-xs text-amber-200">This is a main domain (no www). Some sellers don't allow a CNAME there. If yours doesn't, remove it and use www.{d} instead.</p>}
+                {verifying && <p className="text-xs text-slate-400">Only the owner of a domain can add records to it, so this proves it's yours. Once both are added, press Verify.</p>}
                 {info.txt && (
                   <div className="rounded-lg bg-slate-800 border border-slate-700 p-3 font-mono text-xs space-y-1">
                     <p className="font-sans text-slate-300">And this one, to prove the domain is yours:</p>
@@ -185,9 +202,15 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
               </>
             )}
             <div className="flex gap-2 pt-1">
-              <button disabled={busy} onClick={load} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs hover:bg-slate-700">
-                <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} /> Check again
-              </button>
+              {verifying ? (
+                <button disabled={busy} onClick={() => run({ action: "verify" })} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-1.5 text-xs font-semibold text-[#fff]">
+                  {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Verify
+                </button>
+              ) : (
+                <button disabled={busy} onClick={load} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs hover:bg-slate-700">
+                  <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} /> Check again
+                </button>
+              )}
               <button disabled={busy} onClick={() => run({ action: "remove" })} className="rounded-lg px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10">
                 Remove domain
               </button>

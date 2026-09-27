@@ -85,7 +85,8 @@ async function customDomain(host) {
   } catch (err) {
     link = null;
   }
-  if (!link || !link.site) return new Response("Not found", { status: 404 });
+  // Not served until its owner proved it's theirs (the TXT check in custom-domain.js).
+  if (!link || !link.site || link.pending) return new Response("Not found", { status: 404 });
   var res = await lookup("get-site-html", link.site);
   if (!res || !res.ok) return new Response(notFoundPage(link.site), { status: res ? 404 : 502, headers: PAGE_HEADERS });
   var data = await res.json().catch(function () { return null; });

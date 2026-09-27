@@ -77,3 +77,8 @@ assert(res.status === 404, "deeper addresses aren't sites");
   r = await worker.fetch(new Request("https://random-other.com/"), env);
   assert(r.status === 404, "a domain nobody connected gets nothing");
 }
+{
+  const env = { KV: { get: async (k) => (k === "domain:www.unproven.com" ? { site: "nova", pending: true } : null) } };
+  const r = await worker.fetch(new Request("https://www.unproven.com/"), env);
+  assert(r.status === 404, "a domain whose owner hasn't proven it yet isn't served");
+}

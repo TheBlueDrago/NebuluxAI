@@ -4,7 +4,8 @@
 // free); the site router Worker (workers/nebulux-site-router) serves them.
 //
 // { action: "get", site }               -> { domain | null, ... status }
-// { action: "add", site, hostname }     -> the same, after registering it
+// { action: "add", site, hostname }     -> reserves it: the TXT record to add to prove it's theirs
+// { action: "verify", site }            -> checks that TXT record; if it's there, registers it
 // { action: "remove", site }            -> { ok }
 //
 // Needs two Pages secrets: CF_ZONE_ID (nebuluxai.com's zone id) and CF_API_TOKEN (a token
@@ -57,6 +58,27 @@ function describe(hostname, result) {
   };
 }
 
+// Ownership check: a TXT record at _nebulux-verify.<domain> with a secret value we hand out.
+export const txtName = (hostname) => `_nebulux-verify.${hostname}`;
+export const txtValue = (token) => `nebulux-verify=${token}`;
+const newToken = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+// Looks the TXT record up in public DNS (Cloudflare's DNS-over-HTTPS resolver).
+export async function hasTxt(name, value) {
+  try {
+    const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=TXT`, { headers: { accept: "application/dns-json" } });
+    const j = await r.json();
+    return (j.Answer || []).some((a) => a.type === 16 && String(a.data || "").replace(/"\s*"/g, "").replace(/^"|"$/g, "").trim() === value);
+  } catch {
+    return false;
+  }
+}
+
+// Before ownership is proven: the TXT record to add (and the CNAME, which can go in at the same time).
+function pending(rec) {
+  return { domain: rec.hostname, live: false, status: "verify", target: CNAME_TARGET, apex: rec.hostname.split(".").length === 2, verify: { name: txtName(rec.hostname), value: txtValue(rec.token) } };
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   const kv = env.PUBLISHED_HTML;
@@ -77,7 +99,31 @@ export async function onRequestPost(context) {
     const current = await kv.get(`sitedomain:${site}`, "json");
     if (body.action === "get" || !body.action) {
       if (!current) return json({ domain: null, target: CNAME_TARGET });
+      if (!current.id) return json(pending(current));
       const result = await cf(env, "GET", `/${current.id}`).catch(() => null);
+      return json(describe(current.hostname, result));
+    }
+
+    // Step 2: prove the domain is theirs (a TXT record only its owner can add, like Base44's
+    // domain check). Only then is it registered with Cloudflare and served.
+    if (body.action === "verify") {
+      if (!current) return json({ error: "Connect a domain first." }, 400);
+      if (current.id) {
+        const result = await cf(env, "GET", `/${current.id}`).catch(() => null);
+        return json(describe(current.hostname, result));
+      }
+      if (!(await allow(`domainverify:${user.id}`, 30, 3600))) return json({ error: "Too many checks. Wait a few minutes and try again." }, 429);
+      if (!(await hasTxt(txtName(current.hostname), txtValue(current.token)))) {
+        return json({ ...pending(current), error: "We couldn't find the TXT record yet. Check it's added exactly as shown; new records can take a few minutes (sometimes up to an hour) to show up." });
+      }
+      let result;
+      try {
+        result = await cf(env, "POST", "", { hostname: current.hostname, ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2" } } });
+      } catch (e) {
+        return json({ ...pending(current), error: /already exists/i.test(e.message) ? "That domain is already connected somewhere else." : `Couldn't connect that domain: ${e.message}` });
+      }
+      await kv.put(`domain:${current.hostname}`, JSON.stringify({ site, owner: user.id, id: result.id }));
+      await kv.put(`sitedomain:${site}`, JSON.stringify({ ...current, id: result.id, verifiedAt: new Date().toISOString() }));
       return json(describe(current.hostname, result));
     }
 
@@ -85,7 +131,7 @@ export async function onRequestPost(context) {
 
     if (body.action === "remove") {
       if (current) {
-        await cf(env, "DELETE", `/${current.id}`).catch(() => null);
+        if (current.id) await cf(env, "DELETE", `/${current.id}`).catch(() => null);
         await kv.delete(`domain:${current.hostname}`);
         await kv.delete(`sitedomain:${site}`);
         const list = ((await kv.get("customdomains", "json")) || []).filter((h) => h !== current.hostname);
@@ -105,16 +151,13 @@ export async function onRequestPost(context) {
       // No limit: Cloudflare includes 100 domains, then about $0.10 each a month (the owner chose
       // no cap on 2026-09-27; every domain belongs to someone on Pro or higher).
       const list = (await kv.get("customdomains", "json")) || [];
-      let result;
-      try {
-        result = await cf(env, "POST", "", { hostname, ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2" } } });
-      } catch (e) {
-        return json({ error: /already exists/i.test(e.message) ? "That domain is already connected to a website." : `Couldn't add that domain: ${e.message}` }, 400);
-      }
-      await kv.put(`domain:${hostname}`, JSON.stringify({ site, owner: user.id, id: result.id }));
-      await kv.put(`sitedomain:${site}`, JSON.stringify({ hostname, id: result.id }));
+      // Step 1: reserve it and hand out the TXT record that proves ownership. Nothing is
+      // registered with Cloudflare or served until "verify" finds that record.
+      const rec = { hostname, token: newToken(), at: new Date().toISOString() };
+      await kv.put(`domain:${hostname}`, JSON.stringify({ site, owner: user.id, pending: true }));
+      await kv.put(`sitedomain:${site}`, JSON.stringify(rec));
       await kv.put("customdomains", JSON.stringify([...list, hostname]));
-      return json(describe(hostname, result));
+      return json(pending(rec));
     }
     return json({ error: "Unknown action." }, 400);
   } catch (err) {
