@@ -47,13 +47,17 @@ export async function onRequestPost(context) {
     if (body.action === "overdue") {
       if (user.role !== "admin") return json({ error: "Admins only." }, 403);
       const users = (await base44(request, "GET", "entities/User?limit=5000").catch(() => [])) || [];
+      // Accounts already removed in Monitor don't count (they're gone), nor admins or the owner's own.
+      const removed = new Set(((await kv.get("removed-users", "json")) || []).map((r) => r.userId));
       const out = [];
+      let checked = 0;
       for (const u of users) {
-        if (!u || !u.id || u.role === "admin" || exempt(u)) continue;
+        if (!u || !u.id || u.role === "admin" || exempt(u) || u.removed === true || removed.has(u.id)) continue;
+        checked++;
         const rec = await kv.get(`terms:${u.id}`, "json");
         if (isOverdue(rec, parse(u.created_date))) out.push({ id: u.id, email: u.email || "", name: u.full_name || "", lastAccepted: (rec && rec.at) || null, created: u.created_date || null });
       }
-      return json({ users: out, checked: users.length });
+      return json({ users: out, checked });
     }
 
     if (body.action === "accept") {

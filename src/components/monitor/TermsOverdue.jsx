@@ -35,7 +35,7 @@ export default function TermsOverdue({ onOpenUser }) {
       {data && (
         <div className="mt-3">
           <p className="text-sm text-slate-300">
-            {data.users.length} of {data.checked} accounts
+            {data.users.length} of {data.checked} active accounts (removed accounts and yours aren't counted)
           </p>
           <ul className="mt-2 max-h-96 overflow-y-auto divide-y divide-slate-800 text-sm">
             {data.users.slice(0, shown).map((u) => (
