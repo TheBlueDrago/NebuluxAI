@@ -126,9 +126,10 @@ export default {
       if (gameRes && gameRes.ok) {
         apiRes = gameRes;
         isGame = true;
-      } else if (!apiRes && !gameRes) {
+      } else if (!apiRes || !gameRes) {
+        // One of the lookups couldn't reach the app: say so, rather than "not found".
         return new Response(notFoundPage(name), { status: 502, headers: PAGE_HEADERS });
-      } else apiRes = gameRes || apiRes;
+      }
     }
     if (!apiRes.ok) {
       return new Response(notFoundPage(name), { status: 404, headers: PAGE_HEADERS });
