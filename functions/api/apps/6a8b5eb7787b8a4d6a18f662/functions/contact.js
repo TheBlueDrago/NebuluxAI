@@ -8,6 +8,8 @@ import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 import { filledByBot } from "../../../../../cloudflare-lib/honeypot.js";
 import { TOPICS, addMessage, listMessages, removeMessage } from "../../../../../cloudflare-lib/contact.js";
 
+const NOTIFY_URL = "https://nebulux-support-mail.thebluedragonstriker.workers.dev/notify";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   const kv = env.PUBLISHED_HTML;
@@ -32,6 +34,8 @@ export async function onRequestPost(context) {
     const who = (user && user.id) || request.headers.get("cf-connecting-ip") || "";
     if (!(await allow(`contact:${who}`, 5, 3600))) return json({ error: TOO_MANY }, 429);
     await addMessage(kv, { topic, message, email, userId: user && user.id, name: user && (user.full_name || ""), who });
+    // A copy to the owner's inbox (workers/nebulux-support-mail/notify.js), Reply-To the writer.
+    if (env.SUPPORT_KEY && context.waitUntil) context.waitUntil(fetch(NOTIFY_URL, { method: "POST", headers: { "content-type": "application/json", "x-support-key": env.SUPPORT_KEY }, body: JSON.stringify({ topic: TOPICS[topic] || topic, message, email, name: (user && user.full_name) || "" }) }).catch(() => {}));
     return json({ ok: true });
   } catch (err) {
     return json({ error: (err && err.message) || "Could not send the message." }, 500);

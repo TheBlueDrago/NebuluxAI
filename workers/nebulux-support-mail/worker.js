@@ -8,6 +8,7 @@ import { createMimeMessage } from "mimetext";
 import { EmailMessage } from "cloudflare:email";
 import { isAutomatic } from "./automatic.js";
 import { watchdog } from "./watchdog.js";
+import { notify } from "./notify.js";
 
 const OWNER = "thebluedragonstriker@gmail.com";
 const SUPPORT = "support@nebuluxai.com";
@@ -15,6 +16,10 @@ const API = "https://nebuluxai.pages.dev/api/support-reply";
 
 
 export default {
+  // Contact page messages to the owner's inbox (notify.js).
+  async fetch(request, env) {
+    return notify(request, env);
+  },
   // The site watchdog (watchdog.js), run by the cron trigger.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(watchdog(env));
