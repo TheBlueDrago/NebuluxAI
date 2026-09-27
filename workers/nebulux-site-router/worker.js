@@ -115,7 +115,20 @@ export default {
     });
     if (!root) return customDomain(host);
     if (host === root || host === "www." + root) {
-      return fetch(request);
+      var res = await fetch(request);
+      // A code file from an older version (gone after an update) comes back from Pages as the app
+      // page, with a 4-hour browser cache: the browser then kept a web page as "code" and the app
+      // was stuck on "just updated". Say "not found, don't keep this" instead, so a reload works.
+      if (url.pathname.indexOf("/assets/") === 0 && /text\/html/i.test(res.headers.get("content-type") || "")) {
+        return new Response("Not found", { status: 404, headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+      }
+      // App pages must always be checked with the server, so they never point at gone code.
+      if (/text\/html/i.test(res.headers.get("content-type") || "")) {
+        var fresh = new Response(res.body, res);
+        fresh.headers.set("cache-control", "no-cache");
+        return fresh;
+      }
+      return res;
     }
     var name = host.slice(0, host.length - root.length - 1);
     if (name.indexOf(".") >= 0) return new Response("Not found", { status: 404 });

@@ -10,7 +10,9 @@
 // To switch this off for everyone, replace this file with one that calls
 // self.registration.unregister() and deletes the caches.
 // v2: v1 served its saved page first, which after a new version pointed at code that was gone.
-const SHELL = "bh-shell-v3";
+// v4: a fresh start for everyone after the stuck "just updated" screen (app pages are now sent
+// with "always check with the server", so the browser never hands back an old one).
+const SHELL = "bh-shell-v4";
 const NETWORK_WAIT_MS = 4000;
 const ASSETS = "bh-assets-v1";
 const MAX_ASSETS = 250;
