@@ -19,3 +19,25 @@ export function mayAutoReload(now = Date.now(), store = globalThis.sessionStorag
     return false;
   }
 }
+
+// A reload that can't get the stale copy back: the browser may keep an old copy of the page for
+// hours (and a plain reload hands that back, pointing at code that's gone: the "loading forever"
+// screen). So drop this site's saved files and service worker, then ask for the page at a
+// slightly different address (?v=…), which the browser has never saved.
+export async function freshReload() {
+  try {
+    const regs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
+    await Promise.all(regs.map((r) => r.unregister().catch(() => {})));
+  } catch {
+    // No service worker: fine.
+  }
+  try {
+    const keys = (await globalThis.caches?.keys?.()) || [];
+    await Promise.all(keys.map((k) => caches.delete(k)));
+  } catch {
+    // No saved files: fine.
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("v", Date.now().toString(36));
+  window.location.replace(url.toString());
+}

@@ -12,6 +12,8 @@ import { signOut } from "@/lib/signOut";
 const monthName = (v) => new Date(`${v}-15T00:00:00Z`).toLocaleDateString([], { month: "long", year: "numeric" });
 const dayName = (iso) => new Date(iso).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
 const seenKey = (id, v) => `nx-terms:${id}:${v}`;
+// The agreement's version when the server can't be asked (keep in step with accept-terms.js).
+const FALLBACK_VERSION = "2026-09";
 
 const POINTS = [
   "You're 13 or older. If you're under 18, a parent or guardian agrees to these terms with you.",
@@ -46,7 +48,17 @@ export default function TermsGate({ user, onDone }) {
         }
         setNeed(accepted || seen ? "" : version);
       })
-      .catch(() => alive && setNeed("")); // never lock anyone out because the check failed
+      .catch(() => {
+        // The check didn't answer: accepted on this device before is enough; otherwise ask.
+        if (!alive) return;
+        let seen = false;
+        try {
+          seen = localStorage.getItem(seenKey(user.id, FALLBACK_VERSION)) === "1";
+        } catch {
+          // Storage blocked.
+        }
+        setNeed(seen ? "" : FALLBACK_VERSION);
+      });
     return () => {
       alive = false;
     };
@@ -55,6 +67,18 @@ export default function TermsGate({ user, onDone }) {
   useEffect(() => {
     if (need === "") onDone?.();
   }, [need, onDone]);
+
+  // While it's open, the app behind it can't be clicked, tabbed to or typed in: no agreeing, no app.
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root || !need) return;
+    root.inert = true;
+    root.setAttribute("aria-hidden", "true");
+    return () => {
+      root.inert = false;
+      root.removeAttribute("aria-hidden");
+    };
+  }, [need]);
 
   if (!need) return null;
 
@@ -71,7 +95,20 @@ export default function TermsGate({ user, onDone }) {
         }
         setNeed("");
       })
-      .catch((e) => setErr(e?.response?.data?.error || "Couldn't save that. Check your internet and try again."))
+      .catch((e) => {
+        // The agreement changed while it was open: read the new one.
+        if (e?.response?.status === 409) {
+          setErr(e.response.data?.error || "The terms were just updated. Reload the page and read them again.");
+          return;
+        }
+        // They did agree; the server just didn't answer. Remember it here so they aren't stuck.
+        try {
+          localStorage.setItem(seenKey(user.id, need), "1");
+        } catch {
+          // Storage blocked.
+        }
+        setNeed("");
+      })
       .finally(() => setBusy(false));
   };
 

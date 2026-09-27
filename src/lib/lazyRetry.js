@@ -1,4 +1,5 @@
 import { lazy } from "react";
+import { freshReload } from "@/lib/updateReload";
 
 // Pages load on demand in separate files whose names change with every deploy. Anyone
 // who had the app open during a deploy asks for the OLD file names, which no longer
@@ -24,7 +25,7 @@ export function lazyRetry(factory) {
         if (!reloaded) sessionStorage.setItem(KEY, String(Date.now()));
       } catch {}
       if (!reloaded) {
-        window.location.reload();
+        freshReload();
         // Keep React waiting while the page reloads.
         return new Promise(() => {});
       }

@@ -1,5 +1,5 @@
 import React from "react";
-import { isUpdateError, mayAutoReload } from "@/lib/updateReload";
+import { isUpdateError, mayAutoReload, freshReload } from "@/lib/updateReload";
 
 // Catches a crash anywhere below it so the app shows a way out instead of going blank.
 // A crash caused by an update going live (the page asks for code files of the version before)
@@ -17,7 +17,10 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error("App crashed:", error, info?.componentStack);
-    if (isUpdateError(error) && mayAutoReload()) this.timer = setTimeout(() => window.location.reload(), 4000);
+    if (isUpdateError(error) && mayAutoReload()) {
+      this.timer = setTimeout(freshReload, 2500);
+      this.setState({ auto: true });
+    }
   }
 
   componentWillUnmount() {
@@ -29,13 +32,13 @@ export default class ErrorBoundary extends React.Component {
     const updating = isUpdateError(this.state.error);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-950 text-slate-200 p-6 text-center">
-        {updating && <span className="w-8 h-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" aria-hidden="true" />}
+        {updating && this.state.auto && <span className="w-8 h-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" aria-hidden="true" />}
         <p className="text-lg font-semibold">{updating ? "Nebulux AI was just updated" : "Something went wrong."}</p>
         <p className="text-sm text-slate-400 max-w-sm">
-          {updating ? "Loading the new version… This takes a few seconds." : "Reloading usually fixes it — especially right after Nebulux AI was updated."}
+          {updating ? (this.state.auto ? "Loading the new version… This takes a few seconds." : "Press Reload to get the new version.") : "Reloading usually fixes it — especially right after Nebulux AI was updated."}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => (isUpdateError(this.state.error) ? freshReload() : window.location.reload())}
           className="mt-2 px-5 py-2 rounded-xl bg-indigo-600 text-[#fff] text-sm font-medium hover:bg-indigo-700"
         >
           Reload

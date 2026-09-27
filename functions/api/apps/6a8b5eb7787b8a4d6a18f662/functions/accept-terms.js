@@ -69,7 +69,7 @@ export async function onRequestPost(context) {
       deadline: new Date(since + GRACE_DAYS * DAY).toISOString(),
     });
   } catch {
-    // Never lock anyone out because the check itself failed.
-    return json({ accepted: true, version, unknown: true });
+    // The check failed: ask them to accept (the app remembers an earlier yes on the device).
+    return json({ accepted: false, version, unknown: true });
   }
 }
