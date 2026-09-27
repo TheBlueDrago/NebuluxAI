@@ -15,8 +15,9 @@ export function clearSignIn() {
   }
 }
 
-// A full page load (not a router move) so nothing from the old session stays in memory.
-export function signOut(to = "/login") {
+// A full page load (not a router move) so nothing from the old session stays in memory. Signing
+// out lands on the homepage.
+export function signOut(to = "/") {
   clearSignIn();
   window.location.replace(to);
 }
