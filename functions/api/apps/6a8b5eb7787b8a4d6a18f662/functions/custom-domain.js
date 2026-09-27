@@ -127,10 +127,12 @@ export async function onRequestPost(context) {
       return json(describe(current.hostname, result));
     }
 
-    if (!(await allow(`domain:${user.id}`, 10, 3600))) return json({ error: "Too many changes. Try again in an hour." }, 429);
+    // Only real changes count toward the limit (refused tries don't), and admins have none.
+    const tooMany = async () => user.role !== "admin" && !(await allow(`domainchange:${user.id}`, 10, 3600));
 
     if (body.action === "remove") {
       if (current) {
+        if (await tooMany()) return json({ error: "Too many changes. Try again in an hour." }, 429);
         if (current.id) await cf(env, "DELETE", `/${current.id}`).catch(() => null);
         await kv.delete(`domain:${current.hostname}`);
         await kv.delete(`sitedomain:${site}`);
@@ -148,6 +150,7 @@ export async function onRequestPost(context) {
         return json({ error: ours ? "That's a Nebulux address, so it can't be connected. Use a domain you bought yourself, like www.mybakery.com." : "Type a domain like www.mybakery.com (without https://)." }, 400);
       }
       if (await kv.get(`domain:${hostname}`)) return json({ error: "That domain is already connected to a website." }, 400);
+      if (await tooMany()) return json({ error: "Too many changes. Try again in an hour." }, 429);
       // No limit: Cloudflare includes 100 domains, then about $0.10 each a month (the owner chose
       // no cap on 2026-09-27; every domain belongs to someone on Pro or higher).
       const list = (await kv.get("customdomains", "json")) || [];
