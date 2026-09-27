@@ -1,10 +1,10 @@
 import { base44 } from "@/api/base44Client";
 
 // Products a generated site sells are declared in its HTML as:
-// <script type="application/json" id="blackhole-products">[{"id":"basic","name":"Basic","price":"9.99"}]</script>
+// <script type="application/json" id="nebulux-products">[{"id":"basic","name":"Basic","price":"9.99"}]</script>
 // On publish we mirror them into SiteProduct so checkout prices come from the server, never the buyer.
 export function parseProducts(html) {
-  const m = (html || "").match(/<script[^>]*id=["']blackhole-products["'][^>]*>([\s\S]*?)<\/script>/i);
+  const m = (html || "").match(/<script[^>]*id=["'](?:nebulux|blackhole)-products["'][^>]*>([\s\S]*?)<\/script>/i);
   if (!m) return [];
   try {
     const arr = JSON.parse(m[1]);

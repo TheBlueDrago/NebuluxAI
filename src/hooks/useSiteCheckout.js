@@ -4,13 +4,13 @@ import { base44 } from "@/api/base44Client";
 import { paymentError } from "@/lib/paymentError";
 
 // Published sites run in a sandboxed iframe, so their buy buttons ask the host page to start
-// checkout: parent.postMessage({ type: 'blackhole-checkout', productId, quantity }, '*').
+// checkout: parent.postMessage({ type: 'nebulux-checkout', productId, quantity }, '*').
 export default function useSiteCheckout(siteName) {
   useEffect(() => {
     if (!siteName) return;
     const handler = async (e) => {
       const d = e.data;
-      if (!d || d.type !== "blackhole-checkout") return;
+      if (!d || !/^(nebulux|blackhole)-checkout$/.test(d.type || "")) return; // older sites still send blackhole-checkout
       try {
         const res = await base44.functions.invoke("site-checkout", {
           siteName,

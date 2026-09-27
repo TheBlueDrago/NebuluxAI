@@ -6,6 +6,7 @@ import { hasProFeatures } from "@/lib/plans";
 
 // Connect your own domain (www.mybakery.com) to your published website: Pro and up, not the
 // free trial week. The server side is functions/.../custom-domain.js.
+// No button of its own: it opens from the Publish box (openKey).
 export default function CustomDomain({ siteName, plan, onUpgrade, openKey = 0, initialHost = "" }) {
   const shell = useAppShell();
   const trial = shell?.credits?.planSource === "trial";
@@ -16,17 +17,7 @@ export default function CustomDomain({ siteName, plan, onUpgrade, openKey = 0, i
     if (openKey) setOpen(true);
   }, [openKey]);
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title={allowed ? "Use your own domain" : "Your own domain: Pro and up"}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm hover:bg-slate-700 transition-colors"
-      >
-        <Globe className="w-4 h-4" /> <span className="hidden sm:inline">Domain</span>
-      </button>
-      {open && <DomainDialog key={openKey} siteName={siteName} allowed={allowed} trial={trial} onUpgrade={onUpgrade} initialHost={initialHost} onClose={() => setOpen(false)} />}
-    </>
+    open && <DomainDialog key={openKey} siteName={siteName} allowed={allowed} trial={trial} onUpgrade={onUpgrade} initialHost={initialHost} onClose={() => setOpen(false)} />
   );
 }
 

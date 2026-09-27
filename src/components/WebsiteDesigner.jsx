@@ -59,6 +59,7 @@ const RESERVED = ["home", "www", "admin", "api", "mail", "infinity", "ai", "app"
 const SITE_TWEAKS = ["Make it look more modern", "Add a contact form", "Improve the wording", "Make it better on phones", "Add a new section"];
 
 const SYSTEM = `You are Nebulux AI Website Designer. The user describes a website and you build it.
+BRANDING: this platform is Nebulux AI (sites live at name.nebuluxai.com). Never write "Blackhole", "Blackhole AI" or "blackhole-ai-tech.com" anywhere in a page, including comments; when editing a page that has them, change them to Nebulux AI / nebuluxai.com (keep ids like blackhole-products as nebulux-products).
 ALWAYS build a single complete, self-contained HTML document: include <!DOCTYPE html>, <html>, <head> with inline <style> CSS, and <body> with inline <script> for any interactivity.
 Make it modern, responsive, and visually polished — clean typography, good spacing, a tasteful color palette, and smooth interactions. Use placeholder content that fits the site's purpose.
 Every button, link, tab, menu and form must actually do something when clicked — scroll to its section, switch views, open/close menus and modals, validate and "submit" forms with a confirmation message. Never leave a button with no behaviour.
@@ -68,9 +69,9 @@ When the user asks for changes to an existing site, follow the EDIT MODE instruc
 
 PAYMENTS: never add a checkout, billing, payment or "buy" page unless the user explicitly asks for one — a normal site has no products, no prices and no payment buttons. Only when the user asks for a billing, checkout, pricing, payment or "buy" page, use Blackhole's built-in payment system — the same hosted checkout this platform uses. Never use Stripe, PayPal, or your own card form, and never ask the buyer for card numbers.
 1) Declare the products inside the document exactly like this:
-<script type="application/json" id="blackhole-products">[{"id":"basic","name":"Basic","price":"9.99","currency":"USD"}]</script>
+<script type="application/json" id="nebulux-products">[{"id":"basic","name":"Basic","price":"9.99","currency":"USD"}]</script>
 Product ids are lowercase letters, numbers and hyphens; price is major units as a string and must be at least 0.50.
-2) Every buy button must call: parent.postMessage({ type: 'blackhole-checkout', productId: 'basic', quantity: 1 }, '*')
+2) Every buy button must call: parent.postMessage({ type: 'nebulux-checkout', productId: 'basic', quantity: 1 }, '*')
 Nebulux AI then opens the secure hosted checkout, collects the buyer's card, email and address, and the site owner is paid out after platform fees and taxes. Design the page beautifully, but never collect payment details yourself.`;
 
 function extractHtml(text) {
@@ -86,7 +87,7 @@ const isHtmlMsg = (m) => m.role === "ai" && !m.text && /<[a-z!][\s\S]*>/i.test(m
 
 // Sites are single documents, so the "pages" are their sections: ids used as in-page
 // link targets (href="#pricing") or on <section> elements. Picking one jumps the
-// preview there (see "blackhole-goto" in lib/previewShim.js).
+// preview there (see "nebulux-goto" in lib/previewShim.js).
 function detectSections(html) {
   const ids = new Set();
   if (html) {
@@ -272,7 +273,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   useEffect(() => {
     let t;
     const onMsg = (e) => {
-      if (e.source !== previewRef.current?.contentWindow || e.data?.type !== "blackhole-checkout") return;
+      if (e.source !== previewRef.current?.contentWindow || !/^(nebulux|blackhole)-checkout$/.test(e.data?.type || "")) return;
       setPreviewNotice("Buy buttons open secure checkout on your published website.");
       clearTimeout(t);
       t = setTimeout(() => setPreviewNotice(""), 4000);
@@ -624,7 +625,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const currentSection = sections.includes(pagePath) ? pagePath : "";
   const goToSection = (id) => {
     setPagePath(id);
-    previewRef.current?.contentWindow?.postMessage({ type: "blackhole-goto", id }, "*");
+    previewRef.current?.contentWindow?.postMessage({ type: "nebulux-goto", id }, "*");
   };
 
   return (
@@ -1066,6 +1067,11 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                     ? "Optional. After you publish, we'll show the one setting to add where you bought the domain."
                     : "Use your own address (like www.mybakery.com) with Pro and higher plans."}
                 </p>
+                {domainAllowed && (
+                  <button type="button" onClick={() => setDomainOpen({ key: Date.now(), host: "" })} className="mt-1 text-xs text-indigo-300 hover:text-indigo-200 underline">
+                    Already connected one? Check or change your domain
+                  </button>
+                )}
               </div>
               <p className="text-slate-400 text-xs mt-2">
                 Anyone on the internet can see it, so leave out private things like your home address, passwords or card numbers.

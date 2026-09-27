@@ -112,7 +112,7 @@ export default function RevenueAnalytics() {
               <span className="text-slate-200 text-sm inline-flex items-center gap-1.5 truncate">
                 <Globe className="w-3.5 h-3.5 text-sky-300 shrink-0" />
                 {name}
-                <span className="text-sky-300">.blackhole</span>
+                <span className="text-sky-300">.nebuluxai.com</span>
               </span>
               <span className="text-white text-sm font-semibold shrink-0">{money(s.gross)}</span>
             </div>

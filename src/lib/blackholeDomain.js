@@ -1,6 +1,6 @@
 import { familySafeHost } from "../../cloudflare-lib/familysafe.js";
 
-export const BLACKHOLE_TLD = ".blackhole";
+export const BLACKHOLE_TLD = ".nebuluxai.com";
 
 // Game genre → address ending. A shooter called "shooter.io" lives at shooter.io.shooter.
 export const GAME_TLDS = {
@@ -16,7 +16,7 @@ export const GAME_TLDS = {
   strategy: "strategy",
 };
 
-// Every published website lives at <name>.blackhole — the ending is fixed, only the name is chosen.
+// Every published website lives at <name>.nebuluxai.com — the ending is fixed, only the name is chosen.
 export const domainOf = (name) => `${(name || "your-site").toLowerCase()}${BLACKHOLE_TLD}`;
 
 export const gameDomainOf = (name, genre) => `${(name || "my-game").toLowerCase()}.${GAME_TLDS[genre] || "game"}`;

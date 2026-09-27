@@ -5,7 +5,7 @@ import { stripInjected } from "./injected.js";
 
 const APP_ORIGIN = "https://nebuluxai.com";
 
-// Buy buttons call parent.postMessage({ type: 'blackhole-checkout', ... }). Inside the
+// Buy buttons call parent.postMessage({ type: 'nebulux-checkout', ... }). Inside the
 // Blackhole Browser the app answers that (useSiteCheckout), but on the site's own
 // subdomain there is no parent, so the message comes back to the page itself. This
 // bridge catches it there (top-level only) and sends the buyer to the app's /buy page,
@@ -14,7 +14,7 @@ export function withCheckoutBridge(html, name) {
   const site = JSON.stringify(name).replace(/</g, "\\u003c");
   return beforeBodyEnd(html,
     `<script data-bh>(function(){if(window.top!==window)return;window.addEventListener("message",function(e){var d=e.data;` +
-    `if(e.source!==window||!d||d.type!=="blackhole-checkout")return;` +
+    `if(e.source!==window||!d||(d.type!=="nebulux-checkout"&&d.type!=="blackhole-checkout"))return;` +
     `location.href="${APP_ORIGIN}/buy?"+new URLSearchParams({site:${site},product:String(d.productId||""),qty:String(d.quantity||1)});});})();</script>`);
 }
 

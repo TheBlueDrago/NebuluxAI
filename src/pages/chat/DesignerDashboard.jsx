@@ -134,7 +134,7 @@ function SiteCard({ site, onEdit, onToggleHidden, onDelete, inGallery, onToggleG
           )}
         </div>
         <p className="text-sm font-semibold text-slate-100 truncate">{site.name}</p>
-        <p className="text-[11px] text-slate-500 truncate">{site.name}.blackhole</p>
+        <p className="text-[11px] text-slate-500 truncate">{site.name}.nebuluxai.com</p>
         <p className="text-[11px] text-slate-600 mt-0.5">
           Updated {site.updated_date ? formatDistanceToNow(new Date(site.updated_date), { addSuffix: true }) : "recently"}
         </p>

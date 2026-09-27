@@ -74,7 +74,7 @@ export default async function (req) {
       const lines = fresh
         .map(
           (r) =>
-            `- ${r.siteName}.blackhole | ${r.productName || r.productId} x${r.quantity || 1} | gross ${money(
+            `- ${r.siteName}.nebuluxai.com | ${r.productName || r.productId} x${r.quantity || 1} | gross ${money(
               parseFloat(r.gross || '0') || 0
             )} | fee ${money(parseFloat(r.platformFee || '0') || 0)} | payout ${money(
               parseFloat(r.creatorPayout || '0') || 0

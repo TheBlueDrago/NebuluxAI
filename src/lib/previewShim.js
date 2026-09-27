@@ -46,7 +46,7 @@ const SHIM = `<script>(function(){
   // The designer's section picker: click the site's own link to that section if it has one
   // (so view-switching sites show it), otherwise scroll to it.
   window.addEventListener("message",function(e){
-    var d=e.data;if(e.source!==window.parent||!d||d.type!=="blackhole-goto")return;
+    var d=e.data;if(e.source!==window.parent||!d||(d.type!=="nebulux-goto"&&d.type!=="blackhole-goto"))return;
     var id=String(d.id||"");if(!/^[A-Za-z][\\w-]*$/.test(id)){window.scrollTo({top:0,behavior:"smooth"});return}
     var link=document.querySelector('a[href="#'+id+'"]')||document.querySelector("[onclick*=\\"'"+id+"'\\"]");
     if(link){link.click();return}
