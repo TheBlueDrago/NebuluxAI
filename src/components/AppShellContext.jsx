@@ -7,6 +7,8 @@ import { claimPendingReferral, hasWelcomePending } from "@/lib/referral";
 import WelcomeReward from "@/components/WelcomeReward";
 import WelcomeTour from "@/components/WelcomeTour";
 import TermsGate from "@/components/TermsGate";
+import NamePrompt from "@/components/NamePrompt";
+import TwoStepGate from "@/components/TwoStepGate";
 import { applyThemeClass, readUserTheme, writeUserTheme } from "@/lib/theme";
 import { restoreChats } from "@/lib/chatStash";
 
@@ -37,8 +39,15 @@ export function AppShellProvider({ children }) {
   // A new user who arrived through a friend's invite link: count the referral once,
   // then let them pick their own welcome bonus (until they do, it's offered on each visit).
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [twoStepOk, setTwoStepOk] = useState(false);
+  const twoStepDone = useCallback(() => setTwoStepOk(true), []);
   const [termsOk, setTermsOk] = useState(false);
   const termsDone = useCallback(() => setTermsOk(true), []);
+  const [nameOk, setNameOk] = useState(false);
+  const nameDone = useCallback((newName) => {
+    setNameOk(true);
+    if (newName) setCurrentUser((u) => (u ? { ...u, full_name: newName, name_set: true } : u));
+  }, []);
   useEffect(() => {
     if (!currentUser?.id) return;
     claimPendingReferral().then(() => {
@@ -123,10 +132,14 @@ export function AppShellProvider({ children }) {
     <AppShellContext.Provider value={value}>
       {children}
       {/* The user agreement comes first; the invite reward and the tour wait for it. */}
-      <TermsGate user={currentUser} onDone={termsDone} />
-      <WelcomeReward open={welcomeOpen && termsOk} onClose={() => setWelcomeOpen(false)} onClaimed={credits.sync} />
+      {/* Two-step code first (if it's on), then the agreement, then the name. */}
+      <TwoStepGate user={currentUser} onDone={twoStepDone} />
+      <TermsGate user={twoStepOk ? currentUser : null} onDone={termsDone} />
+      {/* Then, once per account: what should Nebulux AI call you (their username). */}
+      <NamePrompt user={currentUser} ready={termsOk} onDone={nameDone} />
+      <WelcomeReward open={welcomeOpen && termsOk && nameOk} onClose={() => setWelcomeOpen(false)} onClaimed={credits.sync} />
       {/* A new account's first visit: a short guided tour, or explore alone (after any invite reward). */}
-      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || welcomeOpen || isBanned || isBlocked || isUnverified} />
+      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || welcomeOpen || isBanned || isBlocked || isUnverified} />
     </AppShellContext.Provider>
   );
 }
