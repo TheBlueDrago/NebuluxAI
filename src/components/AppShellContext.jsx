@@ -6,6 +6,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { claimPendingReferral, hasWelcomePending } from "@/lib/referral";
 import WelcomeReward from "@/components/WelcomeReward";
 import WelcomeTour from "@/components/WelcomeTour";
+import TermsGate from "@/components/TermsGate";
 import { applyThemeClass, readUserTheme, writeUserTheme } from "@/lib/theme";
 import { restoreChats } from "@/lib/chatStash";
 
@@ -36,6 +37,8 @@ export function AppShellProvider({ children }) {
   // A new user who arrived through a friend's invite link: count the referral once,
   // then let them pick their own welcome bonus (until they do, it's offered on each visit).
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [termsOk, setTermsOk] = useState(false);
+  const termsDone = useCallback(() => setTermsOk(true), []);
   useEffect(() => {
     if (!currentUser?.id) return;
     claimPendingReferral().then(() => {
@@ -119,9 +122,11 @@ export function AppShellProvider({ children }) {
   return (
     <AppShellContext.Provider value={value}>
       {children}
-      <WelcomeReward open={welcomeOpen} onClose={() => setWelcomeOpen(false)} onClaimed={credits.sync} />
+      {/* The user agreement comes first; the invite reward and the tour wait for it. */}
+      <TermsGate user={currentUser} onDone={termsDone} />
+      <WelcomeReward open={welcomeOpen && termsOk} onClose={() => setWelcomeOpen(false)} onClaimed={credits.sync} />
       {/* A new account's first visit: a short guided tour, or explore alone (after any invite reward). */}
-      <WelcomeTour user={currentUser} shell={value} blocked={welcomeOpen || isBanned || isBlocked || isUnverified} />
+      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || welcomeOpen || isBanned || isBlocked || isUnverified} />
     </AppShellContext.Provider>
   );
 }
