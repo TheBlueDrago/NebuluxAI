@@ -10,3 +10,12 @@ routes = [
 
 [observability]
 enabled = true
+
+# The site's KV: custom domains (domain:<hostname> -> { site }) set up in the Website Designer.
+[[kv_namespaces]]
+binding = "KV"
+id = "3ae4e5a66e7f459296bf6c6b99951436"
+
+# Custom domains (Cloudflare for SaaS): once Custom Hostnames is switched on for nebuluxai.com,
+# add this route too, so requests for people's own domains reach this Worker:
+#   { pattern = "*/*", zone_name = "nebuluxai.com" }

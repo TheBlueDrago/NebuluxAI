@@ -68,3 +68,12 @@ res = await get("www.nebuluxai.com");
 assert(asked.length === 1 && !asked[0].includes("get-site-html"), "www.nebuluxai.com passes straight through to the app");
 res = await get("a.b.nebuluxai.com");
 assert(res.status === 404, "deeper addresses aren't sites");
+
+// Custom domains: a connected domain shows its website; any other outside address gets nothing.
+{
+  const env = { KV: { get: async (k) => (k === "domain:www.mybakery.com" ? { site: "nova" } : null) } };
+  let r = await worker.fetch(new Request("https://www.mybakery.com/"), env);
+  assert(r.status === 200 && (await r.text()).includes("Nova") && r.headers.get("x-content-type-options") === "nosniff", "a connected custom domain shows its website");
+  r = await worker.fetch(new Request("https://random-other.com/"), env);
+  assert(r.status === 404, "a domain nobody connected gets nothing");
+}

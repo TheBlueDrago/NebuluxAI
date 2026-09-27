@@ -14,6 +14,7 @@ import ModeToggle from "@/components/chat/ModeToggle";
 import { base44 } from "@/api/base44Client";
 import AiChooser from "@/components/AiChooser";
 import GitHubPush from "@/components/designer/GitHubPush";
+import CustomDomain from "@/components/designer/CustomDomain";
 import GitHubOpen from "@/components/designer/GitHubOpen";
 import CodeEditor from "@/components/designer/CodeEditor";
 import DownloadZip from "@/components/designer/DownloadZip";
@@ -719,6 +720,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             }}
           />
           <GitHubPush html={previewHtml} siteName={siteName} plan={plan} onUpgrade={onUpgrade} />
+          <CustomDomain siteName={siteName} plan={plan} onUpgrade={onUpgrade} />
           <DownloadZip html={previewHtml} name={siteName} plan={plan} onUpgrade={onUpgrade} />
           <button
             onClick={() => setShowPublish(true)}

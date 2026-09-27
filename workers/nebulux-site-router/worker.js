@@ -74,6 +74,25 @@ async function lookup(kind, name) {
   return null;
 }
 
+// Someone's own domain (Pro and up, set up in the Website Designer: functions/.../custom-domain.js)
+// pointing at us through Cloudflare for SaaS: serve the website it's connected to.
+var DOMAINS = null; // the site's KV (set on each request)
+async function customDomain(host) {
+  if (!DOMAINS) return new Response("Not found", { status: 404 });
+  var link = null;
+  try {
+    link = await DOMAINS.get("domain:" + host, "json");
+  } catch (err) {
+    link = null;
+  }
+  if (!link || !link.site) return new Response("Not found", { status: 404 });
+  var res = await lookup("get-site-html", link.site);
+  if (!res || !res.ok) return new Response(notFoundPage(link.site), { status: res ? 404 : 502, headers: PAGE_HEADERS });
+  var data = await res.json().catch(function () { return null; });
+  if (!data || !data.html) return new Response(notFoundPage(link.site), { status: 404, headers: PAGE_HEADERS });
+  return new Response(data.html, { status: 200, headers: PAGE_HEADERS });
+}
+
 function notFoundPage(rawName) {
   var name = escapeHtml(rawName);
   return (
@@ -86,13 +105,14 @@ function notFoundPage(rawName) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
+    DOMAINS = (env && env.KV) || null;
     var url = new URL(request.url);
     var host = url.hostname.toLowerCase();
     var root = ROOTS.find(function (r) {
       return host === r || host.endsWith("." + r);
     });
-    if (!root) return new Response("Not found", { status: 404 });
+    if (!root) return customDomain(host);
     if (host === root || host === "www." + root) {
       return fetch(request);
     }
