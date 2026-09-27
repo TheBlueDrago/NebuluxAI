@@ -24,7 +24,8 @@ assert(/1 new game per month/.test(limitError("game", "free", [game("2026-09-02T
 // The publish functions, with a faked Base44 and KV.
 const store = new Map();
 const kv = {
-  get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : null),
+  // Test accounts have accepted the user agreement (its own tests: test-terms.mjs).
+  get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: "2026-09-27" } : null),
   getWithMetadata: async (k) => ({ value: store.get(k) ?? null, metadata: store.has(k + "#meta") ? JSON.parse(store.get(k + "#meta")) : null }),
   put: async (k, v, o) => {
     store.set(k, String(v));

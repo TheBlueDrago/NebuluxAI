@@ -10,13 +10,11 @@
 // KV (PUBLISHED_HTML): terms:<userId> = { version, at } (the latest acceptance).
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
+import { TERMS_VERSION, EXEMPT, exempt } from "../../../../../cloudflare-lib/terms.js";
 
-// Accepted once, kept: this only changes when the owner wants everyone to accept again.
-export const TERMS_VERSION = "2026-09-27"; // new wording (full responsibility); everyone asked again
+export { TERMS_VERSION, EXEMPT };
+
 export const termsVersion = () => TERMS_VERSION;
-// The owner's own accounts: not asked again and never listed as inactive (owner's request).
-export const EXEMPT = new Set(["thebluedragonstriker@gmail.com", "hiuhinarra@gmail.com", "narra.vidish@gmail.com"]);
-const exempt = (u) => EXEMPT.has(String((u && u.email) || "").trim().toLowerCase());
 export const GRACE_DAYS = 30;
 // Nobody is counted overdue before 30 days after this version went out.
 export const STARTED = Date.parse("2026-09-27T00:00:00Z");

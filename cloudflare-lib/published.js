@@ -8,6 +8,7 @@
 // Base44 entity's `html` field holds a short URL to /published/<kind>/<name>.
 // Base44's get-site-html/get-game-html already fetch `html` when it's a URL, so
 // every reader (designer, browser, games front, subdomain Worker) keeps working.
+import { termsAccepted, TERMS_MESSAGE } from "./terms.js";
 import { findCredentialForm } from "./phishing.js";
 import { scanPage } from "./scan.js";
 import { stripInjected } from "./injected.js";
@@ -144,6 +145,7 @@ export async function publish(context, kind, { name, html: rawHtml, extra, check
     }
     if (!user || !user.id) return json({ error: "Please sign in to publish." }, 401);
     if (await accountBlocked(env.PUBLISHED_HTML, user)) return json({ error: BLOCKED_MESSAGE }, 403);
+    if (!(await termsAccepted(env.PUBLISHED_HTML, user))) return json({ error: TERMS_MESSAGE }, 403);
     if (user.role !== "admin" && !(await allow(`publish:${user.id}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
     if (!name || !html) return json({ error: "name and html required" }, 400);
     const nameError = badName(kind, name);

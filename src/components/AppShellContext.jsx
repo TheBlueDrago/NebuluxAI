@@ -24,6 +24,16 @@ export function AppShellProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [lightMode, setLightMode] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("light"));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  // Signed in on this device: cover the app from the very first moment until the two-step code,
+  // the user agreement and the name are done, so nothing behind them can be used meanwhile.
+  const [hasSaved] = useState(() => {
+    try {
+      return !!localStorage.getItem("base44_access_token");
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     base44.functions.invoke("record-email").catch(() => {});
@@ -33,7 +43,8 @@ export function AppShellProvider({ children }) {
         setCurrentUser(u);
         restoreChats(u?.id); // chats this account put aside when it last signed out here
       })
-      .catch(() => setCurrentUser(null));
+      .catch(() => setCurrentUser(null))
+      .finally(() => setAuthChecked(true));
   }, []);
 
   // A new user who arrived through a friend's invite link: count the referral once,
@@ -132,6 +143,11 @@ export function AppShellProvider({ children }) {
     <AppShellContext.Provider value={value}>
       {children}
       {/* The user agreement comes first; the invite reward and the tour wait for it. */}
+      {((hasSaved && !authChecked) || (currentUser && !(twoStepOk && termsOk && nameOk))) && (
+        <div className="fixed inset-0 z-[98] flex items-center justify-center bg-slate-950" aria-hidden="true">
+          <span className="w-8 h-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+        </div>
+      )}
       {/* Two-step code first (if it's on), then the agreement, then the name. */}
       <TwoStepGate user={currentUser} onDone={twoStepDone} />
       <TermsGate user={twoStepOk ? currentUser : null} onDone={termsDone} />

@@ -4,10 +4,12 @@
 // antivirus software flags this file as malware (which is rather the point of them).
 const glue = (...parts) => parts.join("");
 const R = new URL("../", import.meta.url).pathname;
+const { TERMS_VERSION } = await import(new URL("../cloudflare-lib/terms.js", import.meta.url).href);
 const F = R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/";
 const store = new Map(); let writes = 0;
 const kv = {
-  async get(k, t) { const v = store.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
+  // Everyone in these tests has accepted the user agreement (its own tests are in test-terms.mjs).
+  async get(k, t) { const v = store.get(k) ?? (k.startsWith("terms:") ? JSON.stringify({ version: TERMS_VERSION }) : null); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
   async put(k, v) { writes++; store.set(k, String(v)); },
   async delete(k) { store.delete(k); },
   async list({ prefix }) { return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }; },

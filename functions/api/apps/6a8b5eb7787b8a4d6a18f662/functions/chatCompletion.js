@@ -24,6 +24,7 @@
 // times the effort level. A reply that costs more than the user has left is cut off
 // at what their credits cover.
 import { json } from "../../../../../cloudflare-lib/published.js";
+import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
 import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 
@@ -371,6 +372,7 @@ export async function onRequestPost(context) {
     // per-user rate, so they can't be used as unlimited free AI (the Gemini free-tier
     // quota is shared by everyone's chats).
     const internal = !!body.internal;
+    if (!internal && !(await termsAccepted(env.PUBLISHED_HTML, ent.user))) return json({ error: TERMS_MESSAGE, terms: true }, 403);
     // Credits are charged by the length of the reply, so a giant message would cost its sender
     // almost nothing while using up the shared AI quota. Designer messages carry the whole
     // page's code, so the cap is far above any real website.

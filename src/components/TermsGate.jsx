@@ -21,7 +21,7 @@ const POINTS = [
   "Never share passwords, card numbers or private details (your address, school or phone number) with the AI or on pages you publish.",
   "The AI can make mistakes. Check important answers, and don't rely on it for medical, legal or money decisions.",
   "Websites and games you publish are public. You're responsible for them, and we can take down anything that breaks the rules.",
-  "We never store your password or card: Base44 keeps passwords scrambled, and our payment provider (Base44 Payments, run by Wix) keeps your card and charges it for renewals. We never sell your data. See the Privacy Policy for what we collect and why.",
+  "We never store your password or card: our sign-in provider keeps passwords scrambled, and our payment providers keep your card and charge it for renewals. We never sell your data. See the Privacy Policy for what we collect and why.",
 ];
 
 export default function TermsGate({ user, onDone }) {
@@ -30,6 +30,7 @@ export default function TermsGate({ user, onDone }) {
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -81,6 +82,28 @@ export default function TermsGate({ user, onDone }) {
   }, [need]);
 
   if (!need) return null;
+
+  // Not agreeing deletes the account for good (after one clear warning): their websites and games,
+  // then the account itself, then everything saved in this browser. Same steps as Delete account.
+  const decline = async () => {
+    if (!confirmDelete) return setConfirmDelete(true); // first press: show the warning
+    setBusy(true);
+    setErr("");
+    try {
+      await base44.functions.invoke("delete-my-content");
+      await base44.functions.invoke("delete-account");
+      try {
+        localStorage.clear();
+        indexedDB.deleteDatabase("blackhole-designer");
+      } catch {
+        // Storage blocked: nothing saved to clear.
+      }
+      signOut("/");
+    } catch {
+      setErr("Couldn't delete the account right now. Try again, or contact support@nebuluxai.com.");
+      setBusy(false);
+    }
+  };
 
   const accept = () => {
     setBusy(true);
@@ -151,14 +174,31 @@ export default function TermsGate({ user, onDone }) {
             Please accept by <b>{dayName(meta.deadline)}</b>. Accounts that don't accept within 30 days are deleted as inactive.
           </p>
         )}
+        {confirmDelete && (
+          <div role="alert" className="mt-3 rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-200">
+            <p className="font-semibold">Delete your account forever?</p>
+            <p className="mt-1 text-xs">
+              If you don't agree, your Nebulux AI account is deleted: your credits, plan, websites and games. This can't be undone. Press <b>Yes, delete my account</b> to confirm, or <b>Go back</b>.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button type="button" disabled={busy} onClick={decline} className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 text-xs font-semibold text-[#fff] disabled:opacity-50">
+                {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Yes, delete my account
+              </button>
+              <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">
+                Go back
+              </button>
+            </div>
+          </div>
+        )}
         {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
         <div className="mt-5 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
           <button
             type="button"
-            onClick={() => signOut("/")}
-            className="px-4 py-2.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"
+            onClick={decline}
+            disabled={busy}
+            className="px-4 py-2.5 rounded-lg text-sm text-slate-400 hover:text-red-300 hover:bg-slate-800"
           >
-            I don't agree (sign out)
+            I don't agree (delete my account)
           </button>
           <button
             type="button"

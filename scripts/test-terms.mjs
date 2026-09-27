@@ -20,3 +20,13 @@ assert(!isOverdue({ version: TERMS_VERSION, at: new Date(now - 45 * D).toISOStri
 const { EXEMPT } = await import(pathToFileURL(R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/accept-terms.js").href);
 assert(EXEMPT.has("thebluedragonstriker@gmail.com") && EXEMPT.size === 3, "the owner's three accounts aren't asked again");
 assert(isOverdue({ version: "2026-09", at: new Date(STARTED).toISOString() }, 0, STARTED + 31 * D), "an older version accepted doesn't count once the new one's deadline passes");
+// The server refuses to work for someone who hasn't accepted (skipping the popup gets nothing).
+{
+  const { termsAccepted, TERMS_VERSION: V } = await import(pathToFileURL(R + "cloudflare-lib/terms.js").href);
+  const kv = (rec) => ({ get: async () => rec });
+  assert(!(await termsAccepted(kv(null), { id: "u1", email: "kid@example.com" })), "not accepted: the AI and publishing refuse");
+  assert(!(await termsAccepted(kv({ version: "2026-09" }), { id: "u1" })), "an older version isn't enough");
+  assert(await termsAccepted(kv({ version: V }), { id: "u1" }), "accepted: works");
+  assert(await termsAccepted(kv(null), { id: "a", role: "admin" }), "admins always work");
+  assert(await termsAccepted(kv(null), { id: "o", email: "thebluedragonstriker@gmail.com" }), "the owner's accounts always work");
+}
