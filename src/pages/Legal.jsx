@@ -56,7 +56,7 @@ export function Terms() {
       <ul>
         <li>Using the AIs costs credits. Your plan gives you a monthly allowance, and you can also get credits from referrals, promo codes or the Nebulux AI team.</li>
         <li>Credits have no cash value, can't be sold or transferred, and may expire as described in the app.</li>
-        <li>Paid plans are charged through our payment provider (Base44 Payments) at the price shown before you pay. We never see or store your full card number.</li>
+        <li>Paid plans are charged through our payment provider (Base44 Payments, run by Wix) at the price shown before you pay. They save your card and charge it each month while your plan renews; we never see or store your card number. Passwords are handled by Base44, our sign-in provider, never by us.</li>
         <li>Instead of a plan you can buy a one-time pack of credits for one AI. Bought credits are used before your monthly allowance and don't reset at the end of the month. The new-member discount doesn't apply to credit packs.</li>
         <li>Some promo codes give a discount instead of credits. Each person can use a discount code once, it only works on what it says it's for, and it may have an end date or a limited number of uses. It doesn't combine with the new-member discount: the bigger of the two is used.</li>
         <li>Credits or rewards gained by cheating — fake sign-ups, abusing referrals, exploiting bugs — can be removed, and the account can be suspended.</li>
@@ -141,7 +141,7 @@ export function Privacy() {
           <li>Your chats and website projects are saved in your own browser, not on our servers.</li>
           <li>What you ask the AI goes to Google to get an answer; we keep only the start of your five latest questions, to keep the service safe.</li>
           <li>You can download a copy of your data or delete your account at any time.</li>
-          <li>You pay on a secure checkout page, so we never see your card number.</li>
+          <li>We never store your password or card. Your password is kept scrambled by Base44, our sign-in provider, and your card is kept by our payment provider (Base44 Payments, run by Wix), which also charges it for renewals.</li>
         </ul>
       </div>
 
@@ -152,7 +152,8 @@ export function Privacy() {
         <li><strong>What you make:</strong> the sites and games you publish, and your game draft. Your chats and website projects are saved in your own browser, not on our servers.</li>
         <li><strong>Prompts:</strong> what you send the AI, including any images you attach in the chat, passes through our servers to Google to get an answer. We count the credits it uses, and keep the start (up to 300 characters) of your five most recent questions each month so our team can spot misuse and help if something goes wrong. We don't keep the rest of the text, or any images.</li>
         <li><strong>Usage:</strong> how many credits you use on each AI, your plan, promo codes you redeem, and who invited you or whom you invited. When you join through an invite link we keep a scrambled (hashed) form of your IP address with it, to spot one person creating many accounts.</li>
-        <li><strong>Payments:</strong> what you bought and when. Card details go straight to the payment provider; we never see your full card number.</li>
+        <li><strong>Payments:</strong> what you bought, when, and whether it renewed. Your card is entered on the payment provider's checkout page and saved by them (Base44 Payments, run by Wix), not by us; if your plan renews every month, they charge the saved card and only tell us that it was paid. We never see or store your card number.</li>
+        <li><strong>Passwords:</strong> we never see or store your password. Sign-in is handled by Base44, which keeps passwords scrambled (hashed) so they can't be read, not even by us. For two-step verification we keep the secret key for your authenticator app and the devices you chose to remember, never a password.</li>
         <li><strong>Messages:</strong> what you send through the contact form, with your email address so we can reply. If you report an AI reply, that reply and the question you asked just before it are sent to us too.</li>
         <li><strong>Voice:</strong> if you use the microphone button, your browser turns what you say into text (Chrome and Edge do this on Google's or Microsoft's servers). We only receive the text you then send.</li>
         <li><strong>Enterprise applications:</strong> your organization's legal name, type, where it's registered, registration number or EIN, website, and your name, role, work email and phone. Only the Nebulux AI team sees them, to check the organization is real and send a quote.</li>
