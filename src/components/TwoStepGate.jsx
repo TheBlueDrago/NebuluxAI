@@ -16,6 +16,27 @@ export default function TwoStepGate({ user, onDone }) {
   const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [method, setMethod] = useState(""); // "email" or "app"
+  const [sentTo, setSentTo] = useState("");
+
+  const sendEmail = () =>
+    base44.functions
+      .invoke("two-step", { action: "send" })
+      .then((r) => setSentTo(r.data?.email || "your email"))
+      .catch((e) => setErr(e?.response?.data?.error || "Couldn't send the email. Try again."));
+
+  // When a code is needed: find out how they get codes; email users get one sent straight away.
+  useEffect(() => {
+    if (!need) return;
+    base44.functions
+      .invoke("two-step", { action: "status" })
+      .then((r) => {
+        const m = r.data?.method || "app";
+        setMethod(m);
+        if (m === "email") sendEmail();
+      })
+      .catch(() => setMethod("app"));
+  }, [need]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -87,7 +108,13 @@ export default function TwoStepGate({ user, onDone }) {
         <h2 id="twostep-title" className="mt-2 text-lg font-semibold text-white">
           Two-step verification
         </h2>
-        <p className="mt-1 text-sm text-slate-400">Type the 6-digit code from your authenticator app.</p>
+        <p className="mt-1 text-sm text-slate-400">
+          {method === "email" || sentTo
+            ? sentTo
+              ? `We emailed a 6-digit code to ${sentTo}. Check spam if you don't see it.`
+              : "Sending a code to your email…"
+            : "Type the 6-digit code from your authenticator app."}
+        </p>
         <input
           autoFocus
           value={code}
@@ -102,6 +129,9 @@ export default function TwoStepGate({ user, onDone }) {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-4 h-4 accent-indigo-500" />
           Remember me on this device
         </label>
+        <button type="button" onClick={sendEmail} className="mt-2 text-xs text-indigo-300 underline hover:text-indigo-200">
+          {sentTo ? "Send a new code" : method === "app" ? "Email me a code instead" : ""}
+        </button>
         {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
         <button type="submit" disabled={busy || code.replace(/\D/g, "").length !== 6} className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-sm font-semibold text-[#fff] disabled:opacity-40">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} Verify

@@ -17,3 +17,5 @@ assert(await codeOk(secret, "287082", 59000), "the right code works");
 assert(await codeOk(secret, "287 082", 59000 + 30000), "one step late (a slow phone clock) still works, spaces ignored");
 assert(!(await codeOk(secret, "287082", 59000 + 120000)), "an old code doesn't");
 assert(!(await codeOk(secret, "000000", 59000)), "a wrong code doesn't");
+const { maskEmail } = await import(pathToFileURL(R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/two-step.js").href);
+assert(maskEmail("sam.jones@gmail.com") === "sa•••••@gmail.com" && maskEmail("ab@x.com") === "ab•@x.com", "emails are shown masked");
