@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import PaymentsNotice from "@/components/PaymentsNotice";
 import { motion } from "framer-motion";
-import { Check, ArrowRight, Loader2, Gift, Lock } from "lucide-react";
+import { Check, ArrowRight, Loader2, Gift, Lock, X } from "lucide-react";
+
+// The Enterprise application, opened right here (not the public page with its own menu).
+const EnterpriseApply = lazy(() => import("@/pages/Enterprise"));
 import { useNavigate, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import CreditPacks from "@/components/shop/CreditPacks";
@@ -188,6 +191,7 @@ function SectionTitle({ title, sub }) {
 export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer }) {
   const pct = offer?.discountAvailable ? offer.discountPct : 0;
   const navigate = useNavigate();
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
   const [promoInput, setPromoInput] = useState("");
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoError, setPromoError] = useState("");
@@ -257,7 +261,19 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
         <FreeCard onFree={onFree} />
         <Plan2Card onPro={onPro} pct={planPct("pro")} />
         <TeamCard onTeam={onTeam} pct={planPct("team")} />
-        <EnterpriseCard onEnterprise={() => navigate("/enterprise")} />
+        <EnterpriseCard onEnterprise={() => setEnterpriseOpen(true)} />
+        {enterpriseOpen && (
+          <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && setEnterpriseOpen(false)}>
+            <div role="dialog" aria-modal="true" aria-label="Apply for Enterprise" className="relative w-full max-w-xl my-8">
+              <button onClick={() => setEnterpriseOpen(false)} aria-label="Close" className="absolute top-3 right-3 z-10 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+              <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>}>
+                <EnterpriseApply embedded />
+              </Suspense>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-10 w-full max-w-md mx-auto">
