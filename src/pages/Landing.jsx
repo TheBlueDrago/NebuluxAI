@@ -439,7 +439,7 @@ export default function Landing() {
         </Reveal>
         <PricingCards />
         <p className="mt-6 text-center text-slate-400">
-          Just need a few more credits? One-time packs start at $1.49, no subscription.{" "}
+          Just need a few more credits? One-time packs start at $0.99, no subscription.{" "}
           <Link to="/pricing#packs" className="text-indigo-300 hover:text-indigo-200">See credit packs</Link>
         </p>
       </section>

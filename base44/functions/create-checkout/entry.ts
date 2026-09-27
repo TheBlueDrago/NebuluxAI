@@ -118,10 +118,10 @@ Deno.serve(async (req: Request) => {
     // credits-<ai>-<size>. Keep in step with PACK_PRICES in cloudflare-lib/creditPacks.js.
     const PACK_NAMES: Record<string, string> = { ai: "Nebulux AI", code: "Nebulux Code", galaxy: "Galaxy", space: "Space" };
     const PACK_PRICES: Record<string, Record<number, string>> = {
-      ai: { 25: "1.49", 50: "2.79", 100: "4.99" },
-      code: { 25: "2.39", 50: "4.49", 100: "7.99" },
-      galaxy: { 25: "2.69", 50: "4.99", 100: "8.99" },
-      space: { 25: "2.99", 50: "5.49", 100: "9.99" },
+      ai: { 25: "0.99", 50: "1.79", 100: "2.99" },
+      code: { 25: "1.49", 50: "2.69", 100: "4.49" },
+      galaxy: { 25: "1.69", 50: "2.99", 100: "4.99" },
+      space: { 25: "1.89", 50: "3.39", 100: "5.49" },
     };
     const CREDIT_PACKS: Record<string, { name: string; price: string; currency: string }> = {};
     for (const [slug, sizes] of Object.entries(PACK_PRICES)) {
