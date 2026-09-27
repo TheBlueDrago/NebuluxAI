@@ -156,7 +156,7 @@ export default function EnterpriseApps() {
         })}
       </div>
       <p className="mt-3 text-[11px] text-slate-500">
-        Enterprise is $17 a seat a month, $16 from 10 seats and $15 from 25. To end or change it later, use Set membership on the person's account above.
+        Enterprise is $30 a seat a month, $25 from 10 seats and $20 from 25. To end or change it later, use Set membership on the person's account above.
       </p>
       {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
     </div>

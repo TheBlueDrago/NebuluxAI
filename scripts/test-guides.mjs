@@ -49,7 +49,7 @@ assert(guideBySlug("nope") === null && guideBySlug("__proto__") === null, "unkno
 // "$1" in a description or game name is kept as written (it used to be read as a code).
 {
   const out = withMeta(index, PAGES.pricing);
-  assert(out.includes('content="Free to start. Pro is $10 a month') && (out.match(/<meta name="description"/g) || []).length === 1, "Pricing's description keeps \"$1 a month\"");
+  assert(out.includes('content="Free to start. Pro is $15 a month') && (out.match(/<meta name="description"/g) || []).length === 1, "Pricing's description keeps \"$1 a month\"");
   const game = withGameMeta(index, { title: "Win $1 & $& $$ prizes" });
   assert(game.includes("<title>Win $1 &amp; $&amp; $$ prizes · Nebulux AI</title>") && game.includes('content="Play Win $1 &amp; $&amp; $$ prizes"'), "a game name with $ signs stays intact");
   assert((out.match(/rel="canonical"/g) || []).length === 1 && out.includes('<link rel="canonical" href="https://nebuluxai.com/pricing" />'), "pages name their one true address");

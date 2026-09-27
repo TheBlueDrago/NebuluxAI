@@ -65,7 +65,7 @@ function Plan2Card({ onPro, pct }) {
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-white">Pro</h3>
         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-          <PriceTag amount={10} pct={pct} />
+          <PriceTag amount={15} pct={pct} />
         </span>
       </div>
       <div className="h-px bg-slate-700/60 my-4" />
@@ -109,7 +109,7 @@ function TeamCard({ onTeam, pct }) {
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-white">Team</h3>
         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40">
-          <PriceTag amount={15} pct={pct} />
+          <PriceTag amount={20} pct={pct} />
         </span>
       </div>
       <div className="h-px bg-slate-700/60 my-4" />

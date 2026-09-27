@@ -3,17 +3,16 @@
 // the same sizes. The Base44 create-checkout function holds the authoritative prices, so keep
 // PACK_PRICES in step with its copy.
 //
-// Priced against the plans (2026-09-25): every 50-credit pack costs less than Pro ($10 for
-// 100 AI + 50 each of Code, Galaxy and Space), and buying Pro's credits as packs costs about
-// 2.5x Pro, so a plan is the better deal and packs are for topping up. Bigger packs cost less
-// per credit. No pack is under the $0.50 payment minimum (so there's no 5-credit pack: it
-// would cost the same as 10).
-export const PACK_SIZES = [10, 25, 50];
+// Priced against the plans (2026-09-27: Pro $15, Team $20): buying Pro's credits (100 AI + 50 each of
+// Code, Galaxy and Space) as packs costs about $20, and Team's about $35, so a plan is the better
+// deal and packs are for topping up. Bigger packs cost less per credit. The smallest pack is
+// 25 credits, so every sale is well above what card payments take in fees (about 30¢ each).
+export const PACK_SIZES = [25, 50, 100];
 export const PACK_PRICES = {
-  ai: { 10: "0.50", 25: "0.69", 50: "0.99" },
-  aiCode: { 10: "0.65", 25: "1.09", 50: "1.79" },
-  galaxy5: { 10: "0.69", 25: "1.39", 50: "2.29" },
-  space5: { 10: "0.75", 25: "1.49", 50: "2.49" },
+  ai: { 25: "1.49", 50: "2.79", 100: "4.99" },
+  aiCode: { 25: "2.39", 50: "4.49", 100: "7.99" },
+  galaxy5: { 25: "2.69", 50: "4.99", 100: "8.99" },
+  space5: { 25: "2.99", 50: "5.49", 100: "9.99" },
 };
 // Product ids: credits-<ai>-<size>, e.g. "credits-galaxy-25".
 const SLUG = { ai: "ai", aiCode: "code", galaxy5: "galaxy", space5: "space" };

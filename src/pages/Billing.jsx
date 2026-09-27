@@ -77,22 +77,22 @@ function Billing() {
   const PLANS = {
     team: {
       name: "Team Plan",
-      amount: 15,
-      price: "$15 / month",
+      amount: 20,
+      price: "$20 / month",
       gradient: "from-sky-500 to-indigo-500",
       glow: "bg-sky-600/15",
       features: ["4 AI's (incl. Galaxy and Space)", "150 Nebulux AI credits / month", "100 Nebulux Code credits / month (shared)", "100 Galaxy credits / month", "100 Space credits / month", "Add up to 2 people — shared credits"],
-      button: "Subscribe — $15/mo",
+      button: "Subscribe — $20/mo",
       icon: Users,
     },
     pro: {
       name: "Pro Plan",
-      amount: 10,
-      price: "$10 / month",
+      amount: 15,
+      price: "$15 / month",
       gradient: "from-emerald-500 to-teal-500",
       glow: "bg-emerald-600/15",
       features: ["4 AI's (incl. Galaxy and Space)", "100 Nebulux AI credits / month", "50 Nebulux Code credits / month", "50 Galaxy credits / month", "50 Space credits / month"],
-      button: "Subscribe — $10/mo",
+      button: "Subscribe — $15/mo",
       icon: ShieldCheck,
     },
   };

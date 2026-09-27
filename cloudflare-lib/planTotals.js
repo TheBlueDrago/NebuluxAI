@@ -6,7 +6,7 @@ export const TIER_NAMES = { ai: "Nebulux AI", aiCode: "Nebulux Code", galaxy5: "
 
 // Monthly allowance per plan (same numbers the app has always shown). Enterprise is per
 // seat: each seat adds these to one pool the whole organization shares, and the org pays
-// $17 a seat a month, $16 from 10 seats, $15 from 25.
+// $30 a seat a month, $25 from 10 seats, $20 from 25.
 // Secret can no longer be bought; accounts that already have it keep it.
 export const PLAN_TOTALS = {
   free: { ai: 50, aiCode: 0, galaxy5: 0, space5: 0 },

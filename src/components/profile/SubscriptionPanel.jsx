@@ -6,8 +6,8 @@ import PurchaseHistory from "@/components/profile/PurchaseHistory";
 
 const PLAN = {
   free: { name: "Free", price: "$0" },
-  pro: { name: "Pro", price: "$10 a month" },
-  team: { name: "Team", price: "$15 a month" },
+  pro: { name: "Pro", price: "$15 a month" },
+  team: { name: "Team", price: "$20 a month" },
   secret: { name: "Secret", price: "$10 a month" },
   enterprise: { name: "Enterprise", price: "Per seat" },
   admin: { name: "Admin", price: "Free" },

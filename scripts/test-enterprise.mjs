@@ -21,9 +21,9 @@ assert(validateApplication({ ...good, seats: 1 }).error, "an organization needs 
 assert(validateApplication({ ...good, workEmail: "nope" }).error, "a work email is required");
 
 const q = quoteFor(8);
-assert(q.monthly === 136, "8 seats: $17 a seat a month");
-assert(quoteFor(8, 30).pricePerSeat === 11.9, "with the new-member offer: 30% off ($11.90 a seat)");
-assert(quoteFor(10).pricePerSeat === 16 && quoteFor(24).pricePerSeat === 16 && quoteFor(25).pricePerSeat === 15 && quoteFor(5000).pricePerSeat === 15, "more seats cost less: $16 from 10, $15 from 25, never more than $2 off");
+assert(q.monthly === 240, "8 seats: $30 a seat a month");
+assert(quoteFor(8, 30).pricePerSeat === 21, "with the new-member offer: 30% off ($21 a seat)");
+assert(quoteFor(10).pricePerSeat === 25 && quoteFor(24).pricePerSeat === 25 && quoteFor(25).pricePerSeat === 20 && quoteFor(5000).pricePerSeat === 20, "more seats cost less: $25 from 10, $20 from 25");
 assert(q.credits.ai === 800 && q.credits.aiCode === 600 && q.credits.galaxy5 === 400 && q.credits.space5 === 200, "credits are 100/75/50/25 per seat");
 
 assert(warningsFor(validateApplication(good).app).length === 0, "a company email matching the website raises no warnings");

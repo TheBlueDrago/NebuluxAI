@@ -1,7 +1,7 @@
 // Plans as the public pages describe them. Keep in step with PLAN_TOTALS in
 // cloudflare-lib/credits.js (monthly credits), src/lib/publishLimits.js (sites and games)
 // and the prices in base44/functions/create-checkout. Enterprise has no public price: it's
-// $17 a seat a month ($16 from 10 seats, $15 from 25) (cloudflare-lib/enterprise.js), quoted after an application.
+// $30 a seat a month ($25 from 10 seats, $20 from 25) (cloudflare-lib/enterprise.js), quoted after an application.
 export const PUBLIC_PLANS = [
   {
     id: "free",
@@ -14,7 +14,7 @@ export const PUBLIC_PLANS = [
   {
     id: "pro",
     name: "Pro",
-    price: "$10",
+    price: "$15",
     period: "/month",
     blurb: "More credits, all 4 AI models and your code to keep. New accounts get a free week (ZIP and GitHub come with the paid plan).",
     features: [
@@ -29,7 +29,7 @@ export const PUBLIC_PLANS = [
   {
     id: "team",
     name: "Team",
-    price: "$15",
+    price: "$20",
     period: "/month",
     blurb: "Build with up to 2 friends or coworkers.",
     features: [

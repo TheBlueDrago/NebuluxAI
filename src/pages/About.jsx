@@ -8,7 +8,7 @@ import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company"
 const VALUES = [
   { icon: Sparkles, title: "Anyone can make things", text: "You shouldn't need to learn to code to put a website or a game on the internet. Describing it should be enough." },
   { icon: ShieldCheck, title: "Safe by default", text: "Lots of our users are young, so pages are checked before they go live, reports are reviewed, and makers' emails stay private." },
-  { icon: Heart, title: "Cheap and fair", text: "Free to start, $10 a month for Pro. You can download your code on Pro and Team, and delete your account and everything in it whenever you like." },
+  { icon: Heart, title: "Cheap and fair", text: "Free to start, $15 a month for Pro. You can download your code on Pro and Team, and delete your account and everything in it whenever you like." },
   { icon: Rocket, title: "Always improving", text: "New features ship all the time, often straight from ideas people send us." },
 ];
 

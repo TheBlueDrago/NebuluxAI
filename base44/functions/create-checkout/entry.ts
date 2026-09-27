@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
     const PRODUCTS = {
       pro: {
         name: "Pro Plan",
-        price: "10.00",
+        price: "15.00",
         currency: "USD",
         subscriptionInfo: {
           subscriptionSettings: { frequency: "MONTH" },
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
       },
       team: {
         name: "Team Plan",
-        price: "15.00",
+        price: "20.00",
         currency: "USD",
         subscriptionInfo: {
           subscriptionSettings: { frequency: "MONTH" },
@@ -113,15 +113,15 @@ Deno.serve(async (req: Request) => {
         },
       },
     };
-    // One-time credit packs of 10, 25 or 50 credits for each AI: bought instead of a plan, no
+    // One-time credit packs of 25, 50 or 100 credits for each AI: bought instead of a plan, no
     // subscription, added to the buyer's bonus credits by the credit server. Ids are
     // credits-<ai>-<size>. Keep in step with PACK_PRICES in cloudflare-lib/creditPacks.js.
     const PACK_NAMES: Record<string, string> = { ai: "Nebulux AI", code: "Nebulux Code", galaxy: "Galaxy", space: "Space" };
     const PACK_PRICES: Record<string, Record<number, string>> = {
-      ai: { 10: "0.50", 25: "0.69", 50: "0.99" },
-      code: { 10: "0.65", 25: "1.09", 50: "1.79" },
-      galaxy: { 10: "0.69", 25: "1.39", 50: "2.29" },
-      space: { 10: "0.75", 25: "1.49", 50: "2.49" },
+      ai: { 25: "1.49", 50: "2.79", 100: "4.99" },
+      code: { 25: "2.39", 50: "4.49", 100: "7.99" },
+      galaxy: { 25: "2.69", 50: "4.99", 100: "8.99" },
+      space: { 25: "2.99", 50: "5.49", 100: "9.99" },
     };
     const CREDIT_PACKS: Record<string, { name: string; price: string; currency: string }> = {};
     for (const [slug, sizes] of Object.entries(PACK_PRICES)) {

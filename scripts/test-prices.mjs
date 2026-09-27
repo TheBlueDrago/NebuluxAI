@@ -61,7 +61,7 @@ assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWi
 // Credit packs: checkout's price table matches the app's.
 const { PACK_PRICES } = await load("cloudflare-lib/creditPacks.js");
 const SLUG = { ai: "ai", aiCode: "code", galaxy5: "galaxy", space5: "space" };
-const rows = Object.fromEntries([...checkout.matchAll(/^\s+(ai|code|galaxy|space): (\{ 10: [^}]+\}),?$/gm)].map((m) => [m[1], m[2]]));
+const rows = Object.fromEntries([...checkout.matchAll(/^\s+(ai|code|galaxy|space): (\{ \d+: [^}]+\}),?$/gm)].map((m) => [m[1], m[2]]));
 assert(Object.entries(PACK_PRICES).every(([tier, sizes]) => rows[SLUG[tier]] === `{ ${Object.entries(sizes).map(([n, p]) => `${n}: "${p}"`).join(", ")} }`), `credit-pack prices match checkout (${JSON.stringify(rows)})`);
 
 // Prices written out in words anywhere in the app, link previews and guides ("Pro is $1 a

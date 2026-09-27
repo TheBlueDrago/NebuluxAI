@@ -295,7 +295,7 @@ export const GUIDES = [
         heading: "Step 4: Publish and share",
         paragraphs: [
           "Press Publish and choose a name. Your site goes live at yourname.nebuluxai.com, a link you can text, post or print on a flyer. Every page is checked for scams and harmful content before it goes live, so visitors can trust it.",
-          "The free plan keeps one website online. Pro, at $10 a month, keeps three and lets you download your site's code as a ZIP or push it to GitHub.",
+          "The free plan keeps one website online. Pro, at $15 a month, keeps three and lets you download your site's code as a ZIP or push it to GitHub.",
         ],
       },
       {
@@ -413,7 +413,7 @@ export const GUIDES = [
       {
         heading: "When you grow",
         paragraphs: [
-          "The Team plan, $15 a month, lets up to three people work on your sites and share one pool of AI credits. On Pro and Team you can also download your site's code or push it to GitHub, so it's always yours.",
+          "The Team plan, $20 a month, lets up to three people work on your sites and share one pool of AI credits. On Pro and Team you can also download your site's code or push it to GitHub, so it's always yours.",
         ],
       },
     ],

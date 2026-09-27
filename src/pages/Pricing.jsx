@@ -20,7 +20,7 @@ export default function Pricing() {
     <PublicLayout title="Pricing">
       <section className="text-center pt-10 pb-12">
         <h1 className="text-4xl sm:text-6xl font-bold text-white">Simple prices</h1>
-        <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">Start free. Pro is $10 a month, Team is $15 a month for up to 3 people, and credit packs start at $0.50 with no subscription.</p>
+        <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">Start free. Pro is $15 a month, Team is $20 a month for up to 3 people, and credit packs start at $1.49 with no subscription.</p>
       </section>
       <PricingCards />
       <section id="packs" className="mt-10 max-w-3xl mx-auto scroll-mt-24">
