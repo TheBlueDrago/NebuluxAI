@@ -12,11 +12,14 @@ import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 
 // Accepted once, kept: this only changes when the owner wants everyone to accept again.
-export const TERMS_VERSION = "2026-09";
+export const TERMS_VERSION = "2026-09-27"; // new wording (full responsibility); everyone asked again
 export const termsVersion = () => TERMS_VERSION;
+// The owner's own accounts: not asked again and never listed as inactive (owner's request).
+export const EXEMPT = new Set(["thebluedragonstriker@gmail.com", "hiuhinarra@gmail.com", "narra.vidish@gmail.com"]);
+const exempt = (u) => EXEMPT.has(String((u && u.email) || "").trim().toLowerCase());
 export const GRACE_DAYS = 30;
-// Nobody is counted overdue before 30 days after the agreement started (2026-09-26).
-export const STARTED = Date.parse("2026-09-26T00:00:00Z");
+// Nobody is counted overdue before 30 days after this version went out.
+export const STARTED = Date.parse("2026-09-27T00:00:00Z");
 const DAY = 86400000;
 const parse = (s) => {
   const t = Date.parse(/Z|[+-]\d\d:?\d\d$/.test(String(s || "")) ? s : `${s}Z`);
@@ -28,7 +31,7 @@ const parse = (s) => {
 export function isOverdue(rec, createdAt, now = Date.now()) {
   if (now - STARTED < GRACE_DAYS * DAY) return false;
   if (createdAt && now - createdAt < GRACE_DAYS * DAY) return false;
-  return !rec;
+  return !rec || rec.version !== TERMS_VERSION; // never accepted this version
 }
 
 export async function onRequestPost(context) {
@@ -46,7 +49,7 @@ export async function onRequestPost(context) {
       const users = (await base44(request, "GET", "entities/User?limit=5000").catch(() => [])) || [];
       const out = [];
       for (const u of users) {
-        if (!u || !u.id || u.role === "admin") continue;
+        if (!u || !u.id || u.role === "admin" || exempt(u)) continue;
         const rec = await kv.get(`terms:${u.id}`, "json");
         if (isOverdue(rec, parse(u.created_date))) out.push({ id: u.id, email: u.email || "", name: u.full_name || "", lastAccepted: (rec && rec.at) || null, created: u.created_date || null });
       }
@@ -60,10 +63,12 @@ export async function onRequestPost(context) {
       return json({ accepted: true, version });
     }
 
+    if (exempt(user)) return json({ accepted: true, version });
     const rec = await kv.get(key, "json");
-    const since = Math.max(rec && rec.at ? Date.parse(rec.at) : 0, parse(user.created_date), STARTED);
+    // 30 days from when this version went out (or from signing up, for newer accounts).
+    const since = Math.max(parse(user.created_date), STARTED);
     return json({
-      accepted: !!rec,
+      accepted: !!rec && rec.version === version,
       version,
       returning: !!rec,
       deadline: new Date(since + GRACE_DAYS * DAY).toISOString(),
