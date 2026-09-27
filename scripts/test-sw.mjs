@@ -1,44 +1,30 @@
-// Offline guard for the service worker (public/sw.js): it may only ever serve the app's own
-// page for app screens and the app's own code files. Sign-in, data, AI and payments (/api),
-// published sites and the server-built public pages must always go to the network.
-// Run: node scripts/test-sw.mjs
+// Offline test: the installed app was removed, so public/sw.js only removes itself (every saved
+// file, its registration) and reloads open pages. Run: node scripts/test-sw.mjs
 import { readFileSync } from "node:fs";
-
-let failed = 0;
 const assert = (c, m) => {
-  console.log((c ? "ok " : "FAIL ") + m);
-  if (!c) failed++;
+  if (!c) {
+    console.error("FAIL", m);
+    process.exitCode = 1;
+  } else console.log("ok", m);
 };
 
-const src = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
-const main = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
-const headers = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
-
-// Run the worker's code with a fake `self` and catch its fetch handler.
 const listeners = {};
-const fakeSelf = { addEventListener: (t, f) => (listeners[t] = f), location: { origin: "https://nebuluxai.com" }, clients: { claim() {} }, skipWaiting() {} };
-const fakeCache = { match: async () => null, put: async () => {}, keys: async () => [], delete: async () => true };
-const fakeCaches = { open: async () => fakeCache, keys: async () => [], delete: async () => true };
-const fakeFetch = async () => ({ ok: false, headers: { get: () => "" } });
-new Function("self", "caches", "fetch", src)(fakeSelf, fakeCaches, fakeFetch);
-const handled = (path, { method = "GET", mode = "navigate", destination = "document", origin = "https://nebuluxai.com" } = {}) => {
-  let responded = false;
-  listeners.fetch({ request: { method, url: origin + path, mode, destination }, respondWith: (p) => { responded = true; Promise.resolve(p).catch(() => {}); }, waitUntil: (p) => Promise.resolve(p).catch(() => {}) });
-  return responded;
+const deleted = [];
+let unregistered = false;
+const navigated = [];
+const self = {
+  addEventListener: (t, f) => (listeners[t] = f),
+  skipWaiting: () => {},
+  registration: { unregister: async () => (unregistered = true) },
+  clients: { matchAll: async () => [{ url: "https://nebuluxai.com/chat", navigate: async (u) => navigated.push(u) }] },
 };
+const caches = { keys: async () => ["bh-shell-v4", "bh-assets-v1"], delete: async (k) => deleted.push(k) };
+new Function("self", "caches", readFileSync(new URL("../public/sw.js", import.meta.url), "utf8"))(self, caches);
 
-for (const p of ["/", "/chat", "/chat/designer/build", "/login", "/register", "/plans", "/ThankYou"]) assert(handled(p), `the app screen ${p} opens from the device`);
-assert(handled("/assets/index-abc123.js", { mode: "no-cors", destination: "script" }), "the app's code files come from the device");
-for (const p of ["/api/apps/x/entities/User/me", "/api/apps/x/functions/create-checkout", "/published/site/nova", "/guides", "/guides/resume-website", "/play/pulse", "/templates", "/pricing", "/sitemap.xml", "/sw.js", "/chatty"])
-  assert(!handled(p) && !handled(p, { mode: "cors", destination: "" }), `${p} always goes to the network`);
-assert(!handled("/chat", { method: "POST" }), "only GETs are touched");
-assert(!handled("/chat", { destination: "iframe" }), "pages inside frames (previews) are never the app page");
-assert(!handled("/", { origin: "https://nova.nebuluxai.com" }) && !handled("/assets/x.js", { origin: "https://evil.example", mode: "no-cors", destination: "script" }), "other addresses are never touched");
-assert(/isCode\(r\)/.test(src) && /text\\\/html/.test(src), "a missing code file (served as a page) is never saved as code");
-assert(/import\.meta\.env\.PROD/.test(main) && main.includes("register('/sw.js'"), "it's switched on for the live site only");
-assert(/\/sw\.js\s*\n\s*Cache-Control: no-cache/.test(headers), "fixes to it reach everyone at once (never cached)");
-
-if (failed) {
-  console.log(`\n${failed} failed`);
-  process.exit(1);
-}
+assert(!listeners.fetch, "it no longer answers any requests (nothing is served from saved copies)");
+let done;
+listeners.activate({ waitUntil: (p) => (done = p) });
+await done;
+assert(deleted.join() === "bh-shell-v4,bh-assets-v1", "every saved file is deleted");
+assert(unregistered, "it unregisters itself");
+assert(navigated[0] === "https://nebuluxai.com/chat", "open pages reload straight from the website");

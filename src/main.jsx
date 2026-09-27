@@ -24,10 +24,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 // The page background matches the theme from before the first frame (index.html) and follows
 // it after (lib/theme.js applyThemeClass), so nothing white or black flashes while loading.
 
-// Keeps the app's files on the device so the home-screen app and repeat visits open fast
-// (public/sw.js). Registered after the page has loaded so it never slows the first visit.
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => { /* not available: works as before */ })
-  })
+// The installed app was removed (owner, 2026-09-27): no service worker any more. Any that a
+// device still has is removed here (and public/sw.js removes itself too), with its saved files.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations?.().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+  globalThis.caches?.keys?.().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
 }

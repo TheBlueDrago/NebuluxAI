@@ -12,7 +12,8 @@ enabled = true
 
 # Site watchdog (watchdog.js): checks the site every 15 minutes, emails the owner if it's down.
 [triggers]
-crons = ["*/15 * * * *"]
+# Paused during maintenance (the site is down on purpose). Put back: crons = ["*/15 * * * *"]
+crons = []
 
 [[send_email]]
 name = "WATCHDOG_MAIL"

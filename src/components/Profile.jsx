@@ -581,7 +581,8 @@ export default function Profile({ open, onClose, initialView = "main", onMonitor
                     <Gift className="w-4 h-4" />
                     Refer friends · get free credits
                   </button>
-                  {(installApp.canPrompt || installApp.ios) && (
+                  {/* The installed app was removed (owner, 2026-09-27): no Install button. */}
+                  {false && (installApp.canPrompt || installApp.ios) && (
                     <button
                       onClick={() => (installApp.canPrompt ? installApp.install() : setIosHelp((v) => !v))}
                       className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-slate-200 font-medium hover:bg-slate-700 transition-colors"
