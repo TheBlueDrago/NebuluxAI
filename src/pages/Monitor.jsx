@@ -12,6 +12,7 @@ import GrowthCard from "@/components/monitor/GrowthCard";
 import PublishedContent from "@/components/monitor/PublishedContent";
 import AdminLog from "@/components/monitor/AdminLog";
 import SecurityGlance from "@/components/monitor/SecurityGlance";
+import TermsOverdue from "@/components/monitor/TermsOverdue";
 
 export default function Monitor({ onBack }) {
   const [users, setUsers] = useState([]);
@@ -86,7 +87,8 @@ export default function Monitor({ onBack }) {
 
   const q = query.trim().toLowerCase();
 
-  const searching = q.length > 0;
+  const [recentCount, setRecentCount] = useState(12);
+  const searching = q.length > 0 || recentCount > 12; // showing more also loads every account
   useEffect(() => {
     if (!searching || allLoaded || loading) return;
     let alive = true;
@@ -121,7 +123,7 @@ export default function Monitor({ onBack }) {
           `${u.email ?? ""}`.toLowerCase().includes(q)
       )
     : [];
-  const recent = visible.slice(0, 12);
+  const recent = visible.slice(0, recentCount);
   const removedUsers = removed.map((r) => users.find((u) => u.id === r.userId) || { id: r.userId, email: r.email });
 
   return (
@@ -151,6 +153,11 @@ export default function Monitor({ onBack }) {
 
       {/* Published sites & games with safety flags, red first. */}
       <PublishedContent />
+
+      {/* Inactive accounts: no user agreement accepted in 30 days. Clicking one searches for it below. */}
+      <div className="w-full max-w-3xl mt-6">
+        <TermsOverdue onOpenUser={(u) => setQuery(u.email || u.id)} />
+      </div>
 
       <div className="w-full max-w-3xl mt-6 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -183,6 +190,11 @@ export default function Monitor({ onBack }) {
           {recent.map((u) => (
             <UserCard key={u.id} user={withHold(u)} onApply={apply} onOpenDetail={setDetailUser} />
           ))}
+          {(visible.length > recentCount || (!allLoaded && visible.length >= recentCount)) && (
+            <button onClick={() => setRecentCount((n) => n + 50)} className="w-full rounded-lg bg-slate-800 border border-slate-700 py-2.5 text-sm text-slate-200 hover:bg-slate-700">
+              {loadingMore ? "Loading…" : "Show me the rest of the accounts"}
+            </button>
+          )}
         </div>
       )}
 

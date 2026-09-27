@@ -1,31 +1,74 @@
-// The user agreement everyone accepts before using the app (components/TermsGate.jsx).
-// { action: "get" } -> { accepted, version }; { action: "accept", version } -> { accepted: true }.
-// The acceptance is recorded server-side (KV terms:<userId> = { version, at }), so there's a
-// record of who agreed to what and when. Bump TERMS_VERSION when the Terms change a lot:
-// everyone is then asked again.
-import { json } from "../../../../../cloudflare-lib/published.js";
+// The user agreement (components/TermsGate.jsx). Everyone accepts it before using the app, and
+// again every month ("new terms for <month>"): the version is the month, so on the 1st everyone
+// is asked again. An account that hasn't accepted in 30 days counts as inactive: it's listed for
+// admins in Monitor (action "overdue") to delete. Nothing is deleted automatically.
+//
+// { action: "get" }               -> { accepted, version, returning, deadline }
+// { action: "accept", version }   -> { accepted: true }
+// { action: "overdue" } (admins)  -> { users: [{ id, email, name, lastAccepted, created }] }
+//
+// KV (PUBLISHED_HTML): terms:<userId> = { version, at } (the latest acceptance).
+import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 
-export const TERMS_VERSION = "2026-09-26";
+export const termsVersion = (d = new Date()) => d.toISOString().slice(0, 7); // "2026-09"
+export const GRACE_DAYS = 30;
+// Nobody is counted overdue before 30 days after the agreement started (2026-09-26).
+export const STARTED = Date.parse("2026-09-26T00:00:00Z");
+const DAY = 86400000;
+const parse = (s) => {
+  const t = Date.parse(/Z|[+-]\d\d:?\d\d$/.test(String(s || "")) ? s : `${s}Z`);
+  return Number.isNaN(t) ? 0 : t;
+};
+
+// Overdue: nothing accepted in the last 30 days, the account is over 30 days old, and the
+// agreement has existed for 30 days.
+export function isOverdue(rec, createdAt, now = Date.now()) {
+  if (now - STARTED < GRACE_DAYS * DAY) return false;
+  if (createdAt && now - createdAt < GRACE_DAYS * DAY) return false;
+  const last = rec && rec.at ? Date.parse(rec.at) : 0;
+  return !last || now - last > GRACE_DAYS * DAY;
+}
 
 export async function onRequestPost(context) {
   const { request, env } = context;
   const kv = env.PUBLISHED_HTML;
+  const version = termsVersion();
   try {
     const user = await currentUser(request);
     if (!user) return json({ error: "Please sign in." }, 401);
     const body = await request.json().catch(() => ({}));
     const key = `terms:${user.id}`;
-    if (body.action === "accept") {
-      if (body.version !== TERMS_VERSION) return json({ error: "The agreement changed. Reload the page and read it again.", version: TERMS_VERSION }, 409);
-      const prev = await kv.get(key, "json");
-      if (!prev || prev.version !== TERMS_VERSION) await kv.put(key, JSON.stringify({ version: TERMS_VERSION, at: new Date().toISOString() }));
-      return json({ accepted: true, version: TERMS_VERSION });
+
+    if (body.action === "overdue") {
+      if (user.role !== "admin") return json({ error: "Admins only." }, 403);
+      const users = (await base44(request, "GET", "entities/User?limit=5000").catch(() => [])) || [];
+      const out = [];
+      for (const u of users) {
+        if (!u || !u.id || u.role === "admin") continue;
+        const rec = await kv.get(`terms:${u.id}`, "json");
+        if (isOverdue(rec, parse(u.created_date))) out.push({ id: u.id, email: u.email || "", name: u.full_name || "", lastAccepted: (rec && rec.at) || null, created: u.created_date || null });
+      }
+      return json({ users: out, checked: users.length });
     }
+
+    if (body.action === "accept") {
+      if (body.version !== version) return json({ error: "The terms were just updated. Reload the page and read them again.", version }, 409);
+      const prev = await kv.get(key, "json");
+      if (!prev || prev.version !== version) await kv.put(key, JSON.stringify({ version, at: new Date().toISOString() }));
+      return json({ accepted: true, version });
+    }
+
     const rec = await kv.get(key, "json");
-    return json({ accepted: !!rec && rec.version === TERMS_VERSION, version: TERMS_VERSION });
+    const since = Math.max(rec && rec.at ? Date.parse(rec.at) : 0, parse(user.created_date), STARTED);
+    return json({
+      accepted: !!rec && rec.version === version,
+      version,
+      returning: !!rec,
+      deadline: new Date(since + GRACE_DAYS * DAY).toISOString(),
+    });
   } catch {
     // Never lock anyone out because the check itself failed.
-    return json({ accepted: true, version: TERMS_VERSION, unknown: true });
+    return json({ accepted: true, version, unknown: true });
   }
 }

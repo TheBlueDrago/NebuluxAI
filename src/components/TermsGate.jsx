@@ -9,6 +9,8 @@ import { signOut } from "@/lib/signOut";
 // The user agreement: the first time an account opens the app (and again if the Terms change a
 // lot), it must be accepted before going further. Recorded on the server
 // (functions/.../accept-terms.js); remembered on this device so it isn't asked for every visit.
+const monthName = (v) => new Date(`${v}-15T00:00:00Z`).toLocaleDateString([], { month: "long", year: "numeric" });
+const dayName = (iso) => new Date(iso).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
 const seenKey = (id, v) => `nx-terms:${id}:${v}`;
 
 const POINTS = [
@@ -22,6 +24,7 @@ const POINTS = [
 
 export default function TermsGate({ user, onDone }) {
   const [need, setNeed] = useState(null); // null = checking, "" = fine, else the version to accept
+  const [meta, setMeta] = useState({});
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -33,7 +36,8 @@ export default function TermsGate({ user, onDone }) {
       .invoke("accept-terms", { action: "get" })
       .then((r) => {
         if (!alive) return;
-        const { accepted, version } = r.data || {};
+        const { accepted, version, returning, deadline } = r.data || {};
+        setMeta({ returning, deadline });
         let seen = false;
         try {
           seen = localStorage.getItem(seenKey(user.id, version)) === "1";
@@ -79,8 +83,8 @@ export default function TermsGate({ user, onDone }) {
             <BlackholeIcon className="w-full h-full" />
           </span>
           <div>
-            <h2 id="terms-title" className="text-lg font-semibold text-white">Welcome to Nebulux AI</h2>
-            <p className="text-sm text-slate-400">Before you start, please read and accept our user agreement.</p>
+            <h2 id="terms-title" className="text-lg font-semibold text-white">{meta.returning ? `New terms for ${monthName(need)}` : "Welcome to Nebulux AI"}</h2>
+            <p className="text-sm text-slate-400">{meta.returning ? "Our user agreement is renewed every month. Please read it and accept it again to keep using Nebulux AI." : "Before you start, please read and accept our user agreement."}</p>
           </div>
         </div>
         <ul className="mt-5 space-y-2.5 text-sm">
@@ -105,6 +109,11 @@ export default function TermsGate({ user, onDone }) {
             .
           </span>
         </label>
+        {meta.deadline && (
+          <p className="mt-3 rounded-lg bg-amber-500/10 border border-amber-400/30 px-3 py-2 text-xs text-amber-200">
+            Please accept by <b>{dayName(meta.deadline)}</b>. Accounts that don't accept within 30 days are deleted as inactive.
+          </p>
+        )}
         {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
         <div className="mt-5 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
           <button
