@@ -82,7 +82,7 @@ export default function Play() {
             <Link to="/" className="mt-4 text-sm text-indigo-300 hover:text-indigo-200">Make your own game with Nebulux AI</Link>
           </div>
         ) : (
-          <PreviewFrame html={game.html} title={game.title || name} />
+          <PreviewFrame html={game.html} title={game.title || name} saveName={name} />
         )}
       </div>
     </div>

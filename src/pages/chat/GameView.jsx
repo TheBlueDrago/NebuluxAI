@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Gamepad2, Flag, Wand2 } from "lucide-react";
+import { ArrowLeft, Loader2, Gamepad2, Flag, Wand2, Trash2 } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { askConfirm } from "@/lib/dialogs";
 import { loadGame } from "@/lib/loadGame";
 import { useAppShell } from "@/components/AppShellContext";
 import { findBuiltInGame } from "@/lib/builtInGames";
@@ -16,6 +18,14 @@ export default function GameView() {
   const [genre, setGenre] = useState("");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+
+  // Progress is saved to the account for every game (components/PreviewFrame.jsx); only this deletes it.
+  const deleteProgress = async () => {
+    if (!(await askConfirm(`Delete your saved progress in ${title}? This can't be undone.`, { confirmLabel: "Delete", danger: true }))) return;
+    await base44.functions.invoke("game-save", { action: "delete", name }).catch(() => {});
+    setResetKey((k) => k + 1);
+  };
 
   useEffect(() => {
     const builtIn = findBuiltInGame(name);
@@ -73,6 +83,16 @@ export default function GameView() {
           {!loading && !notFound && (
             <ShareLink url={`${window.location.origin}/play/${name}`} title={title} className="bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" iconOnlyOnPhone />
           )}
+          {!loading && !notFound && (
+            <button
+              onClick={deleteProgress}
+              className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-red-300 transition-colors"
+              title="Delete my saved progress in this game"
+              aria-label="Delete my saved progress"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
           {!findBuiltInGame(name) && !notFound && (
             <a
               href={`/report?${new URLSearchParams({ kind: "game", name: name || "" })}`}
@@ -104,7 +124,7 @@ export default function GameView() {
             <p className="px-6 text-center">{typeof notFound === "string" ? notFound : "Game not found."}</p>
           </div>
         ) : (
-          <PreviewFrame html={html} title={name} />
+          <PreviewFrame key={resetKey} html={html} title={name} saveName={name} />
         )}
       </div>
     </div>
