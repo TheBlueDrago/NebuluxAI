@@ -6,11 +6,15 @@ import { withPreviewShim, PREVIEW_SANDBOX } from "@/lib/previewShim";
 // preview shim (lib/previewShim.js) reports if the page crashed or still shows nothing a few
 // seconds after loading. The first time, the frame quietly loads it again (most black screens
 // are a one-off timing problem on start-up); if it happens again, a Reload button appears.
-export default function PreviewFrame({ html, title, className = "w-full h-full", ...rest }) {
+// onBroken(error) is called when it is still blank after that quiet reload (the Game Designer then
+// asks the AI to fix the game).
+export default function PreviewFrame({ html, title, className = "w-full h-full", onBroken, ...rest }) {
   const ref = useRef(null);
   const [round, setRound] = useState(0);
   const [stuck, setStuck] = useState(false);
   const retried = useRef(false);
+  const brokenRef = useRef(onBroken);
+  brokenRef.current = onBroken;
 
   useEffect(() => {
     retried.current = false;
@@ -28,7 +32,10 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
       if (!retried.current) {
         retried.current = true;
         setRound((r) => r + 1);
-      } else setStuck(true);
+      } else {
+        setStuck(true);
+        brokenRef.current?.(d.crashed || "");
+      }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);

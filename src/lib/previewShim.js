@@ -18,11 +18,19 @@ const SHIM = `<script>(function(){
   var crashed="";
   addEventListener("error",function(e){if(!crashed)crashed=String((e&&e.message)||"error").slice(0,200)});
   addEventListener("unhandledrejection",function(e){if(!crashed)crashed=String((e&&e.reason&&e.reason.message)||"error").slice(0,200)});
-  function flat(c){try{if(!c.width||!c.height)return true;var x=c.getContext("2d");if(!x)return false;var first=null;for(var i=1;i<8;i++)for(var j=1;j<8;j++){var p=x.getImageData(Math.floor(c.width*i/8),Math.floor(c.height*j/8),1,1).data;var k=p[0]+","+p[1]+","+p[2]+","+p[3];if(first===null)first=k;else if(k!==first)return false}return true}catch(_){return false}}
-  function blank(){try{var b=document.body;if(!b)return true;var w=document.createTreeWalker(b,4),n;while((n=w.nextNode())){var p=n.parentNode&&n.parentNode.nodeName;if(p!=="SCRIPT"&&p!=="STYLE"&&p!=="NOSCRIPT"&&p!=="TEMPLATE"&&n.nodeValue.trim())return false}if(b.querySelector("img,video,svg,iframe"))return false;var cs=b.querySelectorAll("canvas");if(!cs.length)return b.getBoundingClientRect().height<5;for(var i=0;i<cs.length;i++)if(!flat(cs[i]))return false;return true}catch(_){return false}}
+  // The canvas is read by copying it into a separate small canvas: asking the game's own canvas for
+  // a drawing context would lock a 3D (WebGL) game out of its own, so it never started (black).
+  function flat(c){try{if(!c.width||!c.height)return true;var t=document.createElement("canvas");t.width=8;t.height=8;var x=t.getContext("2d");x.drawImage(c,0,0,8,8);var d=x.getImageData(0,0,8,8).data,first=null;for(var i=0;i<d.length;i+=4){var k=d[i]+","+d[i+1]+","+d[i+2]+","+d[i+3];if(first===null)first=k;else if(k!==first)return false}return true}catch(_){return false}}
+  function tiny(c){return !c.width||!c.height||c.getBoundingClientRect().height<5}
+  // Blank = nothing on screen at all: no text or pictures, and either no canvas with a size, or the
+  // game crashed and its canvas is one flat color. A dark start screen waiting for a tap is left alone.
+  function blank(){try{var b=document.body;if(!b)return true;var w=document.createTreeWalker(b,4),n;while((n=w.nextNode())){var p=n.parentNode&&n.parentNode.nodeName;if(p!=="SCRIPT"&&p!=="STYLE"&&p!=="NOSCRIPT"&&p!=="TEMPLATE"&&n.nodeValue.trim())return false}if(b.querySelector("img,video,svg,iframe"))return false;var cs=b.querySelectorAll("canvas");if(!cs.length)return b.getBoundingClientRect().height<5;for(var i=0;i<cs.length;i++){if(tiny(cs[i]))continue;if(!crashed||!flat(cs[i]))return false}return true}catch(_){return false}}
   addEventListener("load",function(){setTimeout(function(){var bad=blank();try{parent.postMessage({type:"nebulux-health",blank:bad,crashed:bad?crashed:""},"*")}catch(_){}},3500)});
   function kick(){try{dispatchEvent(new Event("resize"))}catch(_){}}
-  addEventListener("load",function(){kick();setTimeout(kick,250);setTimeout(kick,1000);setTimeout(kick,2500)});
+  // Only when a canvas really came out with no size: many games clear the canvas when told the
+  // screen resized, which wiped a start screen that is drawn once (black until a tap).
+  function kickIfNeeded(){try{var cs=document.querySelectorAll("canvas");for(var i=0;i<cs.length;i++)if(tiny(cs[i])){kick();return}}catch(_){}}
+  addEventListener("load",function(){try{window.focus()}catch(_){}kickIfNeeded();setTimeout(kickIfNeeded,250);setTimeout(kickIfNeeded,1000);setTimeout(kickIfNeeded,2500)});
   try{var lastW=innerWidth,lastH=innerHeight;setInterval(function(){if(innerWidth!==lastW||innerHeight!==lastH){lastW=innerWidth;lastH=innerHeight;kick()}},500)}catch(_){}
   function mem(){var d={};return{getItem:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[String(k)]=String(v)},removeItem:function(k){delete d[String(k)]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}
   ["localStorage","sessionStorage"].forEach(function(n){try{window[n].getItem("x")}catch(e){try{Object.defineProperty(window,n,{value:mem(),configurable:true})}catch(_){}}});

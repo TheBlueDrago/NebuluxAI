@@ -44,10 +44,15 @@ function escapeHtml(s) {
 // (src/lib/previewShim.js): a "the screen size changed" nudge once loaded (phones lay the page
 // out late, so a game that measured the screen at start stayed 0x0 and black), and if the page
 // still shows nothing a few seconds later, one automatic reload.
-var GAME_KICK = "<script>(function(){function k(){try{dispatchEvent(new Event('resize'))}catch(_){}}" +
-  "function flat(c){try{if(!c.width||!c.height)return true;var x=c.getContext('2d');if(!x)return false;var f=null;for(var i=1;i<8;i++)for(var j=1;j<8;j++){var p=x.getImageData(Math.floor(c.width*i/8),Math.floor(c.height*j/8),1,1).data;var s=p.join();if(f===null)f=s;else if(s!==f)return false}return true}catch(_){return false}}" +
-  "function blank(){try{var b=document.body;if(!b)return true;var w=document.createTreeWalker(b,4),n;while((n=w.nextNode())){var p=n.parentNode&&n.parentNode.nodeName;if(p!=='SCRIPT'&&p!=='STYLE'&&p!=='NOSCRIPT'&&p!=='TEMPLATE'&&n.nodeValue.trim())return false}if(b.querySelector('img,video,svg,iframe'))return false;var cs=b.querySelectorAll('canvas');if(!cs.length)return b.getBoundingClientRect().height<5;for(var i=0;i<cs.length;i++)if(!flat(cs[i]))return false;return true}catch(_){return false}}" +
-  "addEventListener('load',function(){k();setTimeout(k,250);setTimeout(k,1000);setTimeout(function(){try{if(blank()&&!sessionStorage.getItem('nx-reloaded')){sessionStorage.setItem('nx-reloaded','1');location.reload()}}catch(_){}},4000)})})();</script>";
+// Same rules as the preview: only nudge when a canvas has no size (games that clear the canvas on
+// resize lost their start screen), and never ask the game's canvas for a drawing context (that
+// locked 3D games out of theirs).
+var GAME_KICK = "<script>(function(){var crashed=false;addEventListener('error',function(){crashed=true});function k(){try{dispatchEvent(new Event('resize'))}catch(_){}}" +
+  "function tiny(c){return !c.width||!c.height||c.getBoundingClientRect().height<5}" +
+  "function kn(){try{var cs=document.querySelectorAll('canvas');for(var i=0;i<cs.length;i++)if(tiny(cs[i])){k();return}}catch(_){}}" +
+  "function flat(c){try{var t=document.createElement('canvas');t.width=8;t.height=8;var x=t.getContext('2d');x.drawImage(c,0,0,8,8);var d=x.getImageData(0,0,8,8).data,f=null;for(var i=0;i<d.length;i+=4){var s=d[i]+','+d[i+1]+','+d[i+2]+','+d[i+3];if(f===null)f=s;else if(s!==f)return false}return true}catch(_){return false}}" +
+  "function blank(){try{var b=document.body;if(!b)return true;var w=document.createTreeWalker(b,4),n;while((n=w.nextNode())){var p=n.parentNode&&n.parentNode.nodeName;if(p!=='SCRIPT'&&p!=='STYLE'&&p!=='NOSCRIPT'&&p!=='TEMPLATE'&&n.nodeValue.trim())return false}if(b.querySelector('img,video,svg,iframe'))return false;var cs=b.querySelectorAll('canvas');if(!cs.length)return b.getBoundingClientRect().height<5;for(var i=0;i<cs.length;i++){if(tiny(cs[i]))continue;if(!crashed||!flat(cs[i]))return false}return true}catch(_){return false}}" +
+  "addEventListener('load',function(){kn();setTimeout(kn,250);setTimeout(kn,1000);setTimeout(function(){try{if(blank()&&!sessionStorage.getItem('nx-reloaded')){sessionStorage.setItem('nx-reloaded','1');location.reload()}}catch(_){}},4000)})})();</script>";
 
 function withGameKick(html) {
   var head = html.match(/<head[^>]*>/i);

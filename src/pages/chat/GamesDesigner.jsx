@@ -73,6 +73,7 @@ ALWAYS respond with a single complete, self-contained HTML document: include <!D
 The game MUST be genuinely playable on computers (keyboard and/or mouse) AND on phones and tablets (touch): include a start screen, a scoring system, increasing difficulty, and a game-over screen with a restart button. Use a smooth requestAnimationFrame loop, a responsive canvas that fills the viewport, and clean neon visuals. No external assets, scripts, or network calls — everything must run offline inside the single document.
 PHONES: many players are on phones with no keyboard. Include <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">. On touch devices (matchMedia("(pointer: coarse)") or "ontouchstart" in window) show on-screen controls for every action the keyboard does — e.g. left/right/jump/fire buttons or a virtual joystick — at least 56px, semi-transparent, in the bottom corners, never covering the HUD. Handle touchstart/touchmove/touchend (or pointer events) with preventDefault() and CSS touch-action:none so the page doesn't scroll or zoom, and support several fingers at once. Resize the canvas on resize/orientation change, keep text and buttons readable on a 360px-wide screen, and never require hovering, right-clicking or pointer lock.
 Every button and menu (start, pause, restart, settings, mute) must actually work.
+NO BLACK SCREENS: the start screen must be visible the moment the page loads. Keep the requestAnimationFrame loop running from the start (it draws the start screen too), so a resize that clears the canvas is redrawn on the next frame. Build the start screen and buttons as HTML elements over the canvas where possible. Start the game with a click, tap or any key (never only on a key press, since phones have no keyboard). Never wait for images, fonts or sounds to load before drawing, and create audio only after the first tap. Size the canvas from window.innerWidth/innerHeight with a fallback (e.g. innerWidth||800) so it never has 0 size. Wrap risky code (saved data, audio) in try/catch so one error can't stop the whole game.
 Put the complete HTML document inside ONE \`\`\`html code block, with your explanation outside it (see EXPLAIN YOUR WORK).
 When the user asks for changes, output the FULL updated HTML document every time, not just the diff, and keep the phone controls working.`;
 
@@ -459,6 +460,20 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
     }
   };
 
+  // A new build that still shows only a black screen after the preview's quiet reload: ask the AI
+  // to fix it straight away (once per build, so a game that can't be fixed doesn't loop).
+  const autoFixedRef = useRef("");
+  const onPreviewBroken = (error) => {
+    if (loading || !previewHtml || autoFixedRef.current === previewHtml || sendExhausted) return;
+    autoFixedRef.current = previewHtml;
+    runPrompt(
+      "The game only shows a black screen" +
+        (error ? ` (error: ${error})` : "") +
+        ". Find what stops it from drawing and fix it, so it shows the game (or its start screen) straight away.",
+      selectedAi
+    );
+  };
+
   const q = useMessageQueue({ run: runPrompt, remaining, names: AI_NAMES, selectedAi, onChangeAi: setSelectedAi });
 
   const send = () => {
@@ -787,7 +802,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
                 </p>
               </div>
             ) : previewHtml ? (
-              <PreviewFrame key={reloadKey} html={previewHtml} title="Game preview" className="w-full h-full bg-black" />
+              <PreviewFrame key={reloadKey} html={previewHtml} title="Game preview" className="w-full h-full bg-black" onBroken={onPreviewBroken} />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-center p-6">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-500 flex items-center justify-center mb-3">
