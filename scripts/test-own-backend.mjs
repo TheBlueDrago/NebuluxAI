@@ -117,3 +117,34 @@ assert(r.status === 401, "signed out: can't publish");
 // Deleting your account removes your sign-in too.
 r = await call(newTok, "DELETE", `entities/User/${me.id}`);
 assert(r.status === 200 && !(await sessionUser(db, req(newTok))), "deleting your account signs you out everywhere");
+
+// "Continue with Google" (Google's answer is faked here).
+const { googleStart, googleCallback } = await import("../cloudflare-lib/auth.js");
+const genv = { ...env, GOOGLE_CLIENT_ID: "cid", GOOGLE_CLIENT_SECRET: "sec" };
+let s = googleStart(genv, new Request("https://nebuluxai.com/api/apps/auth/google/start?to=/play/fighter"));
+const loc = new URL(s.headers.get("location"));
+const cookie = s.headers.get("set-cookie").split(";")[0];
+assert(loc.host === "accounts.google.com" && loc.searchParams.get("redirect_uri") === "https://nebuluxai.com/api/apps/auth/google/callback", "Google sign-in goes to Google and comes back to nebuluxai.com");
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const realFetch = globalThis.fetch;
+const googleSays = (claims) =>
+  (globalThis.fetch = async (u, i) => (String(u).includes("oauth2.googleapis.com") ? new Response(JSON.stringify({ id_token: `x.${b64(claims)}.y` }), { status: 200 }) : realFetch(u, i)));
+const back = (st, ck) => googleCallback(db, genv, new Request(`https://nebuluxai.com/api/apps/auth/google/callback?state=${st}&code=abc`, { headers: { cookie: ck } }));
+googleSays({ aud: "cid", email: "Old@Example.com", email_verified: true, name: "Old" });
+s = await back("0".repeat(32), cookie);
+assert(/google=failed/.test(s.headers.get("location")), "a wrong state is refused");
+s = await back(loc.searchParams.get("state"), cookie);
+const land = new URL(s.headers.get("location"));
+assert(land.pathname === "/play/fighter" && /^nx_/.test(land.searchParams.get("access_token")), "Google sign-in lands back where they were, signed in");
+const gu = await sessionUser(db, req(land.searchParams.get("access_token")));
+assert(gu && gu.id === "olduser1", "a Google email that matches an account signs in to that account");
+googleSays({ aud: "someone-else", email: "x@example.com", email_verified: true });
+s = googleStart(genv, new Request("https://nebuluxai.com/api/apps/auth/google/start"));
+s = await back(new URL(s.headers.get("location")).searchParams.get("state"), s.headers.get("set-cookie").split(";")[0]);
+assert(/google=failed/.test(s.headers.get("location")), "a token meant for another app is refused");
+googleSays({ aud: "cid", email: "fresh@example.com", email_verified: true, name: "Fresh Person" });
+s = googleStart(genv, new Request("https://nebuluxai.com/api/apps/auth/google/start?to=//evil.com"));
+s = await back(new URL(s.headers.get("location")).searchParams.get("state"), s.headers.get("set-cookie").split(";")[0]);
+const l2 = new URL(s.headers.get("location"));
+const fresh = await sessionUser(db, req(l2.searchParams.get("access_token")));
+assert(l2.host === "nebuluxai.com" && l2.pathname === "/" && fresh && fresh.full_name === "Fresh Person", "a new Google user gets a new account, and can't be sent to another website");

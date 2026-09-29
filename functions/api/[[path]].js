@@ -17,7 +17,7 @@
 // and call back (scripts/test-authlimit.mjs fails without them).
 import { authLimit } from "../../cloudflare-lib/authlimit.js";
 import { handleEntities } from "../../cloudflare-lib/db.js";
-import { handleAuth, sessionUser, logout } from "../../cloudflare-lib/auth.js";
+import { handleAuth, sessionUser, logout, googleStart, googleCallback } from "../../cloudflare-lib/auth.js";
 
 const APP_ID = "6a8b5eb7787b8a4d6a18f662";
 const jsonRes = (status, body) =>
@@ -39,10 +39,11 @@ async function ownBackend(context, path, url) {
     await logout(db, request);
     return Response.redirect(url.origin + safeBack(url.searchParams.get("from_url")), 302);
   }
-  // "Continue with Google" isn't set up on the new sign-in yet.
-  if (path === "apps/auth/login" || path.startsWith("apps/auth/")) {
-    return Response.redirect(url.origin + "/login?google=soon", 302);
-  }
+  // "Continue with Google" (cloudflare-lib/auth.js). apps/auth/login is where the Base44 SDK's
+  // loginWithProvider("google") sends people.
+  if (path === "apps/auth/login" || path === "apps/auth/google/start") return googleStart(env, request);
+  if (path === "apps/auth/google/callback") return googleCallback(db, env, request);
+  if (path.startsWith("apps/auth/")) return Response.redirect(url.origin + "/login", 302);
   if (path === `apps/public/prod/public-settings/by-id/${APP_ID}`) return jsonRes(200, { id: APP_ID, public_settings: {} });
   const prefix = `apps/${APP_ID}/`;
   if (!path.startsWith(prefix)) return null;

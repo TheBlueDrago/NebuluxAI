@@ -124,7 +124,8 @@ async function login(db, env, body, origin) {
   if (!row || !row.pw_hash) {
     // An account moved over from Base44 that hasn't chosen a new password yet.
     const u = await userByEmail(db, email);
-    if (u && !row) {
+    // (Also someone who only ever used Google: the link lets them add a password.)
+    if (u) {
       await sendResetLink(env, db, email, origin, true);
       throw new AuthError(403, "Nebulux AI has a new sign-in system. We've emailed you a link to choose your password: your account and everything in it are still here.");
     }
@@ -243,4 +244,91 @@ export async function logout(db, request) {
   const h = request.headers.get("authorization") || "";
   const m = h.match(/^Bearer\s+(nx_[0-9a-f]{64})$/i);
   if (m && db) await db.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha(m[1])).run();
+}
+
+// ---- "Continue with Google" (our own Google sign-in: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+// secrets from the owner's Google Cloud project, redirect URI <origin>/api/apps/auth/google/callback).
+// Start: a random state is kept in a short cookie with where to go afterwards, then Google.
+// Back: the state must match, the code is swapped for the person's verified email with Google
+// directly, and they're signed in to the account with that email (a new one if there's none).
+const GOOGLE_COOKIE = "nx_google";
+
+function samePath(to) {
+  const p = String(to || "/");
+  return p.startsWith("/") && !p.startsWith("//") && !p.includes("\\") && p.length < 500 ? p : "/";
+}
+
+export function googleStart(env, request) {
+  const url = new URL(request.url);
+  if (!env.GOOGLE_CLIENT_ID) return Response.redirect(url.origin + "/login?google=soon", 302);
+  let to = url.searchParams.get("to") || "/chat";
+  const from = url.searchParams.get("from_url");
+  if (from) {
+    try {
+      const f = new URL(from);
+      if (f.origin === url.origin) to = f.pathname + f.search;
+    } catch {}
+  }
+  const state = randomHex(16);
+  const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  google.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
+  google.searchParams.set("redirect_uri", url.origin + "/api/apps/auth/google/callback");
+  google.searchParams.set("response_type", "code");
+  google.searchParams.set("scope", "openid email profile");
+  google.searchParams.set("state", state);
+  google.searchParams.set("prompt", "select_account");
+  const cookie = `${GOOGLE_COOKIE}=${state}.${encodeURIComponent(samePath(to))}; Path=/api/apps/auth/google; Max-Age=600; HttpOnly; Secure; SameSite=Lax`;
+  return new Response(null, { status: 302, headers: { location: google.toString(), "set-cookie": cookie, "cache-control": "no-store" } });
+}
+
+export async function googleCallback(db, env, request) {
+  const url = new URL(request.url);
+  const fail = (why) =>
+    new Response(null, { status: 302, headers: { location: `${url.origin}/login?google=failed&why=${encodeURIComponent(why)}`, "set-cookie": `${GOOGLE_COOKIE}=; Path=/api/apps/auth/google; Max-Age=0`, "cache-control": "no-store" } });
+  const m = (request.headers.get("cookie") || "").match(new RegExp(`(?:^|;\s*)${GOOGLE_COOKIE}=([0-9a-f]{32})\.([^;]*)`));
+  const state = url.searchParams.get("state") || "";
+  if (!m || !sameHex(m[1], state)) return fail("expired");
+  const code = url.searchParams.get("code");
+  if (!code) return fail("cancelled");
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: url.origin + "/api/apps/auth/google/callback",
+      grant_type: "authorization_code",
+    }),
+  }).catch(() => null);
+  const tok = res && res.ok ? await res.json().catch(() => null) : null;
+  if (!tok || !tok.id_token) return fail("google");
+  // Straight from Google over HTTPS, so its contents can be trusted without checking the signature.
+  let info = null;
+  try {
+    const part = tok.id_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    info = JSON.parse(atob(part + "===".slice((part.length + 3) % 4)));
+  } catch {}
+  if (!info || info.aud !== env.GOOGLE_CLIENT_ID || !info.email || info.email_verified !== true) return fail("email");
+  const email = cleanEmail(info.email);
+  const row = await db.prepare("SELECT * FROM logins WHERE email = ?").bind(email).first();
+  let userId = row && row.user_id;
+  if (!userId) {
+    const existing = await userByEmail(db, email);
+    userId = existing
+      ? existing.id
+      : (await create(db, "User", { system: true }, { email, full_name: String(info.name || email.split("@")[0]).slice(0, 80), role: "user", status: "active" })).id;
+  }
+  // Google has confirmed the email, so the login counts as verified (the password stays as it was).
+  if (row) await db.prepare("UPDATE logins SET verified = 1 WHERE email = ?").bind(email).run();
+  else await db.prepare("INSERT INTO logins (email, user_id, pw_hash, pw_salt, verified) VALUES (?, ?, NULL, NULL, 1)").bind(email, userId).run();
+  const user = await getRow(db, "User", userId);
+  if (!user || user.removed === true) return fail("removed");
+  const session = await newSession(db, userId);
+  const to = new URL(samePath(decodeURIComponent(m[2] || "/")), url.origin);
+  to.searchParams.set("access_token", session);
+  return new Response(null, {
+    status: 302,
+    headers: { location: to.toString(), "set-cookie": `${GOOGLE_COOKIE}=; Path=/api/apps/auth/google; Max-Age=0`, "cache-control": "no-store", "referrer-policy": "no-referrer" },
+  });
 }

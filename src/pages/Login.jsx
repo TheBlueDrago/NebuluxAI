@@ -25,9 +25,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   // Back from "Continue with Google" while the new sign-in doesn't have it yet (functions/api/[[path]].js).
-  const [error, setError] = useState(() =>
-    new URLSearchParams(window.location.search).get("google") === "soon" ? "Signing in with Google is coming back soon. For now, log in with your email and password (or tap Forgot password to set one)." : ""
-  );
+  const [error, setError] = useState(() => {
+    const g = new URLSearchParams(window.location.search).get("google");
+    if (g === "soon") return "Signing in with Google is coming back soon. For now, log in with your email and password (or tap Forgot password to set one).";
+    if (g === "failed") return "Signing in with Google didn't work. Please try again, or log in with your email and password.";
+    return "";
+  });
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(() => localStorage.getItem("infinity-ai-remember") !== "0");
   const [note] = useState(() => SIGNED_OUT_NOTES[signedOutNote()] || "");
