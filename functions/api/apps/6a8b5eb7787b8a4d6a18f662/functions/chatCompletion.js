@@ -44,10 +44,10 @@ const MAX_ATTEMPTS = 4;
 // budget make replies slower but smarter. Gemini's thinkingLevel tops out at "high",
 // so Extra and UltraCode use explicit, larger thinking budgets instead.
 const EFFORT = {
-  low: { thinkingConfig: { thinkingLevel: "low" }, maxOutputTokens: 8192 },
-  medium: { thinkingConfig: { thinkingLevel: "medium" }, maxOutputTokens: 16384 },
-  high: { thinkingConfig: { thinkingLevel: "high" }, maxOutputTokens: 32768 },
-  extra: { thinkingConfig: { thinkingBudget: 16384 }, maxOutputTokens: 49152 },
+  low: { thinkingConfig: { thinkingLevel: "low" }, maxOutputTokens: 32768 },
+  medium: { thinkingConfig: { thinkingLevel: "medium" }, maxOutputTokens: 49152 },
+  high: { thinkingConfig: { thinkingLevel: "high" }, maxOutputTokens: 65536 },
+  extra: { thinkingConfig: { thinkingBudget: 16384 }, maxOutputTokens: 65536 },
   ultracode: { thinkingConfig: { thinkingBudget: 32768 }, maxOutputTokens: 65536 },
 };
 const DEFAULT_EFFORT = "medium";

@@ -42,3 +42,31 @@ export function introBeforeCode(text) {
   const i = t.search(/```|<<<FIND|<!doctype html|<html[\s>]/i);
   return tidy(i >= 0 ? t.slice(0, i) : t);
 }
+
+// A build reply that stopped before its HTML document ended (the AI ran out of room): a page
+// was started but </html> never came. Shown as it is, that half-written game or site has broken
+// code and stays a black or blank screen.
+export function looksCut(text) {
+  const t = String(text || "");
+  return /<!doctype html|<html[\s>]/i.test(t) && !/<\/html>/i.test(t);
+}
+
+// Asked of the AI when its reply was cut off: carry on from the exact next character.
+export const CONTINUE_NOTE =
+  "Your previous reply was cut off because it was too long. Below is the END of what you wrote so far. " +
+  "Continue EXACTLY from the next character: don't repeat anything, don't start a new code block and don't add an intro. " +
+  "Finish the HTML document (through </html>), then close the code block and write the \"What I did:\" summary.\n\nEnd of your reply so far:\n";
+
+// Joins a continuation onto the reply so far, dropping a code-block opener the AI may have added
+// and any text it repeated from the end of the first part.
+export function joinContinuation(sofar, more) {
+  let m = String(more || "").replace(/^\s*```(?:html)?[ \t]*\r?\n/i, "");
+  const a = String(sofar || "");
+  for (let n = Math.min(400, a.length, m.length); n >= 12; n--) {
+    if (a.endsWith(m.slice(0, n))) {
+      m = m.slice(n);
+      break;
+    }
+  }
+  return a + m;
+}

@@ -30,7 +30,7 @@ import { streamChat } from "@/lib/aiStream";
 import LiveReply from "@/components/chat/LiveReply";
 import EffortPicker from "@/components/chat/EffortPicker";
 import VoiceInput from "@/components/chat/VoiceInput";
-import { EXPLAIN_NOTE, splitBuildReply, editReplyNote, introBeforeCode } from "@/lib/buildReply";
+import { EXPLAIN_NOTE, splitBuildReply, editReplyNote, introBeforeCode, looksCut, CONTINUE_NOTE, joinContinuation } from "@/lib/buildReply";
 import { syncSiteProducts } from "@/lib/siteProducts";
 import SaveStatus from "@/components/designer/SaveStatus";
 import ShareLink from "@/components/designer/ShareLink";
@@ -477,8 +477,36 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
       setLive("");
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
       spendFor[ai]?.(res.credits);
-      const content = res.content ?? "";
-      if (res.cut) {
+      let content = res.content ?? "";
+      let cut = res.cut;
+      // The AI ran out of room before the page was finished: ask it to carry on from where it
+      // stopped (up to 3 times), so a half-written site (broken, blank) isn't shown.
+      let more = res.more;
+      for (let k = 0; !discuss && !editMode && !cut && k < 3 && (more || looksCut(content)); k++) {
+        const sofar = content;
+        const next = await streamChat(
+          { prompt: prompt + "\n\n" + CONTINUE_NOTE + sofar.slice(-4000), question: "continue", model, effort: eff },
+          (soFar) => {
+            if (reqIdRef.current === myId) setLive(joinContinuation(sofar, soFar));
+          },
+          { signal: abort.signal }
+        );
+        if (reqIdRef.current !== myId) return;
+        spendFor[ai]?.(next.credits);
+        content = joinContinuation(sofar, next.content ?? "");
+        more = next.more;
+        cut = next.cut;
+      }
+      setLive("");
+      if (!discuss && !editMode && !cut && looksCut(content)) {
+        pushMsg({
+          role: "ai",
+          text: true,
+          content: "⚠ This website got too long for the AI to finish, so it wasn't shown (a half-finished page would be broken). Your previous version is kept. Try again, pick a higher effort, or ask for a simpler version.",
+        });
+        return;
+      }
+      if (cut) {
         // A half-written build would break the site, so only the explanation so far is shown.
         const said = discuss ? content.trim() : introBeforeCode(content);
         pushMsg({ role: "ai", text: true, content: [said, OUT_OF_CREDITS_NOTE].filter(Boolean).join("\n\n") });
