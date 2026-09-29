@@ -146,5 +146,6 @@ googleSays({ aud: "cid", email: "fresh@example.com", email_verified: true, name:
 s = googleStart(genv, new Request("https://nebuluxai.com/api/apps/auth/google/start?to=//evil.com"));
 s = await back(new URL(s.headers.get("location")).searchParams.get("state"), s.headers.get("set-cookie").split(";")[0]);
 const l2 = new URL(s.headers.get("location"));
-const fresh = await sessionUser(db, req(l2.searchParams.get("access_token")));
-assert(l2.host === "nebuluxai.com" && l2.pathname === "/" && fresh && fresh.full_name === "Fresh Person", "a new Google user gets a new account, and can't be sent to another website");
+assert(l2.host === "nebuluxai.com" && l2.searchParams.get("google") === "check" && !l2.searchParams.get("access_token"), "a new Google user isn't signed in yet: they're told to check their email");
+const last = mails[mails.length - 1];
+assert(last.to[0] === "fresh@example.com" && /refresh it, and log in/.test(last.text) && /reset-password\?token=/.test(last.text), "they get a link to choose a password, with the steps");

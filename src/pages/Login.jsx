@@ -28,6 +28,8 @@ export default function Login() {
   const [error, setError] = useState(() => {
     const g = new URLSearchParams(window.location.search).get("google");
     if (g === "soon") return "Signing in with Google is coming back soon. For now, log in with your email and password (or tap Forgot password to set one).";
+    if (g === "check")
+      return "Almost done! We emailed you a link. 1) Open the link in the email. 2) Choose your password. 3) Come back to this page and refresh it. 4) Log in with your email and your new password.";
     if (g === "failed") return "Signing in with Google didn't work. Please try again, or log in with your email and password.";
     return "";
   });

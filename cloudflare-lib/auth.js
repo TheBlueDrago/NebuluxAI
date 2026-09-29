@@ -83,9 +83,12 @@ async function sendResetLink(env, db, email, origin, firstTime) {
     .bind(email, await sha(token), Date.now() + 60 * 60 * 1000)
     .run();
   const link = `${origin}/reset-password?token=${token}`;
-  const why = firstTime
-    ? "Nebulux AI has a new sign-in system. Your account, credits, websites and games are all still here: just choose a password to keep using it."
-    : "Someone (hopefully you) asked to reset your Nebulux AI password.";
+  const why =
+    firstTime === "google"
+      ? "You signed in to Nebulux AI with Google. To finish, choose a password for your account. Then go back to the Nebulux AI page you were on, refresh it, and log in with your email and new password."
+      : firstTime
+        ? "Nebulux AI has a new sign-in system. Your account, credits, websites and games are all still here: just choose a password to keep using it."
+        : "Someone (hopefully you) asked to reset your Nebulux AI password.";
   await sendMail(
     env,
     email,
@@ -324,6 +327,16 @@ export async function googleCallback(db, env, request) {
   else await db.prepare("INSERT INTO logins (email, user_id, pw_hash, pw_salt, verified) VALUES (?, ?, NULL, NULL, 1)").bind(email, userId).run();
   const user = await getRow(db, "User", userId);
   if (!user || user.removed === true) return fail("removed");
+  // No password yet (new, or moved over from Base44): Google only confirms who they are. They're
+  // emailed a link to choose a password, then log in with it on the page they came from.
+  const pw = await db.prepare("SELECT pw_hash FROM logins WHERE email = ?").bind(email).first();
+  if (!pw || !pw.pw_hash) {
+    await sendResetLink(env, db, email, url.origin, "google").catch(() => {});
+    return new Response(null, {
+      status: 302,
+      headers: { location: `${url.origin}/login?google=check`, "set-cookie": `${GOOGLE_COOKIE}=; Path=/api/apps/auth/google; Max-Age=0`, "cache-control": "no-store" },
+    });
+  }
   const session = await newSession(db, userId);
   const to = new URL(samePath(decodeURIComponent(m[2] || "/")), url.origin);
   to.searchParams.set("access_token", session);
