@@ -113,7 +113,7 @@ const FAQ = [
   ["Does it work on my phone?", "Yes. Everything works on phones, tablets and computers, and you can install it like an app from your profile."],
   ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs use more. Your plan gives you a fresh allowance every month."],
   ["Is it safe for kids?", "Every site and game is checked before it's published: adult content, scams, fake login forms and harmful code are blocked. Anyone can report a page, and makers' emails are never shown.", ["/safety#parents", "For parents and teachers"]],
-  ["Is paying safe?", "Yes. You pay on Base44 Payments' secure checkout page, so we never see or store your card number, and prices are set on our server. Plans are monthly and credit packs are one-time. See Trust & safety for more.", ["/safety", "Trust & safety"]],
+  ["Is paying safe?", "Yes. You pay on our payment provider's secure checkout page, so we never see or store your card number, and prices are set on our server. Plans are monthly and credit packs are one-time. See Trust & safety for more.", ["/safety", "Trust & safety"]],
   ["Can I take my site down?", "Yes. You can unpublish or delete your websites and games at any time from your profile."],
 ];
 

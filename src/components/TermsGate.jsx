@@ -21,7 +21,7 @@ const POINTS = [
   "Never share passwords, card numbers or private details (your address, school or phone number) with the AI or on pages you publish.",
   "The AI can make mistakes. Check important answers, and don't rely on it for medical, legal or money decisions.",
   "Websites and games you publish are public. You're responsible for them, and we can take down anything that breaks the rules.",
-  "We never store your password or card: our sign-in provider keeps passwords scrambled, and our payment providers keep your card and charge it for renewals. We never sell your data. See the Privacy Policy for what we collect and why.",
+  "We store your password only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals. We never sell your data. See the Privacy Policy for what we collect and why.",
 ];
 
 export default function TermsGate({ user, onDone }) {

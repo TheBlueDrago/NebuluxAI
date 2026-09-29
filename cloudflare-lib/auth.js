@@ -11,6 +11,7 @@
 // Accounts moved over from Base44 keep their id and everything linked to it, but not their
 // password (Base44 never gave it out): their first sign-in emails them a link to set one.
 import { create, getRow, all } from "./db.js";
+import { passwordProblem } from "../src/lib/passwordCheck.js";
 
 const SESSION_DAYS = 60;
 const enc = new TextEncoder();
@@ -41,9 +42,11 @@ class AuthError extends Error {
   }
 }
 
-function checkPassword(p) {
-  if (typeof p !== "string" || p.length < 8) throw new AuthError(400, "Use a password of at least 8 characters.");
-  if (p.length > 200) throw new AuthError(400, "That password is too long.");
+// The same rules as the sign-up page (src/lib/passwordCheck.js), checked here so they can't be skipped.
+function checkPassword(p, email) {
+  if (typeof p !== "string") throw new AuthError(400, "Please choose a password.");
+  const problem = passwordProblem(p, email);
+  if (problem) throw new AuthError(400, problem);
 }
 
 async function sendMail(env, to, subject, text, html) {
@@ -140,7 +143,7 @@ async function login(db, env, body, origin) {
 async function register(db, env, body) {
   const email = cleanEmail(body.email);
   if (!validEmail(email)) throw new AuthError(400, "Please enter a valid email address.");
-  checkPassword(body.password);
+  checkPassword(body.password, email);
   const row = await db.prepare("SELECT * FROM logins WHERE email = ?").bind(email).first();
   if (row && row.verified) throw new AuthError(409, "An account with this email already exists. Log in instead.");
   const salt = randomHex(16);

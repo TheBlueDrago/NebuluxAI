@@ -8,7 +8,7 @@ import CreditPacksTable from "@/components/landing/CreditPacksTable";
 const QUESTIONS = [
   ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs, like building a whole website, use more than a quick question. Every plan gets a fresh allowance each month, and you can buy one-time packs any time."],
   ["What are Code, Galaxy and Space?", "Extra AI models on Pro and Team: Nebulux Code for programming, and Galaxy and Space for more detailed websites and writing. Each has its own credits."],
-  ["Is paying safe?", "Yes. You pay on Base44 Payments' secure checkout page, so we never see or store your card number, and prices are set on our server, not in your browser. Plans are monthly and credit packs are one-time."],
+  ["Is paying safe?", "Yes. You pay on our payment provider's secure checkout page, so we never see or store your card number, and prices are set on our server, not in your browser. Plans are monthly and credit packs are one-time."],
   ["Can I cancel?", "Yes. Plans are monthly, and if you stop paying you go back to the Free plan and keep your account."],
   ["How does the Team plan work?", "The person who buys it can add up to 2 more people by email. Everyone draws from the same pool of credits, so the whole team shares one bill."],
   ["Do you take a cut when I sell things?", "Yes, 5% of each sale made through Buy buttons on your site, to pay for checkout and hosting. Selling is being upgraded right now."],

@@ -100,7 +100,7 @@ assert(r.status === 403, "someone else can't change it");
 r = await call(newTok, "DELETE", `entities/PublishedGame/${gameId}`);
 assert(r.status === 403, "someone else can't delete it");
 
-const bossLogin = await auth("auth/register", { email: "boss@example.com", password: "bosspass12" });
+const bossLogin = await auth("auth/register", { email: "boss@example.com", password: "Violet-Harbor-58" });
 const bossCode = mails[mails.length - 1].text.match(/\d{6}/)[0];
 r = await auth("auth/verify-otp", { email: "boss@example.com", otp_code: bossCode });
 assert(bossLogin.status === 200 && r.body.user.id === "admin1", "an admin signing up again gets their old account back");

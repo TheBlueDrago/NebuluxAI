@@ -14,7 +14,7 @@ const SECTIONS = [
     icon: CreditCard,
     title: "Paying is safe",
     points: [
-      "Checkout is run by Base44 Payments on its own secure page. We never see or store your card number.",
+      "Checkout is run by our payment provider on its own secure page. We never see or store your card number.",
       "Prices are worked out on our server, not in your browser, so nobody can change what something costs.",
       "A payment only counts once the payment provider's signed message confirms it.",
       "Plans are monthly. If you stop paying you go back to the Free plan and keep your account. Credit packs are one-time, with no subscription.",

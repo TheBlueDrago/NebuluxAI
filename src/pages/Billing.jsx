@@ -303,7 +303,7 @@ function Billing() {
         <ul className="mt-4 space-y-1.5 text-xs text-slate-400">
           <li className="flex items-start gap-2">
             <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-400" />
-            You pay on Base44 Payments' secure page. We never see or store your card number.
+            You pay on our payment provider's secure page. We never see or store your card number.
           </li>
           <li className="flex items-start gap-2">
             <CalendarClock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-400" />

@@ -5,7 +5,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 
 // Public /terms and /privacy pages, linked from sign-up, log-in, billing and the
 // report page. Plain language on purpose; keep them in step with what the app does.
-const UPDATED = "September 24, 2026";
+const UPDATED = "September 29, 2026";
 // Optional: a support address to show instead of the contact form (/contact).
 const CONTACT_EMAIL = "";
 
@@ -56,7 +56,7 @@ export function Terms() {
       <ul>
         <li>Using the AIs costs credits. Your plan gives you a monthly allowance, and you can also get credits from referrals, promo codes or the Nebulux AI team.</li>
         <li>Credits have no cash value, can't be sold or transferred, and may expire as described in the app.</li>
-        <li>Paid plans are charged through our payment providers at the price shown before you pay. They save your card and charge it each month while your plan renews; we never see or store your card number. Passwords are handled by our sign-in provider, never by us.</li>
+        <li>Paid plans are charged through our payment providers at the price shown before you pay. They save your card and charge it each month while your plan renews; we never see or store your card number. Your password is stored by us, scrambled (hashed) so it can't be read, not even by us; keep it secret, and you're responsible for what's done with your account.</li>
         <li>Instead of a plan you can buy a one-time pack of credits for one AI. Bought credits are used before your monthly allowance and don't reset at the end of the month. The new-member discount doesn't apply to credit packs.</li>
         <li>Some promo codes give a discount instead of credits. Each person can use a discount code once, it only works on what it says it's for, and it may have an end date or a limited number of uses. It doesn't combine with the new-member discount: the bigger of the two is used.</li>
         <li>Credits or rewards gained by cheating — fake sign-ups, abusing referrals, exploiting bugs — can be removed, and the account can be suspended.</li>
@@ -135,10 +135,10 @@ export function Privacy() {
         <p className="font-semibold text-white">In short</p>
         <ul>
           <li>We don't sell your information, and we don't show ads or use tracking cookies.</li>
-          <li>Your chats and website projects are saved in your own browser, not on our servers.</li>
+          <li>Your chats are saved in your own browser. Game drafts, published websites and games, and game progress are kept on our servers.</li>
           <li>What you ask the AI goes to Google to get an answer; we keep only the start of your five latest questions, to keep the service safe.</li>
           <li>You can download a copy of your data or delete your account at any time.</li>
-          <li>We never store your password or card. Your password is kept scrambled by our sign-in provider, and your card is kept by our payment providers, who also charge it for renewals.</li>
+          <li>We store your password, but only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals.</li>
         </ul>
       </div>
 
@@ -150,14 +150,14 @@ export function Privacy() {
         <li><strong>Prompts:</strong> what you send the AI, including any images you attach in the chat, passes through our servers to Google to get an answer. We count the credits it uses, and keep the start (up to 300 characters) of your five most recent questions each month so our team can spot misuse and help if something goes wrong. We don't keep the rest of the text, or any images.</li>
         <li><strong>Usage:</strong> how many credits you use on each AI, your plan, promo codes you redeem, and who invited you or whom you invited. When you join through an invite link we keep a scrambled (hashed) form of your IP address with it, to spot one person creating many accounts.</li>
         <li><strong>Payments:</strong> what you bought, when, and whether it renewed. Your card is entered on our payment provider's checkout page and saved by them, not by us; if your plan renews every month, they charge the saved card and only tell us that it was paid. We never see or store your card number.</li>
-        <li><strong>Passwords:</strong> we never see or store your password. Sign-in is handled by our sign-in provider, which keeps passwords scrambled (hashed) so they can't be read, not even by us. For two-step verification we keep the secret key for your authenticator app and the devices you chose to remember, never a password.</li>
+        <li><strong>Sign-in:</strong> your email address, and your password stored scrambled (hashed with a random salt) so it can't be read back, not even by us. We also keep which devices are signed in (as a scrambled token that expires after 60 days), and short-lived codes we email you to confirm your address or reset your password (they expire within an hour). For two-step verification we keep the secret key for your authenticator app and the devices you chose to remember.</li>
         <li><strong>Messages:</strong> what you send through the contact form, with your email address so we can reply. If you report an AI reply, that reply and the question you asked just before it are sent to us too.</li>
         <li><strong>Voice:</strong> if you use the microphone button, your browser turns what you say into text (Chrome and Edge do this on Google's or Microsoft's servers). We only receive the text you then send.</li>
         <li><strong>Enterprise applications:</strong> your organization's legal name, type, where it's registered, registration number or EIN, website, and your name, role, work email and phone. Only the Nebulux AI team sees them, to check the organization is real and send a quote.</li>
         <li><strong>Admin actions:</strong> when the Nebulux AI team changes an account's plan, credits, access or a promo code, or takes a page down, we record what changed, on which account, which team member did it and roughly where they were (city and country), to catch mistakes and misuse.</li>
         <li><strong>Sign-in safety:</strong> to stop people guessing passwords or sign-up codes, we briefly count sign-in tries for each email address and network. The counts are kept for at most an hour and aren't used for anything else.</li>
         <li><strong>Reports:</strong> when you report a site we keep your reason and note, plus a scrambled (hashed) form of your IP address so the same person can't report one page many times.</li>
-        <li><strong>Usage analytics:</strong> basic information about how the app is used, such as which pages are opened, how long a visit lasts and which website sent you here. It's collected by Base44, which runs the app's sign-in and database, and helps us see what's working. We don't use it for ads.</li>
+        <li><strong>Game progress:</strong> if you're signed in, what a game saves (levels, scores, unlocks) is kept with your account so you can carry on later, until you delete it on the game's page or delete your account.</li>
         <li><strong>Technical data:</strong> like any website, our hosting provider handles IP addresses and basic request logs to deliver pages and block attacks.</li>
       </ul>
 
@@ -172,10 +172,10 @@ export function Privacy() {
 
       <h2>Who helps us run it</h2>
       <ul>
-        <li><strong>Base44</strong> — sign-in, the app database and payments.</li>
-        <li><strong>Wix</strong> — runs the checkout for Base44 Payments and handles your card. We never see or store your card number.</li>
+        <li><strong>Payment providers</strong> — run the checkout and handle your card when paid plans open. We never see or store your card number.</li>
+        <li><strong>Resend</strong> — sends our emails (sign-up codes, password resets, two-step codes, support replies).</li>
         <li><strong>GitHub</strong> — only if you connect your GitHub account to save a site's code there.</li>
-        <li><strong>Cloudflare</strong> — hosting, published pages, credits and drafts storage.</li>
+        <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress.</li>
         <li>
           <strong>Google (Gemini API)</strong> — writes the AI answers, so your prompts and chat context are sent to
           Google. On the plan we use, Google may keep them and use them to improve its products, and people at
