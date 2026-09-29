@@ -24,7 +24,10 @@ export default function Login() {
   const typo = useEmailTypo(email);
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState("");
+  // Back from "Continue with Google" while the new sign-in doesn't have it yet (functions/api/[[path]].js).
+  const [error, setError] = useState(() =>
+    new URLSearchParams(window.location.search).get("google") === "soon" ? "Signing in with Google is coming back soon. For now, log in with your email and password (or tap Forgot password to set one)." : ""
+  );
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(() => localStorage.getItem("infinity-ai-remember") !== "0");
   const [note] = useState(() => SIGNED_OUT_NOTES[signedOutNote()] || "");

@@ -16,6 +16,50 @@
 // The entry.ts copy above predates this: if you restore from it, add the authLimit import
 // and call back (scripts/test-authlimit.mjs fails without them).
 import { authLimit } from "../../cloudflare-lib/authlimit.js";
+import { handleEntities } from "../../cloudflare-lib/db.js";
+import { handleAuth, sessionUser, logout } from "../../cloudflare-lib/auth.js";
+
+const APP_ID = "6a8b5eb7787b8a4d6a18f662";
+const jsonRes = (status, body) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "x-content-type-options": "nosniff", "cache-control": "no-store" } });
+
+// -> a Response for the calls Nebulux answers itself, or null to pass it on to Base44.
+async function ownBackend(context, path, url) {
+  const { request, env } = context;
+  const db = env.DB;
+  const safeBack = (to) => {
+    try {
+      const u = new URL(to || "/", url.origin);
+      return u.origin === url.origin ? u.pathname + u.search : "/";
+    } catch {
+      return "/";
+    }
+  };
+  if (path === "apps/auth/logout") {
+    await logout(db, request);
+    return Response.redirect(url.origin + safeBack(url.searchParams.get("from_url")), 302);
+  }
+  // "Continue with Google" isn't set up on the new sign-in yet.
+  if (path === "apps/auth/login" || path.startsWith("apps/auth/")) {
+    return Response.redirect(url.origin + "/login?google=soon", 302);
+  }
+  if (path === `apps/public/prod/public-settings/by-id/${APP_ID}`) return jsonRes(200, { id: APP_ID, public_settings: {} });
+  const prefix = `apps/${APP_ID}/`;
+  if (!path.startsWith(prefix)) return null;
+  const rest = path.slice(prefix.length);
+  const body = ["GET", "HEAD", "DELETE"].includes(request.method) ? null : await request.clone().json().catch(() => ({}));
+  if (rest.startsWith("auth/")) {
+    if (request.method !== "POST") return jsonRes(405, { message: "Not supported" });
+    const r = await handleAuth(db, env, request, rest, body || {});
+    return jsonRes(r.status, r.body);
+  }
+  if (rest.startsWith("entities/")) {
+    const user = await sessionUser(db, request);
+    const r = await handleEntities(db, user, request.method, rest, url.search, body);
+    return jsonRes(r.status, r.body);
+  }
+  return null;
+}
 
 const BACKEND = "https://blackhole-ai.base44.app";
 
@@ -42,6 +86,11 @@ export async function onRequest(context) {
 
   const limited = await authLimit(request, path);
   if (limited) return limited;
+
+  // Nebulux's own database and sign-in (cloudflare-lib/db.js, auth.js) answer instead of Base44
+  // once the DB binding (D1 "nebulux-db") is connected to this Pages project.
+  const own = context.env && context.env.DB ? await ownBackend(context, path, url) : null;
+  if (own) return own;
 
   const headers = new Headers(request.headers);
   headers.delete("host");

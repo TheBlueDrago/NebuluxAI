@@ -15,6 +15,15 @@ import { stripInjected } from "./injected.js";
 import { allow, TOO_MANY } from "./ratelimit.js";
 import { accountBlocked, BLOCKED_MESSAGE } from "./bans.js";
 
+import { handleEntities } from "./db.js";
+import { sessionUser } from "./auth.js";
+
+// Set by functions/_middleware.js from the DB binding (D1 "nebulux-db") on every request.
+let ownDb = null;
+export function useOwnDb(db) {
+  ownDb = db || null;
+}
+
 export const BACKEND = "https://blackhole-ai.base44.app";
 export const APP_ID = "6a8b5eb7787b8a4d6a18f662";
 // The pages.dev origin, not nebuluxai.com: that zone's bot protection answers
@@ -48,6 +57,18 @@ export const publishedUrl = (kind, name) => `${PUBLIC_ORIGIN}/published/${kind}/
 
 // Calls Base44's REST API, as the user who made `request` when it carries a token.
 export async function base44(request, method, path, body) {
+  // Nebulux's own database (cloudflare-lib/db.js) once it's connected, with the same rules.
+  if (ownDb && path.startsWith("entities/")) {
+    const user = await sessionUser(ownDb, request);
+    const [p, search] = path.split("?");
+    const r = await handleEntities(ownDb, user, method, p, search ? "?" + search : "", body);
+    if (r.status >= 400) {
+      const err = new Error(r.body && r.body.message);
+      err.status = r.status;
+      throw err;
+    }
+    return r.body;
+  }
   const headers = { "X-App-Id": APP_ID, "content-type": "application/json" };
   const auth = request && request.headers.get("authorization");
   if (auth) headers.authorization = auth;
