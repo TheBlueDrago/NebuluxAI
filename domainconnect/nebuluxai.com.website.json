@@ -11,11 +11,27 @@
   "sharedProviderName": false,
   "syncPubKeyDomain": "nebuluxai.com",
   "syncRedirectDomain": "nebuluxai.com",
-  "warnPhishing": true,
   "hostRequired": false,
   "records": [
-    { "type": "CNAME", "host": "@", "pointsTo": "customers.nebuluxai.com", "ttl": 3600 },
-    { "type": "TXT", "host": "_nebulux-verify", "data": "nebulux-verify=%token%", "ttl": 3600, "txtConflictMatchingMode": "All" },
-    { "type": "TXT", "host": "_cf-custom-hostname", "data": "%cfvalue%", "ttl": 3600, "txtConflictMatchingMode": "All" }
+    {
+      "type": "CNAME",
+      "host": "@",
+      "pointsTo": "customers.nebuluxai.com",
+      "ttl": 3600
+    },
+    {
+      "type": "TXT",
+      "host": "_nebulux-verify",
+      "data": "nebulux-verify=%token%",
+      "ttl": 3600,
+      "txtConflictMatchingMode": "All"
+    },
+    {
+      "type": "TXT",
+      "host": "_cf-custom-hostname",
+      "data": "%cfvalue%",
+      "ttl": 3600,
+      "txtConflictMatchingMode": "All"
+    }
   ]
 }
