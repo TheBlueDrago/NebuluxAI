@@ -73,7 +73,7 @@ assert(bodies[0].tools && b.content.includes("Sources"), "and comes back once th
   assert(!["Who made the Eiffel Tower?", "Explain photosynthesis", "What is the best AI for coding?"].some(asksWhoItIs), "other questions aren't");
   bodies.length = 0;
   await call("Who made you?");
-  assert(JSON.stringify(bodies[0].contents).includes("you are Nebulux AI, made by the Nebulux AI team"), "the reminder goes with that question");
+  assert(JSON.stringify(bodies[0].contents).includes("created and owned by Vidish Narra"), "the reminder goes with that question");
   bodies.length = 0;
   await call("Explain photosynthesis simply");
   assert(!JSON.stringify(bodies[0].contents).includes("Reminder for this answer"), "and not with others");

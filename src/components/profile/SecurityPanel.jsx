@@ -23,7 +23,7 @@ function MyData({ user }) {
     setNote("");
     try {
       const data = await collectMyData(user);
-      downloadJson(data, `blackhole-my-data-${new Date().toISOString().slice(0, 10)}.json`);
+      downloadJson(data, `nebulux-my-data-${new Date().toISOString().slice(0, 10)}.json`);
       const missing = ["credits", "purchases", "sites", "games"].filter((k) => data[k] && data[k].error);
       setNote(missing.length ? `Downloaded, but ${missing.join(" and ")} couldn't be loaded. Try again later for those.` : "Downloaded.");
     } catch {

@@ -5,7 +5,7 @@
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { isBlocked } from "../../../../../cloudflare-lib/reports.js";
 import { pageFor } from "../../../../../cloudflare-lib/pagesource.js";
-import { removedPage } from "../../../../../cloudflare-lib/pageserve.js";
+import { removedPage, rebrand } from "../../../../../cloudflare-lib/pageserve.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { countPlay, totalPlays } from "../../../../../cloudflare-lib/plays.js";
 
@@ -37,7 +37,7 @@ export async function onRequestPost(context) {
     }
     const user = await currentUser(request);
     if (user) await countPlay(kv, name, user.id);
-    return reply(html);
+    return reply(rebrand(html));
   } catch (err) {
     return json({ error: (err && err.message) || "Could not load the game." }, 500);
   }

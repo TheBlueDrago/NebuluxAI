@@ -103,9 +103,19 @@ export function withShareTags(html) {
   return i >= 0 ? html.slice(0, i) + tags + html.slice(i) : html;
 }
 
+// The app's old name in pages made before the rename: "Blackhole AI" (any capitals, with or
+// without the space) becomes "Nebulux AI", and the old address becomes nebuluxai.com. Only the
+// brand: "black hole" the space object, and code names like blackhole-checkout, stay as they are.
+export function rebrand(html) {
+  return String(html || "")
+    .replace(/(^|[^\w-])([\w-]+\.)?blackhole-ai-tech\.com/gi, (m, pre, sub) => pre + (sub || "") + "nebuluxai.com")
+    .replace(/\bBLACKHOLE ?AI\b/g, "NEBULUX AI")
+    .replace(/\bblack ?hole ?ai\b/gi, "Nebulux AI");
+}
+
 // The page as visitors get it: old copies of the added scripts removed, fresh ones added.
 export function preparePage(html, kind, name) {
-  let out = withShareTags(stripInjected(html));
+  let out = withShareTags(stripInjected(rebrand(html)));
   if (kind === "site") out = withFormInbox(withCheckoutBridge(out, name), name);
   return withReportLink(out, kind, name);
 }

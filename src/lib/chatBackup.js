@@ -16,10 +16,10 @@ function current() {
 // Downloads every chat as a JSON file. Returns how many chats were saved.
 export function downloadChats() {
   const chats = current();
-  const blob = new Blob([JSON.stringify({ app: "blackhole-ai", kind: "chats", version: 1, chats }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ app: "nebulux-ai", kind: "chats", version: 1, chats }, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `blackhole-chats-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `nebulux-chats-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();

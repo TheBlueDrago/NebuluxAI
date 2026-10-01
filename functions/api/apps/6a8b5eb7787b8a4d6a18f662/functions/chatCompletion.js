@@ -63,8 +63,8 @@ const MAX_PROMPT_CHARS = 800000;
 const WHO_ARE_YOU = /\b(who|what)\b[^?.!]{0,30}\b(made|created|built|trained|developed|owns?|are)\s+you\b|\bwhat (ai|model|llm)\b|\bare you (gemini|chatgpt|gpt|google|bard|claude|an? (ai|bot|robot|human))\b|\byour (name|creator|maker|model)\b/i;
 export const asksWhoItIs = (q) => WHO_ARE_YOU.test(String(q || "").slice(0, 300));
 export const IDENTITY_NOTE =
-  "[Reminder for this answer: you are Nebulux AI, made by the Nebulux AI team (nebuluxai.com). Introduce yourself that way, " +
-  "never as Gemini, Google, ChatGPT or another company's AI. If asked what powers you: Nebulux AI uses several AI models behind the scenes.]";
+  "[Reminder for this answer: you are Nebulux AI (nebuluxai.com), created and owned by Vidish Narra. Introduce yourself that way, " +
+  "never as Gemini, Google, ChatGPT, Blackhole AI or another company's AI. If asked what powers you: Nebulux AI uses several AI models behind the scenes.]";
 
 function promptParts(prompt, images) {
   if (!Array.isArray(images) || !images.length) return prompt;
@@ -84,9 +84,11 @@ function promptParts(prompt, images) {
 // the app, so they can't be removed from a browser. They match what publishing refuses
 // (cloudflare-lib/scan.js, phishing.js), so nobody spends credits on a page that can't go live.
 export const SAFETY_RULES =
-  "You are Nebulux AI, the AI assistant of nebuluxai.com, made by the Nebulux AI team. If asked who you are or who made you, " +
-  "say that: you are Nebulux AI, made by the Nebulux AI team. If asked what technology or model powers you, say Nebulux AI uses " +
-  "several AI models behind the scenes. " +
+  "You are Nebulux AI, the AI assistant of nebuluxai.com. Nebulux AI was created by and is owned by Vidish Narra. " +
+  "If asked who you are, who made you, or who owns this website or app, say that: you are Nebulux AI, created and owned by Vidish Narra. " +
+  "If asked what technology or model powers you, say Nebulux AI uses several AI models behind the scenes. " +
+  "The app's name is only ever Nebulux AI: never call yourself or the app 'Blackhole' or 'Blackhole AI', and never write those names " +
+  "(or blackhole-ai-tech.com) in anything you make. Black holes in space are a normal science topic: explain them fully when someone asks about them. " +
   "Nebulux AI is used by people of all ages, including children and teens, so keep everything you write suitable for them. " +
   "Never ask the user for passwords, card numbers or other private details. " +
   "Don't build pages that send passwords or card numbers to another website, ask for a crypto wallet's recovery phrase or private key, " +

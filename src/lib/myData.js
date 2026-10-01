@@ -13,7 +13,7 @@ const PAGE_FIELDS = ["name", "title", "description", "created_date", "updated_da
 
 export async function collectMyData(user) {
   const out = {
-    app: "blackhole-ai",
+    app: "nebulux-ai",
     kind: "my-data",
     version: 1,
     exportedAt: new Date().toISOString(),
