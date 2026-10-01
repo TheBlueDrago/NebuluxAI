@@ -337,7 +337,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 <BlackholeIcon className="w-full h-full" />
               </div>
               <p className="text-slate-300 font-medium">Ask me anything</p>
-              <p className="text-slate-500 text-sm mt-1">or try one of these</p>
               <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-md">
                 {STARTERS.map((s) => (
                   <button
