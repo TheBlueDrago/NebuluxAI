@@ -28,10 +28,6 @@ export const CHECKS = {
     const r = await get("https://nebuluxai.com/login");
     return r.ok ? "" : `the sign-in page answered ${r.status}`;
   },
-  "Old address (blackhole-ai-tech.com)": async () => {
-    const r = await get("https://blackhole-ai-tech.com/");
-    return r.ok ? "" : `it answered ${r.status} (Google sign-in goes through it)`;
-  },
   "Published games and sites": async () => {
     const r = await get("https://cosmic-catch.nebuluxai.com/");
     if (!r.ok) return `cosmic-catch.nebuluxai.com answered ${r.status}`;

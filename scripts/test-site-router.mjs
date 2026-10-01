@@ -27,17 +27,17 @@ globalThis.fetch = async (input, init) => {
 };
 const get = (host) => worker.fetch(new Request(`https://${host}/`));
 
-let res = await get("nova.blackhole-ai-tech.com");
+let res = await get("nova.nebuluxai.com");
 assert(res.status === 200 && (await res.text()).includes("Nova"), "a published site is served");
 for (const [h, v] of [["x-content-type-options", "nosniff"], ["referrer-policy", "strict-origin-when-cross-origin"], ["strict-transport-security", "max-age=31536000"]]) {
   assert(res.headers.get(h) === v, `with ${h}: ${v}`);
 }
 assert(/camera=\(\)/.test(res.headers.get("permissions-policy") || "") && /payment=\(\)/.test(res.headers.get("permissions-policy") || ""), "and no camera, microphone, USB or payment sheet for pages people make");
 
-res = await get("ghost.blackhole-ai-tech.com");
+res = await get("ghost.nebuluxai.com");
 const page = await res.text();
 assert(res.status === 404 && page.includes("ghost") && res.headers.get("x-content-type-options") === "nosniff", "an unknown site gets the not-found page, with the same headers");
-res = await get("down.blackhole-ai-tech.com");
+res = await get("down.nebuluxai.com");
 assert(res.status === 502, "if the app can't be reached, a clear error page");
 
 // The name comes from the address, and browsers' URL parsing already refuses hostnames with
@@ -45,7 +45,7 @@ assert(res.status === 502, "if the app can't be reached, a clear error page");
 {
   let refused = false;
   try {
-    new URL('https://a"<img>.blackhole-ai-tech.com/');
+    new URL('https://a"<img>.nebuluxai.com/');
   } catch {
     refused = true;
   }
@@ -53,7 +53,7 @@ assert(res.status === 502, "if the app can't be reached, a clear error page");
 }
 
 asked.length = 0;
-res = await get("blackhole-ai-tech.com");
+res = await get("nebuluxai.com");
 assert(asked.length === 1 && !asked[0].includes("get-site-html"), "the app's own domain passes straight through");
 
 // The new address, and games on their own address too.

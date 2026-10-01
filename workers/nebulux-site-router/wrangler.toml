@@ -4,8 +4,6 @@ name = "nebulux-site-router"
 main = "worker.js"
 compatibility_date = "2026-09-22"
 routes = [
-  { pattern = "*.blackhole-ai-tech.com/*", zone_name = "blackhole-ai-tech.com" },
-  { pattern = "blackhole-ai-tech.com/*", zone_name = "blackhole-ai-tech.com" },
   { pattern = "*.nebuluxai.com/*", zone_name = "nebuluxai.com" },
   # People's own domains (Cloudflare for SaaS custom hostnames) reach the zone as any hostname.
   { pattern = "*/*", zone_name = "nebuluxai.com" },

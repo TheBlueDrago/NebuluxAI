@@ -132,7 +132,7 @@ export function scanPage(html) {
     yellow = true;
     reasons.push(`Embeds other websites (${frameHosts.slice(0, 2).join(", ")})`);
   }
-  if (/(?:window\.|document\.|top\.)location(?:\.href)?\s*=\s*["'`]https?:\/\/(?!([a-z0-9-]+\.)*(blackhole-ai-tech|nebuluxai)\.com)/i.test(src) || /<meta[^>]+http-equiv\s*=\s*["']?refresh[^>]+url\s*=\s*https?:\/\//i.test(src)) {
+  if (/(?:window\.|document\.|top\.)location(?:\.href)?\s*=\s*["'`]https?:\/\/(?!([a-z0-9-]+\.)*nebuluxai\.com)/i.test(src) || /<meta[^>]+http-equiv\s*=\s*["']?refresh[^>]+url\s*=\s*https?:\/\//i.test(src)) {
     malware += 20;
     yellow = true;
     reasons.push("Sends visitors to another website automatically");

@@ -26,7 +26,7 @@ export function findCredentialForm(html) {
 function isExternal(action) {
   if (!/^(https?:)?\/\//i.test(action)) return false;
   const host = hostOf(action);
-  return !(host === "blackhole-ai-tech.com" || host.endsWith(".blackhole-ai-tech.com") || host === "nebuluxai.com" || host.endsWith(".nebuluxai.com") || host.endsWith("nebuluxai.pages.dev"));
+  return !(host === "nebuluxai.com" || host.endsWith(".nebuluxai.com") || host.endsWith("nebuluxai.pages.dev"));
 }
 
 function hostOf(url) {
@@ -78,4 +78,4 @@ export function findCredentialLeak(html) {
   return "";
 }
 
-const isOurs = (host) => host === "blackhole-ai-tech.com" || host.endsWith(".blackhole-ai-tech.com") || host === "nebuluxai.com" || host.endsWith(".nebuluxai.com") || host.endsWith("nebuluxai.pages.dev");
+const isOurs = (host) => host === "nebuluxai.com" || host.endsWith(".nebuluxai.com") || host.endsWith("nebuluxai.pages.dev");

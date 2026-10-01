@@ -57,7 +57,7 @@ export default function ReportedSites() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          const name = manual.name.trim().toLowerCase().replace(/\.(blackhole-ai-tech|nebuluxai)\.com.*$/, "").replace(/^https?:\/\//, "");
+          const name = manual.name.trim().toLowerCase().replace(/\.nebuluxai\.com.*$/, "").replace(/^https?:\/\//, "");
           if (name) act("hide", { kind: manual.kind, name });
         }}
         className="flex flex-wrap items-center gap-2 mb-3"

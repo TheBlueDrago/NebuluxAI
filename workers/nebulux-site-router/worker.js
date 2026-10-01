@@ -1,21 +1,21 @@
 // nebulux-site-router — the Cloudflare Worker that serves every published site on
-// its own subdomain (nova.blackhole-ai-tech.com). Bound to the route
-// *.blackhole-ai-tech.com/* (wildcard DNS). This is a copy of the code deployed in the
+// its own subdomain (nova.nebuluxai.com). Bound to the route
+// *.nebuluxai.com/* (wildcard DNS). This is a copy of the code deployed in the
 // Cloudflare dashboard (Workers & Pages → blackhole-site-router), kept here so it's
 // versioned and can be restored. Deploy changes with `npx wrangler deploy` from this
 // folder (see wrangler.toml), or paste into the dashboard editor.
 //
 // It asks the app's get-site-html function for the page. That path on
-// blackhole-ai-tech.com is the Cloudflare Pages function
+// nebuluxai.pages.dev is the Cloudflare Pages function
 // functions/api/apps/<appId>/functions/get-site-html.js (not Base44's), which applies
 // admin take-downs and the phishing-form check to every site and adds the Buy Now
 // checkout bridge, the Report link and link-preview tags. So this Worker doesn't need
 // changing when those rules change. It adds PAGE_HEADERS below to every page it sends.
 
 const APP_ID = "6a8b5eb7787b8a4d6a18f662";
-// Sites and games answer on both addresses: name.nebuluxai.com (the new one) and
-// name.blackhole-ai-tech.com (older links keep working).
-const ROOTS = ["nebuluxai.com", "blackhole-ai-tech.com"];
+// Sites and games answer at name.nebuluxai.com. (The old blackhole-ai-tech.com is no longer
+// served: it was freed on 2026-10-01 for the owner to reuse.)
+const ROOTS = ["nebuluxai.com"];
 const ROOT = ROOTS[0];
 // The pages.dev address of the same app: no bot checks in the way of this server-to-server call.
 const API_BASE = "https://nebuluxai.pages.dev/api/apps/" + APP_ID + "/functions/";
