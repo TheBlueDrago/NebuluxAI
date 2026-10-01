@@ -41,18 +41,9 @@ const FABLE_SYS = "You are Space, Nebulux AI's premium creative model. Be imagin
 const AI_NAMES = { ai: "Nebulux AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
 // Shown in an empty chat so new people see what they can make right away.
-// What people most often come for first: help from the AI; building is one tap away.
 // Sent when an answer stopped at the length limit (the server marks it "more").
 const KEEP_GOING = "Keep going from exactly where you stopped.";
 
-const STARTERS = [
-  { icon: "📚", label: "Homework help", hint: "Step by step", prompt: "Help me with my homework. Ask me what the question is, then explain it step by step instead of just giving the answer." },
-  { icon: "📷", label: "Snap a question", hint: "Photo of homework", go: "photo" },
-  { icon: "✍️", label: "Help me write", hint: "Essay, email, story", prompt: "Help me write something. Ask me what it's for, who will read it and how long it should be first." },
-  { icon: "🧠", label: "Quiz me", hint: "Practise for a test", prompt: "Quiz me to practise for a test. Ask me the topic and my grade first, then give me one question at a time." },
-  { icon: "🌐", label: "Build a website", hint: "Templates or your idea", go: "designer" },
-  { icon: "🎮", label: "Make a game", hint: "Describe it, then play it", go: "game" },
-];
 
 export default function ChatBox({ conversation, createConversation, addMessage, removeMessage, renameConversation, plan, exhausted, remaining, spend, userInitial }) {
   // ?ask=... (from the Ideas page or a guide): the question starts typed in the box, not sent,
@@ -255,17 +246,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     });
   };
 
-  const startWith = (s) => {
-    if (s.go === "designer") return shell?.goDesigner();
-    // Opens the camera on phones (a file picker on computers); the picture is attached and a
-    // question is typed in, ready to send.
-    if (s.go === "photo") return cameraRef.current?.click();
-    // Opens the game maker as it was left (goGameDesigner would start over and clear a draft).
-    if (s.go === "game") return shell?.navigate("/chat/game-designer");
-    if (loading || isExhausted) return;
-    runPrompt(s.prompt, selectedAi);
-  };
-
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -337,23 +317,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 <BlackholeIcon className="w-full h-full" />
               </div>
               <p className="text-slate-300 font-medium">Ask me anything</p>
-              <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-md">
-                {STARTERS.map((s) => (
-                  <button
-                    key={s.label}
-                    onClick={() => startWith(s)}
-                    className="text-left px-3 py-2.5 rounded-xl bg-slate-800/70 border border-slate-700/50 hover:bg-slate-700/70 hover:border-indigo-500/50 transition-colors"
-                  >
-                    <span className="block text-sm text-slate-200 font-medium">
-                      <span aria-hidden="true">{s.icon}</span> {s.label}
-                    </span>
-                    <span className="block text-[11px] text-slate-500 mt-0.5">{s.hint}</span>
-                  </button>
-                ))}
-              </div>
-              <a href="/ideas" className="mt-3 text-xs text-indigo-300 hover:text-indigo-200 underline underline-offset-2">
-                More ideas for what to ask
-              </a>
             </div>
           )}
 
