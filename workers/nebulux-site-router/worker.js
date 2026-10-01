@@ -152,8 +152,6 @@ async function maintenance(request, env, url) {
   if (key && (await sameText(cookieOf(request, "nx_owner"), key))) return null;
   // Devices with the old installed app fetch this to remove it (public/sw.js).
   if (path === "/sw.js") return null;
-  // The owner's Google sign-in passes through the old address.
-  if (url.hostname === "blackhole-ai-tech.com" && /^\/(auth-start|auth-bounce|api\/apps\/auth)/.test(path)) return null;
   return new Response(DOWN_PAGE, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "retry-after": "86400", "x-robots-tag": "noindex" } });
 }
 

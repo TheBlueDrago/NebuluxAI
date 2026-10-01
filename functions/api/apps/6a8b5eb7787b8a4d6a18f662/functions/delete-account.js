@@ -1,6 +1,5 @@
-// Replaces Base44's delete-account. Deletes the signed-in user's own User record with
-// their own login (no Base44 function, so it doesn't use the Base44 integration
-// allowance); if Base44 doesn't allow that, falls back to the old Base44 function.
+// Deletes the signed-in user's own account (their record in Nebulux's database, cloudflare-lib/db.js,
+// which also removes their sign-in and every signed-in device).
 // Also remembers the address as deleted (check-email) and clears the user's KV records.
 // The app calls delete-my-content first to remove their sites, games and drafts.
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
@@ -14,11 +13,7 @@ export async function onRequestPost(context) {
     const user = await currentUser(request);
     if (!user) return json({ error: "Unauthorized" }, 401);
     if (!(await allow(`delete-account:${user.id}`, 5, 3600))) return json({ error: TOO_MANY }, 429);
-    try {
-      await base44(request, "DELETE", `entities/User/${encodeURIComponent(user.id)}`);
-    } catch {
-      await base44(request, "POST", "functions/delete-account", {});
-    }
+    await base44(request, "DELETE", `entities/User/${encodeURIComponent(user.id)}`);
     const email = String(user.email || "").trim().toLowerCase();
     if (email) await kv.put(`deleted:${email}`, new Date().toISOString());
     for (const key of [`bonus:${user.id}`, `grant:${user.id}`, `welcome:${user.id}`, `draft:${user.id}`]) await kv.delete(key).catch(() => {});

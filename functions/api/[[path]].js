@@ -92,6 +92,9 @@ export async function onRequest(context) {
   // once the DB binding (D1 "nebulux-db") is connected to this Pages project.
   const own = context.env && context.env.DB ? await ownBackend(context, path, url) : null;
   if (own) return own;
+  // Nebulux doesn't use Base44 anymore: anything it doesn't answer itself is simply not found,
+  // never quietly passed on to Base44. (Without the DB binding, the old pass-through below stays.)
+  if (context.env && context.env.DB) return jsonRes(404, { message: "Not found" });
 
   const headers = new Headers(request.headers);
   headers.delete("host");
