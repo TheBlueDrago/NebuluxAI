@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Loader2, Gamepad2, Flag, Sparkles } from "lucide-react";
+import { Loader2, Gamepad2, Flag, Sparkles, Trash2, Save } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { askConfirm } from "@/lib/dialogs";
 import { useAuth } from "@/lib/AuthContext";
 import { loadGame } from "@/lib/loadGame";
 import { findBuiltInGame } from "@/lib/builtInGames";
@@ -13,6 +15,14 @@ export default function Play() {
   const { name = "" } = useParams();
   const { isAuthenticated } = useAuth();
   const [game, setGame] = useState(null); // { html, title, genre } | { missing: "why" }
+  const [resetKey, setResetKey] = useState(0);
+
+  // Progress is kept with the account (components/PreviewFrame.jsx); only this deletes it.
+  const deleteProgress = async () => {
+    if (!(await askConfirm(`Delete your saved progress in ${game?.title || name}? This can't be undone.`, { confirmLabel: "Delete", danger: true }))) return;
+    await base44.functions.invoke("game-save", { action: "delete", name }).catch(() => {});
+    setResetKey((k) => k + 1);
+  };
 
   useEffect(() => {
     const builtIn = findBuiltInGame(name);
@@ -63,6 +73,24 @@ export default function Play() {
             <Flag className="w-4 h-4" />
           </a>
         )}
+        {game && !game.missing && (isAuthenticated ? (
+          <button
+            onClick={deleteProgress}
+            className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-red-300 transition-colors"
+            title="Delete my saved progress in this game"
+            aria-label="Delete my saved progress"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        ) : (
+          <Link
+            to={"/login?returnTo=" + encodeURIComponent(`/play/${name}`)}
+            className="hidden sm:inline-flex shrink-0 items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs"
+            title="Your progress saves to your account when you're signed in"
+          >
+            <Save className="w-3.5 h-3.5" /> Sign in to save
+          </Link>
+        ))}
         <Link
           to={makeYourOwn}
           className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-xs font-semibold hover:opacity-90"
@@ -82,7 +110,7 @@ export default function Play() {
             <Link to="/" className="mt-4 text-sm text-indigo-300 hover:text-indigo-200">Make your own game with Nebulux AI</Link>
           </div>
         ) : (
-          <PreviewFrame html={game.html} title={game.title || name} saveName={name} />
+          <PreviewFrame key={resetKey} html={game.html} title={game.title || name} saveName={name} />
         )}
       </div>
     </div>
