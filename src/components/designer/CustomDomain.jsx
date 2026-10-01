@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Globe, Loader2, X, RefreshCw, Copy, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAppShell } from "@/components/AppShellContext";
@@ -16,7 +17,13 @@ export default function CustomDomain({ siteName, onUpgrade, openKey = 0, initial
     if (openKey) setOpen(true);
   }, [openKey]);
   return (
-    open && <DomainDialog key={openKey} siteName={siteName} allowed={allowed} trial={trial} onUpgrade={onUpgrade} initialHost={initialHost} onClose={() => setOpen(false)} />
+    // Drawn straight into the page body, above everything: inside the Publish window (which moves
+    // with an animation) it was squeezed into that window and covered by its buttons.
+    open &&
+    createPortal(
+      <DomainDialog key={openKey} siteName={siteName} allowed={allowed} trial={trial} onUpgrade={onUpgrade} initialHost={initialHost} onClose={() => setOpen(false)} />,
+      document.body
+    )
   );
 }
 
@@ -118,7 +125,7 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
   const verifying = info?.status === "verify";
   return (
     // Scrolls when the records make it taller than the screen (phones), so nothing is cut off.
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" className="relative my-auto w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-2xl bg-slate-900 border border-slate-700 p-5 text-sm text-slate-200 shadow-2xl">
         <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
           <X className="w-5 h-5" />
