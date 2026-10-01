@@ -73,6 +73,57 @@ export async function hasTxt(name, value) {
   }
 }
 
+// ---- Domain Connect (domainconnect.org): "Set up automatically". The person logs in at the
+// company their domain is with, presses Allow, and that company adds our records itself. Uses the
+// template in domainconnect/nebuluxai.com.website.json, which each company has to approve first;
+// requests are signed with DC_PRIVATE_KEY (a Pages secret; its public half is the TXT record
+// _dck1.nebuluxai.com).
+export const DC = { provider: "nebuluxai.com", service: "website", key: "_dck1" };
+
+async function dohTxt(name) {
+  try {
+    const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=TXT`, { headers: { accept: "application/dns-json" } });
+    const j = await r.json();
+    return (j.Answer || []).filter((a) => a.type === 16).map((a) => String(a.data || "").replace(/"\s*"/g, "").replace(/^"|"$/g, "").trim());
+  } catch {
+    return [];
+  }
+}
+
+// The company a domain's DNS is with, if it supports Domain Connect and has our template switched on.
+// -> { name, urlSyncUX } | { name, unsupported: true } | null (no Domain Connect at all)
+export async function dcProvider(root) {
+  const api = (await dohTxt(`_domainconnect.${root}`))[0];
+  if (!api || !/^[a-z0-9.-]+(\/[\w./-]*)?$/i.test(api)) return null;
+  const s = await fetch(`https://${api}/v2/${root}/settings`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!s || !s.urlSyncUX || !/^https:\/\//.test(s.urlSyncUX)) return null;
+  const name = String(s.providerDisplayName || s.providerName || "your domain company").slice(0, 60);
+  const base = /^https:\/\//.test(s.urlAPI || "") ? s.urlAPI : `https://${api}`;
+  const ok = await fetch(`${base}/v2/domainTemplates/providers/${DC.provider}/services/${DC.service}`).then((r) => r.ok).catch(() => false);
+  return ok ? { name, urlSyncUX: s.urlSyncUX.replace(/\/$/, "") } : { name, unsupported: true };
+}
+
+// Signs the query string with our private key (RSA-SHA256, as Domain Connect requires).
+async function dcSign(qs, pem) {
+  const der = Uint8Array.from(atob(String(pem).replace(/-----[^-]+-----|\s+/g, "")), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const sig = new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(qs)));
+  return btoa(String.fromCharCode(...sig));
+}
+
+// The link to the company's "Allow" page, with every record filled in.
+export async function dcApplyUrl({ urlSyncUX, hostname, token, cfValue, site, pem }) {
+  const labels = hostname.split(".");
+  const root = labels.slice(-2).join(".");
+  const host = labels.slice(0, -2).join(".");
+  const params = [["domain", root]];
+  if (host) params.push(["host", host]);
+  params.push(["token", token], ["cfvalue", cfValue || "none"], ["redirect_uri", `https://nebuluxai.com/chat?domainconnect=${encodeURIComponent(site)}`], ["state", site]);
+  const qs = params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  const sig = await dcSign(qs, pem);
+  return `${urlSyncUX}/v2/domainTemplates/providers/${DC.provider}/services/${DC.service}/apply?${qs}&sig=${encodeURIComponent(sig)}&key=${DC.key}`;
+}
+
 // Before ownership is proven: the TXT record to add (and the CNAME, which can go in at the same time).
 function pending(rec) {
   return { domain: rec.hostname, live: false, status: "verify", target: CNAME_TARGET, apex: rec.hostname.split(".").length === 2, verify: { name: txtName(rec.hostname), value: txtValue(rec.token) } };
@@ -115,7 +166,10 @@ export async function onRequestPost(context) {
       }
       let result;
       try {
-        result = await cf(env, "POST", "", { hostname: current.hostname, ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2" } } });
+        // Already registered by "Set up automatically" (cfId); otherwise register it now.
+        result = current.cfId
+          ? await cf(env, "GET", `/${current.cfId}`)
+          : await cf(env, "POST", "", { hostname: current.hostname, ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2" } } });
       } catch (e) {
         return json({ ...pending(current), error: /already exists/i.test(e.message) ? "That domain is already connected somewhere else." : `Couldn't connect that domain: ${e.message}` });
       }
@@ -127,10 +181,36 @@ export async function onRequestPost(context) {
     // Only real changes count toward the limit (refused tries don't), and admins have none.
     const tooMany = async () => user.role !== "admin" && !(await allow(`domainchange:${user.id}`, 10, 3600));
 
+    // "Set up automatically" (Domain Connect): the link to the domain company's Allow page, or why not.
+    // The domain is registered with Cloudflare here (not served yet: that waits for "verify"), so
+    // Cloudflare's own TXT value can be added in the same step.
+    if (body.action === "autoconnect") {
+      if (!current) return json({ error: "Connect a domain first." }, 400);
+      if (!env.DC_PRIVATE_KEY) return json({ auto: false, reason: "Automatic setup isn't switched on yet. Add the records below instead." });
+      if (!(await allow(`domainauto:${user.id}`, 20, 3600))) return json({ error: "Too many tries. Wait a few minutes and try again." }, 429);
+      const root = current.hostname.split(".").slice(-2).join(".");
+      const provider = await dcProvider(root);
+      if (!provider) return json({ auto: false, reason: "Your domain company doesn't offer automatic setup. Add the records below instead (it only takes a minute)." });
+      if (provider.unsupported) return json({ auto: false, reason: `${provider.name} hasn't switched on automatic setup for Nebulux AI yet. Add the records below instead.` });
+      let cfValue = current.cfValue;
+      if (current.id) {
+        // Already proven and registered, waiting for DNS: just Cloudflare's value is needed.
+        const reg = await cf(env, "GET", `/${current.id}`).catch(() => null);
+        if (reg && reg.status === "active" && reg.ssl && reg.ssl.status === "active") return json({ auto: false, done: true });
+        cfValue = (reg && reg.ownership_verification && reg.ownership_verification.value) || "";
+      } else if (!current.cfId) {
+        const reg = await cf(env, "POST", "", { hostname: current.hostname, ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2" } } });
+        cfValue = (reg.ownership_verification && reg.ownership_verification.value) || "";
+        await kv.put(`sitedomain:${site}`, JSON.stringify({ ...current, cfId: reg.id, cfValue }));
+      }
+      const url = await dcApplyUrl({ urlSyncUX: provider.urlSyncUX, hostname: current.hostname, token: current.token, cfValue, site, pem: env.DC_PRIVATE_KEY });
+      return json({ auto: true, provider: provider.name, url });
+    }
+
     if (body.action === "remove") {
       if (current) {
         if (await tooMany()) return json({ error: "Too many changes. Try again in an hour." }, 429);
-        if (current.id) await cf(env, "DELETE", `/${current.id}`).catch(() => null);
+        if (current.id || current.cfId) await cf(env, "DELETE", `/${current.id || current.cfId}`).catch(() => null);
         await kv.delete(`domain:${current.hostname}`);
         await kv.delete(`sitedomain:${site}`);
         const list = ((await kv.get("customdomains", "json")) || []).filter((h) => h !== current.hostname);

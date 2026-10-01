@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Globe, Loader2, X, RefreshCw, Copy, Check } from "lucide-react";
+import { Globe, Loader2, X, RefreshCw, Copy, Check, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAppShell } from "@/components/AppShellContext";
 
@@ -85,6 +85,21 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
   const [seller, setSeller] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [auto, setAuto] = useState({ busy: false, msg: "" });
+
+  // "Set up automatically" (Domain Connect): off to the domain company's Allow page, which adds
+  // the records itself and sends the person back here; or why it isn't available for their domain.
+  const autoSetup = () => {
+    setAuto({ busy: true, msg: "" });
+    call({ action: "autoconnect", site: siteName })
+      .then((r) => {
+        if (r.url) {
+          setAuto({ busy: true, msg: `Opening ${r.provider}…` });
+          window.location.href = r.url;
+        } else setAuto({ busy: false, msg: r.done ? "Your domain is already set up." : r.reason || r.error || "Automatic setup isn't available for this domain. Add the records below." });
+      })
+      .catch((e) => setAuto({ busy: false, msg: e.message }));
+  };
 
   const autoAdd = useRef(initialHost || "");
   const load = useCallback(() => {
@@ -181,6 +196,19 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
               </p>
             ) : (
               <>
+                <div className="rounded-xl bg-indigo-500/10 border border-indigo-400/30 p-3">
+                  <button
+                    type="button"
+                    disabled={busy || auto.busy}
+                    onClick={autoSetup}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2.5 font-semibold text-[#fff] hover:opacity-90 disabled:opacity-50"
+                  >
+                    {auto.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Set up automatically
+                  </button>
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    {auto.msg || "Log in where you bought your domain and press Allow: the records are added for you. Or add them yourself below."}
+                  </p>
+                </div>
                 <label className="block">
                   <span className="text-slate-300">Where did you buy your domain?</span>
                   <select value={seller} onChange={(e) => setSeller(e.target.value)} className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-white outline-none">
