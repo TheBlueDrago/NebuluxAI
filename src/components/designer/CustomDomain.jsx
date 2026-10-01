@@ -58,6 +58,20 @@ function CopyText({ text }) {
   );
 }
 
+// One part of a DNS record: the label on its own line, then the whole value (long ones wrap
+// instead of running off the edge), with a copy button.
+function DnsField({ label, value, copy }) {
+  return (
+    <div className="py-0.5">
+      <p className="font-sans text-slate-400">{label}</p>
+      <div className="flex items-start gap-1">
+        <b className="flex-1 min-w-0 break-all select-all text-white">{value}</b>
+        {copy && <CopyText text={value} />}
+      </div>
+    </div>
+  );
+}
+
 function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClose }) {
   const [info, setInfo] = useState(null);
   const [host, setHost] = useState(initialHost || "");
@@ -103,8 +117,9 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
   const rel = (name) => (name.endsWith(`.${root}`) ? name.slice(0, -(root.length + 1)) : name);
   const verifying = info?.status === "verify";
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 p-5 text-sm text-slate-200 shadow-2xl">
+    // Scrolls when the records make it taller than the screen (phones), so nothing is cut off.
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" className="relative my-auto w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-2xl bg-slate-900 border border-slate-700 p-5 text-sm text-slate-200 shadow-2xl">
         <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
           <X className="w-5 h-5" />
         </button>
@@ -176,25 +191,25 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
                 {verifying && (
                   <div className="rounded-lg bg-slate-800 border border-amber-400/30 p-3 font-mono text-xs space-y-1">
                     <p className="font-sans text-amber-200 font-semibold">1. Prove the domain is yours</p>
-                    <p>Type: <b>TXT</b></p>
-                    <p>Name / Host: <b className="break-all">{rel(info.verify.name)}</b><CopyText text={rel(info.verify.name)} /></p>
-                    <p>Value: <b className="break-all">{info.verify.value}</b><CopyText text={info.verify.value} /></p>
+                    <DnsField label="Type" value="TXT" />
+                    <DnsField label="Name / Host" value={rel(info.verify.name)} copy />
+                    <DnsField label="Value" value={info.verify.value} copy />
                   </div>
                 )}
                 <div className="rounded-lg bg-slate-800 border border-slate-700 p-3 font-mono text-xs space-y-1">
                   {verifying && <p className="font-sans text-slate-300 font-semibold">2. Point it at your website</p>}
-                  <p>Type: <b>CNAME</b></p>
-                  <p>Name / Host: <b>{sub || "@"}</b><CopyText text={sub || "@"} /></p>
-                  <p>Value / Target: <b>{info.target}</b><CopyText text={info.target} /></p>
+                  <DnsField label="Type" value="CNAME" />
+                  <DnsField label="Name / Host" value={sub || "@"} copy />
+                  <DnsField label="Value / Target" value={info.target} copy />
                 </div>
                 {info.apex && <p className="text-xs text-amber-200">This is a main domain (no www). Some sellers don't allow a CNAME there. If yours doesn't, remove it and use www.{d} instead.</p>}
                 {verifying && <p className="text-xs text-slate-400">Only the owner of a domain can add records to it, so this proves it's yours. Once both are added, press Verify.</p>}
                 {info.txt && (
                   <div className="rounded-lg bg-slate-800 border border-slate-700 p-3 font-mono text-xs space-y-1">
                     <p className="font-sans text-slate-300">And this one, to prove the domain is yours:</p>
-                    <p>Type: <b>TXT</b></p>
-                    <p>Name / Host: <b className="break-all">{info.txt.name}</b><CopyText text={info.txt.name} /></p>
-                    <p>Value: <b className="break-all">{info.txt.value}</b><CopyText text={info.txt.value} /></p>
+                    <DnsField label="Type" value="TXT" />
+                    <DnsField label="Name / Host" value={info.txt.name} copy />
+                    <DnsField label="Value" value={info.txt.value} copy />
                   </div>
                 )}
                 <p className="text-xs text-slate-400">It can take from a few minutes to a few hours to start working. Press Check again any time.</p>
