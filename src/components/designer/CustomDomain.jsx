@@ -215,7 +215,7 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
                   <div className="rounded-lg bg-slate-800 border border-slate-700 p-3 font-mono text-xs space-y-1">
                     <p className="font-sans text-slate-300">And this one, to prove the domain is yours:</p>
                     <DnsField label="Type" value="TXT" />
-                    <DnsField label="Name / Host" value={info.txt.name} copy />
+                    <DnsField label="Name / Host" value={rel(info.txt.name)} copy />
                     <DnsField label="Value" value={info.txt.value} copy />
                   </div>
                 )}
