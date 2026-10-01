@@ -4,7 +4,10 @@ import { base44 } from "@/api/base44Client";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
 import { googleLogin } from "@/lib/googleLogin";
-import BlackholeIcon from "@/components/BlackholeIcon";
+import AuthLayout from "@/components/AuthLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import ShowPasswordButton from "@/components/ShowPasswordButton";
 import EmailTypoHint, { useEmailTypo } from "@/components/EmailTypoHint";
@@ -61,147 +64,126 @@ export default function Login() {
     googleLogin(returnTo);
   };
 
+  // Same look as the sign-up page (AuthLayout), with everything the login page had.
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="w-full max-w-sm relative z-10">
-        <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl p-8">
-          {/* Logo */}
-          <div className="flex justify-center mb-6">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <BlackholeIcon className="w-full h-full" />
-            </div>
-          </div>
-
-          <h1 className="text-2xl font-bold text-white text-center">Sign in to Nebulux AI</h1>
-          <p className="text-slate-400 text-sm text-center mt-1.5">Welcome back</p>
-          {note && (
-            <p role="status" className="mt-4 p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-slate-300 text-sm text-center">
-              {note}
-            </p>
-          )}
-
-          <button
-            onClick={handleGoogle}
-            className="w-full mt-6 flex items-center justify-center gap-2 h-11 rounded-xl bg-slate-800 border border-slate-700/50 text-slate-200 text-sm font-medium hover:bg-slate-700/70 transition-colors"
-          >
-            <GoogleIcon className="w-5 h-5" />
-            Continue with Google
-          </button>
-
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700/50" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-slate-900 px-3 text-slate-400">or</span>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 text-red-400 text-sm text-center">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-slate-300 text-sm font-medium">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  autoFocus
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  {...typo.fieldProps}
-                  className="w-full h-11 pl-10 pr-3 rounded-xl bg-slate-800/70 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-500/60 text-sm"
-                  required
-                />
-              </div>
-              <EmailTypoHint suggestion={typo.suggestion} onPick={setEmail} className="text-xs text-slate-400" linkClassName="text-slate-200" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-slate-300 text-sm font-medium">Password</label>
-                <Link to="/forgot-password" className="text-xs text-indigo-400 hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  id="password"
-                  type={showPw ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-11 pl-10 pr-10 rounded-xl bg-slate-800/70 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-500/60 text-sm"
-                  required
-                />
-                <ShowPasswordButton shown={showPw} onToggle={() => setShowPw((v) => !v)} />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-slate-300 text-sm cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => {
-                  setRemember(e.target.checked);
-                  localStorage.setItem("infinity-ai-remember", e.target.checked ? "1" : "0");
-                }}
-                className="w-4 h-4 accent-indigo-500"
-              />
-              Remember me
-            </label>
-            {!remember && (
-              <p className="text-xs text-slate-400 -mt-1">
-                Shared computer? You'll be signed out when the browser closes, and your chats saved in it will be cleared.
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Logging in...
-                </>
-              ) : (
-                "Log in"
-              )}
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center text-slate-400 text-sm mt-6">
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Log in to Nebulux AI"
+      footer={
+        <>
           Don't have an account?{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="text-indigo-400 font-medium hover:underline"
+            className="text-primary font-medium hover:underline"
           >
             Create one
           </Link>
+          <span className="block text-xs mt-3">
+            <Link to="/showcase" className="hover:underline">See what people built</Link> ·{" "}
+            <Link to="/terms" className="hover:underline">Terms</Link> ·{" "}
+            <Link to="/privacy" className="hover:underline">Privacy</Link>
+          </span>
+          {/* A phishing page can copy this screen, but not the address bar. */}
+          <span className="block text-xs mt-3 px-2">
+            <Lock className="inline w-3.5 h-3.5 -mt-0.5 mr-1 text-emerald-400" />
+            Only sign in at <span className="text-slate-300">nebuluxai.com</span>. We never ask for your password anywhere else.{" "}
+            <Link to="/safety" className="hover:underline">Trust &amp; safety</Link>
+          </span>
+        </>
+      }
+    >
+      {note && (
+        <p role="status" className="mb-4 p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-slate-300 text-sm text-center">
+          {note}
         </p>
-        <p className="text-center text-slate-400 text-xs mt-3">
-          <Link to="/showcase" className="hover:underline">See what people built</Link> ·{" "}
-          <Link to="/terms" className="hover:underline">Terms</Link> ·{" "}
-          <Link to="/privacy" className="hover:underline">Privacy</Link>
-        </p>
-        {/* A phishing page can copy this screen, but not the address bar. */}
-        <p className="text-center text-slate-400 text-xs mt-3 px-2">
-          <Lock className="inline w-3.5 h-3.5 -mt-0.5 mr-1 text-emerald-400" />
-          Only sign in at <span className="text-slate-300">nebuluxai.com</span>. We never ask for your password anywhere else.{" "}
-          <Link to="/safety" className="hover:underline">Trust &amp; safety</Link>
-        </p>
+      )}
+
+      <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6" onClick={handleGoogle}>
+        <GoogleIcon className="w-5 h-5 mr-2" />
+        Continue with Google
+      </Button>
+
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-3 text-muted-foreground">or</span>
+        </div>
       </div>
-    </div>
+
+      {error && <div className="mb-4 p-3 rounded-lg bg-red-500/10 text-red-400 text-sm">{error}</div>}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              {...typo.fieldProps}
+              className="pl-10 h-12"
+              required
+            />
+          </div>
+          <EmailTypoHint suggestion={typo.suggestion} onPick={setEmail} />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="password"
+              type={showPw ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-10 pr-10 h-12"
+              required
+            />
+            <ShowPasswordButton shown={showPw} onToggle={() => setShowPw((v) => !v)} />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => {
+              setRemember(e.target.checked);
+              localStorage.setItem("infinity-ai-remember", e.target.checked ? "1" : "0");
+            }}
+            className="w-4 h-4 accent-indigo-500"
+          />
+          Remember me
+        </label>
+        {!remember && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            Shared computer? You'll be signed out when the browser closes, and your chats saved in it will be cleared.
+          </p>
+        )}
+        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Logging in...
+            </>
+          ) : (
+            "Log in"
+          )}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }
