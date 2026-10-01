@@ -315,6 +315,51 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
     };
   }, [siteName, messages, members, projectId]);
 
+  // Account autosave (functions/.../site-draft.js): the site being worked on, published or not,
+  // also goes to the account, so it comes back on another device or after this browser's data is
+  // cleared. Restored only when this browser has no project of its own yet.
+  const [hadLocal] = useState(() => {
+    try {
+      return !!localStorage.getItem(STORE_KEY);
+    } catch {
+      return true;
+    }
+  });
+  const draftReadyRef = useRef(false);
+  const siteTurns = useMemo(() => messages.filter((m) => m.role === "user").map((m) => m.content), [messages]);
+  useEffect(() => {
+    let alive = true;
+    if (hadLocal) {
+      draftReadyRef.current = true;
+      return;
+    }
+    base44.functions
+      .invoke("site-draft", { action: "load" })
+      .then((r) => {
+        const d = r.data?.draft;
+        if (!alive || !d || !d.html || messagesRef.current.length) return;
+        if (d.siteName) setSiteName(d.siteName);
+        const next = [...(d.userTurns || []).map((t) => ({ role: "user", content: t })), { role: "ai", content: d.html }];
+        messagesRef.current = next;
+        setMessages(next);
+      })
+      .catch(() => {})
+      .finally(() => {
+        draftReadyRef.current = true;
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!draftReadyRef.current || !previewHtml) return;
+    const t = setTimeout(() => {
+      base44.functions.invoke("site-draft", { action: "save", siteName, html: previewHtml, userTurns: siteTurns, projectId }).catch(() => {});
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [siteName, previewHtml, siteTurns, projectId]);
+
   // Earlier builds live in IndexedDB (see lib/buildHistory.js). After a reload, put
   // their HTML back into the chat so each one can be restored; skipped if the stored
   // history doesn't line up with this chat.

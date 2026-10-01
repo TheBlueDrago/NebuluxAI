@@ -16,7 +16,10 @@ export async function onRequestPost(context) {
     await base44(request, "DELETE", `entities/User/${encodeURIComponent(user.id)}`);
     const email = String(user.email || "").trim().toLowerCase();
     if (email) await kv.put(`deleted:${email}`, new Date().toISOString());
-    for (const key of [`bonus:${user.id}`, `grant:${user.id}`, `welcome:${user.id}`, `draft:${user.id}`]) await kv.delete(key).catch(() => {});
+    for (const key of [`bonus:${user.id}`, `grant:${user.id}`, `welcome:${user.id}`, `draft:${user.id}`, `sitedraft:${user.id}`]) await kv.delete(key).catch(() => {});
+    // Saved game progress (game-save.js), one key per game.
+    const saves = await kv.list({ prefix: `gamesave:${user.id}:` }).catch(() => null);
+    for (const k of (saves && saves.keys) || []) await kv.delete(k.name).catch(() => {});
     return json({ success: true });
   } catch (err) {
     return json({ error: (err && err.message) || "Could not delete account" }, 500);

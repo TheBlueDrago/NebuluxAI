@@ -135,7 +135,7 @@ export function Privacy() {
         <p className="font-semibold text-white">In short</p>
         <ul>
           <li>We don't sell your information, and we don't show ads or use tracking cookies.</li>
-          <li>Your chats are saved in your own browser. Game drafts, published websites and games, and game progress are kept on our servers.</li>
+          <li>Your chats are saved in your own browser. The website and game you are working on (even before you publish), published websites and games, and game progress are kept on our servers with your account.</li>
           <li>What you ask the AI goes to Google to get an answer; we keep only the start of your five latest questions, to keep the service safe.</li>
           <li>You can download a copy of your data or delete your account at any time.</li>
           <li>We store your password, but only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals.</li>
