@@ -267,7 +267,7 @@ function shoot(){const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.reloading>0)return
   tracer(muzzle,end);
   if(ch.who){const dmg=Math.round(w.dmg*(ch.head?(w===WEAPONS.sn?2.5:1.6):1));hurtBot(ch.who,dmg,ch.head);burst(end,0xff5050,4)}
   else{burst(end,0xddddcc,3);if(wh.obj&&wh.obj.build)hurtBuild(wh.obj,w.dmg)}}
- P.recoil=(w===WEAPONS.sn?.08:w===WEAPONS.sg?.06:.012);
+ P.kick=Math.min(.12,(P.kick||0)+(w===WEAPONS.sn?.06:w===WEAPONS.sg?.045:.008));
  hud();sfx(w===WEAPONS.sn?90:w===WEAPONS.sg?70:140,.07)}
 function reload(){const s=P.inv[P.sel],w=weapon();if(P.reloading>0||s.ammo>=w.mag||P.reserve<=0)return;P.reloading=w.reload;flash("RELOADING...",.6)}
 function hurtBot(b,d,head){let left=d;if(b.sh>0){const a=Math.min(b.sh,left);b.sh-=a;left-=a}b.hp-=left;drawBar(b);
@@ -386,7 +386,7 @@ function resetGame(){for(const b of bots){scene.remove(b.mesh);scene.remove(b.hp
  for(const p of pickups)scene.remove(p.m);pickups.length=0;
  for(let i=solids.length-1;i>=0;i--)if(solids[i].build){scene.remove(solids[i].mesh);solids.splice(i,1)}
  for(const c of chests){c.open=false;c.lid.rotation.x=0;c.lid.position.z=0;c.g.children[2].intensity=1.2}
- Object.assign(P,{hp:100,sh:50,inv:[{k:"ar",ammo:30}],sel:0,reserve:120,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,recoil:0,sprint:false,pitch:-.1});
+ Object.assign(P,{hp:100,sh:50,inv:[{k:"ar",ammo:30}],sel:0,reserve:120,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
  Object.assign(storm,{r:300,target:300,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
 function start(){resetGame();started=true;$("menu").style.display="none";lockMouse();
@@ -420,7 +420,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   // shooting
   P.cd-=dt;if(mouseDown&&!dropping)shoot();
   if(P.reloading>0){P.reloading-=dt;if(P.reloading<=0){const s=P.inv[P.sel],need=weapon().mag-s.ammo,take=Math.min(need,P.reserve);s.ammo+=take;P.reserve-=take;hud()}}
-  if(P.recoil){P.pitch+=P.recoil;P.recoil*=.5;if(P.recoil<.001)P.recoil=0}
+  P.kick=(P.kick||0)*Math.exp(-14*dt);
   checkPickups();
   for(const b of bots)botTick(b,dt);
   // storm
@@ -444,7 +444,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  // keep the camera out of walls
  const dir=desired.clone().sub(head),len=dir.length();dir.normalize();const wh=worldHit(head,dir,len);if(wh.dist<len)desired=head.clone().addScaledVector(dir,Math.max(.6,wh.dist-.4));
  camera.position.copy(desired);
- const look=new THREE.Vector3(-Math.sin(P.yaw)*Math.cos(P.pitch),Math.sin(P.pitch),-Math.cos(P.yaw)*Math.cos(P.pitch));
+ const lp=P.pitch+(P.kick||0);const look=new THREE.Vector3(-Math.sin(P.yaw)*Math.cos(lp),Math.sin(lp),-Math.cos(P.yaw)*Math.cos(lp));
  camera.lookAt(camera.position.clone().add(look));
  P.mesh.visible=!(zoom&&weapon()===WEAPONS.sn);
  sun.position.set(P.pos.x+80,P.pos.y+140,P.pos.z+60);sun.target.position.copy(P.pos);
