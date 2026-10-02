@@ -123,6 +123,22 @@ function cookieOf(request, name) {
   return m ? m[1] : "";
 }
 
+// Every value of a cookie: a browser can hold two with the same name (one for nebuluxai.com and
+// every site address, one for just this address).
+function cookiesOf(request, name) {
+  var out = [];
+  var re = new RegExp("(?:^|;\\s*)" + name + "=([^;]*)", "g");
+  var h = request.headers.get("cookie") || "";
+  var m;
+  while ((m = re.exec(h))) if (m[1]) out.push(m[1]);
+  return out;
+}
+async function hasPass(request, key) {
+  var all = cookiesOf(request, "nx_owner");
+  for (var i = 0; i < all.length; i++) if (key && (await sameText(all[i], key))) return true;
+  return false;
+}
+
 async function sameText(a, b) {
   var enc = new TextEncoder();
   var ha = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(String(a))));
@@ -142,15 +158,17 @@ var BLOCKED_PAGE =
 
 async function ownerBlock(request, env, url) {
   var key = (env && env.OWNER_KEY) || "";
-  var pass = cookieOf(request, "nx_owner");
-  if (key && pass && (await sameText(pass, key))) return null;
+  if (await hasPass(request, key)) return null;
+  var passes = cookiesOf(request, "nx_owner");
   if (key && url.pathname.indexOf("/__owner/") === 0 && (await sameText(url.pathname.slice(9), key))) return null;
   var old = String((env && env.OLD_OWNER_KEYS) || "").split(",").map(function (s) {
     return s.trim();
   }).filter(Boolean);
   var usedOld = false;
   for (var i = 0; i < old.length; i++) {
-    if ((pass && (await sameText(pass, old[i]))) || (url.pathname.indexOf("/__owner/") === 0 && (await sameText(url.pathname.slice(9), old[i])))) usedOld = true;
+    var hit = false;
+    for (var j = 0; j < passes.length; j++) if (await sameText(passes[j], old[i])) hit = true;
+    if (hit || (url.pathname.indexOf("/__owner/") === 0 && (await sameText(url.pathname.slice(9), old[i])))) usedOld = true;
   }
   var ip = request.headers.get("cf-connecting-ip") || "";
   var kv = env && env.KV;
@@ -217,10 +235,12 @@ async function maintenance(request, env, url) {
         },
       });
       res.headers.append("set-cookie", unblock);
+      // An old pass kept for just this address would otherwise sit next to the new one.
+      if (url.hostname.endsWith("nebuluxai.com")) res.headers.append("set-cookie", "nx_owner=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax");
       return res;
     }
   }
-  if (key && (await sameText(cookieOf(request, "nx_owner"), key))) return null;
+  if (await hasPass(request, key)) return null;
   // Devices with the old installed app fetch this to remove it (public/sw.js).
   if (path === "/sw.js") return null;
   // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
