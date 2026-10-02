@@ -132,6 +132,49 @@ async function sameText(a, b) {
   return diff === 0;
 }
 
+// Old owner links (OLD_OWNER_KEYS, comma-separated secret) were shared by mistake: anyone with a
+// pass from one, or who opens one, is shut out of the whole site for 90 days, by browser (a
+// cookie) and by internet address (KV "ownerblock:<ip>", expires by itself). The real owner's
+// current pass always gets in.
+var BLOCK_SECONDS = 90 * 24 * 3600;
+var BLOCKED_PAGE =
+  "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex'><title>Nebulux AI</title><style>body{background:#05060f;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}h1{font-size:22px;font-weight:600;max-width:420px;line-height:1.4}</style></head><body><h1>Access to this website has been removed.</h1></body></html>";
+
+async function ownerBlock(request, env, url) {
+  var key = (env && env.OWNER_KEY) || "";
+  var pass = cookieOf(request, "nx_owner");
+  if (key && pass && (await sameText(pass, key))) return null;
+  if (key && url.pathname.indexOf("/__owner/") === 0 && (await sameText(url.pathname.slice(9), key))) return null;
+  var old = String((env && env.OLD_OWNER_KEYS) || "").split(",").map(function (s) {
+    return s.trim();
+  }).filter(Boolean);
+  var usedOld = false;
+  for (var i = 0; i < old.length; i++) {
+    if ((pass && (await sameText(pass, old[i]))) || (url.pathname.indexOf("/__owner/") === 0 && (await sameText(url.pathname.slice(9), old[i])))) usedOld = true;
+  }
+  var ip = request.headers.get("cf-connecting-ip") || "";
+  var kv = env && env.KV;
+  var blocked = usedOld || cookieOf(request, "nx_blocked") === "1";
+  if (!blocked && kv && ip) {
+    try {
+      blocked = !!(await kv.get("ownerblock:" + ip));
+    } catch (e) {
+      blocked = false;
+    }
+  }
+  if (!blocked) return null;
+  if (usedOld && kv && ip) {
+    try {
+      await kv.put("ownerblock:" + ip, new Date().toISOString(), { expirationTtl: BLOCK_SECONDS });
+    } catch (e) {}
+  }
+  var dom = url.hostname === "nebuluxai.com" || url.hostname.endsWith(".nebuluxai.com") ? "; Domain=nebuluxai.com" : "";
+  var h = new Headers({ "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "x-robots-tag": "noindex" });
+  h.append("set-cookie", "nx_blocked=1; Path=/; Max-Age=" + BLOCK_SECONDS + "; Secure; HttpOnly; SameSite=Lax" + dom);
+  h.append("set-cookie", "nx_owner=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax" + dom);
+  return new Response(BLOCKED_PAGE, { status: 403, headers: h });
+}
+
 // -> a Response to send instead (down page, or the owner's unlock), or null to carry on.
 async function maintenance(request, env, url) {
   if (!env || env.MAINTENANCE !== "on") return null;
@@ -167,6 +210,8 @@ export default {
     DOMAINS = (env && env.KV) || null;
     var url = new URL(request.url);
     var host = url.hostname.toLowerCase();
+    var shut = await ownerBlock(request, env, url);
+    if (shut) return shut;
     var down = await maintenance(request, env, url);
     if (down) return down;
     var root = ROOTS.find(function (r) {
