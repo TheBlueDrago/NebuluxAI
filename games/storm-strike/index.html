@@ -40,6 +40,16 @@ canvas{display:block}body.playing,body.playing canvas{cursor:none}
 #menu p{margin:10px 0 26px;font-size:18px;opacity:.9}
 #menu button{font:900 26px "Segoe UI",Arial;padding:16px 60px;border:0;border-radius:14px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;cursor:pointer;box-shadow:0 6px 0 #b86d00;text-transform:uppercase}
 #menu button:hover{transform:translateY(-2px)}
+#menu{align-items:flex-end;padding-right:6vw;background:linear-gradient(90deg,rgba(40,20,120,0) 30%,rgba(20,5,80,.85) 60%)}
+body.home .hud,body.home #touch{display:none!important}
+#menu .panel{width:min(520px,92vw);text-align:center}
+#menu h3{font-size:15px;letter-spacing:2px;margin:16px 0 8px;opacity:.85}
+.pick{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.pick div{cursor:pointer;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.12);border:3px solid transparent;font-weight:900;font-size:13px;min-width:64px}
+.pick div:hover{background:rgba(255,255,255,.22)}.pick div.on{border-color:#ffe14a;background:rgba(255,200,40,.3)}
+.pick i{display:block;width:30px;height:30px;border-radius:50%;margin:0 auto 4px;border:3px solid #fff}
+#menu small{display:block;font-size:12px;opacity:.75;margin-top:6px}
+@media (max-width:1000px){#menu{align-items:center;padding:0 0 0 0;background:rgba(20,5,80,.7)}#menu h1{font-size:44px}}
 #menu .keys{margin-top:26px;font-size:14px;opacity:.85;line-height:1.8}
 #touch{display:none}
 @media (pointer:coarse){#touch{display:block}#mini{width:110px;height:110px}#bars{width:200px}#build{display:none}}
@@ -62,8 +72,11 @@ canvas{display:block}body.playing,body.playing canvas{cursor:none}
 <div id="slots" class="hud"></div>
 <div id="ammo" class="hud"><div class="big">30</div><div class="small">/ 90</div></div>
 <div id="build" class="hud">Q wall · E ramp · F open chest · R reload · 1-3 weapons · Shift sprint</div>
-<div id="menu"><h1>STORM STRIKE</h1><p>Drop in. Loot up. Build fast. Be the last one standing.</p><button id="play">Play</button>
-<div class="keys">WASD move · Mouse aim · Click shoot · Right-click zoom · Space jump<br>Q build wall · E build ramp · F open chests · R reload · 1-3 swap weapon · Shift sprint</div></div>
+<div id="menu"><div class="panel"><h1>STORM STRIKE</h1><p>Drop in. Loot up. Build fast. Be the last one standing.</p>
+<h3>PICK YOUR FIGURE</h3><div class="pick" id="skins"></div>
+<h3>GAME MODE</h3><div class="pick" id="modes"></div><small>No fill: you go in alone, every other squad is full.</small>
+<div style="height:22px"></div><button id="play">Play</button>
+<div class="keys">WASD move · Mouse aim · Click shoot · Right-click zoom · Space jump<br>Q build wall · E build ramp · F open chests · R reload · 1-3 swap weapon · Shift sprint</div></div></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div>
 <div class="tb" id="tFire" style="right:30px;bottom:150px;width:86px;height:86px">FIRE</div>
 <div class="tb" id="tJump" style="right:130px;bottom:90px">JUMP</div>
@@ -192,12 +205,21 @@ const WEAPONS={
 // Player
 const P={pos:new THREE.Vector3(),vel:new THREE.Vector3(),yaw:0,pitch:-.1,hp:100,sh:50,onGround:false,
  inv:[{k:"ar",ammo:30}],sel:0,reserve:120,cd:0,reloading:0,kills:0,alive:true,mesh:null,walk:0,zoom:false,mats:300};
-P.mesh=makeChar(SKINS[0]);
+const SKIN_NAMES=["Jonesy","Blaze","Ranger","Glimmer","Goldie","Tidal","Crimson"];
+let skinI=0,modeI=0;const MODES=[["SOLO",1],["DUOS",2],["TRIOS",3],["SQUADS",4]];
+try{skinI=+localStorage.getItem("ss-skin")||0;modeI=+localStorage.getItem("ss-mode")||0}catch(e){}
+P.mesh=makeChar(SKINS[skinI]);
+function setSkin(i){skinI=i;scene.remove(P.mesh);P.mesh=makeChar(SKINS[i]);try{localStorage.setItem("ss-skin",i)}catch(e){}drawPickers()}
+function drawPickers(){$("skins").innerHTML=SKINS.map((k,i)=>`<div data-i="${i}" class="${i===skinI?"on":""}"><i style="background:#${k[0].toString(16).padStart(6,"0")}"></i>${SKIN_NAMES[i]}</div>`).join("");
+ $("modes").innerHTML=MODES.map((m,i)=>`<div data-m="${i}" class="${i===modeI?"on":""}">${m[0]}</div>`).join("")}
+document.addEventListener("click",e=>{const d=e.target.closest("[data-i],[data-m]");if(!d||started)return;if(d.dataset.i!=null)setSkin(+d.dataset.i);else{modeI=+d.dataset.m;try{localStorage.setItem("ss-mode",modeI)}catch(e){}drawPickers()}});
 // Bots
 const NAMES=["Raptor","Jonesy","Peely","Midas","Drift","Lynx","Ragnarok","Calamity","Skye","Brutus","Meowscles","Aura","Crystal","Fishstick","Renegade","Ikonik","Chomp","Valor","Zenith"];
 const bots=[];
-function spawnBots(){for(let i=0;i<19;i++){const m=makeChar(SKINS[(i+1)%SKINS.length]);const x=R(-200,200),z=R(-200,200);m.position.set(x,heightAt(x,z),z);
- bots.push({mesh:m,name:NAMES[i],hp:100,sh:R(0,1)<.5?50:0,yaw:R(0,6.28),vel:new THREE.Vector3(),onGround:false,target:null,cd:R(0,1),wander:new THREE.Vector3(x,0,z),think:0,alive:true,
+function spawnBots(){const size=MODES[modeI][1],teams=size===1?19:size===2?9:size===3?6:5;let tx=0,tz=0;
+ for(let i=0;i<teams*size;i++){const team=Math.floor(i/size);if(i%size===0){tx=R(-200,200);tz=R(-200,200)}
+ const m=makeChar(SKINS[(i+1)%SKINS.length]);const x=tx+R(-6,6),z=tz+R(-6,6);m.position.set(x,heightAt(x,z),z);
+ bots.push({team,mesh:m,name:NAMES[i%NAMES.length]+(i>=NAMES.length?"2":""),hp:100,sh:R(0,1)<.5?50:0,yaw:R(0,6.28),vel:new THREE.Vector3(),onGround:false,target:null,cd:R(0,1),wander:new THREE.Vector3(x,0,z),think:0,alive:true,
  w:["ar","smg","sg","ar"][i%4],strafe:1,acc:R(.35,.6),walk:0,hpBar:hpBar()})}}
 function hpBar(){const c=document.createElement("canvas");c.width=128;c.height=24;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(3.2,.6,1);scene.add(s);s.userData.c=c;return s}
 function drawBar(b){const c=b.hpBar.userData.c,k=c.getContext("2d");k.clearRect(0,0,128,24);k.fillStyle="rgba(0,0,0,.6)";k.fillRect(0,0,128,24);k.fillStyle="#3ed14a";k.fillRect(2,12,124*b.hp/100,10);k.fillStyle="#3aa8ff";k.fillRect(2,2,124*b.sh/100,8);b.hpBar.material.map.needsUpdate=true}
@@ -332,7 +354,7 @@ function botTick(b,dt){if(!b.alive)return;const p=b.mesh.position;b.think-=dt;b.
   const hunting=bots.filter(o=>o!==b&&o.alive&&o.target==="player").length;
   const angry=b.angryT>0;let best=60,pick=null;
   if(P.alive&&(angry||(dP<55&&hunting<2))){best=angry?1e9:dP;pick="player"}
-  for(const o of bots){if(o===b||!o.alive)continue;const d=o.mesh.position.distanceTo(p);if(d<best*.9||(!angry&&d<best)){if(angry&&pick==="player")continue;best=d;pick=o}}
+  for(const o of bots){if(o===b||!o.alive||o.team===b.team)continue;const d=o.mesh.position.distanceTo(p);if(d<best*.9||(!angry&&d<best)){if(angry&&pick==="player")continue;best=d;pick=o}}
   b.target=pick;
   // go toward storm safe zone
   const ds=Math.hypot(p.x-storm.tcx,p.z-storm.tcz);
@@ -370,7 +392,8 @@ function hud(){const s=P.inv[P.sel],w=weapon();
  $("ammo").innerHTML=`<div class="big">${s.ammo}</div><div class="small">/ ${P.reserve} · 🧱 ${P.mats}</div>`;
  $("slots").innerHTML=P.inv.map((x,i)=>`<div class="slot ${WEAPONS[x.k].rar} ${i===P.sel?"on":""}">${i+1}<br>${WEAPONS[x.k].name}</div>`).join("");
  const alive=bots.filter(b=>b.alive).length+(P.alive?1:0);$("alive").textContent=`👥 ${alive} LEFT`;$("kills").textContent=`🎯 ${P.kills} ELIMS`;
- if(started&&P.alive&&alive===1)end(true)}
+ const teamsLeft=new Set(bots.filter(b=>b.alive).map(b=>b.team)).size;if(MODES[modeI][1]>1)$("alive").textContent+=` · ${teamsLeft+(P.alive?1:0)} TEAMS`;
+ if(started&&P.alive&&teamsLeft===0)end(true)}
 let flashT=0;function flash(t,d){const m=$("msg");m.textContent=t;m.style.opacity=1;flashT=d}
 function feed(t){const f=$("feed");const d=document.createElement("div");d.textContent=t;f.prepend(d);setTimeout(()=>d.remove(),5000);while(f.children.length>6)f.lastChild.remove()}
 const mc=$("mc").getContext("2d");
@@ -394,14 +417,14 @@ function resetGame(){for(const b of bots){scene.remove(b.mesh);scene.remove(b.hp
  Object.assign(P,{hp:100,sh:50,inv:[{k:"ar",ammo:30}],sel:0,reserve:120,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
  Object.assign(storm,{r:300,target:300,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
-function start(){resetGame();started=true;$("menu").style.display="none";lockMouse();
+function start(){resetGame();started=true;document.body.classList.remove("home");$("menu").style.display="none";lockMouse();
  // battle bus drop: start high in the sky above a random spot, glide down
  const a=R(0,6.28);P.pos.set(Math.cos(a)*120,90,Math.sin(a)*120);P.vel.set(0,0,0);dropping=true;flash("SKYDIVING! STEER WITH WASD",2.5);
  spawnBots();hud()}
-function end(win,by){started=false;document.exitPointerLock();const m=$("menu");m.style.display="flex";
+function end(win,by){started=false;document.body.classList.add("home");document.exitPointerLock();const m=$("menu");m.style.display="flex";
  const alive=bots.filter(b=>b.alive).length+1;
  m.querySelector("h1").textContent=win?"#1 VICTORY ROYALE!":"ELIMINATED";
- m.querySelector("p").textContent=win?`You won with ${P.kills} eliminations!`:`${by} got you. You placed #${alive} with ${P.kills} eliminations.`;
+ m.querySelector("p").textContent=win?`You won with ${P.kills} eliminations!`:`${by} got you. You placed #${new Set(bots.filter(b=>b.alive).map(b=>b.team)).size+1} with ${P.kills} eliminations.`;
  const btn=$("play");btn.textContent="Play again";btn.onclick=start;$("lockhint").style.display="none"}
 $("play").onclick=start;
 
@@ -456,9 +479,12 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  sky.position.copy(camera.position);water.position.x=P.pos.x;water.position.z=P.pos.z;
  // fx
  for(let i=fx.length-1;i>=0;i--){const e=fx[i];e.t-=dt;if(e.v){e.o.position.addScaledVector(e.v,dt);if(!e.sprite)e.v.y-=20*dt}e.o.material.opacity=Math.max(0,e.t/e.max);if(e.t<=0){scene.remove(e.o);fx.splice(i,1)}}
+ if(!started){const t=performance.now()/1000;const bx=0,bz=-60,by=heightAt(bx,bz);P.mesh.visible=true;P.mesh.position.set(bx,by,bz);P.mesh.rotation.set(0,Math.sin(t*.6)*.5+.4,0);
+  const u=P.mesh.userData;u.ll.rotation.x=u.rl.rotation.x=0;u.ra.rotation.x=-1.35;u.la.rotation.x=-1.2;
+  camera.fov=50;camera.updateProjectionMatrix();const cx=innerWidth>1000?-4.5:0;camera.position.set(bx+cx,by+3.6,bz+11);camera.lookAt(bx+cx,by+2.6,bz)}
  renderer.render(scene,camera)}
 // menu backdrop: slow fly-over
-P.pos.set(0,25,60);P.mesh.visible=false;
+P.pos.set(0,25,60);drawPickers();document.body.classList.add("home");
 hud();loop();
 })();
 </script>
