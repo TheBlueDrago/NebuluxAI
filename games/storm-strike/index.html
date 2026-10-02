@@ -301,10 +301,10 @@ const NAMES=["Raptor","Jonesy","Peely","Midas","Drift","Lynx","Ragnarok","Calami
 const bots=[];
 function spawnBots(){const size=MODES[modeI][1],teams=size===1?19:size===2?9:size===3?6:5;let tx=0,tz=0;
  for(let i=0;i<teams*size;i++){const team=Math.floor(i/size);if(i%size===0){tx=R(-200,200);tz=R(-200,200)}
- const m=makeChar(SKINS[(i+1)%SKINS.length]);const x=tx+R(-6,6),z=tz+R(-6,6);m.position.set(x,heightAt(x,z),z);
+ const fig=(i+1)%SKINS.length;const m=makeChar(SKINS[fig]);m.userData.fig=fig;const x=tx+R(-6,6),z=tz+R(-6,6);m.position.set(x,heightAt(x,z),z);
  bots.push({team,mesh:m,name:NAMES[i%NAMES.length]+(i>=NAMES.length?"2":""),hp:100,sh:R(0,1)<.5?50:0,yaw:R(0,6.28),vel:new THREE.Vector3(),onGround:false,target:null,cd:R(0,1),wander:new THREE.Vector3(x,0,z),think:0,alive:true,
  w:["ar","smg","sg","ar"][i%4],strafe:1,acc:R(.35,.6),walk:0,hpBar:hpBar()})}
- if(fillI&&size>1)for(let j=0;j<size-1;j++){const m=makeChar(SKINS[(skinI+2+j)%SKINS.length]);m.position.set(P.pos.x+R(-5,5),P.pos.y,P.pos.z+R(-5,5));
+ if(fillI&&size>1)for(let j=0;j<size-1;j++){const fig=(skinI+2+j)%SKINS.length;const m=makeChar(SKINS[fig]);m.userData.fig=fig;m.position.set(P.pos.x+R(-5,5),P.pos.y,P.pos.z+R(-5,5));
   bots.push({team:-1,mesh:m,name:["Buddy","Ace","Nova"][j],hp:100,sh:50,yaw:0,vel:new THREE.Vector3(),onGround:false,target:null,cd:1,wander:new THREE.Vector3(),think:0,alive:true,w:["ar","smg","sg"][j],strafe:1,acc:.6,walk:0,hpBar:hpBar()})}}
 function hpBar(){const c=document.createElement("canvas");c.width=128;c.height=24;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(3.2,.6,1);scene.add(s);s.userData.c=c;return s}
 function drawBar(b){const c=b.hpBar.userData.c,k=c.getContext("2d");k.clearRect(0,0,128,24);k.fillStyle="rgba(0,0,0,.6)";k.fillRect(0,0,128,24);k.fillStyle="#3ed14a";k.fillRect(2,12,124*b.hp/100,10);k.fillStyle="#3aa8ff";k.fillRect(2,2,124*b.sh/100,8);b.hpBar.material.map.needsUpdate=true}
@@ -390,6 +390,31 @@ function useSuper(){if(!started||!P.alive||(P.superC||0)<1)return;P.superC=0;con
  flash("⚡ "+F.sn.toUpperCase()+"!",1.2);sfx(300,.15);hud()}
 function useHyper(){if(!started||!P.alive||FIGS[skinI].r!=="legendary"||(P.hyperC||0)<1)return;P.hyperC=0;buffs.hyper=8;P.superC=1;flash("💜 HYPERCHARGE!",1.4);sfx(900,.15);useSuper()}
 
+// Bot supers
+function foesOf(b){const list=bots.filter(o=>o.alive&&o!==b&&o.team!==b.team);if(b.team!==-1&&P.alive&&buffs.invis<=0)list.push("player");return list}
+function posOf(t){return t==="player"?P.pos:t.mesh.position}
+function hitFoe(b,t,dmg){dmg=Math.round(dmg);if(t==="player"){hurtPlayer(Math.round(dmg*.7),b.name);return}
+ if(!t.alive)return;let l=dmg;if(t.sh>0){const a=Math.min(t.sh,l);t.sh-=a;l-=a}t.hp-=l;drawBar(t);if(t.hp<=0)killBot(t,b.name)}
+function botAoe(b,at,radius,dmg,color){ring(at,radius,color);burst(at.clone().add(new THREE.Vector3(0,1,0)),color,12);
+ for(const t of foesOf(b)){const d=posOf(t).distanceTo(at);if(d<radius)hitFoe(b,t,dmg*(1-d/radius*.4))}}
+function botSuper(b,tp){const F=FIGS[b.mesh.userData.fig||0],p=b.mesh.position,at=tp.clone();
+ const near=p.distanceTo(P.pos)<90;if(near){feed(`${b.name} used ${F.sn}!`);sfx(260,.08)}
+ switch(F.sup){
+  case"barrage":for(let i=0;i<4;i++)setTimeout(()=>b.alive&&botAoe(b,at.clone().add(new THREE.Vector3(R(-5,5),0,R(-5,5))),6,30,0xff9a1f),i*160);break;
+  case"rocket":tracer(p.clone().add(new THREE.Vector3(0,3,0)),at,0xff3b3b);setTimeout(()=>b.alive&&botAoe(b,at,9,85,0xff3b3b),250);break;
+  case"omega":ring(at,14,0x6a2cff);setTimeout(()=>b.alive&&botAoe(b,at,8,75,0x6a2cff),400);break;
+  case"phoenix":botAoe(b,p,13,60,0xff8a00);b.hp=Math.min(100,b.hp+40);drawBar(b);break;
+  case"shock":botAoe(b,p,11,45,0x14b8a6);if(P.pos.distanceTo(p)<11&&b.team!==-1){const d=P.pos.clone().sub(p);d.y=0;d.normalize();P.pos.addScaledVector(d,7);P.vel.y=12}break;
+  case"valk":b.vel.y=24;setTimeout(()=>b.alive&&botAoe(b,b.mesh.position.clone(),11,65,0xffd23f),1100);break;
+  case"dash":{const d=at.clone().sub(p);d.y=0;const len=Math.min(15,d.length());d.normalize();p.addScaledVector(d,len);burst(p.clone().add(new THREE.Vector3(0,1.5,0)),0xff5a1f,10);botAoe(b,p,4,45,0xff5a1f);break}
+  case"heal":b.hp=Math.min(100,b.hp+60);drawBar(b);ring(p,6,0x52e05a);break;
+  case"bubble":b.sh=Math.min(100,b.sh+75);drawBar(b);ring(p,5,0x2fb6ff);break;
+  case"rapid":b.rapid=7;break;
+  case"rage":b.rage=7;ring(p,4,0xef4444);break;
+  case"freeze":ring(p,16,0xbfefff);for(const t of foesOf(b)){if(posOf(t).distanceTo(p)<16){if(t==="player"){P.slowT=2.5;hurtPlayer(14,b.name)}else{t.frozen=2.5;hitFoe(b,t,15)}}}break;
+  case"chain":{let from=p.clone().add(new THREE.Vector3(0,3,0));for(const t of foesOf(b).filter(t=>posOf(t).distanceTo(p)<40).slice(0,3)){const to=posOf(t).clone().add(new THREE.Vector3(0,2.5,0));tracer(from,to,0x3df2ff);hitFoe(b,t,45);from=to}break}
+  case"invis":b.invisT=5;b.mesh.traverse(o=>{if(o.material){o.material.transparent=true;o.material.opacity=.15}});break}}
+
 // Shooting
 function weapon(){return WEAPONS[P.inv[P.sel].k]}
 function shoot(){const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.reloading>0)return;if(s.ammo<=0){reload();return}
@@ -467,7 +492,8 @@ function animate(m,speed,dt,st){st.walk+=speed*dt*.9;const s=Math.sin(st.walk)*M
 
 // Bot AI
 const up=new THREE.Vector3(0,1,0);
-function botTick(b,dt){if(!b.alive)return;const p=b.mesh.position;if(b.frozen>0){b.frozen-=dt;b.hpBar.position.set(p.x,p.y+5.2,p.z);return}b.think-=dt;b.cd-=dt;b.angryT=(b.angryT||0)-dt;
+function botTick(b,dt){if(!b.alive)return;const p=b.mesh.position;b.rapid=(b.rapid||0)-dt;b.rage=(b.rage||0)-dt;
+ if(b.invisT>0){b.invisT-=dt;if(b.invisT<=0)b.mesh.traverse(o=>{if(o.material){o.material.transparent=false;o.material.opacity=1}})}if(b.frozen>0){b.frozen-=dt;b.hpBar.position.set(p.x,p.y+5.2,p.z);return}b.think-=dt;b.cd-=dt;b.angryT=(b.angryT||0)-dt;
  const dP=P.alive?p.distanceTo(P.pos):1e9;
  if(b.think<=0){b.think=R(.4,1);
   // pick target: player if near, else other bot near
@@ -487,14 +513,16 @@ function botTick(b,dt){if(!b.alive)return;const p=b.mesh.position;if(b.frozen>0)
  if(tp){const to=tp.clone().sub(p);to.y=0;const d=to.length();b.yaw=Math.atan2(to.x,to.z);to.normalize();
   const side=to.clone().cross(up).multiplyScalar(b.strafe);
   const want=b.w==="sg"?10:30;mv.copy(to).multiplyScalar(d>want?1:d<want*.5?-.6:0).add(side.multiplyScalar(.8));
-  if(b.cd<=0&&d<WEAPONS[b.w].range*.8){const w=WEAPONS[b.w];b.cd=w.rate*R(2.5,5);
+  if(b.cd<=0&&d<WEAPONS[b.w].range*.8){const w=WEAPONS[b.w];b.cd=w.rate*R(2.5,5)*((b.rapid||0)>0?.5:1);
    const o=p.clone().add(new THREE.Vector3(0,3.2,0)),aimP=tp.clone().add(new THREE.Vector3(0,2.4,0));
    const dir=aimP.clone().sub(o).normalize();const miss=(1-b.acc)*.12+d*.0006;dir.x+=R(-miss,miss);dir.y+=R(-miss,miss);dir.z+=R(-miss,miss);dir.normalize();
    const wh=worldHit(o,dir,w.range);let endD=wh.dist;
-   if(b.target==="player"){const ch=charHit(o,dir,wh.dist,[{mesh:P.mesh,alive:true}]);if(ch.who){endD=ch.dist;hurtPlayer(Math.round(w.dmg*(w.pellets?4:1)*.55),b.name)}}
-   else{const ch=charHit(o,dir,wh.dist,[b.target]);if(ch.who){endD=ch.dist;const t=b.target;let l=w.dmg*(w.pellets?4:1);if(t.sh>0){const a=Math.min(t.sh,l);t.sh-=a;l-=a}t.hp-=l;drawBar(t);if(t.hp<=0)killBot(t,b.name)}}
+   if(b.target==="player"){const ch=charHit(o,dir,wh.dist,[{mesh:P.mesh,alive:true}]);if(ch.who){endD=ch.dist;hurtPlayer(Math.round(w.dmg*(w.pellets?4:1)*.55*((b.rage||0)>0?1.6:1)),b.name)}}
+   else{const ch=charHit(o,dir,wh.dist,[b.target]);if(ch.who){endD=ch.dist;const t=b.target;let l=w.dmg*(w.pellets?4:1)*((b.rage||0)>0?1.6:1);if(t.sh>0){const a=Math.min(t.sh,l);t.sh-=a;l-=a}t.hp-=l;drawBar(t);if(t.hp<=0)killBot(t,b.name)}}
    if(wh.obj&&wh.obj.build&&endD===wh.dist)hurtBuild(wh.obj,w.dmg);
    tracer(o,o.clone().addScaledVector(dir,endD),0xffb3a0);if(dP<120)sfx(160,.03*(1-dP/120))}
+  // supers: charge while fighting, fire when close enough
+  b.superC=(b.superC||0)+dt/16;if(b.superC>=1&&d<40&&!b.frozen){b.superC=0;botSuper(b,tp)}
   // bots build a wall when getting shot at close range
   if(b.hp<45&&Math.random()<.004){const f=to.clone();const s=addBox(8,6,.6,p.x+f.x*3,p.y,p.z+f.z*3,0,{material:wallMat.clone(),ry:Math.round(b.yaw/(Math.PI/2))*Math.PI/2,hp:150,build:true})}}
  else{const to=b.wander.clone().sub(p);to.y=0;if(to.length()>3){b.yaw=Math.atan2(to.x,to.z);mv.copy(to.normalize())}}
@@ -542,7 +570,7 @@ function resetGame(){for(const b of bots){scene.remove(b.mesh);scene.remove(b.hp
  for(const c of chests){c.open=false;c.lid.rotation.x=0;c.lid.position.z=0;c.g.children[2].intensity=1.2}
  const maxHp=100+SAVE.hpL*20;const order=[SAVE.start,...SAVE.guns.filter(g=>g!==SAVE.start)].filter(g=>SAVE.guns.includes(g)).slice(0,3+SAVE.invL);
  for(const k in buffs)buffs[k]=0;
- Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:WEAPONS[k].mag})),superC:0,hyperC:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
+ Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:WEAPONS[k].mag})),superC:0,hyperC:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
  Object.assign(storm,{r:300,target:300,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
 function start(){if(touch){try{const q=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(q&&q.catch)q.catch(()=>{})}catch(e){}}resetGame();started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";lockMouse();
@@ -572,6 +600,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   P.sprint=!!((keys.ShiftLeft||keys.ShiftRight)&&(mx||mz)&&!P.zoom);const spd=dropping?22:(P.sprint?16:9)*(P.zoom?.6:1);
   P.vel.x=mv.x*spd;P.vel.z=mv.z*spd;
   if(buffs.hyper>0){P.vel.x*=1.3;P.vel.z*=1.3}
+  if(P.slowT>0){P.slowT-=dt;P.vel.x*=.35;P.vel.z*=.35}
   P.slideCd=(P.slideCd||0)-dt;if(P.slideT>0){P.slideT-=dt;const sp=10+20*Math.max(0,P.slideT)/.75;P.vel.x=P.slideDir.x*sp;P.vel.z=P.slideDir.z*sp}
   for(const k in buffs)if(buffs[k]>0)buffs[k]-=dt;
   $("buffs").innerHTML=[buffs.rapid>0?"⚡ GOLD RUSH "+Math.ceil(buffs.rapid):"",buffs.rage>0?"🔥 RAGE "+Math.ceil(buffs.rage):"",buffs.invis>0?"👻 VANISHED "+Math.ceil(buffs.invis):"",buffs.hyper>0?"💜 HYPERCHARGED "+Math.ceil(buffs.hyper):""].filter(Boolean).join("<br>");
