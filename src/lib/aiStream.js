@@ -1,4 +1,5 @@
 import { appParams } from "@/lib/app-params";
+import { startActivity, updateActivity, finishActivity } from "@/lib/aiActivity";
 
 // Calls the chatCompletion function in streaming mode so replies appear as they're
 // written instead of after one long wait. The server sends newline-delimited JSON:
@@ -23,22 +24,38 @@ const wait = (ms, signal) =>
     }, { once: true });
   });
 
-export async function streamChat(body, onDelta, { signal, waits = BUSY_RETRY_WAITS_MS } = {}) {
-  for (let attempt = 0; ; attempt++) {
-    let wrote = false;
-    try {
-      return await streamOnce(body, (t) => {
-        wrote = true;
-        onDelta?.(t);
-      }, { signal });
-    } catch (e) {
-      if (wrote || !e?.response?.data?.busy || attempt >= waits.length || signal?.aborted) throw e;
-      await wait(waits[attempt], signal);
+// `activity` ({ key, where, label, question, ai }) shows this answer on the Dashboard and the
+// sidebar while it's written (lib/aiActivity.js), with its cost and time so far.
+export async function streamChat(body, onDelta, { signal, waits = BUSY_RETRY_WAITS_MS, activity } = {}) {
+  const key = activity?.key;
+  if (key) startActivity(key, { where: activity.where, label: activity.label, question: activity.question || body.question || "", ai: activity.ai });
+  try {
+    for (let attempt = 0; ; attempt++) {
+      let wrote = false;
+      try {
+        const res = await streamOnce(body, (t) => {
+          wrote = true;
+          if (key) updateActivity(key, { chars: t.length });
+          onDelta?.(t);
+        }, { signal, onMeta: (meta) => key && updateActivity(key, { meta }) });
+        if (key) finishActivity(key, res.cut ? "out" : "done", { charged: res.charged, resetsAt: res.credits?.pool?.resetsAt || null });
+        return res;
+      } catch (e) {
+        if (wrote || !e?.response?.data?.busy || attempt >= waits.length || signal?.aborted) throw e;
+        await wait(waits[attempt], signal);
+      }
     }
+  } catch (e) {
+    if (key) {
+      const d = e?.response?.data;
+      if (d?.outOfCredits) finishActivity(key, "out", { resetsAt: d.resetsAt || null });
+      else finishActivity(key, signal?.aborted ? "stopped" : "error");
+    }
+    throw e;
   }
 }
 
-async function streamOnce(body, onDelta, { signal } = {}) {
+async function streamOnce(body, onDelta, { signal, onMeta } = {}) {
   const appId = appParams.appId;
   const token = localStorage.getItem("base44_access_token") || appParams.token;
   const res = await fetch(`/api/apps/${appId}/functions/chatCompletion`, {
@@ -72,7 +89,9 @@ async function streamOnce(body, onDelta, { signal } = {}) {
     } catch {
       return;
     }
-    if (typeof msg.delta === "string") {
+    if (msg.meta) {
+      onMeta?.(msg.meta);
+    } else if (typeof msg.delta === "string") {
       content += msg.delta;
       onDelta?.(content);
     } else if (msg.done || msg.error) {

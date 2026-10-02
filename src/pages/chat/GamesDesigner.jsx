@@ -419,7 +419,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
       abortRef.current = abort;
       const res = await streamChat({ prompt, question: text, model, effort: eff }, (soFar) => {
         if (reqIdRef.current === myId) setLive(soFar);
-      }, { signal: abort.signal });
+      }, { signal: abort.signal, activity: { key: "game", where: "game", question: text } });
       if (reqIdRef.current !== myId) return;
       setLive("");
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
@@ -436,7 +436,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
           (soFar) => {
             if (reqIdRef.current === myId) setLive(joinContinuation(sofar, soFar));
           },
-          { signal: abort.signal }
+          { signal: abort.signal, activity: { key: "game", where: "game", question: text } }
         );
         if (reqIdRef.current !== myId) return;
         spendFor[ai]?.(next.credits);

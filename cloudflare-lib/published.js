@@ -20,6 +20,7 @@ import { sessionUser } from "./auth.js";
 
 // Set by functions/_middleware.js from the DB binding (D1 "nebulux-db") on every request.
 let ownDb = null;
+export const ownDatabase = () => ownDb;
 export function useOwnDb(db) {
   ownDb = db || null;
 }

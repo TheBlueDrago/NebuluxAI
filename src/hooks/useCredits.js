@@ -76,6 +76,8 @@ export function useCredits() {
     seats: status?.seats || null,
     shared: !!status?.shared,
     tiers: status?.tiers || null,
+    // The one pool every AI shares: { window, week (each { limit, used, resetsAt }), bonus, remaining, resetsAt }.
+    pool: status?.pool || null,
     // Banned or blocked by an admin, as the server sees it (the ban screen uses this too).
     blocked: status?.blocked === true,
     blockedUntil: status?.blockedUntil || null,

@@ -20,14 +20,65 @@
 //   its credits, "orgusage:<ownerId>:<YYYY-MM>" ({ ai, aiCode, galaxy5, space5 }).
 // Stored in the PUBLISHED_HTML KV namespace (already bound to this Pages project)
 // under their own key prefixes.
-import { base44 } from "./published.js";
+import { base44, ownDatabase } from "./published.js";
 import { teamFor, seatsOf } from "./teams.js";
 import { offerFor, OFFER_TAG } from "./offers.js";
 import { CREDIT_PACKS } from "./creditPacks.js";
 
 // Plan allowances live in planTotals.js so the app can show them too (out-of-credits card).
-export { TIERS, TIER_OF_MODEL, TIER_NAMES, PLAN_TOTALS } from "./planTotals.js";
-import { TIERS, PLAN_TOTALS } from "./planTotals.js";
+export { TIERS, TIER_OF_MODEL, TIER_NAMES, PLAN_TOTALS, PLAN_LIMITS, MODEL_WEIGHT, CONTEXT_TOKENS, contextCredits, WINDOW_MS, WEEK_MS } from "./planTotals.js";
+import { TIERS, PLAN_LIMITS, WINDOW_MS, WEEK_MS } from "./planTotals.js";
+
+// One pool of bonus credits for every AI. Old balances kept one number per AI; they're added up.
+export const poolOf = (b) =>
+  b && b.pool !== undefined && b.pool !== null && Number.isFinite(Number(b.pool))
+    ? Math.max(0, Number(b.pool))
+    : TIERS.reduce((n, t) => n + Math.max(0, Number(b && b[t]) || 0), 0);
+function setPool(b, v) {
+  b.pool = Math.max(0, Math.trunc(v));
+  for (const t of TIERS) b[t] = 0;
+}
+
+// Use of the 2-hour and weekly limits, one row per person (or Enterprise organization), in D1
+// (KV allows only 1,000 writes a day). Tests without D1 use KV.
+const winIdx = (now) => Math.floor(now / WINDOW_MS);
+const wkIdx = (now) => Math.floor(now / WEEK_MS);
+let tableReady = false;
+async function readUse(kv, id, now = Date.now()) {
+  const db = ownDatabase();
+  let row = null;
+  if (db) {
+    if (!tableReady) {
+      await db.prepare("CREATE TABLE IF NOT EXISTS credit_use (id TEXT PRIMARY KEY, win_idx INTEGER, win_used INTEGER, wk_idx INTEGER, wk_used INTEGER)").run();
+      tableReady = true;
+    }
+    row = await db.prepare("SELECT win_idx, win_used, wk_idx, wk_used FROM credit_use WHERE id = ?").bind(id).first();
+  } else row = await getJSON(kv, `lim:${id}`, null);
+  const w = winIdx(now);
+  const k = wkIdx(now);
+  return {
+    id,
+    w,
+    k,
+    wu: row && row.win_idx === w ? Number(row.win_used) || 0 : 0,
+    ku: row && row.wk_idx === k ? Number(row.wk_used) || 0 : 0,
+  };
+}
+async function writeUse(kv, u) {
+  const db = ownDatabase();
+  if (db)
+    await db
+      .prepare("INSERT INTO credit_use (id, win_idx, win_used, wk_idx, wk_used) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET win_idx = ?2, win_used = ?3, wk_idx = ?4, wk_used = ?5")
+      .bind(u.id, u.w, u.wu, u.k, u.ku)
+      .run();
+  else await putJSON(kv, `lim:${u.id}`, { win_idx: u.w, win_used: u.wu, wk_idx: u.k, wk_used: u.ku });
+}
+const poolId = (ent) => (ent.orgId ? `org:${ent.orgId}` : ent.user.id);
+function limitsOf(ent) {
+  const l = PLAN_LIMITS[ent.plan] || PLAN_LIMITS.free;
+  const n = ent.orgId ? Math.max(1, Number(ent.seats) || 1) : 1;
+  return { window: l.window * n, week: l.week * n };
+}
 import { blockedBy, unverified, emailRemoved, removedEmailKey } from "./bans.js";
 const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4, admin: 5 };
 
@@ -124,8 +175,7 @@ async function syncBonus(kv, request, user, grant, purchases) {
     changed = true;
     // Redemptions from before the snapshot are already in the seeded balance.
     if (since && r.redeemedAt && r.redeemedAt <= since) continue;
-    const tier = TIERS.includes(r.aiModel) ? r.aiModel : "ai";
-    b[tier] = (Number(b[tier]) || 0) + (Number(r.credits) || 0);
+    setPool(b, poolOf(b) + (Number(r.credits) || 0));
   }
   // Base44Purchase rows are written only by the payment functions (service role), so a paid
   // pack row can be trusted; "buy:<id>" keeps it apart from redemption ids in `applied`.
@@ -136,7 +186,7 @@ async function syncBonus(kv, request, user, grant, purchases) {
     changed = true;
     if (since && p.paidAt && p.paidAt <= since) continue;
     const packs = Math.max(1, Math.trunc(Number(p.quantity)) || 1);
-    b[pack.tier] = (Number(b[pack.tier]) || 0) + pack.credits * packs;
+    setPool(b, poolOf(b) + pack.credits * packs);
   }
   if (changed) await putJSON(kv, key, b);
   return b;
@@ -219,23 +269,29 @@ export async function entitlement(kv, request, user, { other = false } = {}) {
   };
 }
 
-export async function creditStatus(kv, ent) {
+export async function creditStatus(kv, ent, now = Date.now()) {
   const month = monthKey();
-  const base = PLAN_TOTALS[ent.plan] || PLAN_TOTALS.free;
-  const totals = {};
-  for (const t of TIERS) totals[t] = ent.orgId ? base[t] * ent.seats : base[t];
-  const usage = ent.orgId
-    ? await getJSON(kv, `orgusage:${ent.orgId}:${month}`, {})
-    : await getJSON(kv, `usage:${ent.user.id}:${month}`, {});
-  const teamUsed = ent.teamId ? Number(await kv.get(`teamusage:${ent.teamId}:${month}`).catch(() => 0)) || 0 : null;
+  const lim = limitsOf(ent);
+  const use = await readUse(kv, poolId(ent), now);
+  const bonus = poolOf(ent.bonus);
+  const winLeft = Math.max(0, lim.window - use.wu);
+  const wkLeft = Math.max(0, lim.week - use.ku);
+  const remaining = Math.min(winLeft, wkLeft) + bonus;
+  const winReset = new Date((use.w + 1) * WINDOW_MS).toISOString();
+  const wkReset = new Date((use.k + 1) * WEEK_MS).toISOString();
+  const pool = {
+    window: { limit: lim.window, used: use.wu, resetsAt: winReset },
+    week: { limit: lim.week, used: use.ku, resetsAt: wkReset },
+    bonus,
+    remaining,
+    // When usable credits come back once they've run out (the weekly limit wins when both are used up).
+    resetsAt: remaining > 0 ? null : wkLeft <= 0 ? wkReset : winReset,
+  };
+  // Every AI shows the same shared pool (older parts of the app read per-AI numbers).
   const tiers = {};
-  for (const t of TIERS) {
-    const used = t === "aiCode" && teamUsed !== null ? teamUsed : Number(usage[t]) || 0;
-    const bonus = Math.max(0, Number(ent.bonus[t]) || 0);
-    // Same display rule the app always used: bonus credits add to the total.
-    tiers[t] = { total: totals[t] + bonus, used, remaining: Math.max(0, totals[t] - used) + bonus };
-  }
+  for (const t of TIERS) tiers[t] = { total: lim.window + bonus, used: use.wu, remaining };
   return {
+    pool,
     plan: ent.plan,
     month,
     blocked: ent.blocked,
@@ -274,36 +330,31 @@ function noteActivity(usage, tier, prompt) {
   usage.activity = a;
 }
 
+// Takes credits from the 2-hour and weekly limits first, then from bonus credits. The monthly
+// record keeps per-AI totals and the activity Monitor shows.
 export async function charge(kv, ent, tier, amount, prompt) {
-  let left = Math.max(0, Math.ceil(amount));
+  const total = Math.max(0, Math.ceil(amount));
+  let left = total;
   const month = monthKey();
-  const fromBonus = Math.min(Math.max(0, Number(ent.bonus[tier]) || 0), left);
-  if (fromBonus > 0) {
-    ent.bonus[tier] -= fromBonus;
-    left -= fromBonus;
+  if (left > 0) {
+    const lim = limitsOf(ent);
+    const use = await readUse(kv, poolId(ent));
+    const take = Math.min(Math.max(0, Math.min(lim.window - use.wu, lim.week - use.ku)), left);
+    if (take > 0) {
+      use.wu += take;
+      use.ku += take;
+      left -= take;
+      await writeUse(kv, use);
+    }
+  }
+  if (left > 0) {
+    setPool(ent.bonus, poolOf(ent.bonus) - left);
     await putJSON(kv, `bonus:${ent.user.id}`, ent.bonus);
   }
-  if (left > 0 && ent.orgId) {
-    const key = `orgusage:${ent.orgId}:${month}`;
-    const pool = await getJSON(kv, key, {});
-    pool[tier] = (Number(pool[tier]) || 0) + left;
-    await putJSON(kv, key, pool);
-    left = 0;
-  }
-  if (left > 0 && tier === "aiCode" && ent.teamId) {
-    const key = `teamusage:${ent.teamId}:${month}`;
-    const cur = Number(await kv.get(key).catch(() => 0)) || 0;
-    try {
-      await kv.put(key, String(cur + left));
-    } catch (err) {
-      console.error("credits: KV write failed", key, String(err));
-    }
-    left = 0;
-  }
-  if (left <= 0 && prompt === undefined) return;
+  if (total <= 0 && prompt === undefined) return;
   const key = `usage:${ent.user.id}:${month}`;
   const usage = await getJSON(kv, key, {});
-  if (left > 0) usage[tier] = (Number(usage[tier]) || 0) + left;
+  if (total > 0) usage[tier] = (Number(usage[tier]) || 0) + total;
   if (prompt !== undefined) noteActivity(usage, tier, prompt);
   await putJSON(kv, key, usage);
 }
@@ -328,7 +379,7 @@ export async function adjustBonus(kv, request, user, tier, delta, once) {
     if (b.applied.includes(key)) return b;
     b.applied.push(key);
   }
-  b[tier] = Math.max(0, (Number(b[tier]) || 0) + Math.trunc(Number(delta) || 0));
+  setPool(b, poolOf(b) + Math.trunc(Number(delta) || 0));
   await putJSON(kv, `bonus:${user.id}`, b);
   return b;
 }
@@ -347,7 +398,7 @@ export async function giveBonusTo(kv, userId, amounts, once) {
   b.applied = b.applied || [];
   if (b.applied.includes(`once:${once}`)) return false;
   b.applied.push(`once:${once}`);
-  for (const t of TIERS) b[t] = Math.max(0, (Number(b[t]) || 0) + Math.trunc(Number(amounts[t]) || 0));
+  setPool(b, poolOf(b) + TIERS.reduce((n, t) => n + Math.trunc(Number(amounts[t]) || 0), 0));
   await putJSON(kv, key, b);
   return true;
 }

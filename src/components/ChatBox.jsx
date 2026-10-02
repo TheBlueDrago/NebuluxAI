@@ -35,6 +35,29 @@ import useStickToBottom from "@/hooks/useStickToBottom";
 import { privateInfoIn } from "@/lib/privateInfo";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
+import LiveCost from "@/components/chat/LiveCost";
+import { setViewing, clearOut } from "@/lib/aiActivity";
+import { waitText } from "@/lib/creditRefresh";
+import { CONTEXT_TOKENS } from "../../cloudflare-lib/planTotals.js";
+
+// "Continue this answer when my credits come back": { [conversationId]: { ai, resetsAt } }.
+const CONTINUE_KEY = "nx-continue-later";
+const readContinue = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CONTINUE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+const writeContinue = (v) => {
+  try {
+    localStorage.setItem(CONTINUE_KEY, JSON.stringify(v));
+  } catch {
+    // Private mode: the box just won't remember.
+  }
+};
+const COMPACT_PROMPT =
+  "Summarize the conversation below so it can carry on from the summary alone. Keep every fact, decision, name, number and piece of code that still matters, and what the user is working on. Use short notes, no greeting.\n\n";
 
 const CODE_SYS = "You are Nebulux Code Assistant. Help with programming. Give clear, correct code with brief explanations.";
 const FABLE_SYS = "You are Space, Nebulux AI's premium creative model. Be imaginative and high-quality.";
@@ -90,6 +113,16 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
 
   const messages = conversation?.messages || [];
   const isExhausted = !!exhausted?.[selectedAi];
+  // Out of credits in this chat: when they come back, and whether to carry on by itself then.
+  const [outAt, setOutAt] = useState(null);
+  const [later, setLater] = useState(readContinue);
+
+  // This chat is on screen: a finished answer here isn't "unread".
+  useEffect(() => {
+    setViewing(conversation?.id ? `chat:${conversation.id}` : null);
+    setOutAt(null);
+    return () => setViewing(null);
+  }, [conversation?.id]);
 
   // `before`: how many of the chat's messages come before this question (Try again leaves out
   // the answer it replaces); by default all of them.
@@ -136,11 +169,13 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       abortRef.current?.abort();
       const abort = new AbortController();
       abortRef.current = abort;
+      clearOut(`chat:${convId}`);
       const res = await streamChat({ prompt: fullPrompt, question: text, model: MODELS[ai] || "automatic", effort: eff, ...(images.length ? { images } : {}) }, (soFar) => {
         if (reqIdRef.current === myId) setLive(soFar);
-      }, { signal: abort.signal });
+      }, { signal: abort.signal, activity: { key: `chat:${convId}`, where: "chat", label: conversation?.title || chatTitle(text), question: text, ai: AI_NAMES[ai] } });
       if (reqIdRef.current !== myId) return;
       setLive("");
+      if (res.cut) setOutAt(res.credits?.pool?.resetsAt || null);
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
       spend?.[ai]?.(res.credits);
       const content = res.content ?? "";
@@ -156,6 +191,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       setLive("");
       const data = e?.response?.data;
       if (data?.credits) spend?.[ai]?.(data.credits);
+      if (data?.outOfCredits) setOutAt(data.resetsAt || data.credits?.pool?.resetsAt || null);
       // Out-of-credits and "AI is busy" come back with a message worth showing as-is.
       addMessage(convId, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "⚠ Sorry, something went wrong. Please try again." });
     } finally {
@@ -167,6 +203,68 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   };
 
   const q = useMessageQueue({ run: runPrompt, remaining, names: AI_NAMES, selectedAi, onChangeAi: setSelectedAi });
+
+  // Carry on by itself once the credits are back, if the box was ticked (checked every 20 seconds
+  // while this chat is open).
+  const pending = conversation?.id ? later[conversation.id] : null;
+  useEffect(() => {
+    if (!pending || loading) return undefined;
+    const go = () => {
+      if (Date.parse(pending.resetsAt || 0) > Date.now()) return;
+      const next = { ...readContinue() };
+      delete next[conversation.id];
+      writeContinue(next);
+      setLater(next);
+      setOutAt(null);
+      runPrompt(KEEP_GOING, pending.ai || selectedAi);
+    };
+    go();
+    const t = setInterval(go, 20000);
+    return () => clearInterval(t);
+  }, [pending?.resetsAt, loading, conversation?.id]);
+  const toggleLater = (on) => {
+    const next = { ...readContinue() };
+    if (on) next[conversation.id] = { ai: selectedAi, resetsAt: outAt };
+    else delete next[conversation.id];
+    writeContinue(next);
+    setLater(next);
+  };
+
+  // /compact: the chat so far is replaced by a short summary the AI writes, so later answers read
+  // (and cost) much less.
+  const [compacting, setCompacting] = useState(false);
+  const compact = async () => {
+    const convId = conversation?.id;
+    if (!convId || messages.length < 2) {
+      if (convId) addMessage(convId, { role: "ai", content: "There's nothing to compact yet." });
+      return;
+    }
+    setCompacting(true);
+    try {
+      const res = await streamChat(
+        { prompt: COMPACT_PROMPT + historyBlock(messages), question: "/compact", model: "automatic", effort: "low" },
+        null,
+        { activity: { key: `chat:${convId}`, where: "chat", label: conversation?.title || "Chat", question: "Compacting this chat", ai: "Nebulux AI" } }
+      );
+      spend?.ai?.(res.credits);
+      const summary = (res.content || "").trim();
+      if (!summary) throw new Error("empty");
+      for (let k = messages.length - 1; k >= 0; k--) removeMessage?.(convId, k);
+      addMessage(convId, { role: "ai", content: `📝 **Chat compacted.** Here's what we covered so far:\n\n${summary}` });
+    } catch (e) {
+      const d = e?.response?.data;
+      if (d?.credits) spend?.ai?.(d.credits);
+      addMessage(convId, { role: "ai", content: `⚠ Couldn't compact this chat${d?.error ? `: ${d.error}` : ". Please try again."}` });
+    } finally {
+      setCompacting(false);
+    }
+  };
+
+  // How full the context window is: everything the AI reads for the next answer, about 4
+  // characters a token.
+  const contextTokens = Math.ceil((historyBlock(messages).length + aboutMeBlock(readAboutMe(shell?.currentUser?.id)).length) / 4);
+  const contextPct = Math.min(100, Math.round((contextTokens / CONTEXT_TOKENS) * 1000) / 10);
+  const credLeft = remaining?.[selectedAi];
 
   const sentCount = messages.filter((m) => m.role === "user").length;
   useStickToBottom(scrollRef, [messages, loading, live, q.queue.length], `${conversation?.id}:${sentCount}`);
@@ -195,6 +293,12 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const send = async () => {
     const text = input.trim();
     if (!text) return;
+    if (text.toLowerCase() === "/compact") {
+      if (loading || compacting) return;
+      setInput("");
+      compact();
+      return;
+    }
     // A card number, secret key, password, phone number or home address: check first (the text
     // stays in the box if not).
     const risky = privateInfoIn(text);
@@ -400,6 +504,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               <div className="max-w-[80%] min-w-0 px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed bg-slate-800 text-slate-100 border border-slate-700/50">
                 <Markdown text={live} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-indigo-400 animate-pulse" />
+                <LiveCost activityKey={conversation?.id ? `chat:${conversation.id}` : null} className="mt-1" />
               </div>
             </div>
           )}
@@ -411,7 +516,30 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 <span className="text-slate-300 text-sm animate-pulse">
                   Thinking...{q.queue.length > 0 ? ` (${q.queue.length} queued)` : ""}
                 </span>
+                <LiveCost activityKey={conversation?.id ? `chat:${conversation.id}` : null} />
               </div>
+            </div>
+          )}
+
+          {compacting && (
+            <div className="flex justify-start">
+              <div className="bg-slate-800 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2.5">
+                <BlackholeIcon className="w-5 h-5 animate-spin" />
+                <span className="text-slate-300 text-sm animate-pulse">Compacting this chat...</span>
+              </div>
+            </div>
+          )}
+
+          {outAt && !loading && conversation?.id && (
+            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              <p className="font-semibold">⚠ You've run out of credits.</p>
+              <p className="mt-1 text-red-100/90">
+                They come back at {new Date(outAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} (in {waitText(Date.parse(outAt) - Date.now())}).
+              </p>
+              <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" className="w-4 h-4 accent-indigo-500" checked={!!pending} onChange={(e) => toggleLater(e.target.checked)} />
+                Continue this answer by itself when my credits come back (while this chat is open)
+              </label>
             </div>
           )}
         </div>
@@ -450,15 +578,15 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <SendOrStopButton loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} />
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+            {/* Like Claude's: files, microphone, AI, strength, then credits and context on the right. */}
             <button
               onClick={() => fileInputRef.current?.click()}
               title="Attach pictures or files (or paste or drop them here)"
+              aria-label="Attach files"
               className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
             >
               <Plus className="w-4 h-4" />
             </button>
-            <AboutMeButton userId={shell?.currentUser?.id} />
-            {selectedAi === "ai" && <StudyModeButton />}
             <VoiceInput
               onText={(t) => {
                 spokenRef.current = true;
@@ -467,7 +595,21 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             />
             <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} />
             <EffortPicker value={effort} onChange={setEffort} />
+            <AboutMeButton userId={shell?.currentUser?.id} />
+            {selectedAi === "ai" && <StudyModeButton />}
             {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
+            <div
+              className="ml-auto flex items-center gap-2 text-[11px] text-slate-400"
+              title={`Credits are shared by every AI. Context: about ${contextTokens.toLocaleString()} of ${CONTEXT_TOKENS.toLocaleString()} tokens. Longer chats cost more; type /compact to shorten this one.`}
+            >
+              <span>⚡ {credLeft === undefined || credLeft === Infinity ? "…" : credLeft.toLocaleString()} credits</span>
+              <span className="flex items-center gap-1">
+                <span className="relative inline-block w-8 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                  <span className={`absolute inset-y-0 left-0 ${contextPct > 75 ? "bg-red-400" : contextPct > 40 ? "bg-amber-400" : "bg-indigo-400"}`} style={{ width: `${Math.max(2, contextPct)}%` }} />
+                </span>
+                {contextPct}% context
+              </span>
+            </div>
           </div>
           <input
             ref={cameraRef}

@@ -60,17 +60,17 @@ assert(s === 400, "can't join twice");
 assert(s === 400, "an email that was already referred can't be reused");
 
 [s, b] = await call(referrer, { action: "claim", referredId: "new1", tier: "ai" });
-assert(s === 200 && b.referrals[0].reward.amount === 25 && (await bonusAi("ref")).ai.total === 100 + 25, "referrer claims 25 AI credits");
+assert(s === 200 && b.referrals[0].reward.amount === 25 && (await bonusAi("ref")).ai.total === 40 + 25, "referrer claims 25 AI credits");
 [s] = await call(referrer, { action: "claim", referredId: "new1", tier: "space5" });
 assert(s === 400, "a referral's reward can be claimed only once");
 [s, b] = await call(newbie, { action: "claim-welcome", tier: "aiCode" });
-assert(s === 200 && (await bonusAi("new1")).aiCode.total === 75 + 15, "the new user claims a welcome bonus");
+assert(s === 200 && (await bonusAi("new1")).aiCode.total === 40 + 15, "the new user claims a welcome bonus");
 [s] = await call(newbie, { action: "claim-welcome", tier: "ai" });
 assert(s === 400, "the welcome bonus is claimed once");
 
 await revokeReferral(kv, req, { id: "ref" }, "new1");
 const [refT, newT] = [await bonusAi("ref"), await bonusAi("new1")];
-assert(refT.ai.total === 100 && newT.aiCode.total === 75, "taking a referral back removes both rewards");
+assert(refT.ai.total === 40 && newT.aiCode.total === 40, "taking a referral back removes both rewards");
 [, b] = await call(referrer, { action: "get" });
 assert(b.referrals[0].revoked === true && !("net" in b.referrals[0]), "referrer sees it as taken back (and no network fingerprint)");
 
@@ -81,9 +81,9 @@ assert(b.referrals[0].revoked === true && !("net" in b.referrals[0]), "referrer 
   await Promise.all(Array.from({ length: 10 }, () => C.adjustBonus(kv, req, u, "ai", 25, "welcome")));
   await C.adjustBonus(kv, req, u, "ai", 25, "welcome");
   const b = JSON.parse(store.get("bonus:race1"));
-  assert(b.ai === 25, "the same one-time grant lands once, even when sent many times at once: " + b.ai);
+  assert(b.pool === 25, "the same one-time grant lands once, even when sent many times at once: " + b.pool);
   await C.adjustBonus(kv, req, u, "ai", 5, "referral:x");
   await C.adjustBonus(kv, req, u, "ai", 5);
   await C.adjustBonus(kv, req, u, "ai", 5);
-  assert(JSON.parse(store.get("bonus:race1")).ai === 40, "different grants and plain admin changes still add up");
+  assert(JSON.parse(store.get("bonus:race1")).pool === 40, "different grants and plain admin changes still add up");
 }

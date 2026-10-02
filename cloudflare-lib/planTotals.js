@@ -16,3 +16,24 @@ export const PLAN_TOTALS = {
   enterprise: { ai: 100, aiCode: 75, galaxy5: 50, space5: 25 },
   admin: { ai: 150, aiCode: 100, galaxy5: 100, space5: 100 },
 };
+
+// Since 2026-10-02 every AI draws from ONE pool of credits (like Claude), with two limits: what
+// you can use in any 2-hour window, and in a week. Stronger AIs and longer chats cost more of it.
+// Bonus credits (promo codes, packs, referrals) are spent once a limit is reached.
+export const PLAN_LIMITS = {
+  free: { window: 40, week: 300 },
+  pro: { window: 120, week: 1000 },
+  team: { window: 160, week: 1400 },
+  secret: { window: 160, week: 1400 },
+  enterprise: { window: 100, week: 800 }, // per seat, shared by the organization
+  admin: { window: 100000, week: 1000000 },
+};
+// Credits per 10,000 characters of reply, per AI (times the effort level).
+export const MODEL_WEIGHT = { ai: 1, aiCode: 2, galaxy5: 3, space5: 4 };
+// The context window: everything the AI reads for one answer (the chat so far, files, page code).
+export const CONTEXT_TOKENS = 1000000;
+// Reading the chat costs 1 credit per 50,000 tokens after the first 50,000.
+export const TOKENS_PER_CONTEXT_CREDIT = 50000;
+export const contextCredits = (chars) => Math.floor(Math.max(0, Number(chars) || 0) / 4 / TOKENS_PER_CONTEXT_CREDIT);
+export const WINDOW_MS = 2 * 3600 * 1000;
+export const WEEK_MS = 7 * 24 * 3600 * 1000;

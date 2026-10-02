@@ -9,6 +9,6 @@ const Landing = lazy(() => import("@/pages/Landing"));
 // Signed-in people go straight to the chat; everyone else sees what Nebulux AI is.
 export default function Home() {
   const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/chat" replace />;
+  if (isAuthenticated) return <Navigate to="/chat/dashboard" replace />;
   return <Landing />;
 }

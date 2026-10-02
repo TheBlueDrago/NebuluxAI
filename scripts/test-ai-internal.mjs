@@ -109,8 +109,8 @@ assert(chunksSent < 20 && stoppedCost >= 1 && stoppedCost < 5, `pressing Stop en
 
 // Message size cap and the per-minute limit on new replies.
 {
-  const [st, bd] = await call({ prompt: "x".repeat(800001), model: "automatic" });
-  assert(st === 413 && /too long/.test(bd.error), "a message over 800,000 characters is refused");
+  const [st, bd] = await call({ prompt: "x".repeat(4000001), model: "automatic" });
+  assert(st === 413 && /too long/.test(bd.error), "a message over the 1,000,000-token context window is refused");
   cache.clear();
   const statuses = [];
   for (let i = 0; i < 16; i++) statuses.push((await call({ prompt: "hi", model: "automatic" }))[0]);
