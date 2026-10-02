@@ -149,3 +149,18 @@ const l2 = new URL(s.headers.get("location"));
 assert(l2.host === "nebuluxai.com" && l2.searchParams.get("google") === "check" && !l2.searchParams.get("access_token"), "a new Google user isn't signed in yet: they're told to check their email");
 const last = mails[mails.length - 1];
 assert(last.to[0] === "fresh@example.com" && /refresh it, and log in/.test(last.text) && /reset-password\?token=/.test(last.text), "they get a link to choose a password, with the steps");
+
+// Signing out cancels the sign-in on the server too (src/lib/signOut.js).
+const outLogin = await auth("auth/login", { email: "old@example.com", password: "brandnew12" });
+const outTok = outLogin.body.access_token;
+assert(!!(await sessionUser(db, req(outTok))), "signed in");
+r = await auth("auth/logout", {}, outTok);
+assert(r.status === 200 && !(await sessionUser(db, req(outTok))), "after signing out, that sign-in no longer works anywhere");
+
+// "Sign out on all devices" ends every sign-in on the account.
+const phone = (await auth("auth/login", { email: "old@example.com", password: "brandnew12" })).body.access_token;
+const laptop = (await auth("auth/login", { email: "old@example.com", password: "brandnew12" })).body.access_token;
+r = await auth("auth/logout-all", {}, null);
+assert(r.status === 401, "signing out everywhere needs a sign-in");
+r = await auth("auth/logout-all", {}, phone);
+assert(r.status === 200 && !(await sessionUser(db, req(phone))) && !(await sessionUser(db, req(laptop))), "signing out everywhere ends the sign-in on every device");

@@ -235,6 +235,18 @@ export async function handleAuth(db, env, request, path, body) {
       out = { success: true }; // same answer either way, so it can't be used to find accounts
     } else if (action === "reset-password") out = await resetPassword(db, body);
     else if (action === "change-password") out = await changePassword(db, request, body);
+    // Signing out (src/lib/signOut.js): this device's sign-in stops working on the server too.
+    else if (action === "logout") {
+      await logout(db, request);
+      out = { success: true };
+    }
+    // "Sign out on all devices" (Settings → Security): every sign-in on the account ends.
+    else if (action === "logout-all") {
+      const user = await sessionUser(db, request);
+      if (!user) throw new AuthError(401, "Please sign in.");
+      await db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
+      out = { success: true };
+    }
     else return { status: 404, body: { message: "Not found" } };
     return { status: 200, body: out };
   } catch (err) {

@@ -1,7 +1,8 @@
 // Limits on sign-in, sign-up and password-reset calls. They go through the /api proxy
-// (functions/api/[[path]].js) on their way to Base44, so they can be counted here. This
-// stops someone guessing a password or a 6-digit sign-up code, and stops sign-up-code or
-// reset emails being sent to someone over and over. Base44 keeps its own limits behind this.
+// (functions/api/[[path]].js), which counts them here before Nebulux's own sign-in
+// (cloudflare-lib/auth.js) answers. This stops someone guessing a password or a 6-digit
+// sign-up code, and stops sign-up-code or reset emails being sent to someone over and over.
+// auth.js adds its own cap: 5 wrong tries per emailed code.
 //
 // Counts are per Cloudflare data centre and not exact (cloudflare-lib/ratelimit.js), so an
 // attack spread around the world is slowed rather than stopped. The limits per network are

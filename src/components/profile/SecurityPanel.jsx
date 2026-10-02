@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { askConfirm } from "@/lib/dialogs";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ShieldCheck, KeyRound, Loader2, Check, Flag, ExternalLink, Download } from "lucide-react";
+import { ArrowLeft, ShieldCheck, KeyRound, Loader2, Check, Flag, ExternalLink, Download, LogOut } from "lucide-react";
 import { collectMyData, downloadJson } from "@/lib/myData";
 import { signOut } from "@/lib/signOut";
 import { clearThisBrowser, noteSignedOut } from "@/lib/sessionOnly";
@@ -95,7 +95,50 @@ export default function SecurityPanel({ user, email, onBack, onChangePassword, b
         </Link>
       </div>
       <MyData user={user} />
+      <EverywhereSignOut />
       <SharedComputer />
+    </div>
+  );
+}
+
+// Forgot to sign out somewhere (a school or library computer, an old phone)? This ends every
+// sign-in on the account, this one included (cloudflare-lib/auth.js "logout-all").
+function EverywhereSignOut() {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const go = async () => {
+    if (!(await askConfirm("Sign out on every device, including this one? You'll need your password (or Google) to sign back in.", { confirmLabel: "Sign out everywhere", danger: true }))) return;
+    setBusy(true);
+    setNote("");
+    try {
+      const token = localStorage.getItem("base44_access_token");
+      const res = await fetch("/api/apps/6a8b5eb7787b8a4d6a18f662/auth/logout-all", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: "{}",
+      });
+      if (!res.ok) throw new Error();
+      noteSignedOut("signed-out");
+      signOut("/login");
+    } catch {
+      setNote("Couldn't sign out everywhere. Please try again.");
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-5 pt-4 border-t border-slate-700/50">
+      <p className="text-slate-300 text-sm font-medium">Signed in somewhere else?</p>
+      <p className="text-[11px] text-slate-500 mt-0.5 mb-2">
+        If you forgot to sign out on another computer or phone, this signs you out on every device at once.
+      </p>
+      <button
+        onClick={go}
+        disabled={busy}
+        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 transition-colors disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />} Sign out on all devices
+      </button>
+      {note && <p className="text-[11px] text-red-400 mt-1.5 text-center">{note}</p>}
     </div>
   );
 }

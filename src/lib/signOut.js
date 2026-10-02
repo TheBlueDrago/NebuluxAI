@@ -18,6 +18,21 @@ export function clearSignIn() {
 // A full page load (not a router move) so nothing from the old session stays in memory. Signing
 // out lands on the homepage.
 export function signOut(to = "/") {
+  // Tell the server first, so this sign-in can't be used again even if it was copied
+  // (cloudflare-lib/auth.js "logout"). keepalive lets it finish while the page changes.
+  try {
+    const token = localStorage.getItem("base44_access_token");
+    if (token) {
+      fetch("/api/apps/6a8b5eb7787b8a4d6a18f662/auth/logout", {
+        method: "POST",
+        keepalive: true,
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: "{}",
+      }).catch(() => {});
+    }
+  } catch {
+    // Storage blocked: nothing saved, nothing to cancel.
+  }
   clearSignIn();
   window.location.replace(to);
 }
