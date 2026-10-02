@@ -69,7 +69,7 @@ export default function SecurityGlance({ unconfirmed, removed, held }) {
       {paused !== null && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
           <span>
-            Shop notice: {paused ? <b className="text-amber-300">buying is paused</b> : <b className="text-white">off</b>}. Turn it on while Base44 payments are down.
+            Shop notice: {paused ? <b className="text-amber-300">buying is paused</b> : <b className="text-white">off</b>}. Turn it on while payments are down.
           </span>
           <button
             onClick={togglePaused}

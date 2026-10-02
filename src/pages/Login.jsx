@@ -31,14 +31,17 @@ export default function Login() {
   const [error, setError] = useState(() => {
     const g = new URLSearchParams(window.location.search).get("google");
     if (g === "soon") return "Signing in with Google is coming back soon. For now, log in with your email and password (or tap Forgot password to set one).";
-    if (g === "check")
-      return "Almost done! We emailed you a link. 1) Open the link in the email. 2) Choose your password. 3) Come back to this page and refresh it. 4) Log in with your email and your new password.";
     if (g === "failed") return "Signing in with Google didn't work. Please try again, or log in with your email and password.";
     return "";
   });
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(() => localStorage.getItem("infinity-ai-remember") !== "0");
-  const [note] = useState(() => SIGNED_OUT_NOTES[signedOutNote()] || "");
+  // Good news, not an error: back from Google with no password set yet (cloudflare-lib/auth.js).
+  const [note] = useState(() =>
+    new URLSearchParams(window.location.search).get("google") === "check"
+      ? "Almost done! We emailed you a link. 1) Open the link in the email. 2) Choose your password. 3) Come back to this page and refresh it. 4) Log in with your email and your new password."
+      : SIGNED_OUT_NOTES[signedOutNote()] || ""
+  );
   useEffect(forgetSignedOutNote, []);
   // Post-login destination (same-origin paths only).
   const returnTo = safeReturnTo();
