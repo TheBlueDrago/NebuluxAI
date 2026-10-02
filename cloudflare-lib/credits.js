@@ -75,7 +75,8 @@ async function writeUse(kv, u) {
 }
 const poolId = (ent) => (ent.orgId ? `org:${ent.orgId}` : ent.user.id);
 function limitsOf(ent) {
-  const l = PLAN_LIMITS[ent.plan] || PLAN_LIMITS.free;
+  // An admin can set someone's credits to another plan's limits (grant.creditPlan), e.g. the owner testing Free.
+  const l = PLAN_LIMITS[ent.creditPlan] || PLAN_LIMITS[ent.plan] || PLAN_LIMITS.free;
   const n = ent.orgId ? Math.max(1, Number(ent.seats) || 1) : 1;
   return { window: l.window * n, week: l.week * n };
 }
@@ -252,6 +253,7 @@ export async function entitlement(kv, request, user, { other = false } = {}) {
   return {
     user,
     plan,
+    creditPlan: (grant && PLAN_LIMITS[grant.creditPlan] && grant.creditPlan) || null,
     teamId: team && (plan === "team" || plan === "secret") ? team.teamId : null,
     orgId,
     seats,
