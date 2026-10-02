@@ -142,7 +142,8 @@ async function maintenance(request, env, url) {
       return new Response(null, {
         status: 302,
         headers: {
-          location: "/chat",
+          // The app on nebuluxai.com; a site's own home page on its own address.
+          location: url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com" ? "/chat" : "/",
           // On nebuluxai.com the pass covers every site address too (nova.nebuluxai.com...).
           // A custom domain (like www.blackhole-ai-tech.com) gets its own pass from this same link there.
           "set-cookie": "nx_owner=" + key + "; Path=/; Max-Age=7776000; Secure; HttpOnly; SameSite=Lax" +
