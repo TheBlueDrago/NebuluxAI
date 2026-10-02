@@ -21,7 +21,7 @@ body:not(.home) #wallet{display:none}
 .card b{display:block;font-size:16px;margin:6px 0 2px}.card p{font-size:12px;opacity:.8;min-height:32px}
 .card button{margin-top:8px;font:900 14px "Segoe UI",Arial;padding:8px 14px;border:0;border-radius:9px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;cursor:pointer;width:100%}
 .card button:disabled{background:#555;color:#aaa;cursor:default}
-.card.common{border-color:#8fa3b5}.card.rare{border-color:#3aa0ff}.card.epic{border-color:#b04dff}.card.legendary{border-color:#ffa21f;box-shadow:0 0 18px rgba(255,162,31,.45)}
+.card.common,.slot.common{border-color:#8fa3b5}.card.rare{border-color:#3aa0ff}.card.epic{border-color:#b04dff}.card.legendary{border-color:#ffa21f;box-shadow:0 0 18px rgba(255,162,31,.45)}
 .card i{display:block;width:46px;height:46px;border-radius:50%;margin:0 auto;border:4px solid #fff}
 #shopClose{position:fixed;top:14px;right:16px;font:900 18px Arial;background:#ff4b4b;color:#fff;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;z-index:8}
 .card.ultra{border-color:#00e5ff;box-shadow:0 0 22px rgba(0,229,255,.6)}.card.admin{border-color:#ff0040;box-shadow:0 0 26px rgba(255,0,64,.7)}
@@ -110,7 +110,7 @@ body.home .hud,body.home #touch{display:none!important}
 <div id="slots" class="hud"></div>
 <div id="ammo" class="hud"><div class="big">30</div><div class="small">/ 90</div></div>
 <div id="build" class="hud">Q wall · E ramp · F chest · R reload · Shift sprint · Ctrl/C slide · G super · H hyper</div>
-<div id="wallet"><span id="wCoins">🪙 0</span><span id="wTro">🏆 0</span></div>
+<div id="wallet"><span id="wCoins">🪙 0</span><span id="wDia">💎 0</span><span id="wTro">🏆 0</span></div>
 <div id="supers" class="hud"><div class="sup" id="supBtn">SUPER<br>G</div><div class="sup hy" id="hyBtn" style="display:none">HYPER<br>H</div><div class="sup ul" id="ulBtn" style="display:none">ULTRA<br>U</div></div><div id="nukefx"></div>
 <div id="buffs" class="hud"></div>
 <div id="shop"><button id="shopClose">✕ CLOSE</button><h2>ITEM SHOP</h2><div style="text-align:center;font-weight:900" id="shopWallet"></div>
@@ -259,19 +259,22 @@ function sha256(str){const K=[],H=[];let n=2,c=0;const isP=x=>{for(let i=2;i*i<=
   [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=(H[i]+v)|0)}
  return H.map(v=>(v>>>0).toString(16).padStart(8,"0")).join("")}
 const SKINS=FIGS.map(f=>f.c);
-const SAVE_KEY="ss-save";let SAVE={coins:300,trophies:0,owned:[0,1,2,3,4,5,6],dmgL:0,hpL:0,shL:0,invL:0,guns:["ar"],start:"ar"};
+const SAVE_KEY="ss-save";let SAVE={coins:300,diamonds:0,trophies:0,owned:[0,1,2,3,4,5,6],dmgL:0,hpL:0,shL:0,invL:0,guns:["ar"],start:"ar"};
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem(SAVE_KEY)||"{}"))}catch(e){}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}wallet()}
 function rankName(t){return t>=1500?"👑 CHAMPION":t>=1000?"💎 DIAMOND":t>=600?"🥇 GOLD":t>=250?"🥈 SILVER":"🥉 BRONZE"}
-function wallet(){$("wCoins").textContent="🪙 "+SAVE.coins;$("wTro").textContent="🏆 "+SAVE.trophies;$("shopWallet").textContent="🪙 "+SAVE.coins+" coins";$("rank").textContent=rankName(SAVE.trophies)+" · 🏆 "+SAVE.trophies+" trophies"}
+function wallet(){$("wCoins").textContent="🪙 "+SAVE.coins;$("wTro").textContent="🏆 "+SAVE.trophies;$("wDia").textContent="💎 "+SAVE.diamonds;$("shopWallet").textContent="🪙 "+SAVE.coins+" coins · 💎 "+SAVE.diamonds+" diamonds";$("rank").textContent=rankName(SAVE.trophies)+" · 🏆 "+SAVE.trophies+" trophies"}
 const UPG=[["dmgL","DAMAGE BOOST","+10% damage per level",5,250],["hpL","MAX HEALTH","+20 max health per level",5,250],["shL","STARTING SHIELD","+15 shield when you start",4,200],["invL","BIGGER INVENTORY","+1 weapon slot (up to 5)",2,600]];
-const GUNPRICE={ar:0,smg:250,sg:400,sn:600};let shopTab="figures";
+const DIA={rare:4,epic:8,legendary:15,ultra:60};
+const PACKS=[["🪙 1,000 coins","$0.99"],["🪙 5,500 coins","$4.99"],["🪙 12,000 coins","$9.99"],["💎 10 diamonds","$0.99"],["💎 60 diamonds","$4.99"],["💎 130 diamonds","$9.99"],["⭐ Legendary figure","$2.99"],["🌟 Zeus (Ultra Legendary)","$7.99"],["🔫 All starting guns","$1.99"],["⬆️ All upgrades maxed","$4.99"]];
+const GUNPRICE={ar:0,pistol:100,smg:250,burst:350,tac:350,sg:400,revolver:450,hunt:500,sn:600,mini:900,rocket:1200};let shopTab="figures";
 function openShop(){$("shop").style.display="block";drawShop()}
-function drawShop(){wallet();$("shopTabs").innerHTML=[["figures","FIGURES"],["upgrades","UPGRADES"],["guns","STARTING GUNS"]].map(t=>`<div data-tab="${t[0]}" class="${shopTab===t[0]?"on":""}">${t[1]}</div>`).join("");
+function drawShop(){wallet();$("shopTabs").innerHTML=[["figures","FIGURES"],["upgrades","UPGRADES"],["guns","STARTING GUNS"],["money","💵 BUY WITH MONEY"]].map(t=>`<div data-tab="${t[0]}" class="${shopTab===t[0]?"on":""}">${t[1]}</div>`).join("");
  let h="";
- if(shopTab==="figures")h=FIGS.map((f,i)=>{const own=SAVE.owned.includes(i);return `<div class="card ${f.r}"><i style="background:#${f.c[0].toString(16).padStart(6,"0")}"></i><b>${f.n}</b><small style="text-transform:uppercase;font-weight:900">${f.r}</small><p>⚡ ${f.sn}: ${f.sd}${HYPER_R.includes(f.r)?"<br>💜 HYPERCHARGE"+(f.hyn?": "+f.hyn+" ("+f.hyd+")":""):""}${f.ult?"<br>🌟 ULTRA: "+f.un+" ("+f.ud+")":""}${f.always?"<br>♾️ Always charged":""}</p><button data-buyfig="${i}" ${own||SAVE.coins<f.p?"disabled":""}>${own?"OWNED":"🪙 "+(f.pl||f.p)}</button></div>`}).join("");
+ if(shopTab==="figures")h=FIGS.map((f,i)=>{const own=SAVE.owned.includes(i);return `<div class="card ${f.r}"><i style="background:#${f.c[0].toString(16).padStart(6,"0")}"></i><b>${f.n}</b><small style="text-transform:uppercase;font-weight:900">${f.r}</small><p>⚡ ${f.sn}: ${f.sd}${HYPER_R.includes(f.r)?"<br>💜 HYPERCHARGE"+(f.hyn?": "+f.hyn+" ("+f.hyd+")":""):""}${f.ult?"<br>🌟 ULTRA: "+f.un+" ("+f.ud+")":""}${f.always?"<br>♾️ Always charged":""}</p><button data-buyfig="${i}" ${own||SAVE.coins<f.p?"disabled":""}>${own?"OWNED":"🪙 "+(f.pl||f.p)}</button>${!own&&DIA[f.r]?`<button data-buydia="${i}" style="background:linear-gradient(#b8f3ff,#4fc3ff);color:#062a4a" ${SAVE.diamonds<DIA[f.r]?"disabled":""}>💎 ${DIA[f.r]}</button>`:""}</div>`}).join("");
  if(shopTab==="upgrades")h=UPG.map(u=>{const l=SAVE[u[0]],max=l>=u[3],cost=u[4]*(l+1);return `<div class="card rare"><b>${u[1]}</b><p>${u[2]}<br>Level ${l} / ${u[3]}</p><button data-upg="${u[0]}" ${max||SAVE.coins<cost?"disabled":""}>${max?"MAXED":"🪙 "+cost}</button></div>`}).join("");
  if(shopTab==="guns")h=Object.keys(WEAPONS).map(k=>{const own=SAVE.guns.includes(k),w=WEAPONS[k],first=SAVE.start===k;return `<div class="card ${w.rar==="leg"?"legendary":w.rar}"><b>${w.name}</b><p>${own?(first?"⭐ Your first weapon":"You start every match with it"):"Start every match with it"}</p><button data-gun="${k}" ${(own&&first)||(!own&&SAVE.coins<GUNPRICE[k])?"disabled":""}>${own?(first?"EQUIPPED FIRST":"MAKE FIRST"):"🪙 "+GUNPRICE[k]}</button></div>`}).join("");
+ if(shopTab==="money")h=`<div style="grid-column:1/-1;text-align:center;opacity:.85;font-size:14px">Real-money packs are coming soon. Until then, earn 🪙 coins every match and 💎 3 diamonds for every Victory Royale.</div>`+PACKS.map(k=>`<div class="card epic"><b>${k[0]}</b><p>${k[1]}</p><button disabled>COMING SOON</button></div>`).join("");
  $("shopGrid").innerHTML=h}
 document.addEventListener("click",e=>{const t=e.target;
  if(t.id==="shopBtn"){openShop();return}
@@ -279,6 +282,7 @@ document.addEventListener("click",e=>{const t=e.target;
   if(h===UNLOCK_HASH){for(const i of[15,16])if(!SAVE.owned.includes(i))SAVE.owned.push(i);save();setSkin(16);$("code").value="";alert("Unlocked ZEUS (Ultra Legendary) and ADMIN!")}else alert("That code doesn't work.");drawShop()})();return}if(t.id==="shopClose"){$("shop").style.display="none";drawPickers();return}
  const tab=t.closest("[data-tab]");if(tab){shopTab=tab.dataset.tab;drawShop();return}
  if(t.dataset.buyfig!=null){const i=+t.dataset.buyfig,f=FIGS[i];if(SAVE.coins>=f.p&&!SAVE.owned.includes(i)){SAVE.coins-=f.p;SAVE.owned.push(i);save();setSkin(i);sfx(700,.12)}drawShop()}
+ if(t.dataset.buydia!=null){const i=+t.dataset.buydia,f=FIGS[i],c=DIA[f.r];if(c&&SAVE.diamonds>=c&&!SAVE.owned.includes(i)){SAVE.diamonds-=c;SAVE.owned.push(i);save();setSkin(i);sfx(700,.12)}drawShop()}
  if(t.dataset.upg){const u=UPG.find(x=>x[0]===t.dataset.upg),l=SAVE[u[0]],cost=u[4]*(l+1);if(l<u[3]&&SAVE.coins>=cost){SAVE.coins-=cost;SAVE[u[0]]++;save();sfx(700,.12)}drawShop()}
  if(t.dataset.gun){const k=t.dataset.gun;if(SAVE.guns.includes(k))SAVE.start=k;else if(SAVE.coins>=GUNPRICE[k]){SAVE.coins-=GUNPRICE[k];SAVE.guns.push(k);sfx(700,.12)}save();drawShop()}});
 function makeChar(skin){const[shirt,skinC,hair]=skin;const g=new THREE.Group();
@@ -303,6 +307,13 @@ const WEAPONS={
  sg:{name:"PUMP SHOTGUN",dmg:11,pellets:10,rate:.85,mag:5,spread:.07,reload:2.2,rar:"epic",color:0xb04dff,range:60},
  sn:{name:"SNIPER",dmg:105,rate:1.3,mag:1,spread:0,reload:2.4,rar:"leg",color:0xffa21f,range:600},
  smg:{name:"SMG",dmg:14,rate:.065,mag:35,spread:.03,reload:1.5,rar:"rare",color:0x3aa0ff,range:120},
+ pistol:{name:"PISTOL",dmg:22,rate:.22,mag:16,spread:.015,reload:1.2,rar:"common",color:0x9aa5b1,range:150},
+ burst:{name:"BURST RIFLE",dmg:30,rate:.2,mag:24,spread:.008,reload:2,rar:"rare",color:0x3aa0ff,range:260},
+ revolver:{name:"REVOLVER",dmg:58,rate:.6,mag:6,spread:.006,reload:2.2,rar:"epic",color:0xb04dff,range:220},
+ tac:{name:"TACTICAL SHOTGUN",dmg:8,pellets:9,rate:.45,mag:8,spread:.065,reload:2.4,rar:"rare",color:0x3aa0ff,range:50},
+ hunt:{name:"HUNTING RIFLE",dmg:80,rate:1,mag:1,spread:.002,reload:1.4,rar:"epic",color:0xb04dff,range:450},
+ mini:{name:"MINIGUN",dmg:12,rate:.04,mag:100,spread:.035,reload:3.5,rar:"leg",color:0xffa21f,range:160},
+ rocket:{name:"ROCKET LAUNCHER",dmg:90,rate:1.6,mag:1,spread:0,reload:2.8,rar:"leg",color:0xffa21f,range:300,boom:9},
 };
 
 // Player
@@ -460,6 +471,7 @@ function shoot(){const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.reloading>0)return
   const wh=worldHit(origin,d,w.range),ch=charHit(origin,d,wh.dist,bots.filter(o=>o.team!==-1));
   const end=origin.clone().addScaledVector(d,Math.min(wh.dist,ch.dist));
   tracer(muzzle,end);
+  if(w.boom){setTimeout(()=>aoe(end,w.boom,w.dmg,0xff7a1f),120);if(!ch.who)continue}
   if(buffs.allHit>0&&i===0)for(const b of enemies()){tracer(muzzle,b.mesh.position.clone().add(new THREE.Vector3(0,2.5,0)),0xff0040);hurtBot(b,Math.round(w.dmg*dmgMul()*(w.pellets||1)),false)}
   if(ch.who){const dmg=Math.round(w.dmg*dmgMul()*(ch.head?(w===WEAPONS.sn?2.5:1.6):1));hurtBot(ch.who,dmg,ch.head);burst(end,0xff5050,4)}
   else{burst(end,0xddddcc,3);if(wh.obj&&wh.obj.build)hurtBuild(wh.obj,w.dmg)}}
@@ -616,10 +628,10 @@ function end(win,by){if(!started)return;started=false;
  const place=win?1:new Set(bots.filter(b=>b.alive&&b.team!==-1).map(b=>b.team)).size+1;
  const coins=20+P.kills*15+(win?100:place<=3?40:place<=5?20:0);
  let tro=(win?30:place<=3?14:place<=5?7:-5)+P.kills*2;tro=Math.max(-SAVE.trophies,tro);
- SAVE.coins+=coins;SAVE.trophies+=tro;save();document.body.classList.add("home");document.exitPointerLock();const m=$("menu");m.style.display="flex";
+ const dia=win?3:0;SAVE.coins+=coins;SAVE.diamonds+=dia;SAVE.trophies+=tro;save();document.body.classList.add("home");document.exitPointerLock();const m=$("menu");m.style.display="flex";
  const alive=bots.filter(b=>b.alive).length+1;
  m.querySelector("h1").textContent=win?"#1 VICTORY ROYALE!":"ELIMINATED";
- drawPickers();m.querySelector("p").textContent=`+${coins} 🪙 coins · ${tro>=0?"+":""}${tro} 🏆 trophies · `+(win?`You won with ${P.kills} eliminations!`:`${by} got you. You placed #${new Set(bots.filter(b=>b.alive&&b.team!==-1).map(b=>b.team)).size+1} with ${P.kills} eliminations.`);
+ drawPickers();m.querySelector("p").textContent=`+${coins} 🪙 coins · ${dia?"+3 💎 diamonds · ":""}${tro>=0?"+":""}${tro} 🏆 trophies · `+(win?`You won with ${P.kills} eliminations!`:`${by} got you. You placed #${new Set(bots.filter(b=>b.alive&&b.team!==-1).map(b=>b.team)).size+1} with ${P.kills} eliminations.`);
  const btn=$("play");btn.textContent="Play again";btn.onclick=start;$("lockhint").style.display="none"}
 $("play").onclick=start;
 
