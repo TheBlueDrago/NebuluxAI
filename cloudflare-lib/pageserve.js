@@ -81,7 +81,7 @@ export function removedPage(kind, why = "It was taken down for breaking the Nebu
 export const HEADERS = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "no-store",
-  "content-security-policy": "sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals",
+  "content-security-policy": "sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-pointer-lock",
   "x-content-type-options": "nosniff",
 };
 

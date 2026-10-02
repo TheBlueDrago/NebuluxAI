@@ -68,7 +68,7 @@ const BASE_SHIM = `<script>(function(){
   });
 })();<\/script>`;
 
-export const PREVIEW_SANDBOX = "allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox";
+export const PREVIEW_SANDBOX = "allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-pointer-lock";
 
 // Inserts the shim as early as possible (right after <head>, else after the
 // doctype) without putting anything before <!DOCTYPE>, which would trigger quirks mode.
