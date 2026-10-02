@@ -11,7 +11,7 @@
   "sharedProviderName": false,
   "syncPubKeyDomain": "nebuluxai.com",
   "syncRedirectDomain": "nebuluxai.com",
-  "hostRequired": false,
+  "hostRequired": true,
   "records": [
     {
       "type": "CNAME",

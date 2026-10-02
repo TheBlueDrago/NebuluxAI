@@ -188,6 +188,8 @@ export async function onRequestPost(context) {
       if (!current) return json({ error: "Connect a domain first." }, 400);
       if (!env.DC_PRIVATE_KEY) return json({ auto: false, reason: "Automatic setup isn't switched on yet. Add the records below instead." });
       if (!(await allow(`domainauto:${user.id}`, 20, 3600))) return json({ error: "Too many tries. Wait a few minutes and try again." }, 429);
+      // A CNAME can't go on a main domain (no www), so the template needs a part like www.
+      if (current.hostname.split(".").length < 3) return json({ auto: false, reason: "Automatic setup works for addresses like www.yourdomain.com. Remove this domain and connect www." + current.hostname + " instead, or add the records below." });
       const root = current.hostname.split(".").slice(-2).join(".");
       const provider = await dcProvider(root);
       if (!provider) return json({ auto: false, reason: "Your domain company doesn't offer automatic setup. Add the records below instead (it only takes a minute)." });
