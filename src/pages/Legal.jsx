@@ -158,6 +158,7 @@ export function Privacy() {
         <li><strong>Sign-in safety:</strong> to stop people guessing passwords or sign-up codes, we briefly count sign-in tries for each email address and network. The counts are kept for at most an hour and aren't used for anything else.</li>
         <li><strong>Reports:</strong> when you report a site we keep your reason and note, plus a scrambled (hashed) form of your IP address so the same person can't report one page many times.</li>
         <li><strong>Game progress:</strong> if you're signed in, what a game saves (levels, scores, unlocks) is kept with your account so you can carry on later, until you delete it on the game's page or delete your account.</li>
+        <li><strong>Usage analytics:</strong> Cloudflare Web Analytics counts page visits (which pages are opened, how long they take to load, and which website sent you here) to help us see what's working. It uses no cookies, doesn't track you across other websites, and isn't used for ads.</li>
         <li><strong>Technical data:</strong> like any website, our hosting provider handles IP addresses and basic request logs to deliver pages and block attacks.</li>
       </ul>
 
