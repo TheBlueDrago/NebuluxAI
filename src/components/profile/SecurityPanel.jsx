@@ -36,7 +36,7 @@ function MyData({ user }) {
     <div className="mt-5 pt-4 border-t border-slate-700/50">
       <p className="text-slate-300 text-sm font-medium">Your data</p>
       <p className="text-[11px] text-slate-500 mt-0.5 mb-2">
-        Download a copy of what we keep about your account: your details, plan and credits, purchases, and your published sites and games. Your chats have their
+        Download a copy of what we keep about your account: your details, plan and credits, purchases, your published sites and games, your game progress and the website and game you are working on. Your chats have their
         own backup in Settings.
       </p>
       <button

@@ -45,6 +45,17 @@ export async function collectMyData(user) {
       const rows = await base44.entities.PublishedGame.filter({ created_by_id: user.id });
       return (rows || []).map((g) => pick(g, [...PAGE_FIELDS, "plays"]));
     }),
+    // Progress kept with the account in every game played (functions/.../game-save.js).
+    part("gameProgress", async () => (await base44.functions.invoke("game-save", { action: "list" })).data?.saves || {}),
+    // The website being worked on, published or not (functions/.../site-draft.js).
+    part("websiteDraft", async () => {
+      const d = (await base44.functions.invoke("site-draft", { action: "load" })).data?.draft;
+      return d ? pick(d, ["siteName", "savedAt", "html"]) : null;
+    }),
+    part("gameDraft", async () => {
+      const d = (await base44.functions.invoke("game-draft", { action: "load" })).data?.draft;
+      return d ? pick(d, ["gameName", "title", "genre", "html"]) : null;
+    }),
   ]);
   return out;
 }

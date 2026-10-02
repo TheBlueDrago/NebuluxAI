@@ -26,6 +26,13 @@ export async function onRequestPost(context) {
     if (!user) return json({ error: "Sign in to save your progress." }, 401);
     const kv = env.PUBLISHED_HTML;
     const body = await request.json().catch(() => ({}));
+    // Every game this account has progress in ("Download my data", src/lib/myData.js).
+    if (body.action === "list") {
+      const list = await kv.list({ prefix: `gamesave:${user.id}:` });
+      const saves = {};
+      for (const k of list.keys || []) saves[k.name.slice(`gamesave:${user.id}:`.length)] = await kv.get(k.name, "json");
+      return json({ saves });
+    }
     const name = String(body.name || "").toLowerCase();
     if (!/^[a-z0-9-]{1,63}$/.test(name)) return json({ error: "Which game?" }, 400);
     const key = `gamesave:${user.id}:${name}`;
