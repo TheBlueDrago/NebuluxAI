@@ -217,9 +217,10 @@ function lockMouse(){if(touch||locked)return;try{const r=renderer.domElement.req
 addEventListener("mousedown",e=>{if(!started)return;if(!locked&&!touch){lockMouse();if(e.target!==renderer.domElement)return}if(e.button===0)mouseDown=true;if(e.button===2)P.zoom=true});
 addEventListener("mouseup",e=>{if(e.button===0)mouseDown=false;if(e.button===2)P.zoom=false});
 addEventListener("contextmenu",e=>e.preventDefault());
-document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement;$("lockhint").style.display=started&&!locked&&!touch?"block":"none";document.body.classList.toggle("playing",locked);if(!locked){mouseDown=false;P.zoom=false}});
+document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement;$("lockhint").style.display=started&&!locked&&!touch&&!lockFailed?"block":"none";document.body.classList.toggle("playing",locked);if(!locked){mouseDown=false;P.zoom=false}});
 $("lockhint").addEventListener("mousedown",e=>{e.stopPropagation();lockMouse()});
-addEventListener("mousemove",e=>{if(!started||touch||!P.alive||!locked)return;const s=P.zoom?.0012:.0024;P.yaw-=e.movementX*s;P.pitch=Math.max(-1.2,Math.min(.9,P.pitch-e.movementY*s))});
+let lockFailed=false;document.addEventListener("pointerlockerror",()=>{lockFailed=true;$("lockhint").style.display="none";document.body.classList.add("playing")});
+addEventListener("mousemove",e=>{if(!started||touch||!P.alive||(!locked&&!lockFailed))return;const s=P.zoom?.0012:.0024;P.yaw-=e.movementX*s;P.pitch=Math.max(-1.2,Math.min(.9,P.pitch-e.movementY*s))});
 addEventListener("wheel",e=>{if(!started)return;P.sel=(P.sel+(e.deltaY>0?1:-1)+P.inv.length)%P.inv.length;hud()});
 addEventListener("resize",()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()});
 // Touch controls
@@ -272,7 +273,7 @@ function shoot(){const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.reloading>0)return
 function reload(){const s=P.inv[P.sel],w=weapon();if(P.reloading>0||s.ammo>=w.mag||P.reserve<=0)return;P.reloading=w.reload;flash("RELOADING...",.6)}
 function hurtBot(b,d,head){let left=d;if(b.sh>0){const a=Math.min(b.sh,left);b.sh-=a;left-=a}b.hp-=left;drawBar(b);
  dmgNum(b.mesh.position.clone().add(new THREE.Vector3(0,4.8,0)),d,head);$("hit").style.opacity=1;setTimeout(()=>$("hit").style.opacity=0,90);
- b.target="player";b.think=0;
+ b.target="player";b.angryT=6;b.think=0;
  if(b.hp<=0)killBot(b,"You")}
 function killBot(b,by){b.alive=false;b.hpBar.visible=false;burst(b.mesh.position.clone().add(new THREE.Vector3(0,2,0)),0x7df9ff,24);
  // drop loot
@@ -324,11 +325,15 @@ function animate(m,speed,dt,st){st.walk+=speed*dt*.9;const s=Math.sin(st.walk)*M
 
 // Bot AI
 const up=new THREE.Vector3(0,1,0);
-function botTick(b,dt){if(!b.alive)return;const p=b.mesh.position;b.think-=dt;b.cd-=dt;
+function botTick(b,dt){if(!b.alive)return;const p=b.mesh.position;b.think-=dt;b.cd-=dt;b.angryT=(b.angryT||0)-dt;
  const dP=P.alive?p.distanceTo(P.pos):1e9;
  if(b.think<=0){b.think=R(.4,1);
   // pick target: player if near, else other bot near
-  if(P.alive&&dP<85)b.target="player";else{b.target=null;let best=40;for(const o of bots){if(o===b||!o.alive)continue;const d=o.mesh.position.distanceTo(p);if(d<best){best=d;b.target=o}}}
+  const hunting=bots.filter(o=>o!==b&&o.alive&&o.target==="player").length;
+  const angry=b.angryT>0;let best=60,pick=null;
+  if(P.alive&&(angry||(dP<55&&hunting<2))){best=angry?1e9:dP;pick="player"}
+  for(const o of bots){if(o===b||!o.alive)continue;const d=o.mesh.position.distanceTo(p);if(d<best*.9||(!angry&&d<best)){if(angry&&pick==="player")continue;best=d;pick=o}}
+  b.target=pick;
   // go toward storm safe zone
   const ds=Math.hypot(p.x-storm.tcx,p.z-storm.tcz);
   if(ds>storm.target*.7)b.wander.set(storm.tcx+R(-30,30),0,storm.tcz+R(-30,30));
