@@ -1,0 +1,16 @@
+# Storm Strike online matches (WebSockets + one Durable Object). Deploy from this folder: npx wrangler deploy
+name = "nebulux-multiplayer"
+main = "worker.js"
+compatibility_date = "2026-09-22"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "ARENA"
+class_name = "Arena"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Arena"]
+
+[observability]
+enabled = true
