@@ -27,7 +27,7 @@ function Meter({ label, used, limit, resetsAt, now, off }) {
       <p className="mt-1 text-[11px] text-slate-500">
         {off
           ? "Lifted in the last week of the month, so you can use the rest of your month"
-          : `${tokenText(Math.min(used, limit) * TOKENS_PER_CREDIT)} of ${tokenText(limit * TOKENS_PER_CREDIT)} tokens used · ${tokenText((limit - Math.min(used, limit)) * TOKENS_PER_CREDIT)} left · refreshes in ${waitText(Date.parse(resetsAt) - now)}`}
+          : `${tokenText((limit - Math.min(used, limit)) * TOKENS_PER_CREDIT)} tokens left · refreshes in ${waitText(Date.parse(resetsAt) - now)}`}
       </p>
     </div>
   );
