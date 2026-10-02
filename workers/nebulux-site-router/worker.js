@@ -182,7 +182,15 @@ async function maintenance(request, env, url) {
   var path = url.pathname;
   if (key && path.indexOf("/__owner/") === 0) {
     if (await sameText(path.slice(9), key)) {
-      return new Response(null, {
+      // The real owner: lift any block on this browser and this internet address.
+      var ip = request.headers.get("cf-connecting-ip") || "";
+      if (ip && env.KV) {
+        try {
+          await env.KV.delete("ownerblock:" + ip);
+        } catch (e) {}
+      }
+      var unblock = "nx_blocked=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax" + (url.hostname === "nebuluxai.com" || url.hostname.endsWith(".nebuluxai.com") ? "; Domain=nebuluxai.com" : "");
+      var res = new Response(null, {
         status: 302,
         headers: {
           // The app on nebuluxai.com; a site's own home page on its own address.
@@ -194,6 +202,8 @@ async function maintenance(request, env, url) {
           "cache-control": "no-store",
         },
       });
+      res.headers.append("set-cookie", unblock);
+      return res;
     }
   }
   if (key && (await sameText(cookieOf(request, "nx_owner"), key))) return null;
