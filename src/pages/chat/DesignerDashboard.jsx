@@ -17,7 +17,6 @@ import { siteUrl } from "@/lib/blackholeDomain";
 import { resetDesignerProject, loadDesignerHtmlIntoProject } from "@/lib/designerStore";
 import { SITE_TEMPLATES } from "@/lib/siteTemplates";
 import { hasProFeatures, hasSpace } from "@/lib/plans";
-import NotificationBell from "@/components/NotificationBell";
 
 const SUGGESTIONS = [
   "A portfolio site for a photographer",
@@ -407,7 +406,6 @@ export default function DesignerDashboard() {
         >
           <Crown className="w-4 h-4" /> Upgrade
         </button>
-        <NotificationBell />
         <button
           onClick={() => openProfile("main")}
           className="keep-color w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-sm font-bold text-white"

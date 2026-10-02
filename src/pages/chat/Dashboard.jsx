@@ -2,7 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageSquare, Globe, Gamepad2, Zap, Clock } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
-import { useAiActivity, useNow, liveCost, elapsedText, markSeen } from "@/lib/aiActivity";
+import { useAiActivity, useNow, liveCost, elapsedText, markSeen, tokenText } from "@/lib/aiActivity";
+import { TOKENS_PER_CREDIT } from "../../../cloudflare-lib/planTotals.js";
 import { waitText } from "@/lib/creditRefresh";
 import StatusMark from "@/components/chat/StatusMark";
 
@@ -12,19 +13,21 @@ const PLACES = {
   game: { name: "Game Designer", Icon: Gamepad2, color: "text-fuchsia-300" },
 };
 
-function Meter({ label, used, limit, resetsAt, now }) {
+function Meter({ label, used, limit, resetsAt, now, off }) {
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   return (
     <div>
       <div className="flex items-baseline justify-between text-sm">
         <span className="font-semibold text-slate-100">{label}</span>
-        <span className="text-slate-400">{pct}% used</span>
+        <span className="text-slate-400">{off ? "not counted" : `${pct}% used`}</span>
       </div>
       <div className="mt-1.5 h-2 rounded-full bg-slate-700/70 overflow-hidden">
-        <div className={`h-full ${pct >= 90 ? "bg-red-400" : pct >= 60 ? "bg-amber-400" : "bg-gradient-to-r from-indigo-500 to-fuchsia-500"}`} style={{ width: `${pct}%` }} />
+        <div className={`h-full ${off ? "opacity-30" : ""} ${pct >= 90 ? "bg-red-400" : pct >= 60 ? "bg-amber-400" : "bg-gradient-to-r from-indigo-500 to-fuchsia-500"}`} style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-1 text-[11px] text-slate-500">
-        {Math.max(0, limit - used).toLocaleString()} of {limit.toLocaleString()} left · refreshes in {waitText(Date.parse(resetsAt) - now)}
+        {off
+          ? "Lifted in the last week of the month, so you can use the rest of your month"
+          : `${tokenText((limit - Math.min(used, limit)) * TOKENS_PER_CREDIT)} of ${tokenText(limit * TOKENS_PER_CREDIT)} tokens left · refreshes in ${waitText(Date.parse(resetsAt) - now)}`}
       </p>
     </div>
   );
@@ -77,17 +80,17 @@ export default function Dashboard() {
                           <span className="text-slate-500">· {P.name}{e.where === "chat" && e.label ? `: ${e.label}` : ""}</span>
                         </div>
                         <p className="mt-1 text-sm text-slate-100 line-clamp-2">
-                          {e.status === "working" ? "Still working on: " : e.status === "out" ? "Stopped, out of credits: " : "Answer ready: "}
+                          {e.status === "working" ? "Still working on: " : e.status === "out" ? "Stopped, out of tokens: " : "Answer ready: "}
                           <span className="text-slate-300">{e.question || "your question"}</span>
                         </p>
                         <p className="mt-0.5 text-[11px] text-slate-500">
                           {e.status === "working"
-                            ? `${elapsedText(now - e.startedAt)}${cost != null ? ` · ≈ ${cost} credits so far` : ""}`
+                            ? `${elapsedText(now - e.startedAt)}${cost != null ? ` · ≈ ${tokenText(cost)} tokens so far` : ""}`
                             : e.status === "out"
                               ? e.resetsAt
-                                ? `Credits come back in ${waitText(Date.parse(e.resetsAt) - now)}`
-                                : "Credits come back soon"
-                              : `Took ${elapsedText(e.took || 0)}${cost != null ? ` · ${cost} credits` : ""}`}
+                                ? `Tokens come back in ${waitText(Date.parse(e.resetsAt) - now)}`
+                                : "Tokens come back soon"
+                              : `Took ${elapsedText(e.took || 0)}${cost != null ? ` · ${tokenText(cost * TOKENS_PER_CREDIT)} tokens` : ""}`}
                         </p>
                       </button>
                     </li>
@@ -100,26 +103,27 @@ export default function Dashboard() {
           {/* Middle: credits */}
           <section className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-4">
             <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-300" /> Your credits
+              <Zap className="w-4 h-4 text-amber-300" /> Your tokens
             </h2>
             {pool ? (
               <>
                 <p className="mt-2 text-3xl font-bold text-white">
-                  {pool.remaining.toLocaleString()} <span className="text-base font-medium text-slate-400">credits to use now</span>
+                  {tokenText(pool.remaining * TOKENS_PER_CREDIT)} <span className="text-base font-medium text-slate-400">tokens to use now</span>
                 </p>
-                <p className="text-[12px] text-slate-500">One pool for every AI. Stronger AIs, higher strength and longer chats use more.</p>
+                <p className="text-[12px] text-slate-500">One pool for every AI. Each answer uses the tokens the AI reads (the whole chat so far) and writes; stronger AIs and higher strength use more.</p>
                 <div className="mt-4 space-y-4">
-                  <Meter label="Every 2 hours" used={pool.window.used} limit={pool.window.limit} resetsAt={pool.window.resetsAt} now={now} />
-                  <Meter label="This week" used={pool.week.used} limit={pool.week.limit} resetsAt={pool.week.resetsAt} now={now} />
+                  <Meter label="2 hour limit" used={pool.window.used} limit={pool.window.limit} resetsAt={pool.window.resetsAt} now={now} />
+                  <Meter label="Weekly limit" used={pool.week.used} limit={pool.week.limit} resetsAt={pool.week.resetsAt} now={now} off={pool.week.off} />
+                  {pool.month && <Meter label="Monthly limit" used={pool.month.used} limit={pool.month.limit} resetsAt={pool.month.resetsAt} now={now} />}
                   {pool.bonus > 0 && (
                     <p className="text-sm text-slate-300">
-                      + <b>{pool.bonus.toLocaleString()}</b> bonus credits, used once a limit is reached.
+                      + <b>{tokenText(pool.bonus * TOKENS_PER_CREDIT)}</b> bonus tokens, used once a limit is reached.
                     </p>
                   )}
                 </div>
               </>
             ) : (
-              <p className="mt-3 text-sm text-slate-500">Loading your credits…</p>
+              <p className="mt-3 text-sm text-slate-500">Loading your tokens…</p>
             )}
           </section>
         </div>

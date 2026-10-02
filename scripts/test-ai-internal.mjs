@@ -100,7 +100,7 @@ chunksSent = 0;
 let u0 = usageBefore();
 await streamCall(Infinity);
 const fullCost = usageBefore() - u0;
-assert(chunksSent === 50 && fullCost === 5, "a full 50,000-character reply costs 5 credits (" + fullCost + ")");
+assert(chunksSent === 50 && fullCost === 13, "a full 50,000-character reply (12,500 tokens, plus what was read) costs 13 credits = 13,000 tokens (" + fullCost + ")");
 chunksSent = 0;
 u0 = usageBefore();
 await streamCall(3);

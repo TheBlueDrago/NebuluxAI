@@ -8,7 +8,6 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ChatBox from "@/components/ChatBox";
 import CodePage from "@/components/CodePage";
 import PlanNotice from "@/components/chat/PlanNotice";
-import NotificationBell from "@/components/NotificationBell";
 
 export function WorkspaceShell() {
   const shell = useAppShell();
@@ -33,8 +32,6 @@ export function WorkspaceShell() {
       </button>
       <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 sm:top-5 sm:right-5 z-30 flex items-center gap-2">
         <ThemeToggle light={lightMode} onToggle={toggleLight} />
-        <span className="h-8 w-px bg-slate-500/60" />
-        <NotificationBell />
         <button
           onClick={() => openProfile("main")}
           className="keep-color w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-sm font-bold text-white hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/20"

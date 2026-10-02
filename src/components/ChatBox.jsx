@@ -36,9 +36,9 @@ import { privateInfoIn } from "@/lib/privateInfo";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import LiveCost from "@/components/chat/LiveCost";
-import { setViewing, clearOut } from "@/lib/aiActivity";
+import { setViewing, clearOut, tokenText } from "@/lib/aiActivity";
 import { waitText } from "@/lib/creditRefresh";
-import { CONTEXT_TOKENS } from "../../cloudflare-lib/planTotals.js";
+import { CONTEXT_TOKENS, TOKENS_PER_CREDIT } from "../../cloudflare-lib/planTotals.js";
 
 // "Continue this answer when my credits come back": { [conversationId]: { ai, resetsAt } }.
 const CONTINUE_KEY = "nx-continue-later";
@@ -532,13 +532,13 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
 
           {outAt && !loading && conversation?.id && (
             <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              <p className="font-semibold">⚠ You've run out of credits.</p>
+              <p className="font-semibold">⚠ You've run out of tokens.</p>
               <p className="mt-1 text-red-100/90">
                 They come back at {new Date(outAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} (in {waitText(Date.parse(outAt) - Date.now())}).
               </p>
               <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" className="w-4 h-4 accent-indigo-500" checked={!!pending} onChange={(e) => toggleLater(e.target.checked)} />
-                Continue this answer by itself when my credits come back (while this chat is open)
+                Continue this answer by itself when my tokens come back (while this chat is open)
               </label>
             </div>
           )}
@@ -600,9 +600,9 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
             <div
               className="ml-auto flex items-center gap-2 text-[11px] text-slate-400"
-              title={`Credits are shared by every AI. Context: about ${contextTokens.toLocaleString()} of ${CONTEXT_TOKENS.toLocaleString()} tokens. Longer chats cost more; type /compact to shorten this one.`}
+              title={`Tokens are shared by every AI. Context: about ${contextTokens.toLocaleString()} of ${CONTEXT_TOKENS.toLocaleString()} tokens. Longer chats cost more; type /compact to shorten this one.`}
             >
-              <span>⚡ {credLeft === undefined || credLeft === Infinity ? "…" : credLeft.toLocaleString()} credits</span>
+              <span>⚡ {credLeft === undefined || credLeft === Infinity ? "…" : tokenText(credLeft * TOKENS_PER_CREDIT)} tokens left</span>
               <span className="flex items-center gap-1">
                 <span className="relative inline-block w-8 h-1.5 rounded-full bg-slate-700 overflow-hidden">
                   <span className={`absolute inset-y-0 left-0 ${contextPct > 75 ? "bg-red-400" : contextPct > 40 ? "bg-amber-400" : "bg-indigo-400"}`} style={{ width: `${Math.max(2, contextPct)}%` }} />

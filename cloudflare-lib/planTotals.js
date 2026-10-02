@@ -21,19 +21,25 @@ export const PLAN_TOTALS = {
 // you can use in any 2-hour window, and in a week. Stronger AIs and longer chats cost more of it.
 // Bonus credits (promo codes, packs, referrals) are spent once a limit is reached.
 export const PLAN_LIMITS = {
-  free: { window: 40, week: 300 },
-  pro: { window: 120, week: 1000 },
-  team: { window: 160, week: 1400 },
-  secret: { window: 160, week: 1400 },
-  enterprise: { window: 100, week: 800 }, // per seat, shared by the organization
-  admin: { window: 100000, week: 1000000 },
+  // Free: 20,000 tokens every 2 hours, 150,000 a week, 500,000 a month (owner's numbers, 2026-10-02).
+  free: { window: 20, week: 150, month: 500 },
+  pro: { window: 100, week: 750, month: 2500 },
+  team: { window: 140, week: 1050, month: 3500 },
+  secret: { window: 140, week: 1050, month: 3500 },
+  enterprise: { window: 80, week: 600, month: 2000 }, // per seat, shared by the organization
+  admin: { window: 100000000, week: 1000000000, month: 10000000000 },
 };
-// Credits per 10,000 characters of reply, per AI (times the effort level).
+// 1 credit = 1,000 tokens (a token is about 4 characters). Everything the AI reads (the chat so far,
+// files, page code) costs its tokens; what it writes costs its tokens times the AI's weight and
+// the effort level.
+export const TOKENS_PER_CREDIT = 1000;
 export const MODEL_WEIGHT = { ai: 1, aiCode: 2, galaxy5: 3, space5: 4 };
-// The context window: everything the AI reads for one answer (the chat so far, files, page code).
+// The context window: everything the AI reads for one answer.
 export const CONTEXT_TOKENS = 1000000;
-// Reading the chat costs 1 credit per 50,000 tokens after the first 50,000.
-export const TOKENS_PER_CONTEXT_CREDIT = 50000;
-export const contextCredits = (chars) => Math.floor(Math.max(0, Number(chars) || 0) / 4 / TOKENS_PER_CONTEXT_CREDIT);
+export const tokensOf = (chars) => Math.ceil(Math.max(0, Number(chars) || 0) / 4);
+// Credits for reading this much (fractions add up with the reply before rounding up).
+export const contextCredits = (chars) => tokensOf(chars) / TOKENS_PER_CREDIT;
+// Credits for one answer: what was read plus what was written (x mult), rounded up, at least 1.
+export const answerCredits = (inChars, outChars, mult) => Math.max(1, Math.ceil((tokensOf(inChars) + tokensOf(outChars) * (mult || 1)) / TOKENS_PER_CREDIT));
 export const WINDOW_MS = 2 * 3600 * 1000;
 export const WEEK_MS = 7 * 24 * 3600 * 1000;

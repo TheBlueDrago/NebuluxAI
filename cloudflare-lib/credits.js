@@ -26,7 +26,7 @@ import { offerFor, OFFER_TAG } from "./offers.js";
 import { CREDIT_PACKS } from "./creditPacks.js";
 
 // Plan allowances live in planTotals.js so the app can show them too (out-of-credits card).
-export { TIERS, TIER_OF_MODEL, TIER_NAMES, PLAN_TOTALS, PLAN_LIMITS, MODEL_WEIGHT, CONTEXT_TOKENS, contextCredits, WINDOW_MS, WEEK_MS } from "./planTotals.js";
+export { TIERS, TIER_OF_MODEL, TIER_NAMES, PLAN_TOTALS, PLAN_LIMITS, MODEL_WEIGHT, CONTEXT_TOKENS, contextCredits, answerCredits, tokensOf, TOKENS_PER_CREDIT, WINDOW_MS, WEEK_MS } from "./planTotals.js";
 import { TIERS, PLAN_LIMITS, WINDOW_MS, WEEK_MS } from "./planTotals.js";
 
 // One pool of bonus credits for every AI. Old balances kept one number per AI; they're added up.
@@ -39,46 +39,70 @@ function setPool(b, v) {
   for (const t of TIERS) b[t] = 0;
 }
 
-// Use of the 2-hour and weekly limits, one row per person (or Enterprise organization), in D1
-// (KV allows only 1,000 writes a day). Tests without D1 use KV.
+// Use of the 2-hour, weekly and monthly limits, one row per person (or Enterprise organization),
+// in D1 (KV allows only 1,000 writes a day). Tests without D1 use KV. Months are calendar months
+// (UTC). In the last 7 days of a month the weekly limit is lifted, so whatever is left of the
+// month can still be used before it resets.
 const winIdx = (now) => Math.floor(now / WINDOW_MS);
 const wkIdx = (now) => Math.floor(now / WEEK_MS);
+const moIdx = (now) => {
+  const d = new Date(now);
+  return d.getUTCFullYear() * 12 + d.getUTCMonth();
+};
+const monthEnd = (now) => {
+  const d = new Date(now);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+};
 let tableReady = false;
 async function readUse(kv, id, now = Date.now()) {
   const db = ownDatabase();
   let row = null;
   if (db) {
     if (!tableReady) {
-      await db.prepare("CREATE TABLE IF NOT EXISTS credit_use (id TEXT PRIMARY KEY, win_idx INTEGER, win_used INTEGER, wk_idx INTEGER, wk_used INTEGER)").run();
+      await db.prepare("CREATE TABLE IF NOT EXISTS credit_use2 (id TEXT PRIMARY KEY, win_idx INTEGER, win_used INTEGER, wk_idx INTEGER, wk_used INTEGER, mo_idx INTEGER, mo_used INTEGER)").run();
       tableReady = true;
     }
-    row = await db.prepare("SELECT win_idx, win_used, wk_idx, wk_used FROM credit_use WHERE id = ?").bind(id).first();
+    row = await db.prepare("SELECT win_idx, win_used, wk_idx, wk_used, mo_idx, mo_used FROM credit_use2 WHERE id = ?").bind(id).first();
   } else row = await getJSON(kv, `lim:${id}`, null);
   const w = winIdx(now);
   const k = wkIdx(now);
+  const m = moIdx(now);
   return {
     id,
+    now,
     w,
     k,
+    m,
     wu: row && row.win_idx === w ? Number(row.win_used) || 0 : 0,
     ku: row && row.wk_idx === k ? Number(row.wk_used) || 0 : 0,
+    mu: row && row.mo_idx === m ? Number(row.mo_used) || 0 : 0,
   };
 }
 async function writeUse(kv, u) {
   const db = ownDatabase();
   if (db)
     await db
-      .prepare("INSERT INTO credit_use (id, win_idx, win_used, wk_idx, wk_used) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET win_idx = ?2, win_used = ?3, wk_idx = ?4, wk_used = ?5")
-      .bind(u.id, u.w, u.wu, u.k, u.ku)
+      .prepare(
+        "INSERT INTO credit_use2 (id, win_idx, win_used, wk_idx, wk_used, mo_idx, mo_used) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(id) DO UPDATE SET win_idx = ?2, win_used = ?3, wk_idx = ?4, wk_used = ?5, mo_idx = ?6, mo_used = ?7"
+      )
+      .bind(u.id, u.w, u.wu, u.k, u.ku, u.m, u.mu)
       .run();
-  else await putJSON(kv, `lim:${u.id}`, { win_idx: u.w, win_used: u.wu, wk_idx: u.k, wk_used: u.ku });
+  else await putJSON(kv, `lim:${u.id}`, { win_idx: u.w, win_used: u.wu, wk_idx: u.k, wk_used: u.ku, mo_idx: u.m, mo_used: u.mu });
 }
 const poolId = (ent) => (ent.orgId ? `org:${ent.orgId}` : ent.user.id);
 function limitsOf(ent) {
   // An admin can set someone's credits to another plan's limits (grant.creditPlan), e.g. the owner testing Free.
   const l = PLAN_LIMITS[ent.creditPlan] || PLAN_LIMITS[ent.plan] || PLAN_LIMITS.free;
   const n = ent.orgId ? Math.max(1, Number(ent.seats) || 1) : 1;
-  return { window: l.window * n, week: l.week * n };
+  return { window: l.window * n, week: l.week * n, month: l.month * n };
+}
+// What's usable now from each limit, and which one runs out first.
+function leftOf(lim, u) {
+  const lastWeek = monthEnd(u.now) - u.now <= WEEK_MS;
+  const win = Math.max(0, lim.window - u.wu);
+  const week = lastWeek ? Infinity : Math.max(0, lim.week - u.ku);
+  const month = Math.max(0, lim.month - u.mu);
+  return { win, week, month, lastWeek, allowance: Math.min(win, week, month) };
 }
 import { blockedBy, unverified, emailRemoved, removedEmailKey } from "./bans.js";
 const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4, admin: 5 };
@@ -276,18 +300,20 @@ export async function creditStatus(kv, ent, now = Date.now()) {
   const lim = limitsOf(ent);
   const use = await readUse(kv, poolId(ent), now);
   const bonus = poolOf(ent.bonus);
-  const winLeft = Math.max(0, lim.window - use.wu);
-  const wkLeft = Math.max(0, lim.week - use.ku);
-  const remaining = Math.min(winLeft, wkLeft) + bonus;
+  const L = leftOf(lim, use);
+  const remaining = L.allowance + bonus;
   const winReset = new Date((use.w + 1) * WINDOW_MS).toISOString();
   const wkReset = new Date((use.k + 1) * WEEK_MS).toISOString();
+  const moReset = new Date(monthEnd(now)).toISOString();
   const pool = {
     window: { limit: lim.window, used: use.wu, resetsAt: winReset },
-    week: { limit: lim.week, used: use.ku, resetsAt: wkReset },
+    // Lifted in the last 7 days of the month (off: true).
+    week: { limit: lim.week, used: use.ku, resetsAt: wkReset, off: L.lastWeek },
+    month: { limit: lim.month, used: use.mu, resetsAt: moReset },
     bonus,
     remaining,
-    // When usable credits come back once they've run out (the weekly limit wins when both are used up).
-    resetsAt: remaining > 0 ? null : wkLeft <= 0 ? wkReset : winReset,
+    // When usable credits come back once they've run out: the longest limit that's used up.
+    resetsAt: remaining > 0 ? null : L.month <= 0 ? moReset : L.week <= 0 ? wkReset : winReset,
   };
   // Every AI shows the same shared pool (older parts of the app read per-AI numbers).
   const tiers = {};
@@ -341,10 +367,11 @@ export async function charge(kv, ent, tier, amount, prompt) {
   if (left > 0) {
     const lim = limitsOf(ent);
     const use = await readUse(kv, poolId(ent));
-    const take = Math.min(Math.max(0, Math.min(lim.window - use.wu, lim.week - use.ku)), left);
+    const take = Math.min(leftOf(lim, use).allowance, left);
     if (take > 0) {
       use.wu += take;
       use.ku += take;
+      use.mu += take;
       left -= take;
       await writeUse(kv, use);
     }

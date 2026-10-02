@@ -25,7 +25,7 @@
 // at what their credits cover.
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
-import { currentUser, entitlement, creditStatus, charge, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, MODEL_WEIGHT, contextCredits, CONTEXT_TOKENS } from "../../../../../cloudflare-lib/credits.js";
+import { currentUser, entitlement, creditStatus, charge, EFFORT_MULT, TIER_OF_MODEL, MODEL_WEIGHT, answerCredits, tokensOf, TOKENS_PER_CREDIT, CONTEXT_TOKENS } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 
 const MODEL_MAP = {
@@ -390,7 +390,7 @@ export async function onRequestPost(context) {
     // Every AI draws from one pool: a reply costs (stronger AI x effort) per 10,000 characters,
     // plus reading the chat (its context) once it's past 50,000 tokens.
     const mult = EFFORT_MULT[effort] * (MODEL_WEIGHT[tier] || 1);
-    const ctxCost = internal ? 0 : contextCredits(prompt.length);
+    const inTokens = internal ? 0 : tokensOf(prompt.length);
 
     let left = Infinity;
     if (!internal) {
@@ -402,14 +402,14 @@ export async function onRequestPost(context) {
       }
       const before = await creditStatus(kv, ent);
       left = before.pool.remaining;
-      if (left < mult + ctxCost) {
+      if (left < answerCredits(prompt.length, 1000, mult)) {
         const resetsAt = before.pool.resetsAt || (before.pool.window.used >= before.pool.window.limit ? before.pool.window.resetsAt : before.pool.week.resetsAt);
         return json(
           {
             error:
               left > 0
-                ? `You have ${left} credit${left === 1 ? "" : "s"} left, not enough for this (it costs at least ${mult + ctxCost}). Lower the effort, pick a lighter AI, or use /compact to shorten the chat.`
-                : "You've used all your credits for now. They come back soon.",
+                ? `You have ${(left * TOKENS_PER_CREDIT).toLocaleString("en-US")} tokens left, not enough for this (it needs about ${(answerCredits(prompt.length, 1000, mult) * TOKENS_PER_CREDIT).toLocaleString("en-US")}). Lower the effort, pick a lighter AI, or use /compact to shorten the chat.`
+                : "You've used all your tokens for now. They come back soon.",
             outOfCredits: true,
             resetsAt,
             credits: before,
@@ -426,7 +426,7 @@ export async function onRequestPost(context) {
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
     // The reply stops at what the user's credits cover: whole credits x effort multiplier.
-    const maxChars = internal ? Infinity : Math.floor((left - ctxCost) / mult) * CHARS_PER_CREDIT;
+    const maxChars = internal ? Infinity : Math.floor((left * TOKENS_PER_CREDIT - inTokens) / mult) * 4;
     const maxTokens = internal ? 1024 : 0;
     const search = !internal && wantsSearch(body.question) && (await searchAllowed());
 
@@ -436,7 +436,7 @@ export async function onRequestPost(context) {
       if (internal) return {};
       // Stopped by the user: what was written so far is charged (nothing if nothing was).
       if (stopped && !text) return { stopped: true, charged: 0 };
-      const cost = cut ? left : ctxCost + Math.max(1, Math.ceil(String(text || "").length / CHARS_PER_CREDIT)) * mult;
+      const cost = cut ? left : answerCredits(prompt.length, String(text || "").length, mult);
       // `question` is the user's own words (the prompt adds instructions), for Monitor's activity view.
       await charge(kv, ent, tier, cost, String(body.question || prompt).slice(0, 300));
       return { cut, charged: cost, credits: await creditStatus(kv, ent) };
@@ -470,7 +470,7 @@ export async function onRequestPost(context) {
     context.waitUntil(
       (async () => {
         // What this answer costs as it's written (the app shows it live).
-        if (!internal) await send({ meta: { perChars: CHARS_PER_CREDIT, mult, contextCost: ctxCost, contextTokens: Math.ceil(prompt.length / 4), maxContext: CONTEXT_TOKENS } });
+        if (!internal) await send({ meta: { mult, inputTokens: inTokens, tokensPerCredit: TOKENS_PER_CREDIT, maxContext: CONTEXT_TOKENS } });
         try {
           const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });

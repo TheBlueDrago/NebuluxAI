@@ -89,12 +89,22 @@ export function useAiActivity() {
   return v;
 }
 
-// Credits this answer has cost so far, from what the server said it costs (meta) and how much
-// has been written: (AI x effort) per 10,000 characters, plus reading the chat.
+// Tokens this answer has used so far: what the AI read, plus what it has written so far (times the
+// AI's weight and the effort level), as the server counts them.
 export function liveCost(e) {
   if (!e || !e.meta) return null;
   const m = e.meta;
-  return (m.contextCost || 0) + Math.max(1, Math.ceil((e.chars || 0) / (m.perChars || 10000))) * (m.mult || 1);
+  return (m.inputTokens || 0) + Math.ceil((e.chars || 0) / 4) * (m.mult || 1);
+}
+
+// 1,234 -> "1.2K", 1,500,000 -> "1.5M".
+export function tokenText(n) {
+  const v = Math.max(0, Number(n) || 0);
+  const short = (x, big) => x.toFixed(big ? 0 : 1).replace(/\.0$/, "");
+  if (v >= 1e9) return short(v / 1e9, v >= 1e10) + "B";
+  if (v >= 1e6) return short(v / 1e6, v >= 1e7) + "M";
+  if (v >= 1e3) return short(v / 1e3, v >= 1e4) + "K";
+  return String(Math.round(v));
 }
 
 // A ticking clock for live timers.
