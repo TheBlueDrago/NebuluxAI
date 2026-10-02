@@ -24,6 +24,8 @@ export function stashChats(userId, storage = globalThis.localStorage) {
     const mine = read(storage, KEY);
     if (mine.length) storage.setItem(stashKey(userId), JSON.stringify(mine));
     storage.removeItem(KEY);
+    // "Deleted chat" notes for the account sync (lib/chatSync.js) belong to this account too.
+    storage.removeItem("nx-chats-deleted");
   } catch {
     // storage blocked
   }

@@ -5,7 +5,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 
 // Public /terms and /privacy pages, linked from sign-up, log-in, billing and the
 // report page. Plain language on purpose; keep them in step with what the app does.
-const UPDATED = "September 29, 2026";
+const UPDATED = "October 2, 2026";
 // Optional: a support address to show instead of the contact form (/contact).
 const CONTACT_EMAIL = "";
 
@@ -135,7 +135,7 @@ export function Privacy() {
         <p className="font-semibold text-white">In short</p>
         <ul>
           <li>We don't sell your information, and we don't show ads or use tracking cookies.</li>
-          <li>Your chats are saved in your own browser. The website and game you are working on (even before you publish), published websites and games, and game progress are kept on our servers with your account.</li>
+          <li>If you're signed in, your chats are saved with your account so they show on all your devices. The website and game you are working on (even before you publish), published websites and games, and game progress are kept on our servers with your account.</li>
           <li>What you ask the AI goes to Google to get an answer; we keep only the start of your five latest questions, to keep the service safe.</li>
           <li>You can download a copy of your data or delete your account at any time.</li>
           <li>We store your password, but only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals.</li>
@@ -146,8 +146,9 @@ export function Privacy() {
       <ul>
         <li><strong>Account:</strong> your email address, and your name and picture if you sign in with Google.</li>
         <li><strong>Forms on sites people make:</strong> if you fill in a form on a site made with Nebulux AI (a booking, an RSVP, a sign-up), what you type is kept for that site's owner to read, up to their latest 200 messages. Password and card-number fields are never sent, and the owner can delete messages at any time.</li>
-        <li><strong>What you make:</strong> the sites and games you publish, and your game draft. Your chats and website projects are saved in your own browser, not on our servers.</li>
-        <li><strong>Prompts:</strong> what you send the AI, including any images you attach in the chat, passes through our servers to Google to get an answer. We count the credits it uses, and keep the start (up to 300 characters) of your five most recent questions each month so our team can spot misuse and help if something goes wrong. We don't keep the rest of the text, or any images.</li>
+        <li><strong>What you make:</strong> the sites and games you publish, and the website and game you are working on.</li>
+        <li><strong>Your chats:</strong> if you're signed in, your chats (the messages you send and the AI's answers) are saved with your account so they appear on every device you sign in on. They're private to your account: we don't read them, except when needed to look into a report, keep someone safe or follow the law. Pictures you attach aren't kept with your account. Deleting a chat deletes it from your account too. If you're not signed in, chats stay only in your browser.</li>
+        <li><strong>Prompts:</strong> what you send the AI, including any images you attach in the chat, passes through our servers to Google to get an answer. We count the credits it uses, and keep the start (up to 300 characters) of your five most recent questions each month so our team can spot misuse and help if something goes wrong. Apart from the chats saved with your account (above), we don't keep the rest of the text, or any images.</li>
         <li><strong>Usage:</strong> how many credits you use on each AI, your plan, promo codes you redeem, and who invited you or whom you invited. When you join through an invite link we keep a scrambled (hashed) form of your IP address with it, to spot one person creating many accounts.</li>
         <li><strong>Payments:</strong> what you bought, when, and whether it renewed. Your card is entered on our payment provider's checkout page and saved by them, not by us; if your plan renews every month, they charge the saved card and only tell us that it was paid. We never see or store your card number.</li>
         <li><strong>Sign-in:</strong> your email address, and your password stored scrambled (hashed with a random salt) so it can't be read back, not even by us. We also keep which devices are signed in (as a scrambled token that expires after 60 days), and short-lived codes we email you to confirm your address or reset your password (they expire within an hour). For two-step verification we keep the secret key for your authenticator app and the devices you chose to remember.</li>
@@ -193,8 +194,8 @@ export function Privacy() {
 
       <h2>Stored on your device</h2>
       <p>
-        We use your browser's storage for sign-in, settings such as your theme, and your chats, website projects and
-        attached images. When you sign out, your chats are put aside on that device and come back when you sign in
+        We use your browser's storage for sign-in, settings such as your theme, and a copy of your chats, website projects and
+        attached images (so they open fast and work offline). When you sign out, your chats are put aside on that device and come back when you sign in
         there again; Settings → Security can remove them completely. We don't use advertising or tracking cookies.
       </p>
 
@@ -202,8 +203,8 @@ export function Privacy() {
       <p>
         We keep your data while your account is open. You can download a copy of it at any time (Settings → Security →
         Download my data). You can delete your account at any time from your profile;
-        that also deletes your published sites and games, your game draft, and the chats and projects saved in that
-        browser. We keep records we need for payments, fraud prevention (such as who invited whom) or the law, and a
+        that also deletes your published sites and games, your drafts, your game progress, the chats saved with your
+        account, and the chats and projects saved in that browser. We keep records we need for payments, fraud prevention (such as who invited whom) or the law, and a
         copy of any page we took down for breaking the rules.
       </p>
 

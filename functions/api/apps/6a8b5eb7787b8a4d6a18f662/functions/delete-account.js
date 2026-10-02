@@ -17,6 +17,8 @@ export async function onRequestPost(context) {
     const email = String(user.email || "").trim().toLowerCase();
     if (email) await kv.put(`deleted:${email}`, new Date().toISOString());
     for (const key of [`bonus:${user.id}`, `grant:${user.id}`, `welcome:${user.id}`, `draft:${user.id}`, `sitedraft:${user.id}`]) await kv.delete(key).catch(() => {});
+    // Chats saved with the account (chat-sync.js).
+    if (env.DB) await env.DB.prepare("DELETE FROM chats WHERE user_id = ?").bind(user.id).run().catch(() => {});
     // Saved game progress (game-save.js), one key per game.
     const saves = await kv.list({ prefix: `gamesave:${user.id}:` }).catch(() => null);
     for (const k of (saves && saves.keys) || []) await kv.delete(k.name).catch(() => {});
