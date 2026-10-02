@@ -167,6 +167,16 @@ export default function GamesFront() {
     return onGamesChanged(load);
   }, []);
 
+  // Games this account has saved progress in (functions/.../game-save.js), for "Continue playing".
+  const [progressIn, setProgressIn] = useState([]);
+  useEffect(() => {
+    base44.functions
+      .invoke("game-save", { action: "list" })
+      .then((r) => setProgressIn(Object.entries(r.data?.saves || {}).filter(([, d]) => d && Object.keys(d).length).map(([n]) => n)))
+      .catch(() => {});
+  }, []);
+  const continuing = useMemo(() => progressIn.map((n) => games.find((g) => g.name === n)).filter(Boolean).slice(0, 6), [progressIn, games]);
+
   const filtered = useMemo(() => {
     let g = games;
     if (q.trim()) {
@@ -315,6 +325,18 @@ export default function GamesFront() {
             <EmptyState onCreate={goGameDesigner} />
           ) : (
             <>
+              {showTop && !q.trim() && continuing.length > 0 && (
+                <section className="mb-6">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-3">
+                    <Play className="w-4 h-4 text-emerald-400" /> Continue playing
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {continuing.map((g) => (
+                      <GameCard key={g.id || g.name} g={g} onPlay={play} />
+                    ))}
+                  </div>
+                </section>
+              )}
               {showTop && games.length > 0 && (
                 <section className="mb-6">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-3">
