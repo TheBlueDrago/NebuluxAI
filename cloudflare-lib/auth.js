@@ -99,6 +99,10 @@ async function sendResetLink(env, db, email, origin, firstTime) {
 }
 
 async function newSession(db, userId) {
+  // Tidy up while here: expired sign-ins and codes would otherwise pile up in the database.
+  const now = Date.now();
+  await db.prepare("DELETE FROM sessions WHERE expires < ?").bind(now).run();
+  await db.prepare("DELETE FROM codes WHERE expires < ?").bind(now).run();
   const token = "nx_" + randomHex(32);
   await db.prepare("INSERT INTO sessions (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await sha(token), userId, Date.now() + SESSION_DAYS * 86400000).run();
   return token;

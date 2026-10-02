@@ -164,3 +164,8 @@ r = await auth("auth/logout-all", {}, null);
 assert(r.status === 401, "signing out everywhere needs a sign-in");
 r = await auth("auth/logout-all", {}, phone);
 assert(r.status === 200 && !(await sessionUser(db, req(phone))) && !(await sessionUser(db, req(laptop))), "signing out everywhere ends the sign-in on every device");
+
+// Expired sign-ins are cleaned out when someone signs in.
+sq.prepare("INSERT INTO sessions (token_hash, user_id, expires) VALUES ('old', 'olduser1', 1)").run();
+await auth("auth/login", { email: "old@example.com", password: "brandnew12" });
+assert(!sq.prepare("SELECT 1 FROM sessions WHERE token_hash = 'old'").get(), "expired sign-ins are removed from the database");
