@@ -21,6 +21,7 @@ export default function ResetPassword() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,13 +38,28 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       await base44.auth.resetPassword({ resetToken, newPassword });
-      window.location.href = "/login";
+      setDone(true);
     } catch (err) {
       setError(err.message || "Failed to reset password");
     } finally {
       setLoading(false);
     }
   };
+
+  // Saved. People who came here from "Continue with Google" were told to go back to the page
+  // they were on, so say so, and offer to log in right here too.
+  if (done) {
+    return (
+      <AuthLayout title="Password saved" subtitle="You can log in with your email and new password now">
+        <p className="text-sm text-muted-foreground text-center">
+          If you started on another tab, go back to it, refresh the page, and log in. Or log in here:
+        </p>
+        <Button className="w-full h-12 font-medium mt-5" onClick={() => (window.location.href = "/login")}>
+          Log in
+        </Button>
+      </AuthLayout>
+    );
+  }
 
   if (!resetToken) {
     return (
