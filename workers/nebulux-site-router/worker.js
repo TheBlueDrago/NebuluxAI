@@ -175,13 +175,27 @@ async function ownerBlock(request, env, url) {
   return new Response(BLOCKED_PAGE, { status: 403, headers: h });
 }
 
+// The owner link only works from the owner's home network (OWNER_NETS secret, comma-separated:
+// an exact address, or a prefix ending in ":" or "." such as the home IPv6 "2600:1700:150:960:").
+// Anywhere else it shows the ordinary "temporarily down" page. Not set = works anywhere.
+function ownerNet(request, env) {
+  var nets = String((env && env.OWNER_NETS) || "").split(",").map(function (s) {
+    return s.trim().toLowerCase();
+  }).filter(Boolean);
+  if (!nets.length) return true;
+  var ip = String(request.headers.get("cf-connecting-ip") || "").toLowerCase();
+  return nets.some(function (n) {
+    return /[:.]$/.test(n) ? ip.indexOf(n) === 0 : ip === n;
+  });
+}
+
 // -> a Response to send instead (down page, or the owner's unlock), or null to carry on.
 async function maintenance(request, env, url) {
   if (!env || env.MAINTENANCE !== "on") return null;
   var key = (env && env.OWNER_KEY) || "";
   var path = url.pathname;
   if (key && path.indexOf("/__owner/") === 0) {
-    if (await sameText(path.slice(9), key)) {
+    if ((await sameText(path.slice(9), key)) && ownerNet(request, env)) {
       // The real owner: lift any block on this browser and this internet address.
       var ip = request.headers.get("cf-connecting-ip") || "";
       if (ip && env.KV) {
