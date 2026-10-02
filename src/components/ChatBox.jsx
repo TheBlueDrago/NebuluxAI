@@ -602,13 +602,22 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               className="ml-auto flex items-center gap-2 text-[11px] text-slate-400"
               title={`Tokens are shared by every AI. Context: about ${contextTokens.toLocaleString()} of ${CONTEXT_TOKENS.toLocaleString()} tokens. Longer chats cost more; type /compact to shorten this one.`}
             >
-              <span>⚡ {credLeft === undefined || credLeft === Infinity ? "…" : tokenText(credLeft * TOKENS_PER_CREDIT)} tokens left</span>
+              <span>{credLeft === undefined || credLeft === Infinity ? "…" : tokenText(credLeft * TOKENS_PER_CREDIT)} tokens left</span>
               <span className="flex items-center gap-1">
                 <span className="relative inline-block w-8 h-1.5 rounded-full bg-slate-700 overflow-hidden">
                   <span className={`absolute inset-y-0 left-0 ${contextPct > 75 ? "bg-red-400" : contextPct > 40 ? "bg-amber-400" : "bg-indigo-400"}`} style={{ width: `${Math.max(2, contextPct)}%` }} />
                 </span>
                 {contextPct}% context
               </span>
+              <button
+                type="button"
+                onClick={() => !loading && !compacting && compact()}
+                disabled={loading || compacting || messages.length < 2}
+                title="Shorten this chat into a summary so answers read (and use) fewer tokens. Same as typing /compact."
+                className="px-2 py-0.5 rounded-md border border-slate-600/60 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+              >
+                Compact
+              </button>
             </div>
           </div>
           <input
