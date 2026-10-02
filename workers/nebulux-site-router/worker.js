@@ -156,6 +156,9 @@ async function maintenance(request, env, url) {
   if (key && (await sameText(cookieOf(request, "nx_owner"), key))) return null;
   // Devices with the old installed app fetch this to remove it (public/sw.js).
   if (path === "/sw.js") return null;
+  // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
+  // (domainconnect/nebuluxai.com.website.json logoUrl). Only on the main address.
+  if (path === "/logo-small.jpg" && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   return new Response(DOWN_PAGE, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "retry-after": "86400", "x-robots-tag": "noindex" } });
 }
 
