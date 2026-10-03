@@ -36,6 +36,9 @@ body:not(.home) #wallet{display:none}
 .sup.hy{background:conic-gradient(#c04dff var(--p,0%),rgba(0,0,0,.45) 0)}.sup.hy.ready{box-shadow:0 0 22px #c04dff}
 @keyframes pulse{to{transform:scale(1.08)}}
 #qpick button{font:800 12px "Segoe UI",Arial;margin:3px;padding:6px 9px;border:0;border-radius:8px;background:#ffe14a;color:#3a2300;cursor:pointer}
+#lobbybar button{font:900 16px "Segoe UI",Arial;padding:12px 20px;border:0;border-radius:12px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;box-shadow:0 5px 0 #b86d00;cursor:pointer}
+#lobbymodes .mb{display:inline-block;margin:6px;padding:14px 22px;border-radius:12px;background:rgba(255,255,255,.12);border:3px solid transparent;font-weight:900;font-size:17px;cursor:pointer}
+#lobbymodes .mb.on{border-color:#ffe14a;background:rgba(255,200,40,.3)}
 #buffs{left:24px;bottom:90px;font-weight:900;font-size:14px}
 @media (pointer:coarse){#supers{display:none}}
 @media (max-height:640px),(max-width:1000px){#menu{justify-content:flex-start;overflow-y:auto;padding-top:60px;padding-bottom:30px}}body.playing,body.playing canvas{cursor:none}
@@ -103,6 +106,9 @@ body.home .hud,body.home #touch{display:none!important}
 <div id="chatbox" style="display:none;position:fixed;left:16px;bottom:120px;z-index:4;width:260px;font-weight:800;font-size:13px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.6);pointer-events:none"></div>
 <div id="qpick" style="display:none;position:fixed;left:16px;bottom:200px;z-index:8;background:rgba(10,0,60,.85);border-radius:12px;padding:8px;max-width:280px"></div>
 <div id="lobbyhud" class="hud" style="display:none;top:104px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:6px 14px;border-radius:12px;font-weight:900;font-size:13px;text-align:center">🏠 LOBBY · walk around · <b>F</b> at the shop stand · <b>T</b> quick chat · <b>L</b> leave</div>
+<div id="lobbybar" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:6;gap:10px">
+<button data-lb="skins">👕 SKINS (K)</button><button data-lb="guns">🔫 GUNS (B)</button><button data-lb="modes">🎮 GAME MODES (M)</button></div>
+<div id="lobbymodes" style="display:none;position:fixed;inset:0;z-index:9;background:rgba(15,5,60,.92);color:#fff;overflow-y:auto;padding:30px 16px;text-align:center"></div>
 <div id="board" class="hud" style="display:none;top:104px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);border-radius:12px;padding:6px 12px;font-weight:900;font-size:13px;line-height:1.6;min-width:180px"></div>
 <div id="respawn" class="hud" style="display:none;top:40%;left:50%;transform:translateX(-50%);font-size:30px;font-weight:900;text-align:center"></div>
 <div id="top" class="hud"><div id="alive">👥 20 LEFT</div><div id="kills">🎯 0 ELIMS</div></div>
@@ -322,7 +328,7 @@ function drawShop(){wallet();$("shopTabs").innerHTML=[["figures","FIGURES"],["up
 document.addEventListener("click",e=>{const t=e.target;
  if(t.id==="shopBtn"){openShop();return}
  if(t.id==="redeem"){const v=$("code").value.trim();(async()=>{const h=sha256(v);
-  if(h===UNLOCK_HASH){for(const i of[15,16])if(!SAVE.owned.includes(i))SAVE.owned.push(i);save();setSkin(16);$("code").value="";alert("Unlocked ZEUS (Ultra Legendary) and ADMIN!")}else alert("That code doesn't work.");drawShop()})();return}if(t.id==="shopClose"){$("shop").style.display="none";drawPickers();return}
+  if(h===UNLOCK_HASH){for(const i of[15,16])if(!SAVE.owned.includes(i))SAVE.owned.push(i);save();setSkin(16);$("code").value="";alert("Unlocked ZEUS (Ultra Legendary) and ADMIN!")}else alert("That code doesn't work.");drawShop()})();return}if(t.id==="shopClose"){$("shop").style.display="none";drawPickers();if(LOBBY)lockMouse();return}
  const tab=t.closest("[data-tab]");if(tab){shopTab=tab.dataset.tab;drawShop();return}
  if(t.dataset.buyfig!=null){const i=+t.dataset.buyfig,f=FIGS[i];if(SAVE.coins>=f.p&&!SAVE.owned.includes(i)){SAVE.coins-=f.p;SAVE.owned.push(i);save();setSkin(i);sfx(700,.12)}drawShop()}
  if(t.dataset.buydia!=null){const i=+t.dataset.buydia,f=FIGS[i],c=DIA[f.r];if(c&&SAVE.diamonds>=c&&!SAVE.owned.includes(i)){SAVE.diamonds-=c;SAVE.owned.push(i);save();setSkin(i);sfx(700,.12)}drawShop()}
@@ -413,6 +419,7 @@ const keys={};let mouseDown=false,locked=false,started=false;
 addEventListener("keydown",e=>{keys[e.code]=true;if(!started)return;
  if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){document.exitPointerLock();openShop()}}else openChest()}
  if(e.code==="KeyT")openQuick();if(LOBBY&&e.code==="KeyL")leaveLobby();
+ if(LOBBY&&["KeyK","KeyB","KeyM"].includes(e.code)){const b=document.querySelector(`[data-lb="${e.code==="KeyK"?"skins":e.code==="KeyB"?"guns":"modes"}"]`);b&&b.click()}
  if($("qpick").style.display==="block"&&e.code.startsWith("Digit")&&e.code.length===6){const n=+e.code.slice(5);if(n>=1){sendQuick(n-1);return}}if(e.code==="KeyG")useSuper();if(e.code==="KeyH")useHyper();if(e.code==="KeyU")useUltra();if(e.code==="ControlLeft"||e.code==="ControlRight"||e.code==="KeyC"){e.preventDefault();slide()}
  if(e.code.startsWith("Digit")){const n=+e.code.slice(5)-1;if(P.inv[n]){P.sel=n;P.reloading=0;hud()}}});
 addEventListener("keyup",e=>{keys[e.code]=false;if(!e.shiftKey)keys.ShiftLeft=keys.ShiftRight=false});
@@ -768,7 +775,7 @@ function startOnline(){const btn=$("play");if(waitingWs){try{waitingWs.close()}c
 
 // Lobby: walk around the plaza with everyone else in it (no fighting there).
 let LOBBY=false;
-function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";$("lobbyhud").style.display="block";lockMouse();
+function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";$("lobbyhud").style.display="block";$("lobbybar").style.display="flex";lockMouse();
  P.pos.set(HUB.x+R(-6,6),HUB.y+.1,HUB.z+R(4,10));P.vel.set(0,0,0);P.yaw=0;dropping=false;
  Object.assign(storm,{r:5000,target:5000,cx:0,cz:0,tcx:0,tcz:0,timer:1e9,shrinking:false,dmg:0});
  flash("WELCOME TO THE LOBBY!",1.6);hud();
@@ -780,7 +787,18 @@ function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.displa
    try{ws.send(JSON.stringify({t:"score",trophies:SAVE.trophies}))}catch(_){}return}
   if(NET===net)onNet(m)};
  ws.onclose=()=>{if(NET===net)NET=null}}
-function leaveLobby(){if(!LOBBY)return;LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
+function drawLobbyModes(){const el=$("lobbymodes");
+ el.innerHTML=`<h2 style="font-size:34px;font-style:italic;color:#ffe14a">GAME MODES</h2><div style="margin:14px 0">${MODES.map((m,i)=>`<div class="mb ${i===modeI?"on":""}" data-lm="${i}">${m[0]}</div>`).join("")}</div>`+
+  (duel()?`<div style="margin:6px 0">${["🤖 BOTS","🌐 REAL PEOPLE"].map((f,i)=>`<div class="mb ${i===oppI?"on":""}" data-lo="${i}">${f}</div>`).join("")}</div>`:"")+
+  `<p style="opacity:.85;max-width:520px;margin:8px auto">${$("fillnote").textContent}</p><button id="lmPlay" style="font:900 24px Segoe UI,Arial;padding:14px 56px;border:0;border-radius:14px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;box-shadow:0 6px 0 #b86d00;cursor:pointer">PLAY</button>
+  <div><button id="lmClose" style="margin-top:16px;font:800 15px Arial;padding:8px 18px;border:0;border-radius:10px;background:#ff4b4b;color:#fff;cursor:pointer">✕ Back to the lobby</button></div>`}
+document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;
+ const lb=t.closest("[data-lb]");if(lb){document.exitPointerLock();if(lb.dataset.lb==="modes"){drawPickers();drawLobbyModes();$("lobbymodes").style.display="block"}else{shopTab=lb.dataset.lb==="skins"?"figures":"guns";openShop()}return}
+ const lm=t.closest("[data-lm]");if(lm){modeI=+lm.dataset.lm;try{localStorage.setItem("ss-mode",modeI)}catch(_){}drawPickers();drawLobbyModes();return}
+ const lo=t.closest("[data-lo]");if(lo){oppI=+lo.dataset.lo;try{localStorage.setItem("ss-opp",oppI)}catch(_){}drawPickers();drawLobbyModes();return}
+ if(t.id==="lmClose"){$("lobbymodes").style.display="none";return}
+ if(t.id==="lmPlay"){$("lobbymodes").style.display="none";leaveLobby();start()}});
+function leaveLobby(){if(!LOBBY)return;$("lobbybar").style.display="none";$("lobbymodes").style.display="none";LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
  document.exitPointerLock();document.body.classList.add("home");$("menu").style.display="flex";drawPickers()}
 $("lobbyBtn").onclick=()=>enterLobby();
 
