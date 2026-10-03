@@ -134,7 +134,7 @@ body.home .hud,body.home #touch{display:none!important}
 <div id="bars" class="hud"><div class="bar" style="height:10px;margin-top:0"><b id="stb" style="width:100%;background:linear-gradient(#fff36b,#ffc400)"></b></div><div class="bar" id="sh"><b style="width:50%"></b><span>50</span></div><div class="bar" id="hp"><b style="width:100%"></b><span>100</span></div></div>
 <div id="slots" class="hud"></div>
 <div id="ammo" class="hud"><div class="big">30</div><div class="small">/ 90</div></div>
-<div id="build" class="hud">Q wall · E ramp · F chest · R reload · Shift sprint · Ctrl/C slide · G super · H hyper</div>
+<div id="build" class="hud">Q wall · E ramp · F chest · X heal · R reload · Shift sprint · Ctrl/C slide · G super · H hyper</div>
 <div id="wallet"><span id="wCoins">🪙 0</span><span id="wDia">💎 0</span><span id="wTro">🏆 0</span></div>
 <div id="supers" class="hud"><div class="sup" id="supBtn">SUPER<br>G</div><div class="sup hy" id="hyBtn" style="display:none">HYPER<br>H</div><div class="sup ul" id="ulBtn" style="display:none">ULTRA<br>U</div></div><div id="nukefx"></div>
 <div id="buffs" class="hud"></div>
@@ -157,6 +157,7 @@ body.home .hud,body.home #touch{display:none!important}
 <div class="tb" id="tHyper" style="right:220px;bottom:130px;background:rgba(192,77,255,.35);display:none">HYPER</div>
 <div class="tb" id="tUltra" style="right:310px;bottom:40px;background:rgba(0,229,255,.4);display:none">ULTRA</div>
 <div class="tb" id="tSlide" style="right:130px;bottom:290px">SLIDE</div>
+<div class="tb" id="tHeal" style="left:30px;bottom:320px;width:60px;height:60px;background:rgba(82,224,90,.4)">HEAL</div>
 <div class="tb" id="tReload" style="right:40px;bottom:350px;width:60px;height:60px">RELOAD</div>
 <div class="tb" id="tLoot" style="left:30px;bottom:250px;width:60px;height:60px">OPEN</div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -475,8 +476,14 @@ function gunModel(k,paint){const g=new THREE.Group();const P_=paint||new THREE.M
   case"rocket":cyl(.2,1.8,0,.05,.2,P_);box(.15,.4,.2,0,-.3,0,METAL);box(.1,.15,.3,0,.32,.2,METAL);break;
   case"scythe":{cyl(.06,2.8,0,0,.3,WOOD);const bl=box(.05,.35,1.3,0,.45,1.55,METAL);bl.rotation.x=-.5;const tip=box(.05,.25,.6,0,.25,2.1,P_);tip.rotation.x=-1.2;break}
   default:box(.25,.35,1.6,0,0,0,P_)}
+ // Details on every firearm: trigger and guard, front sight, a rail on top.
+ if(k!=="scythe"&&k!=="rocket"&&k!=="mini"){const GRIP=new THREE.MeshLambertMaterial({color:0x111214});
+  box(.04,.12,.04,0,-.2,.05,METAL);box(.05,.04,.22,0,-.27,.05,GRIP);box(.05,.12,.04,0,-.22,.16,GRIP);
+  box(.04,.08,.04,0,.2,.45,METAL);box(.07,.04,.5,0,.17,-.05,METAL)}
  return g}
-function setGun(char,k,paint){const u=char&&char.userData;if(!u||!u.ra)return;if(u.gun)u.ra.remove(u.gun);const m=gunModel(k,paint);m.position.set(0,-1.3,.55);u.ra.add(m);u.gun=m;u.gunK=k}
+function setGun(char,k,paint){const u=char&&char.userData;if(!u||!u.ra)return;if(u.gun)u.ra.remove(u.gun);const m=gunModel(k,paint);
+ // The arm points forward, so the gun is turned to point along it, held at the hand.
+ m.rotation.x=Math.PI/2;m.scale.setScalar(1.25);m.position.set(0,-1.5,.12);u.ra.add(m);u.gun=m;u.gunK=k}
 function applyGunSkin(){const g=GUN_SKINS.find(x=>x.id===SAVE.gunSkin)||GUN_SKINS[0];if(!P.mesh)return;
  const paint=new THREE.MeshLambertMaterial({color:g.c,emissive:g.c,emissiveIntensity:g.e||0});
  const k=P.inv&&P.inv[P.sel]?P.inv[P.sel].k:"ar";setGun(P.mesh,k,paint);P.mesh.userData.gun.userData.rainbow=!!g.rainbow;P.gunPaint=paint}
@@ -519,7 +526,7 @@ scene.add(stormWall);
 // Input
 const keys={};let mouseDown=false,locked=false,started=false;
 addEventListener("keydown",e=>{if(e.target&&e.target.id==="chatin")return;keys[e.code]=true;if(!started)return;
- if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){unlockMouse();openShop()}}else openChest()}
+ if(e.code==="KeyR")reload();if(e.code==="KeyX")useHeal();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){unlockMouse();openShop()}}else openChest()}
  if(e.code==="KeyG")useSuper();if(e.code==="KeyH")useHyper();if(e.code==="KeyU")useUltra();
  if(e.code==="ControlLeft"||e.code==="ControlRight"||e.code==="KeyC"){e.preventDefault();slide()}
  if(e.code==="KeyT"||e.code==="Enter"){e.preventDefault();openChat();return}
@@ -548,7 +555,7 @@ if(touch){const st=$("stick"),kn=$("knob");let sid=null,lid=null,lx=0,ly=0;
  addEventListener("touchend",e=>{for(const t of e.changedTouches){if(t.identifier===sid){sid=null;stickV.x=stickV.y=0;kn.style.left=kn.style.top="35px"}if(t.identifier===lid)lid=null}});
  renderer.domElement.addEventListener("touchstart",e=>{const t=e.changedTouches[0];if(t.clientX>innerWidth*.35){lid=t.identifier;lx=t.clientX;ly=t.clientY}});
  const b=(id,dn,up)=>{$(id).addEventListener("touchstart",e=>{e.preventDefault();e.stopPropagation();dn()});if(up)$(id).addEventListener("touchend",e=>{e.preventDefault();up()})};
- b("tFire",()=>mouseDown=true,()=>mouseDown=false);b("tJump",()=>keys.Space=true,()=>keys.Space=false);b("tWall",()=>buildPiece("wall"));b("tRamp",()=>buildPiece("ramp"));b("tSwap",()=>{P.sel=(P.sel+1)%P.inv.length;hud()});b("tSuper",useSuper);b("tHyper",useHyper);b("tUltra",useUltra);b("tSlide",()=>slide());b("tReload",reload);b("tLoot",openChest)}
+ b("tFire",()=>mouseDown=true,()=>mouseDown=false);b("tHeal",useHeal);b("tJump",()=>keys.Space=true,()=>keys.Space=false);b("tWall",()=>buildPiece("wall"));b("tRamp",()=>buildPiece("ramp"));b("tSwap",()=>{P.sel=(P.sel+1)%P.inv.length;hud()});b("tSuper",useSuper);b("tHyper",useHyper);b("tUltra",useUltra);b("tSlide",()=>slide());b("tReload",reload);b("tLoot",openChest)}
 
 // FX
 const fx=[];
@@ -647,7 +654,7 @@ function swing(){const w=weapon();P.cd=w.rate;const f=new THREE.Vector3();camera
  for(const sd of solids.slice())if(sd.harvest&&sd.box&&sd.box.distanceToPoint(front)<2.5)harvest(sd,60);
  burst(P.pos.clone().add(f.clone().multiplyScalar(2.5)).add(new THREE.Vector3(0,2.5,0)),0xb04dff,10);sfx(240,.08);P.kick=.03}
 function scytheDash(){if(!started||!P.alive||LOBBY||(P.dashCd||0)>0)return;const d=new THREE.Vector3();camera.getWorldDirection(d);P.dashDir=d.normalize();P.dashT=.25;P.dashCd=1.2*(1-.15*(SAVE.dashL||0));P.dashHit=new Set();sfx(120,.12);flash("DASH!",.5)}
-function shoot(){if(LOBBY)return;const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.reloading>0)return;if(w.melee){swing();return}if(s.ammo<=0){reload();return}
+function shoot(){if(LOBBY)return;if(P.using){P.using=null;flash("HEALING STOPPED",.6)}const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.reloading>0)return;if(w.melee){swing();return}if(s.ammo<=0){reload();return}
  s.ammo--;P.cd=w.rate*(buffs.rapid>0?.5:1)*(1-.06*(SAVE.rofL||0));
  const aim=new THREE.Vector3();camera.getWorldDirection(aim);
  const origin=camera.position.clone();
@@ -716,18 +723,27 @@ function hurtPlayer(d,from,byId){if(!P.alive)return;P.lastHurt=performance.now()
 
 // Loot
 const pickups=[];
-function dropLoot(x,z){const keysW=Object.keys(WEAPONS);const k=keysW[Math.floor(R(0,keysW.length))];
- const types=[{t:"gun",k},{t:"ammo"},{t:"shield"},{t:"med"}];
- for(let i=0;i<2;i++){const it=types[i===0?0:Math.floor(R(1,4))];const col=it.t==="gun"?WEAPONS[it.k].color:it.t==="ammo"?0x9aa5b1:it.t==="shield"?0x2fb6ff:0x52e05a;
-  const m=new THREE.Mesh(it.t==="gun"?new THREE.BoxGeometry(.5,.5,1.8):new THREE.OctahedronGeometry(.6),new THREE.MeshLambertMaterial({color:col,emissive:col,emissiveIntensity:.5}));
+// Healing you carry and use with X (or the HEAL button): bandages and med kits for health, small
+// and big shield potions for shield.
+const ITEMS={band:{n:"BANDAGES",c:0xf2e6c9,t:1.5,give:3},med:{n:"MED KIT",c:0xff4b4b,t:4,give:1},ss:{n:"SMALL SHIELD",c:0x7fd4ff,t:1.5,give:2},bs:{n:"BIG SHIELD",c:0x1e7bff,t:3,give:1}};
+function dropLoot(x,z){const keysW=Object.keys(WEAPONS).filter(k=>!WEAPONS[k].melee);const k=keysW[Math.floor(R(0,keysW.length))];
+ const types=[{t:"gun",k},{t:"ammo"},{t:"band"},{t:"med"},{t:"ss"},{t:"bs"}];
+ for(let i=0;i<2;i++){const it=types[i===0?0:Math.floor(R(1,types.length))];const col=it.t==="gun"?WEAPONS[it.k].color:it.t==="ammo"?0x9aa5b1:ITEMS[it.t].c;
+  const m=new THREE.Mesh(it.t==="gun"?new THREE.BoxGeometry(.5,.5,1.8):it.t==="ammo"?new THREE.BoxGeometry(.8,.5,.5):new THREE.CylinderGeometry(.35,.35,.8,10),new THREE.MeshLambertMaterial({color:col,emissive:col,emissiveIntensity:.5}));
   const px=x+R(-2,2),pz=z+R(-2,2);m.position.set(px,heightAt(px,pz)+1,pz);scene.add(m);
   const beam=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,6,6),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.35}));beam.position.y=3;m.add(beam);
   pickups.push({m,...it})}}
+// X: uses the healing that helps most right now (health first when low, then shield).
+function bestHeal(){const it=P.items||{};if(P.hp<75&&it.band)return"band";if(P.hp<P.maxHp&&it.med)return"med";if(P.sh<50&&it.ss)return"ss";if(P.sh<100&&it.bs)return"bs";if(P.hp<P.maxHp&&it.band&&P.hp<75)return"band";return null}
+function useHeal(){if(!started||!P.alive||LOBBY||P.using)return;const k=bestHeal();if(!k){flash((P.items&&Object.values(P.items).some(Boolean))?"YOU'RE ALREADY FULL":"NO HEALING ITEMS: OPEN CHESTS",1);return}
+ P.using={k,t:ITEMS[k].t};flash(`USING ${ITEMS[k].n}...`,ITEMS[k].t)}
+function healTick(dt){if(!P.using)return;P.using.t-=dt;if(P.using.t>0)return;const k=P.using.k;P.using=null;if(!P.items[k])return;P.items[k]--;
+ if(k==="band")P.hp=Math.min(Math.max(P.hp,75),P.hp+15);if(k==="med")P.hp=P.maxHp;if(k==="ss")P.sh=Math.min(Math.max(P.sh,50),P.sh+25);if(k==="bs")P.sh=Math.min(100,P.sh+50);sfx(900,.08);hud()}
 function openChest(){for(const c of chests){if(c.open)continue;if(c.g.position.distanceTo(P.pos)<5){c.open=true;c.lid.rotation.x=-1.2;c.lid.position.z=-.5;c.g.children[2].intensity=0;
  dropLoot(c.g.position.x,c.g.position.z);dropLoot(c.g.position.x,c.g.position.z);if(Math.random()<.2*(SAVE.luckL||0))dropLoot(c.g.position.x,c.g.position.z);sfx(600,.15);flash("CHEST OPENED!",.9);return}}}
 function checkPickups(){for(let i=pickups.length-1;i>=0;i--){const p=pickups[i];p.m.rotation.y+=.04;if(p.m.position.distanceTo(P.pos.clone().setY(p.m.position.y))>2.4||Math.abs(p.m.position.y-P.pos.y)>4)continue;
  if(p.t==="gun"){if(P.inv.some(s=>s.k===p.k)){P.reserve+=30}else if(P.inv.length<3+SAVE.invL){P.inv.push({k:p.k,ammo:magOf(p.k)})}else{P.inv[P.sel]={k:p.k,ammo:magOf(p.k)}}flash("+ "+WEAPONS[p.k].name,1)}
- else if(p.t==="ammo"){P.reserve+=60;flash("+60 AMMO",.8)}else if(p.t==="shield"){P.sh=Math.min(100,P.sh+50);flash("+50 SHIELD",.8)}else{P.hp=Math.min(P.maxHp,P.hp+50);flash("+50 HEALTH",.8)}
+ else if(p.t==="ammo"){P.reserve+=60;flash("+60 AMMO",.8)}else if(ITEMS[p.t]){P.items[p.t]=(P.items[p.t]||0)+ITEMS[p.t].give;flash(`+${ITEMS[p.t].give} ${ITEMS[p.t].n} (X TO USE)`,1)}
  scene.remove(p.m);pickups.splice(i,1);sfx(880,.08);hud()}}
 
 // Building
@@ -819,7 +835,7 @@ function hud(){const s=P.inv[P.sel],w=weapon();
  $("tHyper").style.display=leg&&touch?"flex":"none";$("tHyper").textContent=hc>=100?"HYPER!":"HYPER "+hc+"%";
  $("hp").firstChild.style.width=P.hp/P.maxHp*100+"%";$("hp").lastChild.textContent=Math.ceil(P.hp);$("sh").firstChild.style.width=P.sh+"%";$("sh").lastChild.textContent=Math.ceil(P.sh);
  if(w.melee)$("ammo").innerHTML=`<div class="big">⚔️</div><div class="small">Right-click: dash · 🧱 ${P.mats}</div>`;else $("ammo").innerHTML=`<div class="big">${s.ammo}</div><div class="small">/ ${P.reserve} · 🧱 ${P.mats}</div>`;
- $("slots").innerHTML=P.inv.map((x,i)=>`<div class="slot ${WEAPONS[x.k].rar} ${i===P.sel?"on":""}">${i+1}<br>${WEAPONS[x.k].name}</div>`).join("");
+ const it=P.items||{};$("slots").innerHTML=(duel()?"":`<div class="slot" title="X to use" style="font-size:10px">🩹${it.band||0} ❤️${it.med||0}<br>🔹${it.ss||0} 🛡️${it.bs||0}<br>X</div>`)+P.inv.map((x,i)=>`<div class="slot ${WEAPONS[x.k].rar} ${i===P.sel?"on":""}">${i+1}<br>${WEAPONS[x.k].name}</div>`).join("");
  const alive=bots.filter(b=>b.alive).length+remoteList().length+(P.alive?1:0);$("alive").textContent=`👥 ${alive} LEFT`;$("kills").textContent=`🎯 ${P.kills} ELIMS`;
  const teamsLeft=teamsAlive();if(MODES[modeI][1]>1)$("alive").textContent+=` · ${teamsLeft+(P.alive?1:0)} TEAMS`;
  if(LOBBY)return;if(duel())drawBoard();else if(started&&P.alive&&teamsLeft===0)end(true)}
@@ -961,9 +977,11 @@ function resetGame(){for(const sd of broken.splice(0)){sd.hp=sd.maxHp;scene.add(
  for(const p of pickups)scene.remove(p.m);pickups.length=0;
  for(let i=solids.length-1;i>=0;i--)if(solids[i].build){scene.remove(solids[i].mesh);solids.splice(i,1)}
  for(const c of chests){c.open=false;c.lid.rotation.x=0;c.lid.position.z=0;c.g.children[2].intensity=1.2}
- const maxHp=100+SAVE.hpL*20;const order=[SAVE.start,...SAVE.guns.filter(g=>g!==SAVE.start)].filter(g=>SAVE.guns.includes(g)).slice(0,3+SAVE.invL);
+ const maxHp=100+SAVE.hpL*20;
+ // Battle royale: everyone lands with just a pistol and loots chests (gunfights use their own loadouts).
+ const order=duel()?[SAVE.start,...SAVE.guns.filter(g=>g!==SAVE.start)].filter(g=>SAVE.guns.includes(g)).slice(0,3+SAVE.invL):["pistol"];
  for(const k in buffs)buffs[k]=0;
- Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:magOf(k)})),superC:0,hyperC:0,ultCd:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300+100*(SAVE.matL||0),kick:0,sprint:false,stam:100,tired:false,pitch:-.1});
+ Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,(duel()?50:0)+SAVE.shL*15),items:{band:0,med:0,ss:0,bs:0},using:null,inv:order.map(k=>({k,ammo:magOf(k)})),superC:0,hyperC:0,ultCd:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300+100*(SAVE.matL||0),kick:0,sprint:false,stam:100,tired:false,pitch:-.1});
  Object.assign(storm,{r:HALF*1.15,target:HALF*1.15,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
 function start(){if(ranked()&&(SAVE.totalKills||0)<RANK_UNLOCK){flash(`RANKED UNLOCKS AT ${RANK_UNLOCK.toLocaleString()} ELIMINATIONS`,2);enterLobby();return}LOBBY=false;document.body.classList.remove("lobby");$("lobbyhud").style.display="none";$("inv").style.display="none";$("lobbybar").style.display="none";if((MODES[modeI][2]||(duel()&&oppI))&&!NET){startOnline();return}begin([])}
@@ -1046,6 +1064,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   P.vel.x=mv.x*spd;P.vel.z=mv.z*spd;
   if(buffs.hyper>0){P.vel.x*=1.3;P.vel.z*=1.3}
   if(SAVE.regL&&P.hp<P.maxHp&&performance.now()-(P.lastHurt||0)>4000){P.hp=Math.min(P.maxHp,P.hp+2*SAVE.regL*dt);if(Math.random()<.1)hud()}
+  healTick(dt);
   P.dashCd=(P.dashCd||0)-dt;if(P.dashT>0){P.dashT-=dt;P.vel.copy(P.dashDir).multiplyScalar(60);P.vel.y+=dt*32;
    for(const b of enemies())if(!P.dashHit.has(b)&&b.mesh.position.distanceTo(P.pos)<3.8){P.dashHit.add(b);hurtBot(b,99999,true);burst(b.mesh.position.clone().add(new THREE.Vector3(0,2,0)),0xb04dff,16)}}
   if(P.slowT>0){P.slowT-=dt;P.vel.x*=.35;P.vel.z*=.35}
