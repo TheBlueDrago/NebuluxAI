@@ -436,6 +436,8 @@ scene.add(stormWall);
 const keys={};let mouseDown=false,locked=false,started=false;
 addEventListener("keydown",e=>{if(e.target&&e.target.id==="chatin")return;keys[e.code]=true;if(!started)return;
  if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){unlockMouse();openShop()}}else openChest()}
+ if(e.code==="KeyG")useSuper();if(e.code==="KeyH")useHyper();if(e.code==="KeyU")useUltra();
+ if(e.code==="ControlLeft"||e.code==="ControlRight"||e.code==="KeyC"){e.preventDefault();slide()}
  if(e.code==="KeyT"||e.code==="Enter"){e.preventDefault();openChat();return}if(LOBBY&&e.code==="KeyL")leaveLobby();
  if(LOBBY&&e.code==="KeyI"){const v=$("inv");v.style.display=v.style.display==="none"?"block":"none"}
  if(LOBBY&&["KeyK","KeyB","KeyM"].includes(e.code)){const b=document.querySelector(`[data-lb="${e.code==="KeyK"?"skins":e.code==="KeyB"?"guns":"modes"}"]`);b&&b.click()}
@@ -492,7 +494,7 @@ function ring(at,radius,color){const m=new THREE.Mesh(new THREE.TorusGeometry(ra
 function aoe(at,radius,dmg,color){ring(at,radius,color);burst(at.clone().add(new THREE.Vector3(0,1,0)),color,16);
  for(const b of enemies()){const d=b.mesh.position.distanceTo(at);if(d<radius)hurtBot(b,Math.round(dmg*dmgMul()*(1-d/radius*.4)),false)}sfx(60,.18)}
 function addCharge(dmg){P.superC=Math.min(1,(P.superC||0)+dmg/(buffs.hyper>0?60:120));if(HYPER_R.includes(FIGS[skinI].r))P.hyperC=Math.min(1,(P.hyperC||0)+dmg/420)}
-function useSuper(){if(LOBBY)return;if(!started||!P.alive||(P.superC||0)<1)return;P.superC=0;const F=FIGS[skinI],k=buffs.hyper>0?1.5:1;
+function useSuper(){if(LOBBY){flash("NO ABILITIES IN THE LOBBY",1);return}if(started&&P.alive&&(P.superC||0)<1){flash(`SUPER NOT READY (${Math.round((P.superC||0)*100)}%): HIT ENEMIES TO CHARGE IT`,1.2);return}if(!started||!P.alive)return;P.superC=0;const F=FIGS[skinI],k=buffs.hyper>0?1.5:1;
  const fwd=new THREE.Vector3(-Math.sin(P.yaw),0,-Math.cos(P.yaw));
  switch(F.sup){
   case"barrage":{const a=aimPoint();for(let i=0;i<5;i++)setTimeout(()=>aoe(a.clone().add(new THREE.Vector3(R(-5,5),0,R(-5,5))),6*k,38*k,0xff9a1f),i*140);break}
@@ -513,7 +515,9 @@ function useSuper(){if(LOBBY)return;if(!started||!P.alive||(P.superC||0)<1)retur
   case"smite":{const list=enemies();if(list.length){const b=list[Math.floor(Math.random()*list.length)];tracer(b.mesh.position.clone().add(new THREE.Vector3(0,80,0)),b.mesh.position.clone(),0xff0040);hurtBot(b,99999,true)}break}
   case"valk":P.vel.y=26;P.onGround=false;P.slamming=k;break}
  flash("⚡ "+F.sn.toUpperCase()+"!",1.2);sfx(300,.15);hud()}
-function useHyper(){if(LOBBY)return;if(!started||!P.alive||!HYPER_R.includes(FIGS[skinI].r)||(P.hyperC||0)<1)return;
+function useHyper(){if(LOBBY){flash("NO ABILITIES IN THE LOBBY",1);return}if(!started||!P.alive)return;
+ if(!HYPER_R.includes(FIGS[skinI].r)){flash("ONLY LEGENDARY, ULTRA AND ADMIN FIGURES HAVE HYPERCHARGE",1.4);return}
+ if((P.hyperC||0)<1){flash(`HYPERCHARGE NOT READY (${Math.round((P.hyperC||0)*100)}%)`,1.2);return}
  if(FIGS[skinI].sup==="smite"){buffs.allHit=10;flash("💜 OMNI SHOT!",1);sfx(900,.1);return}P.hyperC=0;buffs.hyper=8;P.superC=1;flash("💜 HYPERCHARGE!",1.4);sfx(900,.15);useSuper()}
 
 // Bot supers
@@ -542,7 +546,9 @@ function botSuper(b,tp){const F=FIGS[b.mesh.userData.fig||0],p=b.mesh.position,a
   case"invis":b.invisT=5;b.mesh.traverse(o=>{if(o.material){o.material.transparent=true;o.material.opacity=.15}});break}}
 
 // Ultra supers
-function useUltra(){if(LOBBY)return;const F=FIGS[skinI];if(!started||!P.alive||!F.ult)return;if(!F.always&&(P.ultCd||0)>0)return;
+function useUltra(){if(LOBBY){flash("NO ABILITIES IN THE LOBBY",1);return}const F=FIGS[skinI];if(!started||!P.alive)return;
+ if(!F.ult){flash("ONLY ZEUS AND ADMIN HAVE AN ULTRA SUPER",1.4);return}
+ if(!F.always&&(P.ultCd||0)>0){flash(`ULTRA READY IN ${Math.ceil(P.ultCd)}s`,1);return}
  if(F.ult==="nuke"){$("nukefx").style.transition="none";$("nukefx").style.opacity=1;setTimeout(()=>{$("nukefx").style.transition="opacity 1.2s";$("nukefx").style.opacity=0},60);
   for(const b of enemies())hurtBot(b,99999,true);flash("☢️ NUKE!",1.5);sfx(40,.25)}
  else{P.ultCd=10;aoe(P.pos,32,150*dmgMul()/dmgMul(),0x00e5ff);ring(P.pos,20,0xffffff);flash("🌟 SUPERNOVA!",1.4);sfx(50,.2)}hud()}
