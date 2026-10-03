@@ -120,7 +120,7 @@ export class Arena {
         ws.serializeAttachment(a);
         const others = this.sockets().filter((s) => s.ws !== ws && s.a.match === "lobby");
         for (const s of others) this.send(s.ws, { t: "ljoin", id: a.id, name: a.name, fig: a.fig });
-        this.send(ws, { t: "lobby", you: a.id, players: others.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig })), top: (await this.state.storage.get("top2")) || [] });
+        this.send(ws, { t: "lobby", you: a.id, players: others.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig })), top: (await this.state.storage.get("top2")) || [], topR: (await this.state.storage.get("topR")) || [], topW: (await this.state.storage.get("topW")) || [] });
         return;
       }
       a.q = DUEL[m.q] ? m.q : "br";
@@ -148,14 +148,24 @@ export class Arena {
     ws.serializeAttachment(a);
     // Leaderboard: the best trophy counts (what the game reports; names are made up by the game).
     if (m.t === "score" && a.joined && a.name !== "Anonymous") {
-      const tro = Math.max(0, Math.min(1000000, Math.floor(Number(m.trophies) || 0)));
-      let top = (await this.state.storage.get("top2")) || [];
-      top = top.filter((x) => x.name !== a.name);
-      top.push({ name: a.name, trophies: tro, fig: a.fig });
-      top.sort((x, y) => y.trophies - x.trophies);
-      top = top.slice(0, 10);
-      await this.state.storage.put("top2", top);
-      const out = JSON.stringify({ t: "top", top });
+      // Three boards: trophies, ranked points (only once placed), and Victory Royales.
+      const num = (v, max) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
+      const board = async (key, field, val) => {
+        let list = (await this.state.storage.get(key)) || [];
+        const had = list.find((x) => x.name === a.name);
+        if (val === null) return list;
+        if (had && had[field] === val) return list;
+        list = list.filter((x) => x.name !== a.name);
+        list.push({ name: a.name, [field]: val, fig: a.fig });
+        list.sort((x, y) => y[field] - x[field]);
+        list = list.slice(0, 10);
+        await this.state.storage.put(key, list);
+        return list;
+      };
+      const top = await board("top2", "trophies", num(m.trophies, 1000000));
+      const topR = await board("topR", "rp", m.rp == null ? null : num(m.rp, 100000));
+      const topW = await board("topW", "wins", m.wins ? num(m.wins, 1000000) : null);
+      const out = JSON.stringify({ t: "top", top, topR, topW });
       for (const s of this.sockets()) if (s.a.match === "lobby") try { s.ws.send(out); } catch {}
       return;
     }
