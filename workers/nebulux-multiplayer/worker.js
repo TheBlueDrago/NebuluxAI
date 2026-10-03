@@ -10,7 +10,7 @@ const WAIT_MS = 12000; // a match starts this long after the first player starts
 const MAX_MSG = 6000; // bytes
 const MAX_RATE = 60; // messages per second per player
 const ALLOWED_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*nebuluxai\.com$|^https:\/\/([a-z0-9-]+\.)*nebuluxai\.pages\.dev$|^null$/;
-const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat"]);
+const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat", "vote", "map"]);
 // Quick chat only: a number for one of the game's fixed messages ("GG!", "Nice shot!"...), never
 // typed text, so nobody can send anything unkind or personal.
 const QUICK_COUNT = 12;
