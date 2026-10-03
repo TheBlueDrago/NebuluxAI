@@ -120,7 +120,7 @@ export class Arena {
         ws.serializeAttachment(a);
         const others = this.sockets().filter((s) => s.ws !== ws && s.a.match === "lobby");
         for (const s of others) this.send(s.ws, { t: "ljoin", id: a.id, name: a.name, fig: a.fig });
-        this.send(ws, { t: "lobby", you: a.id, players: others.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig })), top: (await this.state.storage.get("top")) || [] });
+        this.send(ws, { t: "lobby", you: a.id, players: others.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig })), top: (await this.state.storage.get("top2")) || [] });
         return;
       }
       a.q = DUEL[m.q] ? m.q : "br";
@@ -147,14 +147,14 @@ export class Arena {
 
     ws.serializeAttachment(a);
     // Leaderboard: the best trophy counts (what the game reports; names are made up by the game).
-    if (m.t === "score" && a.joined) {
+    if (m.t === "score" && a.joined && a.name !== "Anonymous") {
       const tro = Math.max(0, Math.min(1000000, Math.floor(Number(m.trophies) || 0)));
-      let top = (await this.state.storage.get("top")) || [];
+      let top = (await this.state.storage.get("top2")) || [];
       top = top.filter((x) => x.name !== a.name);
       top.push({ name: a.name, trophies: tro, fig: a.fig });
       top.sort((x, y) => y.trophies - x.trophies);
       top = top.slice(0, 10);
-      await this.state.storage.put("top", top);
+      await this.state.storage.put("top2", top);
       const out = JSON.stringify({ t: "top", top });
       for (const s of this.sockets()) if (s.a.match === "lobby") try { s.ws.send(out); } catch {}
       return;

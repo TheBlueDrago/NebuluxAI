@@ -725,7 +725,9 @@ let actx;function sfx(f,vol){try{actx=actx||new AudioContext();const o=actx.crea
 const MP_URL="wss://nebulux-multiplayer.thebluedragonstriker.workers.dev/play";
 let NET=null;const remotes=new Map();
 const ADJ=["Swift","Brave","Lucky","Mighty","Sneaky","Turbo","Cosmic","Epic","Rapid","Stormy","Blazing","Frosty"];
-function myName(){if(!SAVE.mpName){SAVE.mpName=ADJ[Math.floor(R(0,ADJ.length))]+["Fox","Wolf","Hawk","Tiger","Shark","Bear","Viper","Falcon"][Math.floor(R(0,8))]+Math.floor(R(10,99));save()}return SAVE.mpName}
+// The player's Nebulux AI username (window.nebulux, set by the app); "Anonymous" when signed out
+// or when the game is opened outside the app.
+function myName(){try{const n=window.nebulux&&String(window.nebulux.username||"").replace(/[^A-Za-z0-9 ]/g,"").trim();if(n)return n.slice(0,24)}catch(e){}return "Anonymous"}
 function netSend(m){try{if(NET&&NET.ws.readyState===1)NET.ws.send(JSON.stringify(m))}catch(e){}}
 function netClose(){if(NET){const w=NET.ws;NET=null;try{w.close()}catch(e){}}}
 function remoteList(){return[...remotes.values()].filter(r=>r.alive&&r.team!==-1)}

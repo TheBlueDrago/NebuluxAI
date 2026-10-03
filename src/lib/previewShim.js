@@ -76,7 +76,11 @@ export const PREVIEW_SANDBOX = "allow-scripts allow-forms allow-modals allow-pop
 // as { type: "nebulux-save", data } (account saves for published games, see PreviewFrame).
 export function withPreviewShim(html, opts) {
   if (!html) return html;
-  const SHIM = opts && opts.save ? `<script>window.__nxSave=${JSON.stringify(opts.save).replace(/</g, "\\u003c")};<\/script>` + BASE_SHIM : BASE_SHIM;
+  // With { player }: games get the player's Nebulux AI username ("Anonymous" when signed out) as
+  // window.nebulux.username, the same in every game.
+  const who = opts && opts.player !== undefined ? `window.nebulux=Object.freeze({username:${JSON.stringify(String(opts.player || "Anonymous").slice(0, 24)).replace(/</g, "\\u003c")}});` : "";
+  const saveJs = opts && opts.save ? `window.__nxSave=${JSON.stringify(opts.save).replace(/</g, "\\u003c")};` : "";
+  const SHIM = who || saveJs ? `<script>${who}${saveJs}<\/script>` + BASE_SHIM : BASE_SHIM;
   const head = html.match(/<head[^>]*>/i);
   if (head) return html.slice(0, head.index + head[0].length) + SHIM + html.slice(head.index + head[0].length);
   const doctype = html.match(/^\s*<!doctype[^>]*>/i);

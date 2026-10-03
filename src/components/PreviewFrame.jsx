@@ -14,7 +14,9 @@ import { useAuth } from "@/lib/AuthContext";
 // saveName: a published game's name. For someone signed in, the game's saved progress is loaded
 // from their account before it starts and every change is saved back (functions/.../game-save.js).
 export default function PreviewFrame({ html, title, className = "w-full h-full", onBroken, saveName, ...rest }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  // Games show the player's Nebulux AI username; signed out, "Anonymous".
+  const player = saveName ? (isAuthenticated && String(user?.full_name || "").trim()) || "Anonymous" : undefined;
   const saving = !!(saveName && isAuthenticated);
   const [save, setSave] = useState(null); // the player's saved progress, once loaded
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
 
   return (
     <div className="relative w-full h-full">
-      <iframe key={round} ref={ref} srcDoc={withPreviewShim(html, saving ? { save } : undefined)} title={title} sandbox={PREVIEW_SANDBOX} className={className} {...rest} />
+      <iframe key={round} ref={ref} srcDoc={withPreviewShim(html, saving || player !== undefined ? { ...(saving ? { save } : {}), player } : undefined)} title={title} sandbox={PREVIEW_SANDBOX} className={className} {...rest} />
       {stuck && (
         <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-slate-900/95 border border-white/10 px-4 py-2.5 shadow-2xl text-sm text-slate-200">
