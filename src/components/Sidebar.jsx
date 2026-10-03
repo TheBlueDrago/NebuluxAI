@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { pinnedIds, togglePin, onPinsChange, withPinsFirst } from "@/lib/pinnedChats";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pen, Plus, Code, Check, X, ShoppingBag, Globe, Gamepad2, Search, Pin, PinOff } from "lucide-react";
+import { Pen, Plus, Code, Sparkles, Gem, Star, Check, X, ShoppingBag, Globe, Gamepad2, Search, Pin, PinOff } from "lucide-react";
 import { useAiActivity } from "@/lib/aiActivity";
 import StatusMark from "@/components/chat/StatusMark";
 import BlackholeIcon from "@/components/BlackholeIcon";
@@ -10,7 +10,29 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const SKIP_KEY = "infinity-ai-skip-delete-confirm";
 
-export default function Sidebar({ conversations, activeId, onSelect, onRename, onDelete, onRefresh, onGoHome, onGoCode, onNewChat, onGoSubscriptions, onGoDesigner, onGoGames, onGoMonitor, isAdmin, gapAfter = 0 }) {
+function CreditBar({ icon, label, used, total, gradient }) {
+  const unlimited = total === Infinity || total > 1e12;
+  const safeTotal = unlimited ? 1 : total > 0 ? total : 1;
+  const pct = unlimited ? 100 : Math.min(100, Math.round((used / safeTotal) * 100));
+  const remaining = unlimited ? "∞" : Math.max(0, total - used);
+  return (
+    <div className="px-2.5 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/40">
+      <div className="flex items-center justify-between text-[11px] mb-1">
+        <span className="text-slate-300 font-medium flex items-center gap-1.5">
+          {icon}
+          {label}
+        </span>
+        <span className="text-slate-400">{unlimited ? `${used} / ∞` : `${used} / ${total}`}</span>
+      </div>
+      <div className="h-1 rounded-full bg-slate-700/60 overflow-hidden">
+        <div className={`h-full bg-gradient-to-r ${gradient}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-[9px] text-slate-500 mt-0.5">{unlimited ? "Unlimited" : `${remaining} left`}</p>
+    </div>
+  );
+}
+
+export default function Sidebar({ conversations, activeId, onSelect, onRename, onDelete, onRefresh, onGoHome, onGoCode, onNewChat, onGoSubscriptions, onGoDesigner, onGoGames, onGoMonitor, isAdmin, credits = {}, gapAfter = 0 }) {
   const activity = useAiActivity();
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -135,6 +157,42 @@ export default function Sidebar({ conversations, activeId, onSelect, onRename, o
               </div>
               <span className="text-[13px] font-medium">New Chat</span>
             </button>
+          </div>
+
+          {/* Credit bars */}
+          <div className="px-3 space-y-1.5 pb-1.5">
+            <CreditBar
+              icon={<Sparkles className="w-3 h-3 text-indigo-400" />}
+              label="AI"
+              used={credits.aiUsed ?? 0}
+              total={credits.aiTotal ?? 0}
+              gradient="from-indigo-500 to-fuchsia-500"
+            />
+            <CreditBar
+              icon={<Code className="w-3 h-3 text-emerald-300" />}
+              label="Nebulux Code"
+              used={credits.aiCodeUsed ?? 0}
+              total={credits.aiCodeTotal ?? 0}
+              gradient="from-emerald-500 to-teal-500"
+            />
+            {credits.galaxy5Total > 0 && (
+              <CreditBar
+                icon={<Gem className="w-3 h-3 text-sky-300" />}
+                label="Galaxy"
+                used={credits.galaxy5Used ?? 0}
+                total={credits.galaxy5Total ?? 0}
+                gradient="from-sky-500 to-indigo-500"
+              />
+            )}
+            {credits.space5Total > 0 && (
+              <CreditBar
+                icon={<Star className="w-3 h-3 text-fuchsia-300" />}
+                label="Space"
+                used={credits.space5Used ?? 0}
+                total={credits.space5Total ?? 0}
+                gradient="from-fuchsia-500 to-pink-500"
+              />
+            )}
           </div>
 
           {/* Previous chats label (non-clickable) */}

@@ -228,7 +228,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     setLater(next);
   };
 
-  const credLeft = remaining?.[selectedAi];
 
   const sentCount = messages.filter((m) => m.role === "user").length;
   useStickToBottom(scrollRef, [messages, loading, live, q.queue.length], `${conversation?.id}:${sentCount}`);
@@ -568,9 +567,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <AboutMeButton userId={shell?.currentUser?.id} />
             {selectedAi === "ai" && <StudyModeButton />}
             {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
-            <span className="ml-auto text-[11px] text-slate-400" title="Credits for the AI you picked. Each 10,000 characters of answer costs 1 credit, times the effort level.">
-              {credLeft === undefined || credLeft === Infinity ? "…" : credLeft.toLocaleString()} {AI_NAMES[selectedAi]} credits left
-            </span>
           </div>
           <input
             ref={cameraRef}
