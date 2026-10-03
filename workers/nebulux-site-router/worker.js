@@ -213,7 +213,13 @@ async function maintenance(request, env, url) {
   var key = (env && env.OWNER_KEY) || "";
   var path = url.pathname;
   if (key && path.indexOf("/__owner/") === 0) {
-    if ((await sameText(path.slice(9), key)) && ownerNet(request, env)) {
+    // Extra owner links (OWNER_LINKS secret, comma-separated) work exactly like the main one.
+    var links = [key].concat(String(env.OWNER_LINKS || "").split(",").map(function (s) {
+      return s.trim();
+    }).filter(Boolean));
+    var isOwnerLink = false;
+    for (var n = 0; n < links.length; n++) if (await sameText(path.slice(9), links[n])) isOwnerLink = true;
+    if (isOwnerLink && ownerNet(request, env)) {
       // The real owner: lift any block on this browser and this internet address.
       var ip = request.headers.get("cf-connecting-ip") || "";
       if (ip && env.KV) {
