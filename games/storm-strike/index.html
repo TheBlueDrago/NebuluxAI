@@ -913,6 +913,8 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
 // menu backdrop: slow fly-over
 P.pos.set(0,25,60);drawPickers();document.body.classList.add("home");
 hud();loop();
+// Players start in the lobby (L leaves it for the menu).
+enterLobby();
 })();
 </script>
 </body>
