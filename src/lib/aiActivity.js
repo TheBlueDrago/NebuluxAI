@@ -89,12 +89,12 @@ export function useAiActivity() {
   return v;
 }
 
-// Tokens this answer has used so far: what the AI read, plus what it has written so far (times the
-// AI's weight and the effort level), as the server counts them.
+// Credits this answer has cost so far: whole credits per started 10,000 characters, times the
+// effort level, as the server counts them.
 export function liveCost(e) {
   if (!e || !e.meta) return null;
   const m = e.meta;
-  return (m.inputTokens || 0) + Math.ceil((e.chars || 0) / 4) * (m.mult || 1);
+  return Math.max(1, Math.ceil((e.chars || 0) / (m.perChars || 10000))) * (m.mult || 1);
 }
 
 // 1,234 -> "1.2K", 1,500,000 -> "1.5M".

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { pinnedIds, togglePin, onPinsChange, withPinsFirst } from "@/lib/pinnedChats";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pen, Plus, Code, Check, X, ShoppingBag, Globe, Gamepad2, Search, Pin, PinOff, LayoutDashboard } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Pen, Plus, Code, Check, X, ShoppingBag, Globe, Gamepad2, Search, Pin, PinOff } from "lucide-react";
 import { useAiActivity } from "@/lib/aiActivity";
 import StatusMark from "@/components/chat/StatusMark";
 import BlackholeIcon from "@/components/BlackholeIcon";
@@ -12,7 +11,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const SKIP_KEY = "infinity-ai-skip-delete-confirm";
 
 export default function Sidebar({ conversations, activeId, onSelect, onRename, onDelete, onRefresh, onGoHome, onGoCode, onNewChat, onGoSubscriptions, onGoDesigner, onGoGames, onGoMonitor, isAdmin, gapAfter = 0 }) {
-  const navigate = useNavigate();
   const activity = useAiActivity();
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -83,15 +81,6 @@ export default function Sidebar({ conversations, activeId, onSelect, onRename, o
         >
           {/* Header */}
           <div className="p-3 space-y-0.5">
-            <button
-              onClick={() => navigate("/chat/dashboard")}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800/70 transition-colors"
-            >
-              <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center">
-                <LayoutDashboard className="w-3.5 h-3.5 text-indigo-300" />
-              </div>
-              <span className="text-[13px] font-medium">Dashboard</span>
-            </button>
             <button
               onClick={onGoHome}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-white hover:bg-slate-800/70 transition-colors"

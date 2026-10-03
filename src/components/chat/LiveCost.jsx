@@ -1,7 +1,7 @@
 import React from "react";
-import { useAiActivity, useNow, liveCost, elapsedText, tokenText } from "@/lib/aiActivity";
+import { useAiActivity, useNow, liveCost, elapsedText } from "@/lib/aiActivity";
 
-// "≈ 12.4K tokens · 12s" under an answer being written: what it has cost so far and how long it's taken.
+// "≈ 3 credits · 12s" under an answer being written: what it has cost so far and how long it's taken.
 export default function LiveCost({ activityKey, className = "" }) {
   const all = useAiActivity();
   const e = activityKey ? all[activityKey] : null;
@@ -10,7 +10,7 @@ export default function LiveCost({ activityKey, className = "" }) {
   const cost = liveCost(e);
   return (
     <p className={`text-[11px] text-slate-400 ${className}`} aria-live="off">
-      {cost != null ? `≈ ${tokenText(cost)} tokens so far · ` : ""}
+      {cost != null ? `≈ ${cost} credit${cost === 1 ? "" : "s"} so far · ` : ""}
       {elapsedText(now - e.startedAt)}
     </p>
   );

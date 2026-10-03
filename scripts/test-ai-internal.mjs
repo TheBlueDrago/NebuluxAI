@@ -100,7 +100,7 @@ chunksSent = 0;
 let u0 = usageBefore();
 await streamCall(Infinity);
 const fullCost = usageBefore() - u0;
-assert(chunksSent === 50 && fullCost === 13, "a full 50,000-character reply (12,500 tokens, plus what was read) costs 13 credits = 13,000 tokens (" + fullCost + ")");
+assert(chunksSent === 50 && fullCost === 5, "a full 50,000-character reply costs 5 credits (" + fullCost + ")");
 chunksSent = 0;
 u0 = usageBefore();
 await streamCall(3);
@@ -109,8 +109,8 @@ assert(chunksSent < 20 && stoppedCost >= 1 && stoppedCost < 5, `pressing Stop en
 
 // Message size cap and the per-minute limit on new replies.
 {
-  const [st, bd] = await call({ prompt: "x".repeat(4000001), model: "automatic" });
-  assert(st === 413 && /too long/.test(bd.error), "a message over the 1,000,000-token context window is refused");
+  const [st, bd] = await call({ prompt: "x".repeat(800001), model: "automatic" });
+  assert(st === 413 && /too long/.test(bd.error), "a message over 800,000 characters is refused");
   cache.clear();
   const statuses = [];
   for (let i = 0; i < 16; i++) statuses.push((await call({ prompt: "hi", model: "automatic" }))[0]);

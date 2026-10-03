@@ -36,9 +36,8 @@ import { privateInfoIn } from "@/lib/privateInfo";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import LiveCost from "@/components/chat/LiveCost";
-import { setViewing, clearOut, tokenText } from "@/lib/aiActivity";
-import { waitText } from "@/lib/creditRefresh";
-import { CONTEXT_TOKENS, TOKENS_PER_CREDIT } from "../../cloudflare-lib/planTotals.js";
+import { setViewing, clearOut } from "@/lib/aiActivity";
+import { waitText, nextRefresh } from "@/lib/creditRefresh";
 
 // "Continue this answer when my credits come back": { [conversationId]: { ai, resetsAt } }.
 const CONTINUE_KEY = "nx-continue-later";
@@ -56,8 +55,7 @@ const writeContinue = (v) => {
     // Private mode: the box just won't remember.
   }
 };
-const COMPACT_PROMPT =
-  "Summarize the conversation below so it can carry on from the summary alone. Keep every fact, decision, name, number and piece of code that still matters, and what the user is working on. Use short notes, no greeting.\n\n";
+
 
 const CODE_SYS = "You are Nebulux Code Assistant. Help with programming. Give clear, correct code with brief explanations.";
 const FABLE_SYS = "You are Space, Nebulux AI's premium creative model. Be imaginative and high-quality.";
@@ -175,7 +173,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       }, { signal: abort.signal, activity: { key: `chat:${convId}`, where: "chat", label: conversation?.title || chatTitle(text), question: text, ai: AI_NAMES[ai] } });
       if (reqIdRef.current !== myId) return;
       setLive("");
-      if (res.cut) setOutAt(res.credits?.pool?.resetsAt || null);
+      if (res.cut) setOutAt(new Date(nextRefresh()).toISOString());
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
       spend?.[ai]?.(res.credits);
       const content = res.content ?? "";
@@ -191,7 +189,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       setLive("");
       const data = e?.response?.data;
       if (data?.credits) spend?.[ai]?.(data.credits);
-      if (data?.outOfCredits) setOutAt(data.resetsAt || data.credits?.pool?.resetsAt || null);
+      if (data?.outOfCredits) setOutAt(new Date(nextRefresh()).toISOString());
       // Out-of-credits and "AI is busy" come back with a message worth showing as-is.
       addMessage(convId, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "⚠ Sorry, something went wrong. Please try again." });
     } finally {
@@ -230,40 +228,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     setLater(next);
   };
 
-  // /compact: the chat so far is replaced by a short summary the AI writes, so later answers read
-  // (and cost) much less.
-  const [compacting, setCompacting] = useState(false);
-  const compact = async () => {
-    const convId = conversation?.id;
-    if (!convId || messages.length < 2) {
-      if (convId) addMessage(convId, { role: "ai", content: "There's nothing to compact yet." });
-      return;
-    }
-    setCompacting(true);
-    try {
-      const res = await streamChat(
-        { prompt: COMPACT_PROMPT + historyBlock(messages), question: "/compact", model: "automatic", effort: "low" },
-        null,
-        { activity: { key: `chat:${convId}`, where: "chat", label: conversation?.title || "Chat", question: "Compacting this chat", ai: "Nebulux AI" } }
-      );
-      spend?.ai?.(res.credits);
-      const summary = (res.content || "").trim();
-      if (!summary) throw new Error("empty");
-      for (let k = messages.length - 1; k >= 0; k--) removeMessage?.(convId, k);
-      addMessage(convId, { role: "ai", content: `📝 **Chat compacted.** Here's what we covered so far:\n\n${summary}` });
-    } catch (e) {
-      const d = e?.response?.data;
-      if (d?.credits) spend?.ai?.(d.credits);
-      addMessage(convId, { role: "ai", content: `⚠ Couldn't compact this chat${d?.error ? `: ${d.error}` : ". Please try again."}` });
-    } finally {
-      setCompacting(false);
-    }
-  };
-
-  // How full the context window is: everything the AI reads for the next answer, about 4
-  // characters a token.
-  const contextTokens = Math.ceil((historyBlock(messages).length + aboutMeBlock(readAboutMe(shell?.currentUser?.id)).length) / 4);
-  const contextPct = Math.min(100, Math.round((contextTokens / CONTEXT_TOKENS) * 1000) / 10);
   const credLeft = remaining?.[selectedAi];
 
   const sentCount = messages.filter((m) => m.role === "user").length;
@@ -293,12 +257,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const send = async () => {
     const text = input.trim();
     if (!text) return;
-    if (text.toLowerCase() === "/compact") {
-      if (loading || compacting) return;
-      setInput("");
-      compact();
-      return;
-    }
     // A card number, secret key, password, phone number or home address: check first (the text
     // stays in the box if not).
     const risky = privateInfoIn(text);
@@ -521,25 +479,37 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             </div>
           )}
 
-          {compacting && (
-            <div className="flex justify-start">
-              <div className="bg-slate-800 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2.5">
-                <BlackholeIcon className="w-5 h-5 animate-spin" />
-                <span className="text-slate-300 text-sm animate-pulse">Compacting this chat...</span>
-              </div>
-            </div>
-          )}
-
           {outAt && !loading && conversation?.id && (
             <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              <p className="font-semibold">⚠ You've run out of tokens.</p>
+              <p className="font-semibold">⚠ You ran out of credits.</p>
               <p className="mt-1 text-red-100/90">
                 They come back at {new Date(outAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} (in {waitText(Date.parse(outAt) - Date.now())}).
               </p>
               <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" className="w-4 h-4 accent-indigo-500" checked={!!pending} onChange={(e) => toggleLater(e.target.checked)} />
-                Continue this answer by itself when my tokens come back (while this chat is open)
+                Continue this answer by itself when my credits come back (while this chat is open)
               </label>
+              {Object.keys(AI_NAMES).some((k) => k !== selectedAi && (remaining?.[k] ?? 0) > 0) && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-red-100/80">Or carry on now with:</span>
+                  {Object.keys(AI_NAMES)
+                    .filter((k) => k !== selectedAi && (remaining?.[k] ?? 0) > 0)
+                    .map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAi(k);
+                          setOutAt(null);
+                          runPrompt(KEEP_GOING, k);
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-indigo-600 hover:bg-indigo-500 text-[12px] font-semibold text-[#fff]"
+                      >
+                        {AI_NAMES[k]}
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -598,27 +568,9 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <AboutMeButton userId={shell?.currentUser?.id} />
             {selectedAi === "ai" && <StudyModeButton />}
             {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
-            <div
-              className="ml-auto flex items-center gap-2 text-[11px] text-slate-400"
-              title={`Tokens are shared by every AI. Context: about ${contextTokens.toLocaleString()} of ${CONTEXT_TOKENS.toLocaleString()} tokens. Longer chats cost more; type /compact to shorten this one.`}
-            >
-              <span>{credLeft === undefined || credLeft === Infinity ? "…" : tokenText(credLeft * TOKENS_PER_CREDIT)} tokens left</span>
-              <span className="flex items-center gap-1">
-                <span className="relative inline-block w-8 h-1.5 rounded-full bg-slate-700 overflow-hidden">
-                  <span className={`absolute inset-y-0 left-0 ${contextPct > 75 ? "bg-red-400" : contextPct > 40 ? "bg-amber-400" : "bg-indigo-400"}`} style={{ width: `${Math.max(2, contextPct)}%` }} />
-                </span>
-                {contextPct}% context
-              </span>
-              <button
-                type="button"
-                onClick={() => !loading && !compacting && compact()}
-                disabled={loading || compacting || messages.length < 2}
-                title="Shorten this chat into a summary so answers read (and use) fewer tokens. Same as typing /compact."
-                className="px-2 py-0.5 rounded-md border border-slate-600/60 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
-              >
-                Compact
-              </button>
-            </div>
+            <span className="ml-auto text-[11px] text-slate-400" title="Credits for the AI you picked. Each 10,000 characters of answer costs 1 credit, times the effort level.">
+              {credLeft === undefined || credLeft === Infinity ? "…" : credLeft.toLocaleString()} {AI_NAMES[selectedAi]} credits left
+            </span>
           </div>
           <input
             ref={cameraRef}

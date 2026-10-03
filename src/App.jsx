@@ -50,7 +50,6 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 const WorkspaceShell = lazy(() => import('@/components/WorkspaceShell').then((m) => ({ default: m.WorkspaceShell })));
 const ChatWorkspace = lazy(() => import('@/components/WorkspaceShell').then((m) => ({ default: m.ChatWorkspace })));
 const CodeWorkspace = lazy(() => import('@/components/WorkspaceShell').then((m) => ({ default: m.CodeWorkspace })));
-const Dashboard = lazy(() => import('@/pages/chat/Dashboard'));
 const DesignerWorkspace = lazy(() => import('@/components/DesignerWorkspace'));
 const DesignerDashboard = lazy(() => import('@/pages/chat/DesignerDashboard'));
 const PlansView = lazy(() => import('@/pages/chat/Views').then((m) => ({ default: m.PlansView })));
@@ -128,7 +127,7 @@ const AuthenticatedApp = () => {
         <Route path="/chat" element={<Chat />}>
           <Route element={<WorkspaceShell />}>
             <Route index element={<ChatWorkspace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard" element={<Navigate to="/chat" replace />} />
             <Route path="code" element={<CodeWorkspace />} />
           </Route>
           <Route path="designer" element={<DesignerDashboard />} />

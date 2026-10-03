@@ -25,7 +25,7 @@
 // at what their credits cover.
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
-import { currentUser, entitlement, creditStatus, charge, EFFORT_MULT, TIER_OF_MODEL, MODEL_WEIGHT, answerCredits, tokensOf, TOKENS_PER_CREDIT, CONTEXT_TOKENS } from "../../../../../cloudflare-lib/credits.js";
+import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 
 const MODEL_MAP = {
@@ -58,8 +58,7 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 // The prompt as Gemini "parts": the text, then any attached images. Returns an error
 // message instead when the images aren't acceptable.
-// The context window: 1,000,000 tokens (about 4 characters each).
-const MAX_PROMPT_CHARS = CONTEXT_TOKENS * 4;
+const MAX_PROMPT_CHARS = 800000;
 
 const WHO_ARE_YOU = /\b(who|what)\b[^?.!]{0,30}\b(made|created|built|trained|developed|owns?|are)\s+you\b|\bwhat (ai|model|llm)\b|\bare you (gemini|chatgpt|gpt|google|bard|claude|an? (ai|bot|robot|human))\b|\byour (name|creator|maker|model)\b/i;
 export const asksWhoItIs = (q) => WHO_ARE_YOU.test(String(q || "").slice(0, 300));
@@ -387,10 +386,7 @@ export async function onRequestPost(context) {
     const requested = internal ? DEFAULT_MODEL : MODEL_MAP[body.model] || DEFAULT_MODEL;
     const tier = TIER_OF_MODEL[body.model] || "ai";
     const effort = internal ? "low" : EFFORT[body.effort] ? body.effort : DEFAULT_EFFORT;
-    // Every AI draws from one pool: a reply costs (stronger AI x effort) per 10,000 characters,
-    // plus reading the chat (its context) once it's past 50,000 tokens.
-    const mult = EFFORT_MULT[effort] * (MODEL_WEIGHT[tier] || 1);
-    const inTokens = internal ? 0 : tokensOf(prompt.length);
+    const mult = EFFORT_MULT[effort];
 
     let left = Infinity;
     if (!internal) {
@@ -401,17 +397,20 @@ export async function onRequestPost(context) {
         return json({ error: "You're sending messages very fast. Wait a moment and try again." }, 429);
       }
       const before = await creditStatus(kv, ent);
-      left = before.pool.remaining;
-      if (left < answerCredits(prompt.length, 1000, mult)) {
-        const resetsAt = before.pool.resetsAt || (before.pool.window.used >= before.pool.window.limit ? before.pool.window.resetsAt : before.pool.week.resetsAt);
+      left = before.tiers[tier].remaining;
+      if (before.tiers[tier].total <= 0) {
+        return json(
+          { error: `You don't have any ${TIER_NAMES[tier]} credits. Refer friends (Account → Refer friends) or upgrade to get some.`, outOfCredits: true, credits: before },
+          402
+        );
+      }
+      if (left < mult) {
         return json(
           {
-            error:
-              left > 0
-                ? `You have ${(left * TOKENS_PER_CREDIT).toLocaleString("en-US")} tokens left, not enough for this (it needs about ${(answerCredits(prompt.length, 1000, mult) * TOKENS_PER_CREDIT).toLocaleString("en-US")}). Lower the effort, pick a lighter AI, or use /compact to shorten the chat.`
-                : "You've used all your tokens for now. They come back soon.",
+            error: left > 0
+              ? `You have ${left} ${TIER_NAMES[tier]} credit${left === 1 ? "" : "s"} left — not enough for ${effort} effort (costs at least ${mult}). Lower the effort level.`
+              : `You've run out of ${TIER_NAMES[tier]} credits. Buy credits or a plan in the Shop, or invite a friend and you both get free credits (Settings → Refer friends).`,
             outOfCredits: true,
-            resetsAt,
             credits: before,
           },
           402
@@ -426,7 +425,7 @@ export async function onRequestPost(context) {
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
     // The reply stops at what the user's credits cover: whole credits x effort multiplier.
-    const maxChars = internal ? Infinity : Math.floor((left * TOKENS_PER_CREDIT - inTokens) / mult) * 4;
+    const maxChars = internal ? Infinity : Math.floor(left / mult) * CHARS_PER_CREDIT;
     const maxTokens = internal ? 1024 : 0;
     const search = !internal && wantsSearch(body.question) && (await searchAllowed());
 
@@ -436,7 +435,7 @@ export async function onRequestPost(context) {
       if (internal) return {};
       // Stopped by the user: what was written so far is charged (nothing if nothing was).
       if (stopped && !text) return { stopped: true, charged: 0 };
-      const cost = cut ? left : answerCredits(prompt.length, String(text || "").length, mult);
+      const cost = cut ? left : creditsFor(text, effort);
       // `question` is the user's own words (the prompt adds instructions), for Monitor's activity view.
       await charge(kv, ent, tier, cost, String(body.question || prompt).slice(0, 300));
       return { cut, charged: cost, credits: await creditStatus(kv, ent) };
@@ -470,7 +469,7 @@ export async function onRequestPost(context) {
     context.waitUntil(
       (async () => {
         // What this answer costs as it's written (the app shows it live).
-        if (!internal) await send({ meta: { mult, inputTokens: inTokens, tokensPerCredit: TOKENS_PER_CREDIT, maxContext: CONTEXT_TOKENS } });
+        if (!internal) await send({ meta: { perChars: CHARS_PER_CREDIT, mult } });
         try {
           const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });
