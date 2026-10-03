@@ -43,7 +43,7 @@ body:not(.home) #wallet{display:none}
 #inv .it{display:flex;align-items:center;gap:8px;padding:6px;border-radius:9px;cursor:pointer;border:2px solid transparent;margin-bottom:4px;background:rgba(255,255,255,.08)}
 #inv .it:hover{background:rgba(255,255,255,.18)}#inv .it.on{border-color:#ffe14a;background:rgba(255,200,40,.25)}
 #inv .it i{width:18px;height:18px;border-radius:50%;border:2px solid #fff;flex:none}
-body.lobby #bars,body.lobby #ammo,body.lobby #slots,body.lobby #supers,body.lobby #build,body.lobby #top,body.lobby #cross{display:none!important}
+body.lobby #touch .tb,body.lobby #bars,body.lobby #ammo,body.lobby #slots,body.lobby #supers,body.lobby #build,body.lobby #top,body.lobby #cross{display:none!important}
 #buffs{left:24px;bottom:90px;font-weight:900;font-size:14px}
 @media (pointer:coarse){#supers{display:none}}
 @media (max-height:640px),(max-width:1000px){#menu{justify-content:flex-start;overflow-y:auto;padding-top:60px;padding-bottom:30px}}body.playing,body.playing canvas{cursor:none}
@@ -109,7 +109,7 @@ body.home .hud,body.home #touch{display:none!important}
 <div id="mini" class="hud"><canvas id="mc" width="170" height="170" style="width:100%;height:100%;border-radius:9px"></canvas></div>
 <div id="storm" class="hud">STORM SHRINKING IN 60s</div>
 <div id="chatbox" style="display:none;position:fixed;right:16px;top:70px;z-index:7;width:300px;color:#fff;font:800 13px 'Segoe UI',Arial">
-<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:10px 10px 0 0"><span>💬 CHAT <span style="opacity:.6;font-size:11px">(Enter to type)</span></span><button id="chatmute" style="font:800 11px Arial;border:0;border-radius:6px;padding:2px 6px;cursor:pointer;background:#fff;color:#222">🔇 Mute</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:10px 10px 0 0"><span id="chathead" style="cursor:pointer">💬 CHAT <span style="opacity:.6;font-size:11px">(Enter or tap to type)</span></span><button id="chatmute" style="font:800 11px Arial;border:0;border-radius:6px;padding:2px 6px;cursor:pointer;background:#fff;color:#222">🔇 Mute</button></div>
 <div id="chatlog" style="background:rgba(0,0,0,.3);padding:6px 8px;max-height:150px;overflow-y:auto;text-shadow:0 1px 0 #000;line-height:1.5"></div>
 <input id="chatin" maxlength="80" placeholder="Type a message, Enter to send" style="display:none;width:100%;box-sizing:border-box;font:700 13px Arial;padding:7px 8px;border:0;border-radius:0 0 10px 10px;outline:none"></div>
 <div id="qpick" style="display:none;position:fixed;left:16px;bottom:200px;z-index:8;background:rgba(10,0,60,.85);border-radius:12px;padding:8px;max-width:280px"></div>
@@ -426,12 +426,14 @@ scene.add(stormWall);
 // Input
 const keys={};let mouseDown=false,locked=false,started=false;
 addEventListener("keydown",e=>{if(e.target&&e.target.id==="chatin")return;keys[e.code]=true;if(!started)return;
- if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){document.exitPointerLock();openShop()}}else openChest()}
+ if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){unlockMouse();openShop()}}else openChest()}
  if(e.code==="KeyT"||e.code==="Enter"){e.preventDefault();openChat();return}if(LOBBY&&e.code==="KeyL")leaveLobby();
  if(LOBBY&&e.code==="KeyI"){const v=$("inv");v.style.display=v.style.display==="none"?"block":"none"}
  if(LOBBY&&["KeyK","KeyB","KeyM"].includes(e.code)){const b=document.querySelector(`[data-lb="${e.code==="KeyK"?"skins":e.code==="KeyB"?"guns":"modes"}"]`);b&&b.click()}
  if(e.code.startsWith("Digit")){const n=+e.code.slice(5)-1;if(P.inv[n]){P.sel=n;P.reloading=0;hud()}}});
 addEventListener("keyup",e=>{keys[e.code]=false;if(!e.shiftKey)keys.ShiftLeft=keys.ShiftRight=false});
+// iPhones and iPads have no mouse lock: releasing it there must not stop the tap that called it.
+function unlockMouse(){try{if(document.exitPointerLock)document.exitPointerLock()}catch(e){}}
 function lockMouse(){if(touch||locked)return;try{const r=renderer.domElement.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
 addEventListener("mousedown",e=>{if(!started)return;if(e.target.closest&&e.target.closest("#inv,#lobbybar,#lobbymodes,#shop,#chatbox"))return;if(!locked&&!touch){lockMouse();if(e.target!==renderer.domElement)return}if(e.button===0)mouseDown=true;if(e.button===2)P.zoom=true});
 addEventListener("mouseup",e=>{if(e.button===0)mouseDown=false;if(e.button===2)P.zoom=false});
@@ -598,7 +600,7 @@ function hurtBuild(s,d){s.hp-=d;s.mesh.material.opacity=.4+.6*s.hp/150;if(s.hp<=
 function hurtPlayer(d,from,byId){if(!P.alive)return;P.lastBy=byId||null;P.lastByName=from;if(P.slideT>0)d=Math.round(d*.8);let left=d;if(P.sh>0){const a=Math.min(P.sh,left);P.sh-=a;left-=a}P.hp-=left;$("dmg").style.opacity=.9;setTimeout(()=>$("dmg").style.opacity=0,160);
  if(P.hp<=0){P.hp=0;P.alive=false;netSend({t:"dead",by:P.lastBy,byName:from});
   if(duel()){botScored(bots.find(b=>b.alive&&b.name===from));feed(`${from} eliminated You`);P.mesh.visible=false;P.respawnAt=performance.now()+RESPAWN_S*1000;mouseDown=false;hud();return}
-  document.exitPointerLock();end(false,from)}hud()}
+  unlockMouse();end(false,from)}hud()}
 
 // Loot
 const pickups=[];
@@ -779,6 +781,7 @@ function sendChat(text){const w=chatSocket();text=String(text||"").trim().slice(
 function openChat(){const box=$("chatbox"),inp=$("chatin");box.style.display="block";inp.style.display="block";inp.focus()}
 function closeChat(){const inp=$("chatin");inp.value="";inp.style.display="none";inp.blur()}
 $("chatin").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter"){sendChat(e.target.value);closeChat();e.preventDefault()}else if(e.key==="Escape"){closeChat()}});
+$("chathead").addEventListener("click",()=>openChat());
 $("chatmute").addEventListener("click",()=>{chatMuted=!chatMuted;$("chatmute").textContent=chatMuted?"🔊 Unmute":"🔇 Mute"});
 function startOnline(){const btn=$("play");if(waitingWs){try{waitingWs.close()}catch(e){}waitingWs=null;btn.textContent="Play";return}btn.textContent="Connecting...";let ws;
  try{ws=new WebSocket(MP_URL)}catch(e){btn.disabled=false;btn.textContent="Play";flash("COULDN'T CONNECT",2);return}
@@ -795,7 +798,7 @@ function startOnline(){const btn=$("play");if(waitingWs){try{waitingWs.close()}c
 
 // Lobby: walk around the plaza with everyone else in it (no fighting there).
 let LOBBY=false;
-function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";$("lobbyhud").style.display="block";document.body.classList.add("lobby");$("lobbybar").style.display="flex";drawInv();$("inv").style.display="block";lockMouse();
+function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";$("lobbyhud").style.display="block";document.body.classList.add("lobby");$("lobbybar").style.display="flex";$("chatbox").style.display="block";drawInv();$("inv").style.display="block";lockMouse();
  P.pos.set(HUB.x+R(-6,6),HUB.y+.1,HUB.z+R(4,10));P.vel.set(0,0,0);P.yaw=0;dropping=false;
  Object.assign(storm,{r:5000,target:5000,cx:0,cz:0,tcx:0,tcz:0,timer:1e9,shrinking:false,dmg:0});
  flash("WELCOME TO THE LOBBY!",1.6);hud();
@@ -823,13 +826,13 @@ function drawLobbyModes(){const el=$("lobbymodes");
   `<p style="opacity:.85;max-width:520px;margin:8px auto">${$("fillnote").textContent}</p><button id="lmPlay" style="font:900 24px Segoe UI,Arial;padding:14px 56px;border:0;border-radius:14px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;box-shadow:0 6px 0 #b86d00;cursor:pointer">PLAY</button>
   <div><button id="lmClose" style="margin-top:16px;font:800 15px Arial;padding:8px 18px;border:0;border-radius:10px;background:#ff4b4b;color:#fff;cursor:pointer">✕ Back to the lobby</button></div>`}
 document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;
- const lb=t.closest("[data-lb]");if(lb){document.exitPointerLock();if(lb.dataset.lb==="modes"){drawPickers();drawLobbyModes();$("lobbymodes").style.display="block"}else{shopTab=lb.dataset.lb==="skins"?"figures":"guns";openShop()}return}
+ const lb=t.closest("[data-lb]");if(lb){unlockMouse();if(lb.dataset.lb==="modes"){drawPickers();drawLobbyModes();$("lobbymodes").style.display="block"}else{shopTab=lb.dataset.lb==="skins"?"figures":"guns";openShop()}return}
  const lm=t.closest("[data-lm]");if(lm){modeI=+lm.dataset.lm;try{localStorage.setItem("ss-mode",modeI)}catch(_){}drawPickers();drawLobbyModes();return}
  const lo=t.closest("[data-lo]");if(lo){oppI=+lo.dataset.lo;try{localStorage.setItem("ss-opp",oppI)}catch(_){}drawPickers();drawLobbyModes();return}
  if(t.id==="lmClose"){$("lobbymodes").style.display="none";return}
  if(t.id==="lmPlay"){$("lobbymodes").style.display="none";leaveLobby();start()}});
 function leaveLobby(){if(!LOBBY)return;closeChat();$("chatbox").style.display="none";document.body.classList.remove("lobby");$("lobbybar").style.display="none";$("inv").style.display="none";$("lobbymodes").style.display="none";LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
- document.exitPointerLock();document.body.classList.add("home");$("menu").style.display="flex";drawPickers()}
+ unlockMouse();document.body.classList.add("home");$("menu").style.display="flex";drawPickers()}
 $("lobbyBtn").onclick=()=>enterLobby();
 
 // Game flow
@@ -863,7 +866,7 @@ function end(win,by){if(!started)return;started=false;$("board").style.display="
  const place=win?1:teamsAlive()+1;
  const coins=20+P.kills*15+(win?100:place<=3?40:place<=5?20:0);
  let tro=(win?30:place<=3?14:place<=5?7:-5)+P.kills*2;tro=Math.max(-SAVE.trophies,tro);
- const dia=win?3:0;SAVE.coins+=coins;SAVE.diamonds+=dia;SAVE.trophies+=tro;save();document.body.classList.add("home");document.exitPointerLock();const m=$("menu");m.style.display="flex";
+ const dia=win?3:0;SAVE.coins+=coins;SAVE.diamonds+=dia;SAVE.trophies+=tro;save();document.body.classList.add("home");unlockMouse();const m=$("menu");m.style.display="flex";
  const alive=bots.filter(b=>b.alive).length+1;
  m.querySelector("h1").textContent=duel()?(win?"⚔️ YOU WON!":"⚔️ YOU LOST"):win?"#1 VICTORY ROYALE!":"ELIMINATED";
  drawPickers();m.querySelector("p").textContent=`+${coins} 🪙 coins · ${dia?"+3 💎 diamonds · ":""}${tro>=0?"+":""}${tro} 🏆 trophies · `+(win?`You won with ${P.kills} eliminations!`:`${by} got you. You placed #${place} with ${P.kills} eliminations.`);
