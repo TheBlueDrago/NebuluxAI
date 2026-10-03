@@ -315,13 +315,18 @@ function sha256(str){const K=[],H=[];let n=2,c=0;const isP=x=>{for(let i=2;i*i<=
   [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=(H[i]+v)|0)}
  return H.map(v=>(v>>>0).toString(16).padStart(8,"0")).join("")}
 const SKINS=FIGS.map(f=>f.c);
-const GUN_SKINS=[{id:"default",n:"Default",c:0x333842},{id:"gold",n:"Gold",c:0xffc61a,e:.35,p:600},{id:"crimson",n:"Crimson",c:0xe11d48,e:.2,p:500},{id:"neon",n:"Neon",c:0x39ff14,e:.6,p:800},{id:"ice",n:"Ice",c:0xbfefff,e:.4,p:700},{id:"diamond",n:"Diamond",c:0x7df9ff,e:.7,d:10},{id:"galaxy",n:"Galaxy",c:0x6a2cff,e:.7,d:20},{id:"rainbow",n:"Rainbow",c:0xff4fd8,e:.8,d:30,rainbow:true}];
-const SAVE_KEY="ss-save";let SAVE={gunSkins:["default"],gunSkin:"default",coins:300,diamonds:0,trophies:0,owned:[0,1,2,3,4,5,6],dmgL:0,hpL:0,shL:0,invL:0,guns:["ar"],start:"ar"};
+// Gun skins also make your guns stronger: dmg = extra damage, mag = extra ammo, rel = faster reload.
+const GUN_SKINS=[{id:"default",n:"Default",c:0x333842},{id:"crimson",n:"Crimson",c:0xe11d48,e:.2,p:500,dmg:.05},{id:"gold",n:"Gold",c:0xffc61a,e:.35,p:600,dmg:.08,mag:.1},{id:"ice",n:"Ice",c:0xbfefff,e:.4,p:700,mag:.15,rel:.05},{id:"neon",n:"Neon",c:0x39ff14,e:.6,p:800,dmg:.05,rel:.1},{id:"diamond",n:"Diamond",c:0x7df9ff,e:.7,d:10,dmg:.12,mag:.15},{id:"galaxy",n:"Galaxy",c:0x6a2cff,e:.7,d:20,dmg:.15,rel:.1},{id:"rainbow",n:"Rainbow",c:0xff4fd8,e:.8,d:30,dmg:.2,mag:.2,rel:.15,rainbow:true}];
+const gunSkin=()=>GUN_SKINS.find(x=>x.id===SAVE.gunSkin)||GUN_SKINS[0];
+const skinPerks=g=>[g.dmg?`+${Math.round(g.dmg*100)}% damage`:"",g.mag?`+${Math.round(g.mag*100)}% ammo`:"",g.rel?`${Math.round(g.rel*100)}% faster reload`:""].filter(Boolean).join(" · ")||"Looks only";
+const SAVE_KEY="ss-save";let SAVE={magL:0,relL:0,gunSkins:["default"],gunSkin:"default",coins:300,diamonds:0,trophies:0,owned:[0,1,2,3,4,5,6],dmgL:0,hpL:0,shL:0,invL:0,guns:["ar"],start:"ar"};
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem(SAVE_KEY)||"{}"))}catch(e){}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}wallet()}
 function rankName(t){return t>=1500?"👑 CHAMPION":t>=1000?"💎 DIAMOND":t>=600?"🥇 GOLD":t>=250?"🥈 SILVER":"🥉 BRONZE"}
 function wallet(){$("wCoins").textContent="🪙 "+SAVE.coins;$("wTro").textContent="🏆 "+SAVE.trophies;$("wDia").textContent="💎 "+SAVE.diamonds;$("shopWallet").textContent="🪙 "+SAVE.coins+" coins · 💎 "+SAVE.diamonds+" diamonds";$("rank").textContent=rankName(SAVE.trophies)+" · 🏆 "+SAVE.trophies+" trophies"}
-const UPG=[["dmgL","DAMAGE BOOST","+10% damage per level",5,250],["hpL","MAX HEALTH","+20 max health per level",5,250],["shL","STARTING SHIELD","+15 shield when you start",4,200],["invL","BIGGER INVENTORY","+1 weapon slot (up to 5)",2,600]];
+// Ammo and reload upgrades (your guns only).
+function magOf(k){return Math.round(WEAPONS[k].mag*(1+.25*(SAVE.magL||0)+(gunSkin().mag||0)))}
+const UPG=[["magL","BIGGER MAGAZINES","+25% ammo in every gun per level",4,300],["relL","FASTER RELOAD","Reload 12% faster per level",4,300],["dmgL","DAMAGE BOOST","+10% damage per level",5,250],["hpL","MAX HEALTH","+20 max health per level",5,250],["shL","STARTING SHIELD","+15 shield when you start",4,200],["invL","BIGGER INVENTORY","+1 weapon slot (up to 5)",2,600]];
 const DIA={rare:4,epic:8,legendary:15,ultra:60};
 const PACKS=[["🪙 1,000 coins","$0.99"],["🪙 5,500 coins","$4.99"],["🪙 12,000 coins","$9.99"],["💎 10 diamonds","$0.99"],["💎 60 diamonds","$4.99"],["💎 130 diamonds","$9.99"],["⭐ Legendary figure","$2.99"],["🌟 Zeus (Ultra Legendary)","$7.99"],["🔫 All starting guns","$1.99"],["⬆️ All upgrades maxed","$4.99"]];
 const GUNPRICE={ar:0,pistol:100,smg:250,burst:350,tac:350,sg:400,revolver:450,hunt:500,sn:600,mini:900,rocket:1200};let shopTab="figures";
@@ -330,14 +335,18 @@ function drawShop(){wallet();$("shopTabs").innerHTML=[["figures","FIGURES"],["up
  let h="";
  if(shopTab==="figures")h=FIGS.map((f,i)=>{const own=SAVE.owned.includes(i);return `<div class="card ${f.r}"><i style="background:#${f.c[0].toString(16).padStart(6,"0")}"></i><b>${f.n}</b><small style="text-transform:uppercase;font-weight:900">${f.r}</small><p>⚡ ${f.sn}: ${f.sd}${HYPER_R.includes(f.r)?"<br>💜 HYPERCHARGE"+(f.hyn?": "+f.hyn+" ("+f.hyd+")":""):""}${f.ult?"<br>🌟 ULTRA: "+f.un+" ("+f.ud+")":""}${f.always?"<br>♾️ Always charged":""}</p><button data-buyfig="${i}" ${own||SAVE.coins<f.p?"disabled":""}>${own?"OWNED":"🪙 "+(f.pl||f.p)}</button>${!own&&DIA[f.r]?`<button data-buydia="${i}" style="background:linear-gradient(#b8f3ff,#4fc3ff);color:#062a4a" ${SAVE.diamonds<DIA[f.r]?"disabled":""}>💎 ${DIA[f.r]}</button>`:""}</div>`}).join("");
  if(shopTab==="upgrades")h=UPG.map(u=>{const l=SAVE[u[0]],max=l>=u[3],cost=u[4]*(l+1);return `<div class="card rare"><b>${u[1]}</b><p>${u[2]}<br>Level ${l} / ${u[3]}</p><button data-upg="${u[0]}" ${max||SAVE.coins<cost?"disabled":""}>${max?"MAXED":"🪙 "+cost}</button></div>`}).join("");
- if(shopTab==="gunskins")h=GUN_SKINS.map(g=>{const own=SAVE.gunSkins.includes(g.id),on=SAVE.gunSkin===g.id;return `<div class="card ${g.d?"epic":g.p?"rare":"common"}"><i style="background:#${g.c.toString(16).padStart(6,"0")}${g.rainbow?";background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f)":""}"></i><b>${g.n}</b><p>A gun skin. Looks only.</p><button data-gskin="${g.id}" ${on||(!own&&(g.d?SAVE.diamonds<g.d:SAVE.coins<(g.p||0)))?"disabled":""}>${on?"EQUIPPED":own?"EQUIP":g.d?"💎 "+g.d:"🪙 "+g.p}</button></div>`}).join("");
+ if(shopTab==="gunskins")h=GUN_SKINS.map(g=>{const own=SAVE.gunSkins.includes(g.id),on=SAVE.gunSkin===g.id;return `<div class="card ${g.d?"epic":g.p?"rare":"common"}"><i style="background:#${g.c.toString(16).padStart(6,"0")}${g.rainbow?";background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f)":""}"></i><b>${g.n}</b><p>${skinPerks(g)}</p><button data-gskin="${g.id}" ${on||(!own&&(g.d?SAVE.diamonds<g.d:SAVE.coins<(g.p||0)))?"disabled":""}>${on?"EQUIPPED":own?"EQUIP":g.d?"💎 "+g.d:"🪙 "+g.p}</button></div>`}).join("");
  if(shopTab==="guns")h=`<div style="grid-column:1/-1;text-align:center;font-size:14px">⭐ Today's free weapon for 1v1 and 2v2: <b>${WEAPONS[dailyFree()].name}</b> (changes every day)</div>`+Object.keys(WEAPONS).map(k=>{const own=SAVE.guns.includes(k),w=WEAPONS[k],first=SAVE.start===k;return `<div class="card ${w.rar==="leg"?"legendary":w.rar}"><b>${w.name}</b><p>${own?(first?"⭐ Your first weapon":"You start every match with it"):"Start every match with it"}</p><button data-gun="${k}" ${(own&&first)||(!own&&SAVE.coins<GUNPRICE[k])?"disabled":""}>${own?(first?"EQUIPPED FIRST":"MAKE FIRST"):"🪙 "+GUNPRICE[k]}</button></div>`}).join("");
  if(shopTab==="money")h=`<div style="grid-column:1/-1;text-align:center;opacity:.85;font-size:14px">Real-money packs are coming soon. Until then, earn 🪙 coins every match and 💎 3 diamonds for every Victory Royale.</div>`+PACKS.map(k=>`<div class="card epic"><b>${k[0]}</b><p>${k[1]}</p><button disabled>COMING SOON</button></div>`).join("");
  $("shopGrid").innerHTML=h;drawInv()}
 document.addEventListener("click",e=>{const t=e.target;
  if(t.id==="shopBtn"){openShop();return}
  if(t.id==="redeem"){const v=$("code").value.trim();(async()=>{const h=sha256(v);
-  if(h===UNLOCK_HASH){for(const i of[15,16])if(!SAVE.owned.includes(i))SAVE.owned.push(i);save();setSkin(16);$("code").value="";alert("Unlocked ZEUS (Ultra Legendary) and ADMIN!")}else alert("That code doesn't work.");drawShop()})();return}if(t.id==="shopClose"){$("shop").style.display="none";drawPickers();if(LOBBY)lockMouse();return}
+  if(h===UNLOCK_HASH){
+   // Everything: every figure (ADMIN and Zeus too), gun skin and weapon, every upgrade maxed, and coins and diamonds.
+   SAVE.owned=FIGS.map((_,i)=>i);SAVE.gunSkins=GUN_SKINS.map(g=>g.id);SAVE.guns=Object.keys(WEAPONS);
+   for(const u of UPG)SAVE[u[0]]=u[3];SAVE.coins=Math.max(SAVE.coins,999999);SAVE.diamonds=Math.max(SAVE.diamonds,99999);
+   save();setSkin(16);applyGunSkin();$("code").value="";alert("Unlocked EVERYTHING: all figures (ADMIN and Zeus), gun skins, weapons, maxed upgrades, coins and diamonds!")}else alert("That code doesn't work.");drawShop()})();return}if(t.id==="shopClose"){$("shop").style.display="none";drawPickers();if(LOBBY)lockMouse();return}
  const tab=t.closest("[data-tab]");if(tab){shopTab=tab.dataset.tab;drawShop();return}
  if(t.dataset.buyfig!=null){const i=+t.dataset.buyfig,f=FIGS[i];if(SAVE.coins>=f.p&&!SAVE.owned.includes(i)){SAVE.coins-=f.p;SAVE.owned.push(i);save();setSkin(i);sfx(700,.12)}drawShop()}
  if(t.dataset.buydia!=null){const i=+t.dataset.buydia,f=FIGS[i],c=DIA[f.r];if(c&&SAVE.diamonds>=c&&!SAVE.owned.includes(i)){SAVE.diamonds-=c;SAVE.owned.push(i);save();setSkin(i);sfx(700,.12)}drawShop()}
@@ -476,7 +485,7 @@ function charHit(o,d,max,list){let best=max,who=null,head=false;const v=new THRE
 
 // Supers
 const buffs={rapid:0,rage:0,invis:0,hyper:0,allHit:0};
-function dmgMul(){return (1+SAVE.dmgL*.1)*(buffs.rage>0?1.6:1)*(buffs.hyper>0?1.25:1)}
+function dmgMul(){return (1+SAVE.dmgL*.1+(gunSkin().dmg||0))*(buffs.rage>0?1.6:1)*(buffs.hyper>0?1.25:1)}
 function enemies(){return bots.filter(b=>b.alive&&b.team!==-1).concat(remoteList())}
 function aimPoint(max=140){const d=new THREE.Vector3();camera.getWorldDirection(d);const o=camera.position.clone();const wh=worldHit(o,d,max);return o.addScaledVector(d,wh.dist)}
 function ring(at,radius,color){const m=new THREE.Mesh(new THREE.TorusGeometry(radius,.5,8,40),new THREE.MeshBasicMaterial({color,transparent:true}));m.rotation.x=Math.PI/2;m.position.copy(at).add(new THREE.Vector3(0,1,0));scene.add(m);fx.push({o:m,t:.6,max:.6,grow:true})}
@@ -557,7 +566,7 @@ function shoot(){if(LOBBY)return;const s=P.inv[P.sel],w=weapon();if(P.cd>0||P.re
   else{burst(end,0xddddcc,3);if(wh.obj&&wh.obj.build)hurtBuild(wh.obj,w.dmg)}}
  P.kick=Math.min(.12,(P.kick||0)+(w===WEAPONS.sn?.06:w===WEAPONS.sg?.045:.008));
  hud();sfx(w===WEAPONS.sn?90:w===WEAPONS.sg?70:140,.07)}
-function reload(){const s=P.inv[P.sel],w=weapon();if(P.reloading>0||s.ammo>=w.mag||P.reserve<=0)return;P.reloading=w.reload;flash("RELOADING...",.6)}
+function reload(){const s=P.inv[P.sel],w=weapon();if(P.reloading>0||s.ammo>=magOf(P.inv[P.sel].k)||P.reserve<=0)return;P.reloading=w.reload*Math.max(.3,1-.12*(SAVE.relL||0)-(gunSkin().rel||0));flash("RELOADING...",.6)}
 function hurtBot(b,d,head){if(!b.alive)return;
  if(b.remote||(NET&&!NET.isHost)){addCharge(d);if(b.remote)netSend({t:"hitP",to:b.id,dmg:Math.min(d,500),by:myName()});else netSend({t:"hitBot",to:NET.host,id:bots.indexOf(b),dmg:Math.min(d,99999)});
   dmgNum(b.mesh.position.clone().add(new THREE.Vector3(0,4.8,0)),d,head);$("hit").style.opacity=1;setTimeout(()=>$("hit").style.opacity=0,90);return}
@@ -571,14 +580,14 @@ function hurtBot(b,d,head){if(!b.alive)return;
 const RESPAWN_S=10;
 const winKills=()=>gunGame()?25:5; // Gunfight: first to 25; 1v1 and 2v2: first to 5
 const GUN_ORDER=["pistol","smg","ar","burst","tac","sg","revolver","hunt","sn","mini","rocket"];
-function giveGun(lvl){P.gunLvl=lvl%GUN_ORDER.length;const k=GUN_ORDER[P.gunLvl];P.inv=[{k,ammo:WEAPONS[k].mag}];P.sel=0;P.reserve=999;P.reloading=0}
+function giveGun(lvl){P.gunLvl=lvl%GUN_ORDER.length;const k=GUN_ORDER[P.gunLvl];P.inv=[{k,ammo:magOf(k)}];P.sel=0;P.reserve=999;P.reloading=0}
 function playerScored(){P.kills++;if(gunGame()){giveGun((P.gunLvl||0)+1);flash(`NEW GUN: ${WEAPONS[GUN_ORDER[P.gunLvl]].name}`,1.2)}hud()}
 function botScored(b){if(!b)return;b.kills=(b.kills||0)+1;if(gunGame())b.w=GUN_ORDER[b.kills%GUN_ORDER.length];hud()}
 const CORNERS=[[-28,-28],[28,28],[-28,28],[28,-28]];
 function sideSpot(side,k){if(gunGame()){const c=CORNERS[side%4];return[ARENA.x+c[0]+R(-2,2),ARENA.z+c[1]+R(-2,2)]}return[ARENA.x+(side?28:-28)+R(-3,3),ARENA.z+(k?6:-6)+R(-3,3)]}
 // 1v1 / 2v2: the weapons you own plus today's free weapon (it changes every day).
 function dailyFree(){return GUN_ORDER[Math.floor(Date.now()/864e5)%GUN_ORDER.length]}
-function duelLoadout(){const list=[...new Set([SAVE.start,...SAVE.guns,dailyFree()])].filter(k=>WEAPONS[k]).slice(0,3+SAVE.invL+1);P.inv=list.map(k=>({k,ammo:WEAPONS[k].mag}));P.sel=0;P.reserve=999;P.reloading=0}
+function duelLoadout(){const list=[...new Set([SAVE.start,...SAVE.guns,dailyFree()])].filter(k=>WEAPONS[k]).slice(0,3+SAVE.invL+1);P.inv=list.map(k=>({k,ammo:magOf(k)}));P.sel=0;P.reserve=999;P.reloading=0}
 function respawnBot(b){if(!started||!duel()||b.alive)return;const[x,z]=sideSpot(b.side!==undefined?b.side:b.team===-1?0:1,Math.random()<.5?1:0);b.mesh.position.set(x,ARENA.y+.1,z);b.vel.set(0,0,0);
  b.hp=100;b.sh=50;b.alive=true;b.frozen=0;b.target=null;scene.add(b.mesh);drawBar(b);hud()}
 function killBot(b,by){b.alive=false;b.hpBar.visible=false;burst(b.mesh.position.clone().add(new THREE.Vector3(0,2,0)),0x7df9ff,24);
@@ -614,7 +623,7 @@ function dropLoot(x,z){const keysW=Object.keys(WEAPONS);const k=keysW[Math.floor
 function openChest(){for(const c of chests){if(c.open)continue;if(c.g.position.distanceTo(P.pos)<5){c.open=true;c.lid.rotation.x=-1.2;c.lid.position.z=-.5;c.g.children[2].intensity=0;
  dropLoot(c.g.position.x,c.g.position.z);dropLoot(c.g.position.x,c.g.position.z);sfx(600,.15);flash("CHEST OPENED!",.9);return}}}
 function checkPickups(){for(let i=pickups.length-1;i>=0;i--){const p=pickups[i];p.m.rotation.y+=.04;if(p.m.position.distanceTo(P.pos.clone().setY(p.m.position.y))>2.4||Math.abs(p.m.position.y-P.pos.y)>4)continue;
- if(p.t==="gun"){if(P.inv.some(s=>s.k===p.k)){P.reserve+=30}else if(P.inv.length<3+SAVE.invL){P.inv.push({k:p.k,ammo:WEAPONS[p.k].mag})}else{P.inv[P.sel]={k:p.k,ammo:WEAPONS[p.k].mag}}flash("+ "+WEAPONS[p.k].name,1)}
+ if(p.t==="gun"){if(P.inv.some(s=>s.k===p.k)){P.reserve+=30}else if(P.inv.length<3+SAVE.invL){P.inv.push({k:p.k,ammo:magOf(p.k)})}else{P.inv[P.sel]={k:p.k,ammo:magOf(p.k)}}flash("+ "+WEAPONS[p.k].name,1)}
  else if(p.t==="ammo"){P.reserve+=60;flash("+60 AMMO",.8)}else if(p.t==="shield"){P.sh=Math.min(100,P.sh+50);flash("+50 SHIELD",.8)}else{P.hp=Math.min(P.maxHp,P.hp+50);flash("+50 HEALTH",.8)}
  scene.remove(p.m);pickups.splice(i,1);sfx(880,.08);hud()}}
 
@@ -815,7 +824,7 @@ function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.displa
 function drawInv(){const el=$("inv");if(!el)return;
  el.innerHTML=`<h4>🎒 INVENTORY <span style="opacity:.6;font-size:10px">(Esc, then click)</span></h4><h4>FIGURES</h4>`+
   FIGS.map((f,i)=>SAVE.owned.includes(i)?`<div class="it ${i===skinI?"on":""}" data-invf="${i}"><i style="background:#${f.c[0].toString(16).padStart(6,"0")}"></i>${f.n}</div>`:"").join("")+
-  `<h4 style="margin-top:10px">GUN SKINS</h4>`+GUN_SKINS.filter(g=>SAVE.gunSkins.includes(g.id)).map(g=>`<div class="it ${SAVE.gunSkin===g.id?"on":""}" data-invg="${g.id}"><i style="background:#${g.c.toString(16).padStart(6,"0")}"></i>${g.n}</div>`).join("")}
+  `<h4 style="margin-top:10px">GUN SKINS</h4>`+GUN_SKINS.filter(g=>SAVE.gunSkins.includes(g.id)).map(g=>`<div class="it ${SAVE.gunSkin===g.id?"on":""}" data-invg="${g.id}" title="${skinPerks(g)}"><i style="background:#${g.c.toString(16).padStart(6,"0")}"></i><span>${g.n}<br><small style="opacity:.75;font-size:10px">${skinPerks(g)}</small></span></div>`).join("")}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-invf],[data-invg]");if(!t)return;
  if(t.dataset.invf!=null){const i=+t.dataset.invf;if(SAVE.owned.includes(i)){setSkin(i);sfx(600,.08)}}
  else{const g=t.dataset.invg;if(SAVE.gunSkins.includes(g)){SAVE.gunSkin=g;save();applyGunSkin();sfx(600,.08)}}
@@ -843,7 +852,7 @@ function resetGame(){for(const id of[...remotes.keys()])dropRemote(id);for(const
  for(const c of chests){c.open=false;c.lid.rotation.x=0;c.lid.position.z=0;c.g.children[2].intensity=1.2}
  const maxHp=100+SAVE.hpL*20;const order=[SAVE.start,...SAVE.guns.filter(g=>g!==SAVE.start)].filter(g=>SAVE.guns.includes(g)).slice(0,3+SAVE.invL);
  for(const k in buffs)buffs[k]=0;
- Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:WEAPONS[k].mag})),superC:0,hyperC:0,ultCd:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
+ Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:magOf(k)})),superC:0,hyperC:0,ultCd:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
  Object.assign(storm,{r:300,target:300,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
 function start(){LOBBY=false;document.body.classList.remove("lobby");$("lobbyhud").style.display="none";$("inv").style.display="none";$("lobbybar").style.display="none";if((MODES[modeI][2]||(duel()&&oppI))&&!NET){startOnline();return}begin([])}
@@ -906,7 +915,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   // shooting
   if(keys.ArrowLeft)P.yaw+=2.6*dt;if(keys.ArrowRight)P.yaw-=2.6*dt;if(keys.ArrowUp)P.pitch=Math.min(.9,P.pitch+1.6*dt);if(keys.ArrowDown)P.pitch=Math.max(-1.2,P.pitch-1.6*dt);
   P.cd-=dt;if(mouseDown&&!dropping)shoot();
-  if(P.reloading>0){P.reloading-=dt;if(P.reloading<=0){const s=P.inv[P.sel],need=weapon().mag-s.ammo,take=Math.min(need,P.reserve);s.ammo+=take;P.reserve-=take;hud()}}
+  if(P.reloading>0){P.reloading-=dt;if(P.reloading<=0){const s=P.inv[P.sel],need=magOf(P.inv[P.sel].k)-s.ammo,take=Math.min(need,P.reserve);s.ammo+=take;P.reserve-=take;hud()}}
   P.kick=(P.kick||0)*Math.exp(-14*dt);
   checkPickups();
   if(!NET||NET.isHost)for(const b of bots)botTick(b,dt);
