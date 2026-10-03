@@ -39,6 +39,11 @@ body:not(.home) #wallet{display:none}
 #lobbybar button{font:900 16px "Segoe UI",Arial;padding:12px 20px;border:0;border-radius:12px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;box-shadow:0 5px 0 #b86d00;cursor:pointer}
 #lobbymodes .mb{display:inline-block;margin:6px;padding:14px 22px;border-radius:12px;background:rgba(255,255,255,.12);border:3px solid transparent;font-weight:900;font-size:17px;cursor:pointer}
 #lobbymodes .mb.on{border-color:#ffe14a;background:rgba(255,200,40,.3)}
+#inv h4{font-size:12px;letter-spacing:1px;margin:4px 0 6px;color:#ffe14a}
+#inv .it{display:flex;align-items:center;gap:8px;padding:6px;border-radius:9px;cursor:pointer;border:2px solid transparent;margin-bottom:4px;background:rgba(255,255,255,.08)}
+#inv .it:hover{background:rgba(255,255,255,.18)}#inv .it.on{border-color:#ffe14a;background:rgba(255,200,40,.25)}
+#inv .it i{width:18px;height:18px;border-radius:50%;border:2px solid #fff;flex:none}
+body.lobby #bars,body.lobby #ammo,body.lobby #slots,body.lobby #supers,body.lobby #build,body.lobby #top,body.lobby #cross{display:none!important}
 #buffs{left:24px;bottom:90px;font-weight:900;font-size:14px}
 @media (pointer:coarse){#supers{display:none}}
 @media (max-height:640px),(max-width:1000px){#menu{justify-content:flex-start;overflow-y:auto;padding-top:60px;padding-bottom:30px}}body.playing,body.playing canvas{cursor:none}
@@ -106,6 +111,7 @@ body.home .hud,body.home #touch{display:none!important}
 <div id="chatbox" style="display:none;position:fixed;left:16px;bottom:120px;z-index:4;width:260px;font-weight:800;font-size:13px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.6);pointer-events:none"></div>
 <div id="qpick" style="display:none;position:fixed;left:16px;bottom:200px;z-index:8;background:rgba(10,0,60,.85);border-radius:12px;padding:8px;max-width:280px"></div>
 <div id="lobbyhud" class="hud" style="display:none;top:104px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:6px 14px;border-radius:12px;font-weight:900;font-size:13px;text-align:center">🏠 LOBBY · walk around · <b>F</b> at the shop stand · <b>T</b> quick chat · <b>L</b> leave</div>
+<div id="inv" style="display:none;position:fixed;left:16px;top:200px;z-index:6;width:190px;max-height:calc(100vh - 340px);overflow-y:auto;background:rgba(10,0,60,.75);border-radius:14px;padding:10px;color:#fff;font-weight:900;font-size:12px"></div>
 <div id="lobbybar" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:6;gap:10px">
 <button data-lb="skins">👕 SKINS (K)</button><button data-lb="guns">🔫 GUNS (B)</button><button data-lb="modes">🎮 GAME MODES (M)</button></div>
 <div id="lobbymodes" style="display:none;position:fixed;inset:0;z-index:9;background:rgba(15,5,60,.92);color:#fff;overflow-y:auto;padding:30px 16px;text-align:center"></div>
@@ -324,7 +330,7 @@ function drawShop(){wallet();$("shopTabs").innerHTML=[["figures","FIGURES"],["up
  if(shopTab==="gunskins")h=GUN_SKINS.map(g=>{const own=SAVE.gunSkins.includes(g.id),on=SAVE.gunSkin===g.id;return `<div class="card ${g.d?"epic":g.p?"rare":"common"}"><i style="background:#${g.c.toString(16).padStart(6,"0")}${g.rainbow?";background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f)":""}"></i><b>${g.n}</b><p>A gun skin. Looks only.</p><button data-gskin="${g.id}" ${on||(!own&&(g.d?SAVE.diamonds<g.d:SAVE.coins<(g.p||0)))?"disabled":""}>${on?"EQUIPPED":own?"EQUIP":g.d?"💎 "+g.d:"🪙 "+g.p}</button></div>`}).join("");
  if(shopTab==="guns")h=`<div style="grid-column:1/-1;text-align:center;font-size:14px">⭐ Today's free weapon for 1v1 and 2v2: <b>${WEAPONS[dailyFree()].name}</b> (changes every day)</div>`+Object.keys(WEAPONS).map(k=>{const own=SAVE.guns.includes(k),w=WEAPONS[k],first=SAVE.start===k;return `<div class="card ${w.rar==="leg"?"legendary":w.rar}"><b>${w.name}</b><p>${own?(first?"⭐ Your first weapon":"You start every match with it"):"Start every match with it"}</p><button data-gun="${k}" ${(own&&first)||(!own&&SAVE.coins<GUNPRICE[k])?"disabled":""}>${own?(first?"EQUIPPED FIRST":"MAKE FIRST"):"🪙 "+GUNPRICE[k]}</button></div>`}).join("");
  if(shopTab==="money")h=`<div style="grid-column:1/-1;text-align:center;opacity:.85;font-size:14px">Real-money packs are coming soon. Until then, earn 🪙 coins every match and 💎 3 diamonds for every Victory Royale.</div>`+PACKS.map(k=>`<div class="card epic"><b>${k[0]}</b><p>${k[1]}</p><button disabled>COMING SOON</button></div>`).join("");
- $("shopGrid").innerHTML=h}
+ $("shopGrid").innerHTML=h;drawInv()}
 document.addEventListener("click",e=>{const t=e.target;
  if(t.id==="shopBtn"){openShop();return}
  if(t.id==="redeem"){const v=$("code").value.trim();(async()=>{const h=sha256(v);
@@ -419,12 +425,13 @@ const keys={};let mouseDown=false,locked=false,started=false;
 addEventListener("keydown",e=>{keys[e.code]=true;if(!started)return;
  if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){document.exitPointerLock();openShop()}}else openChest()}
  if(e.code==="KeyT")openQuick();if(LOBBY&&e.code==="KeyL")leaveLobby();
+ if(LOBBY&&e.code==="KeyI"){const v=$("inv");v.style.display=v.style.display==="none"?"block":"none"}
  if(LOBBY&&["KeyK","KeyB","KeyM"].includes(e.code)){const b=document.querySelector(`[data-lb="${e.code==="KeyK"?"skins":e.code==="KeyB"?"guns":"modes"}"]`);b&&b.click()}
  if($("qpick").style.display==="block"&&e.code.startsWith("Digit")&&e.code.length===6){const n=+e.code.slice(5);if(n>=1){sendQuick(n-1);return}}if(e.code==="KeyG")useSuper();if(e.code==="KeyH")useHyper();if(e.code==="KeyU")useUltra();if(e.code==="ControlLeft"||e.code==="ControlRight"||e.code==="KeyC"){e.preventDefault();slide()}
  if(e.code.startsWith("Digit")){const n=+e.code.slice(5)-1;if(P.inv[n]){P.sel=n;P.reloading=0;hud()}}});
 addEventListener("keyup",e=>{keys[e.code]=false;if(!e.shiftKey)keys.ShiftLeft=keys.ShiftRight=false});
 function lockMouse(){if(touch||locked)return;try{const r=renderer.domElement.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
-addEventListener("mousedown",e=>{if(!started)return;if(!locked&&!touch){lockMouse();if(e.target!==renderer.domElement)return}if(e.button===0)mouseDown=true;if(e.button===2)P.zoom=true});
+addEventListener("mousedown",e=>{if(!started)return;if(e.target.closest&&e.target.closest("#inv,#lobbybar,#lobbymodes,#shop,#qpick"))return;if(!locked&&!touch){lockMouse();if(e.target!==renderer.domElement)return}if(e.button===0)mouseDown=true;if(e.button===2)P.zoom=true});
 addEventListener("mouseup",e=>{if(e.button===0)mouseDown=false;if(e.button===2)P.zoom=false});
 addEventListener("contextmenu",e=>e.preventDefault());
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement;$("lockhint").style.display=started&&!locked&&!touch&&!lockFailed?"block":"none";document.body.classList.toggle("playing",locked);if(!locked){mouseDown=false;P.zoom=false}});
@@ -775,7 +782,7 @@ function startOnline(){const btn=$("play");if(waitingWs){try{waitingWs.close()}c
 
 // Lobby: walk around the plaza with everyone else in it (no fighting there).
 let LOBBY=false;
-function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";$("lobbyhud").style.display="block";$("lobbybar").style.display="flex";lockMouse();
+function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";$("lobbyhud").style.display="block";document.body.classList.add("lobby");$("lobbybar").style.display="flex";drawInv();$("inv").style.display="block";lockMouse();
  P.pos.set(HUB.x+R(-6,6),HUB.y+.1,HUB.z+R(4,10));P.vel.set(0,0,0);P.yaw=0;dropping=false;
  Object.assign(storm,{r:5000,target:5000,cx:0,cz:0,tcx:0,tcz:0,timer:1e9,shrinking:false,dmg:0});
  flash("WELCOME TO THE LOBBY!",1.6);hud();
@@ -787,6 +794,16 @@ function enterLobby(){resetGame();LOBBY=true;started=true;$("shop").style.displa
    try{ws.send(JSON.stringify({t:"score",trophies:SAVE.trophies}))}catch(_){}return}
   if(NET===net)onNet(m)};
  ws.onclose=()=>{if(NET===net)NET=null}}
+// Inventory (left side of the lobby): equip a figure or a gun skin you own. Press Esc to free the
+// mouse and click, or I to hide or show it.
+function drawInv(){const el=$("inv");if(!el)return;
+ el.innerHTML=`<h4>🎒 INVENTORY <span style="opacity:.6;font-size:10px">(Esc, then click)</span></h4><h4>FIGURES</h4>`+
+  FIGS.map((f,i)=>SAVE.owned.includes(i)?`<div class="it ${i===skinI?"on":""}" data-invf="${i}"><i style="background:#${f.c[0].toString(16).padStart(6,"0")}"></i>${f.n}</div>`:"").join("")+
+  `<h4 style="margin-top:10px">GUN SKINS</h4>`+GUN_SKINS.filter(g=>SAVE.gunSkins.includes(g.id)).map(g=>`<div class="it ${SAVE.gunSkin===g.id?"on":""}" data-invg="${g.id}"><i style="background:#${g.c.toString(16).padStart(6,"0")}"></i>${g.n}</div>`).join("")}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-invf],[data-invg]");if(!t)return;
+ if(t.dataset.invf!=null){const i=+t.dataset.invf;if(SAVE.owned.includes(i)){setSkin(i);sfx(600,.08)}}
+ else{const g=t.dataset.invg;if(SAVE.gunSkins.includes(g)){SAVE.gunSkin=g;save();applyGunSkin();sfx(600,.08)}}
+ drawInv()});
 function drawLobbyModes(){const el=$("lobbymodes");
  el.innerHTML=`<h2 style="font-size:34px;font-style:italic;color:#ffe14a">GAME MODES</h2><div style="margin:14px 0">${MODES.map((m,i)=>`<div class="mb ${i===modeI?"on":""}" data-lm="${i}">${m[0]}</div>`).join("")}</div>`+
   (duel()?`<div style="margin:6px 0">${["🤖 BOTS","🌐 REAL PEOPLE"].map((f,i)=>`<div class="mb ${i===oppI?"on":""}" data-lo="${i}">${f}</div>`).join("")}</div>`:"")+
@@ -798,7 +815,7 @@ document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;
  const lo=t.closest("[data-lo]");if(lo){oppI=+lo.dataset.lo;try{localStorage.setItem("ss-opp",oppI)}catch(_){}drawPickers();drawLobbyModes();return}
  if(t.id==="lmClose"){$("lobbymodes").style.display="none";return}
  if(t.id==="lmPlay"){$("lobbymodes").style.display="none";leaveLobby();start()}});
-function leaveLobby(){if(!LOBBY)return;$("lobbybar").style.display="none";$("lobbymodes").style.display="none";LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
+function leaveLobby(){if(!LOBBY)return;document.body.classList.remove("lobby");$("lobbybar").style.display="none";$("inv").style.display="none";$("lobbymodes").style.display="none";LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
  document.exitPointerLock();document.body.classList.add("home");$("menu").style.display="flex";drawPickers()}
 $("lobbyBtn").onclick=()=>enterLobby();
 
@@ -813,7 +830,7 @@ function resetGame(){for(const id of[...remotes.keys()])dropRemote(id);for(const
  Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:WEAPONS[k].mag})),superC:0,hyperC:0,ultCd:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
  Object.assign(storm,{r:300,target:300,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
-function start(){LOBBY=false;$("lobbyhud").style.display="none";if((MODES[modeI][2]||(duel()&&oppI))&&!NET){startOnline();return}begin([])}
+function start(){LOBBY=false;document.body.classList.remove("lobby");$("lobbyhud").style.display="none";$("inv").style.display="none";$("lobbybar").style.display="none";if((MODES[modeI][2]||(duel()&&oppI))&&!NET){startOnline();return}begin([])}
 function begin(players){if(touch){try{const q=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(q&&q.catch)q.catch(()=>{})}catch(e){}}resetGame();started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";lockMouse();
  if(duel()){
   // Gunfight: everyone starts on the arena floor, teams at opposite ends; the arena's walls are the storm.
