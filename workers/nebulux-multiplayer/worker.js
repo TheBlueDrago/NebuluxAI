@@ -5,12 +5,15 @@
 const MAX_PLAYERS = 12; // per battle royale match; bots fill the rest of the 20
 // Gunfights: real people only, no bots. A match starts as soon as the queue has exactly enough
 // people (2 for 1v1, 4 for 2v2); until then everyone waits.
-const DUEL = { "1v1": 2, "2v2": 4 };
+const DUEL = { "1v1": 2, "2v2": 4, gf: 4 };
 const WAIT_MS = 12000; // a match starts this long after the first player starts waiting
 const MAX_MSG = 6000; // bytes
 const MAX_RATE = 60; // messages per second per player
 const ALLOWED_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*nebuluxai\.com$|^https:\/\/([a-z0-9-]+\.)*nebuluxai\.pages\.dev$|^null$/;
-const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won"]);
+const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat"]);
+// Quick chat only: a number for one of the game's fixed messages ("GG!", "Nice shot!"...), never
+// typed text, so nobody can send anything unkind or personal.
+const QUICK_COUNT = 12;
 
 export default {
   async fetch(request, env) {
@@ -72,6 +75,17 @@ export class Arena {
       a.name = String(m.name || "Player").replace(/[^A-Za-z0-9 ]/g, "").slice(0, 24) || "Player";
       a.fig = Math.max(0, Math.min(40, m.fig | 0));
       a.match = null;
+      // The lobby: a place to walk around together. Everyone in it is in one shared "match", so
+      // their moves and quick chat reach each other; the leaderboard of best players lives here.
+      if (m.q === "lobby") {
+        a.q = "lobby";
+        a.match = "lobby";
+        ws.serializeAttachment(a);
+        const others = this.sockets().filter((s) => s.ws !== ws && s.a.match === "lobby");
+        for (const s of others) this.send(s.ws, { t: "ljoin", id: a.id, name: a.name, fig: a.fig });
+        this.send(ws, { t: "lobby", you: a.id, players: others.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig })), top: (await this.state.storage.get("top")) || [] });
+        return;
+      }
       a.q = DUEL[m.q] ? m.q : "br";
       a.waitSince = Date.now();
       ws.serializeAttachment(a);
@@ -79,7 +93,7 @@ export class Arena {
         const need = DUEL[a.q];
         const line = this.sockets().filter((s) => s.a.joined && !s.a.match && s.a.q === a.q);
         if (line.length >= need) await this.startMatch(a.q, line.slice(0, need));
-        else for (const s of line) this.send(s.ws, { t: "wait", count: line.length, need });
+        else for (const s of line) this.send(s.ws, { t: "wait", count: line.length, need, players: line.map((x) => ({ name: x.a.name, fig: x.a.fig })) });
         return;
       }
       const waiting = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br");
@@ -89,12 +103,40 @@ export class Arena {
         const at = first + WAIT_MS;
         const cur = await this.state.storage.getAlarm();
         if (!cur || cur > at) await this.state.storage.setAlarm(at);
-        for (const s of waiting) this.send(s.ws, { t: "wait", count: waiting.length, startsIn: Math.max(0, Math.ceil((at - Date.now()) / 1000)) });
+        for (const s of waiting) this.send(s.ws, { t: "wait", count: waiting.length, startsIn: Math.max(0, Math.ceil((at - Date.now()) / 1000)), players: waiting.map((x) => ({ name: x.a.name, fig: x.a.fig })) });
       }
       return;
     }
 
     ws.serializeAttachment(a);
+    // Leaderboard: the best trophy counts (what the game reports; names are made up by the game).
+    if (m.t === "score" && a.joined) {
+      const tro = Math.max(0, Math.min(1000000, Math.floor(Number(m.trophies) || 0)));
+      let top = (await this.state.storage.get("top")) || [];
+      top = top.filter((x) => x.name !== a.name);
+      top.push({ name: a.name, trophies: tro, fig: a.fig });
+      top.sort((x, y) => y.trophies - x.trophies);
+      top = top.slice(0, 10);
+      await this.state.storage.put("top", top);
+      const out = JSON.stringify({ t: "top", top });
+      for (const s of this.sockets()) if (s.a.match === "lobby") try { s.ws.send(out); } catch {}
+      return;
+    }
+    if (m.t === "qchat") {
+      const i = m.i | 0;
+      if (i < 0 || i >= QUICK_COUNT) return;
+      const out = JSON.stringify({ t: "qchat", i, name: a.name, from: a.id });
+      // In the lobby: everyone waiting in the same line. In a match: everyone in it.
+      for (const s of this.sockets()) {
+        if (s.ws === ws) continue;
+        if (a.match ? s.a.match === a.match : s.a.joined && !s.a.match && (s.a.q || "br") === (a.q || "br")) {
+          try {
+            s.ws.send(out);
+          } catch {}
+        }
+      }
+      return;
+    }
     if (!a.match || !RELAY.has(m.t)) return;
     m.from = a.id;
     const out = JSON.stringify(m);
