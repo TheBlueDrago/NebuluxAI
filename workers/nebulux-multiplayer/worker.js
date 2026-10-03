@@ -2,12 +2,12 @@
 // their messages; the game itself runs in the players' browsers (the match host also runs the bots
 // and the storm and shares them). Players never type anything: names are made up by the game, so
 // there's no chat to moderate.
-const MAX_PLAYERS = 12; // per battle royale match; bots fill the rest of the 20
+const MAX_PLAYERS = 24; // per battle royale match; bots fill the rest of the 100
 // Gunfights: real people only, no bots. A match starts as soon as the queue has exactly enough
 // people (2 for 1v1, 4 for 2v2); until then everyone waits.
 const DUEL = { "1v1": 2, "2v2": 4, gf: 2 };
 const WAIT_MS = 12000; // a match starts this long after the first player starts waiting
-const MAX_MSG = 6000; // bytes
+const MAX_MSG = 24000; // bytes (a 100-player snapshot)
 const MAX_RATE = 60; // messages per second per player
 const ALLOWED_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*nebuluxai\.com$|^https:\/\/([a-z0-9-]+\.)*nebuluxai\.pages\.dev$|^null$/;
 const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat", "vote", "map"]);
