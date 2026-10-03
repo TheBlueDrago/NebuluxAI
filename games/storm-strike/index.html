@@ -656,7 +656,7 @@ scene.add(stormWall);
 
 // Input
 const keys={};let mouseDown=false,locked=false,started=false;
-addEventListener("keydown",e=>{if(e.target&&e.target.id==="chatin")return;keys[e.code]=true;if(!started)return;
+addEventListener("keydown",e=>{if(e.target&&(e.target.id==="chatin"||/^(INPUT|TEXTAREA)$/.test(e.target.tagName)))return;if(["shop","bp","vend","results"].some(id=>{const el=$(id);return el&&el.style.display==="block"}))return;keys[e.code]=true;if(!started)return;
  if(e.code==="KeyR")reload();if(e.code==="KeyX")useHeal();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"&&!LOBBY&&started&&!duel()&&fAction())return;
  if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){unlockMouse();openShop()}}else openChest()}
  if(e.code==="KeyG")useSuper();if(e.code==="KeyH")useHyper();if(e.code==="KeyU")useUltra();
