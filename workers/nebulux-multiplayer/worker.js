@@ -2,7 +2,10 @@
 // their messages; the game itself runs in the players' browsers (the match host also runs the bots
 // and the storm and shares them). Players never type anything: names are made up by the game, so
 // there's no chat to moderate.
-const MAX_PLAYERS = 12; // per match; bots fill the rest of the 20
+const MAX_PLAYERS = 12; // per battle royale match; bots fill the rest of the 20
+// Gunfights: real people only, no bots. A match starts as soon as the queue has exactly enough
+// people (2 for 1v1, 4 for 2v2); until then everyone waits.
+const DUEL = { "1v1": 2, "2v2": 4 };
 const WAIT_MS = 12000; // a match starts this long after the first player starts waiting
 const MAX_MSG = 6000; // bytes
 const MAX_RATE = 60; // messages per second per player
@@ -69,9 +72,17 @@ export class Arena {
       a.name = String(m.name || "Player").replace(/[^A-Za-z0-9 ]/g, "").slice(0, 24) || "Player";
       a.fig = Math.max(0, Math.min(40, m.fig | 0));
       a.match = null;
+      a.q = DUEL[m.q] ? m.q : "br";
       a.waitSince = Date.now();
       ws.serializeAttachment(a);
-      const waiting = this.sockets().filter((s) => s.a.joined && !s.a.match);
+      if (a.q !== "br") {
+        const need = DUEL[a.q];
+        const line = this.sockets().filter((s) => s.a.joined && !s.a.match && s.a.q === a.q);
+        if (line.length >= need) await this.startMatch(a.q, line.slice(0, need));
+        else for (const s of line) this.send(s.ws, { t: "wait", count: line.length, need });
+        return;
+      }
+      const waiting = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br");
       if (waiting.length >= MAX_PLAYERS) await this.startMatch();
       else {
         const first = Math.min(...waiting.map((s) => s.a.waitSince || Date.now()));
@@ -100,8 +111,8 @@ export class Arena {
     await this.startMatch();
   }
 
-  async startMatch() {
-    const waiting = this.sockets().filter((s) => s.a.joined && !s.a.match).slice(0, MAX_PLAYERS);
+  async startMatch(q = "br", chosen = null) {
+    const waiting = chosen || this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br").slice(0, MAX_PLAYERS);
     if (!waiting.length) return;
     const match = crypto.randomUUID().slice(0, 8);
     const players = waiting.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig }));
@@ -111,9 +122,10 @@ export class Arena {
       s.a.host = host;
       s.ws.serializeAttachment(s.a);
     }
-    for (const s of waiting) this.send(s.ws, { t: "start", match, you: s.a.id, host, players, seed: Math.floor(Math.random() * 1e9) });
+    for (const s of waiting) this.send(s.ws, { t: "start", q, match, you: s.a.id, host, players, seed: Math.floor(Math.random() * 1e9) });
+    if (q !== "br") return;
     // Anyone who joined while this one was being set up waits for the next match.
-    const rest = this.sockets().filter((s) => s.a.joined && !s.a.match);
+    const rest = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br");
     if (rest.length) await this.state.storage.setAlarm(Date.now() + WAIT_MS);
   }
 

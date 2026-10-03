@@ -119,7 +119,7 @@ body.home .hud,body.home #touch{display:none!important}
 <div id="menu"><div class="panel"><h1>STORM STRIKE</h1><p id="result">Drop in. Loot up. Build fast. Be the last one standing.</p><div id="rank" style="font-weight:900;margin-bottom:10px"></div>
 <button id="shopBtn" style="font-size:18px;padding:10px 30px;margin-bottom:6px;background:linear-gradient(#7df9ff,#2fb6ff);box-shadow:0 5px 0 #1769a8;color:#062a4a">🛒 SHOP</button>
 <h3>PICK YOUR FIGURE</h3><div class="pick" id="skins"></div><small id="supnote"></small>
-<h3>GAME MODE</h3><div class="pick" id="modes"></div><h3>SQUAD FILL</h3><div class="pick" id="fills"></div><small id="fillnote"></small>
+<h3>GAME MODE</h3><div class="pick" id="modes"></div><h3 id="fillhead">SQUAD FILL</h3><div class="pick" id="fills"></div><small id="fillnote"></small>
 <div style="height:14px"></div><button id="play">Play</button><div id="savelink" style="display:none;margin-top:10px;font-size:13px"><a href="https://nebuluxai.com/play/storm-strike" target="_top" style="color:#7df9ff;font-weight:900">💾 Play on Nebulux AI while signed in to save your progress to your account</a></div>
 <div class="keys">WASD move · Mouse aim · Click shoot · Right-click zoom · Space jump<br>Q build wall · E build ramp · F open chests · R reload · 1-5 swap weapon · Shift sprint<br>Ctrl or C slide · G super · H hypercharge · U ultra super</div></div></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div>
@@ -223,8 +223,20 @@ function tower(x,z){const y=heightAt(x,z);for(let i=0;i<4;i++){const a=i*Math.PI
 const POIS=[["PLEASANT PINES",-120,-110],["TILTED TOWN",110,-90],["RETAIL ROW",120,120],["SALTY SPOT",-110,120],["",0,0]];
 for(const[n,px,pz]of POIS){for(let i=0;i<(n?5:3);i++){const a=i/5*Math.PI*2+R(-.2,.2),r=n?R(18,34):R(14,22);house(px+Math.cos(a)*r,pz+Math.sin(a)*r,i===0?n:"")}}
 tower(0,-170);tower(-190,0);tower(185,10);
-for(let i=0;i<170;i++){const x=R(-HALF+15,HALF-15),z=R(-HALF+15,HALF-15);if(POIS.some(p=>Math.hypot(x-p[1],z-p[2])<45))continue;tree(x,z)}
-for(let i=0;i<70;i++){const x=R(-HALF+15,HALF-15),z=R(-HALF+15,HALF-15);if(POIS.some(p=>Math.hypot(x-p[1],z-p[2])<42))continue;rock(x,z)}
+// Gunfight arena (1v1 / 2v2): a flat walled floor with cover, away from the towns.
+const ARENA={x:-190,z:195,half:38};
+const inArena=(x,z)=>Math.abs(x-ARENA.x)<ARENA.half+10&&Math.abs(z-ARENA.z)<ARENA.half+10;
+(function buildArena(){let top=-99;for(let dx=-ARENA.half;dx<=ARENA.half;dx+=6)for(let dz=-ARENA.half;dz<=ARENA.half;dz+=6)top=Math.max(top,heightAt(ARENA.x+dx,ARENA.z+dz));
+ ARENA.y=top+.5;const base=heightAt(ARENA.x,ARENA.z)-6;
+ addBox(ARENA.half*2+2,ARENA.y-base,ARENA.half*2+2,ARENA.x,base,ARENA.z,0x7a8794);
+ const H=7,W=ARENA.half*2+2,c=0x5b6b7c;
+ addBox(W,H,1.2,ARENA.x,ARENA.y,ARENA.z-ARENA.half-.6,c);addBox(W,H,1.2,ARENA.x,ARENA.y,ARENA.z+ARENA.half+.6,c);
+ addBox(1.2,H,W,ARENA.x-ARENA.half-.6,ARENA.y,ARENA.z,c);addBox(1.2,H,W,ARENA.x+ARENA.half+.6,ARENA.y,ARENA.z,c);
+ const cover=[[0,0,8,4,8,0xf2a12e],[-16,-14,6,3.5,2,0x3c7be6],[16,14,6,3.5,2,0x3c7be6],[-16,14,2,4,6,0xe64a3c],[16,-14,2,4,6,0xe64a3c],[-26,0,3,5,10,0x9b4de6],[26,0,3,5,10,0x9b4de6],[0,-24,10,2.5,2,0x2ec4a8],[0,24,10,2.5,2,0x2ec4a8]];
+ for(const[dx,dz,w,h,d,col]of cover)addBox(w,h,d,ARENA.x+dx,ARENA.y,ARENA.z+dz,col);
+ label("GUNFIGHT ARENA",ARENA.x,ARENA.y+16,ARENA.z)})();
+for(let i=0;i<170;i++){const x=R(-HALF+15,HALF-15),z=R(-HALF+15,HALF-15);if(inArena(x,z)||POIS.some(p=>Math.hypot(x-p[1],z-p[2])<45))continue;tree(x,z)}
+for(let i=0;i<70;i++){const x=R(-HALF+15,HALF-15),z=R(-HALF+15,HALF-15);if(inArena(x,z)||POIS.some(p=>Math.hypot(x-p[1],z-p[2])<42))continue;rock(x,z)}
 for(let i=0;i<14;i++)chest(R(-200,200),R(-200,200));
 
 // Character model (Fortnite-ish cartoon figure)
@@ -320,23 +332,33 @@ const WEAPONS={
 const P={pos:new THREE.Vector3(),vel:new THREE.Vector3(),yaw:0,pitch:-.1,hp:100,sh:50,onGround:false,
  inv:[{k:"ar",ammo:30}],sel:0,reserve:120,cd:0,reloading:0,kills:0,alive:true,mesh:null,walk:0,zoom:false,mats:300};
 const SKIN_NAMES=["Jonesy","Blaze","Ranger","Glimmer","Goldie","Tidal","Crimson"];
-let skinI=0,modeI=0,fillI=1;const MODES=[["SOLO",1],["DUOS",2],["TRIOS",3],["SQUADS",4],["🌐 ONLINE",1,1]];
-try{skinI=+localStorage.getItem("ss-skin")||0;modeI=+localStorage.getItem("ss-mode")||0;fillI=localStorage.getItem("ss-fill")==="0"?0:1}catch(e){}
+let skinI=0,modeI=0,fillI=1,oppI=0;
+// [name, squad size, online battle royale, gunfight queue]
+const MODES=[["SOLO",1],["DUOS",2],["TRIOS",3],["SQUADS",4],["🌐 ONLINE",1,1],["⚔️ 1V1",1,0,"1v1"],["⚔️ 2V2",2,0,"2v2"]];
+const duel=()=>MODES[modeI][3]||null;
+try{skinI=+localStorage.getItem("ss-skin")||0;modeI=+localStorage.getItem("ss-mode")||0;oppI=localStorage.getItem("ss-opp")==="1"?1:0;if(!MODES[modeI])modeI=0;fillI=localStorage.getItem("ss-fill")==="0"?0:1}catch(e){}
 if(!SAVE.owned.includes(skinI))skinI=0;P.mesh=makeChar(SKINS[skinI]);
 function setSkin(i){skinI=i;scene.remove(P.mesh);P.mesh=makeChar(SKINS[i]);try{localStorage.setItem("ss-skin",i)}catch(e){}drawPickers()}
 function drawPickers(){wallet();$("skins").innerHTML=FIGS.map((f,i)=>{const own=SAVE.owned.includes(i);return `<div data-i="${i}" class="${i===skinI?"on":""} ${f.r} ${own?"":"locked"}"><i style="background:#${f.c[0].toString(16).padStart(6,"0")}"></i>${own?"":"🔒"}${f.n}</div>`}).join("");
  const F=FIGS[skinI];$("supnote").innerHTML=`⚡ SUPER: <b>${F.sn}</b>: ${F.sd}${HYPER_R.includes(F.r)?" · 💜 HYPER"+(F.hyn?": "+F.hyn:""):""}${F.ult?" · 🌟 ULTRA: "+F.un:""}`;
  $("modes").innerHTML=MODES.map((m,i)=>`<div data-m="${i}" class="${i===modeI?"on":""}">${m[0]}</div>`).join("");
- $("fills").innerHTML=["NO FILL","FILL"].map((f,i)=>`<div data-f="${i}" class="${i===fillI?"on":""}">${f}</div>`).join("");
- $("fillnote").textContent=MODES[modeI][2]?"Online: play against real people (and bots fill the rest).":MODES[modeI][1]===1?"Solo: it's just you.":fillI?`Fill: ${MODES[modeI][1]-1} teammate${MODES[modeI][1]>2?"s":""} join you.`:"No fill: you go in alone, every other squad is full."}
-document.addEventListener("click",e=>{const d=e.target.closest("[data-i],[data-m],[data-f]");if(!d||started)return;if(d.dataset.i!=null){const i=+d.dataset.i;if(SAVE.owned.includes(i))setSkin(i);else{shopTab="figures";openShop()}}else if(d.dataset.f!=null){fillI=+d.dataset.f;try{localStorage.setItem("ss-fill",fillI)}catch(e){}drawPickers()}else{modeI=+d.dataset.m;try{localStorage.setItem("ss-mode",modeI)}catch(e){}drawPickers()}});
+ $("fills").innerHTML=duel()?["🤖 BOTS","🌐 REAL PEOPLE"].map((f,i)=>`<div data-o="${i}" class="${i===oppI?"on":""}">${f}</div>`).join(""):["NO FILL","FILL"].map((f,i)=>`<div data-f="${i}" class="${i===fillI?"on":""}">${f}</div>`).join("");
+ $("fillhead").textContent=duel()?"OPPONENTS":"SQUAD FILL";
+ $("fillnote").textContent=duel()?(oppI?`Real people only: you wait until ${duel()==="1v1"?"1 more person joins":"3 more people join"}. No bots.`:`Gunfight in the arena against bots${duel()==="2v2"?", with a bot teammate":""}.`):MODES[modeI][2]?"Online: play against real people (and bots fill the rest).":MODES[modeI][1]===1?"Solo: it's just you.":fillI?`Fill: ${MODES[modeI][1]-1} teammate${MODES[modeI][1]>2?"s":""} join you.`:"No fill: you go in alone, every other squad is full."}
+document.addEventListener("click",e=>{const d=e.target.closest("[data-i],[data-m],[data-f],[data-o]");if(!d||started)return;
+ if(d.dataset.o!=null){oppI=+d.dataset.o;try{localStorage.setItem("ss-opp",oppI)}catch(e){}drawPickers();return}if(d.dataset.i!=null){const i=+d.dataset.i;if(SAVE.owned.includes(i))setSkin(i);else{shopTab="figures";openShop()}}else if(d.dataset.f!=null){fillI=+d.dataset.f;try{localStorage.setItem("ss-fill",fillI)}catch(e){}drawPickers()}else{modeI=+d.dataset.m;try{localStorage.setItem("ss-mode",modeI)}catch(e){}drawPickers()}});
 // Bots
 const NAMES=["Raptor","Jonesy","Peely","Midas","Drift","Lynx","Ragnarok","Calamity","Skye","Brutus","Meowscles","Aura","Crystal","Fishstick","Renegade","Ikonik","Chomp","Valor","Zenith"];
 const bots=[];
 function makeBot(i,team,fig,name,x,z){const m=makeChar(SKINS[fig]);m.userData.fig=fig;m.position.set(x,heightAt(x,z),z);
  return{team,mesh:m,name,hp:100,sh:R(0,1)<.5?50:0,yaw:R(0,6.28),vel:new THREE.Vector3(),onGround:false,target:null,cd:R(0,1),wander:new THREE.Vector3(x,0,z),think:0,alive:true,
  w:["ar","smg","sg","ar"][i%4],strafe:1,acc:R(.35,.6),walk:0,hpBar:hpBar()}}
-function spawnBots(){if(NET&&!NET.isHost)return;const size=MODES[modeI][1];let teams=size===1?19:size===2?9:size===3?6:5;if(NET)teams=Math.max(4,20-1-remotes.size);let tx=0,tz=0;
+function spawnBots(){if(duel()){if(NET)return;const size=duel()==="2v2"?2:1;
+ for(let i=0;i<size;i++)bots.push(makeBot(i,0,(i+3)%BOT_FIGS,NAMES[(i*5+2)%NAMES.length],ARENA.x+28,ARENA.z+(i?6:-6)));
+ for(let i=0;i<size;i++){const b=bots[bots.length-1-i];b.mesh.position.y=ARENA.y;b.wander.set(ARENA.x,0,ARENA.z);b.acc=.5}
+ if(size>1){const b=makeBot(9,-1,(skinI+2)%BOT_FIGS,"Buddy",ARENA.x-28,ARENA.z+6);b.mesh.position.y=ARENA.y;b.sh=50;b.wander.set(ARENA.x,0,ARENA.z);bots.push(b)}
+ return}
+ if(NET&&!NET.isHost)return;const size=MODES[modeI][1];let teams=size===1?19:size===2?9:size===3?6:5;if(NET)teams=Math.max(4,20-1-remotes.size);let tx=0,tz=0;
  for(let i=0;i<teams*size;i++){const team=Math.floor(i/size);if(i%size===0){tx=R(-200,200);tz=R(-200,200)}
  bots.push(makeBot(i,team,(i+1)%BOT_FIGS,NAMES[i%NAMES.length]+(i>=NAMES.length?"2":""),tx+R(-6,6),tz+R(-6,6)))}
  if(NET)return;
@@ -623,12 +645,12 @@ const ADJ=["Swift","Brave","Lucky","Mighty","Sneaky","Turbo","Cosmic","Epic","Ra
 function myName(){if(!SAVE.mpName){SAVE.mpName=ADJ[Math.floor(R(0,ADJ.length))]+["Fox","Wolf","Hawk","Tiger","Shark","Bear","Viper","Falcon"][Math.floor(R(0,8))]+Math.floor(R(10,99));save()}return SAVE.mpName}
 function netSend(m){try{if(NET&&NET.ws.readyState===1)NET.ws.send(JSON.stringify(m))}catch(e){}}
 function netClose(){if(NET){const w=NET.ws;NET=null;try{w.close()}catch(e){}}}
-function remoteList(){return[...remotes.values()].filter(r=>r.alive)}
+function remoteList(){return[...remotes.values()].filter(r=>r.alive&&r.team!==-1)}
 function teamsAlive(){return new Set(bots.filter(b=>b&&b.alive&&b.team!==-1).map(b=>b.team)).size+remoteList().length}
 function nameTag(t){const c=document.createElement("canvas");c.width=256;c.height=48;const k=c.getContext("2d");k.font="900 28px Segoe UI, Arial";k.textAlign="center";k.lineWidth=6;k.strokeStyle="#000";k.strokeText(t,128,34);k.fillStyle="#7df9ff";k.fillText(t,128,34);
  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));sp.scale.set(5,.95,1);scene.add(sp);return sp}
-function addRemote(pl){if(!NET||pl.id===NET.me||remotes.has(pl.id))return;const m=makeChar(SKINS[Math.min(pl.fig|0,SKINS.length-1)]);m.position.set(0,-80,0);
- remotes.set(pl.id,{id:pl.id,remote:true,name:pl.name,mesh:m,alive:true,team:"r"+pl.id,hp:100,sh:50,to:new THREE.Vector3(0,-80,0),vel:new THREE.Vector3(),yaw:0,walk:0,sp:0,seen:false,hpBar:hpBar(),tag:nameTag(pl.name)})}
+function addRemote(pl,team){if(!NET||pl.id===NET.me||remotes.has(pl.id))return;const m=makeChar(SKINS[Math.min(pl.fig|0,SKINS.length-1)]);m.position.set(0,-80,0);
+ remotes.set(pl.id,{id:pl.id,remote:true,name:pl.name,mesh:m,alive:true,team:team!==undefined?team:"r"+pl.id,hp:100,sh:50,to:new THREE.Vector3(0,-80,0),vel:new THREE.Vector3(),yaw:0,walk:0,sp:0,seen:false,hpBar:hpBar(),tag:nameTag(pl.name)})}
 function dropRemote(id){const r=remotes.get(id);if(!r)return;if(r.alive&&r.seen){burst(r.mesh.position.clone().add(new THREE.Vector3(0,2,0)),0x7df9ff,24);dropLoot(r.mesh.position.x,r.mesh.position.z)}r.alive=false;scene.remove(r.mesh);scene.remove(r.hpBar);scene.remove(r.tag);remotes.delete(id);hud()}
 function onNet(m){const r=remotes.get(m.from);
  if(m.t==="state"&&r){r.to.set(+m.x||0,+m.y||0,+m.z||0);if(!r.seen){r.seen=true;r.mesh.position.copy(r.to)}r.yaw=+m.yaw||0;r.sp=+m.sp||0;r.sl=m.sl;r.dr=m.dr;r.hp=Math.max(0,Math.min(200,+m.hp||0));r.sh=Math.max(0,Math.min(100,+m.sh||0));drawBar(r);return}
@@ -652,15 +674,16 @@ function lerpOthers(dt){const k=Math.min(1,dt*12);
   const d=r.mesh.position.distanceTo(P.pos);r.hpBar.position.set(r.mesh.position.x,r.mesh.position.y+5.2,r.mesh.position.z);r.tag.position.set(r.mesh.position.x,r.mesh.position.y+6,r.mesh.position.z);r.hpBar.visible=d<70;r.tag.visible=d<140}
  if(NET&&!NET.isHost)for(const b of bots){if(!b.alive||!b.to)continue;const before=b.mesh.position.clone();b.mesh.position.lerp(b.to,k);b.mesh.rotation.y=b.yaw;animate(b.mesh,before.distanceTo(b.mesh.position)/Math.max(dt,.001),dt,b);
   b.hpBar.position.set(b.mesh.position.x,b.mesh.position.y+5.2,b.mesh.position.z);b.hpBar.visible=b.mesh.position.distanceTo(P.pos)<60}}
-function startOnline(){const btn=$("play");btn.disabled=true;btn.textContent="Connecting...";let ws;
+let waitingWs=null;
+function startOnline(){const btn=$("play");if(waitingWs){try{waitingWs.close()}catch(e){}waitingWs=null;btn.textContent="Play";return}btn.textContent="Connecting...";let ws;
  try{ws=new WebSocket(MP_URL)}catch(e){btn.disabled=false;btn.textContent="Play";flash("COULDN'T CONNECT",2);return}
- const net={ws,me:null,host:null,isHost:false};
- ws.onopen=()=>ws.send(JSON.stringify({t:"join",name:myName(),fig:skinI}));
+ const net={ws,me:null,host:null,isHost:false};waitingWs=ws;
+ ws.onopen=()=>ws.send(JSON.stringify({t:"join",name:myName(),fig:skinI,q:duel()||"br"}));
  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
-  if(m.t==="wait"){btn.textContent=`Finding players: ${m.count} ready · starts in ${m.startsIn}s`;return}
-  if(m.t==="start"){net.me=m.you;net.host=m.host;net.isHost=m.host===m.you;NET=net;btn.disabled=false;begin(m.players||[]);return}
+  if(m.t==="wait"){btn.textContent=m.need?`Waiting for players: ${m.count}/${m.need} · tap to cancel`:`Finding players: ${m.count} ready · starts in ${m.startsIn}s`;return}
+  if(m.t==="start"){waitingWs=null;net.me=m.you;net.host=m.host;net.isHost=m.host===m.you;NET=net;btn.disabled=false;begin(m.players||[]);return}
   if(NET===net)onNet(m)};
- ws.onclose=()=>{if(NET===net){NET=null;for(const b of bots)if(b.to)b.to=null;if(started)flash("CONNECTION LOST: BOTS TAKE OVER",2)}else if(!started){btn.disabled=false;btn.textContent="Play"}};
+ ws.onclose=()=>{if(NET===net){NET=null;for(const b of bots)if(b.to)b.to=null;if(started)flash("CONNECTION LOST: BOTS TAKE OVER",2)}else if(!started){waitingWs=null;btn.disabled=false;btn.textContent="Play"}};
  ws.onerror=()=>{if(!started&&!NET){btn.disabled=false;btn.textContent="Play";$("result").textContent="Couldn't reach the online servers. Try again, or play offline."}}}
 
 // Game flow
@@ -674,11 +697,20 @@ function resetGame(){for(const id of[...remotes.keys()])dropRemote(id);for(const
  Object.assign(P,{maxHp,hp:maxHp,sh:Math.min(100,50+SAVE.shL*15),inv:order.map(k=>({k,ammo:WEAPONS[k].mag})),superC:0,hyperC:0,ultCd:0,slowT:0,slideT:0,slideCd:0,slamming:0,ghost:false,sel:0,reserve:120+SAVE.guns.length*30,cd:0,reloading:0,kills:0,alive:true,zoom:false,mats:300,kick:0,sprint:false,pitch:-.1});
  Object.assign(storm,{r:300,target:300,cx:0,cz:0,tcx:0,tcz:0,timer:60,phase:0,shrinking:false,dmg:1});
  mouseDown=false;for(const k in keys)keys[k]=false;$("feed").innerHTML="";$("dmg").style.opacity=0;$("stormfx").style.opacity=0}
-function start(){if(MODES[modeI][2]&&!NET){startOnline();return}begin([])}
+function start(){if((MODES[modeI][2]||(duel()&&oppI))&&!NET){startOnline();return}begin([])}
 function begin(players){if(touch){try{const q=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(q&&q.catch)q.catch(()=>{})}catch(e){}}resetGame();started=true;$("shop").style.display="none";document.body.classList.remove("home");$("menu").style.display="none";lockMouse();
+ if(duel()){
+  // Gunfight: everyone starts on the arena floor, teams at opposite ends; the arena's walls are the storm.
+  Object.assign(storm,{r:ARENA.half+6,target:ARENA.half+6,cx:ARENA.x,cz:ARENA.z,tcx:ARENA.x,tcz:ARENA.z,timer:1e9,shrinking:false,dmg:10});
+  const size=duel()==="2v2"?2:1;const idx=NET?Math.max(0,players.findIndex(p=>p.id===NET.me)):0;const mySide=NET?Math.floor(idx/size):0;
+  const spot=(side,k)=>[ARENA.x+(side?28:-28),ARENA.z+(k?6:-6)];
+  const [mx,mz]=spot(mySide,NET?idx%size:0);P.pos.set(mx,ARENA.y+.1,mz);P.vel.set(0,0,0);P.yaw=mySide?Math.PI/2:-Math.PI/2;dropping=false;
+  players.forEach((pl,i)=>{if(pl.id===NET.me)return;addRemote(pl,Math.floor(i/size)===mySide?-1:"t"+Math.floor(i/size));const r=remotes.get(pl.id);if(r){const[x,z]=spot(Math.floor(i/size),i%size);r.to.set(x,ARENA.y,z);r.mesh.position.copy(r.to);r.seen=true}});
+  flash(`⚔️ ${duel().toUpperCase()} GUNFIGHT! FIGHT!`,2);
+ }else{
  // battle bus drop: start high in the sky above a random spot, glide down
  const a=R(0,6.28);P.pos.set(Math.cos(a)*120,90,Math.sin(a)*120);P.vel.set(0,0,0);dropping=true;flash("SKYDIVING! STEER WITH WASD",2.5);
- for(const pl of players)addRemote(pl);
+ for(const pl of players)addRemote(pl);}
  spawnBots();hud()}
 function end(win,by){if(!started)return;started=false;setTimeout(netClose,400);
  const place=win?1:teamsAlive()+1;
@@ -686,7 +718,7 @@ function end(win,by){if(!started)return;started=false;setTimeout(netClose,400);
  let tro=(win?30:place<=3?14:place<=5?7:-5)+P.kills*2;tro=Math.max(-SAVE.trophies,tro);
  const dia=win?3:0;SAVE.coins+=coins;SAVE.diamonds+=dia;SAVE.trophies+=tro;save();document.body.classList.add("home");document.exitPointerLock();const m=$("menu");m.style.display="flex";
  const alive=bots.filter(b=>b.alive).length+1;
- m.querySelector("h1").textContent=win?"#1 VICTORY ROYALE!":"ELIMINATED";
+ m.querySelector("h1").textContent=duel()?(win?"⚔️ GUNFIGHT WON!":"⚔️ GUNFIGHT LOST"):win?"#1 VICTORY ROYALE!":"ELIMINATED";
  drawPickers();m.querySelector("p").textContent=`+${coins} 🪙 coins · ${dia?"+3 💎 diamonds · ":""}${tro>=0?"+":""}${tro} 🏆 trophies · `+(win?`You won with ${P.kills} eliminations!`:`${by} got you. You placed #${place} with ${P.kills} eliminations.`);
  const btn=$("play");btn.textContent="Play again";btn.onclick=start;btn.disabled=false;$("lockhint").style.display="none"}
 $("play").onclick=start;try{if(window.top===window&&!window.__nxSave)$("savelink").style.display="block"}catch(e){}
@@ -730,7 +762,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   if(storm.timer<=0){if(!storm.shrinking){storm.shrinking=true;storm.timer=30;flash("THE STORM IS SHRINKING!",2)}else{storm.shrinking=false;storm.phase++;storm.timer=40;storm.dmg=1+storm.phase*2;
    storm.target=Math.max(8,storm.r*.55);const a=R(0,6.28),d=R(0,storm.r-storm.target);storm.tcx=storm.cx+Math.cos(a)*d;storm.tcz=storm.cz+Math.sin(a)*d}}
   if(storm.shrinking){const k=Math.min(1,dt/Math.max(storm.timer,.01));storm.r+= (storm.target-storm.r)*k;storm.cx+=(storm.tcx-storm.cx)*k;storm.cz+=(storm.tcz-storm.cz)*k}}
-  $("storm").textContent=(storm.shrinking?"⚡ STORM SHRINKING ":"⏱ STORM SHRINKS IN ")+Math.ceil(storm.timer)+"s";
+  $("storm").textContent=duel()?`⚔️ ${duel().toUpperCase()} GUNFIGHT${NET?" · REAL PEOPLE":" · BOTS"}`:(storm.shrinking?"⚡ STORM SHRINKING ":"⏱ STORM SHRINKS IN ")+Math.ceil(storm.timer)+"s";
   const out=Math.hypot(P.pos.x-storm.cx,P.pos.z-storm.cz)>storm.r;$("stormfx").style.opacity=out?1:0;
   if(out){P.stormT=(P.stormT||0)+dt;if(P.stormT>1){P.stormT=0;hurtPlayer(storm.dmg,"The Storm")}}
   if(flashT>0){flashT-=dt;if(flashT<=0)$("msg").style.opacity=0}
