@@ -67,7 +67,7 @@ body.lobby #bars,body.lobby #ammo,body.lobby #slots,body.lobby #supers,body.lobb
 .slot.on{border-color:#ffd23f;background:rgba(255,190,40,.35)}
 .slot.rare{box-shadow:inset 0 -6px 0 #3aa0ff}.slot.epic{box-shadow:inset 0 -6px 0 #b04dff}.slot.leg{box-shadow:inset 0 -6px 0 #ffa21f}
 #top{top:16px;right:20px;text-align:right;font-weight:900;font-size:18px;line-height:1.5}
-#feed{top:120px;right:20px;text-align:right;font-size:14px;font-weight:700;line-height:1.7}
+#feed{top:270px;right:20px;text-align:right;font-size:14px;font-weight:700;line-height:1.7}
 #storm{top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.45);padding:6px 16px;border-radius:20px;font-weight:900;font-size:15px}
 #mini{top:16px;left:16px;width:170px;height:170px;border-radius:12px;border:3px solid rgba(255,255,255,.6);background:#3d7f3a}
 #msg{top:32%;left:50%;transform:translateX(-50%);font-size:34px;font-weight:900;opacity:0;transition:opacity .3s;text-align:center;white-space:nowrap}
@@ -108,9 +108,12 @@ body.home .hud,body.home #touch{display:none!important}
 <body>
 <div id="mini" class="hud"><canvas id="mc" width="170" height="170" style="width:100%;height:100%;border-radius:9px"></canvas></div>
 <div id="storm" class="hud">STORM SHRINKING IN 60s</div>
-<div id="chatbox" style="display:none;position:fixed;left:16px;bottom:120px;z-index:4;width:260px;font-weight:800;font-size:13px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.6);pointer-events:none"></div>
+<div id="chatbox" style="display:none;position:fixed;right:16px;top:70px;z-index:7;width:300px;color:#fff;font:800 13px 'Segoe UI',Arial">
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:10px 10px 0 0"><span>💬 CHAT <span style="opacity:.6;font-size:11px">(Enter to type)</span></span><button id="chatmute" style="font:800 11px Arial;border:0;border-radius:6px;padding:2px 6px;cursor:pointer;background:#fff;color:#222">🔇 Mute</button></div>
+<div id="chatlog" style="background:rgba(0,0,0,.3);padding:6px 8px;max-height:150px;overflow-y:auto;text-shadow:0 1px 0 #000;line-height:1.5"></div>
+<input id="chatin" maxlength="80" placeholder="Type a message, Enter to send" style="display:none;width:100%;box-sizing:border-box;font:700 13px Arial;padding:7px 8px;border:0;border-radius:0 0 10px 10px;outline:none"></div>
 <div id="qpick" style="display:none;position:fixed;left:16px;bottom:200px;z-index:8;background:rgba(10,0,60,.85);border-radius:12px;padding:8px;max-width:280px"></div>
-<div id="lobbyhud" class="hud" style="display:none;top:104px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:6px 14px;border-radius:12px;font-weight:900;font-size:13px;text-align:center">🏠 LOBBY · walk around · <b>F</b> at the shop stand · <b>T</b> quick chat · <b>L</b> leave</div>
+<div id="lobbyhud" class="hud" style="display:none;top:104px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:6px 14px;border-radius:12px;font-weight:900;font-size:13px;text-align:center">🏠 LOBBY · walk around · <b>F</b> at the shop stand · <b>Enter</b> chat · <b>L</b> leave</div>
 <div id="inv" style="display:none;position:fixed;left:16px;top:200px;z-index:6;width:190px;max-height:calc(100vh - 340px);overflow-y:auto;background:rgba(10,0,60,.75);border-radius:14px;padding:10px;color:#fff;font-weight:900;font-size:12px"></div>
 <div id="lobbybar" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:6;gap:10px">
 <button data-lb="skins">👕 SKINS (K)</button><button data-lb="guns">🔫 GUNS (B)</button><button data-lb="modes">🎮 GAME MODES (M)</button></div>
@@ -139,7 +142,7 @@ body.home .hud,body.home #touch{display:none!important}
 <h3>PICK YOUR FIGURE</h3><div class="pick" id="skins"></div><small id="supnote"></small>
 <h3>GAME MODE</h3><div class="pick" id="modes"></div><h3 id="fillhead">SQUAD FILL</h3><div class="pick" id="fills"></div><small id="fillnote"></small>
 <div style="height:14px"></div><button id="play">Play</button><div id="savelink" style="display:none;margin-top:10px;font-size:13px"><a href="https://nebuluxai.com/play/storm-strike" target="_top" style="color:#7df9ff;font-weight:900">💾 Play on Nebulux AI while signed in to save your progress to your account</a></div>
-<div class="keys">WASD move · Mouse aim · Click shoot · Right-click zoom · Space jump<br>Q build wall · E build ramp · F open chests · R reload · 1-5 swap weapon · Shift sprint<br>Ctrl or C slide · G super · H hypercharge · U ultra super</div></div></div>
+<div class="keys">WASD move · Mouse aim · Click shoot · Right-click zoom · Space jump<br>Q build wall · E build ramp · F open chests · R reload · 1-5 swap weapon · Shift sprint<br>Ctrl or C slide · G super · H hypercharge · U ultra super · Enter chat</div></div></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div>
 <div class="tb" id="tFire" style="right:30px;bottom:150px;width:86px;height:86px">FIRE</div>
 <div class="tb" id="tJump" style="right:130px;bottom:90px">JUMP</div>
@@ -391,7 +394,7 @@ function drawPickers(){wallet();$("skins").innerHTML=FIGS.map((f,i)=>{const own=
  $("modes").innerHTML=MODES.map((m,i)=>`<div data-m="${i}" class="${i===modeI?"on":""}">${m[0]}</div>`).join("");
  $("fills").innerHTML=duel()?["🤖 BOTS","🌐 REAL PEOPLE"].map((f,i)=>`<div data-o="${i}" class="${i===oppI?"on":""}">${f}</div>`).join(""):["NO FILL","FILL"].map((f,i)=>`<div data-f="${i}" class="${i===fillI?"on":""}">${f}</div>`).join("");
  $("fillhead").textContent=duel()?"OPPONENTS":"SQUAD FILL";
- $("fillnote").textContent=duel()?(gunGame()?"Gunfight: 4-player free-for-all. A new gun after every elimination, first to 25 wins. ":"Your own weapons plus today's free weapon. First to 5 eliminations wins. ")+(oppI?`Real people only: you wait until ${duel()==="1v1"?"1 more person joins":"3 more people join"}. No bots.`:`Against bots${duel()==="2v2"?", with a bot teammate":""}.`):MODES[modeI][2]?"Online: play against real people (and bots fill the rest).":MODES[modeI][1]===1?"Solo: it's just you.":fillI?`Fill: ${MODES[modeI][1]-1} teammate${MODES[modeI][1]>2?"s":""} join you.`:"No fill: you go in alone, every other squad is full."}
+ $("fillnote").textContent=duel()?(gunGame()?(oppI?"Gunfight: 1v1 with real people.":"Gunfight: 4-player free-for-all.")+" A new gun after every elimination, first to 25 wins. ":"Your own weapons plus today's free weapon. First to 5 eliminations wins. ")+(oppI?`Real people only: you wait until ${duel()==="2v2"?"3 more people join":"1 more person joins"}. No bots.`:`Against bots${duel()==="2v2"?", with a bot teammate":""}.`):MODES[modeI][2]?"Online: play against real people (and bots fill the rest).":MODES[modeI][1]===1?"Solo: it's just you.":fillI?`Fill: ${MODES[modeI][1]-1} teammate${MODES[modeI][1]>2?"s":""} join you.`:"No fill: you go in alone, every other squad is full."}
 document.addEventListener("click",e=>{const d=e.target.closest("[data-i],[data-m],[data-f],[data-o]");if(!d||started)return;
  if(d.dataset.o!=null){oppI=+d.dataset.o;try{localStorage.setItem("ss-opp",oppI)}catch(e){}drawPickers();return}if(d.dataset.i!=null){const i=+d.dataset.i;if(SAVE.owned.includes(i))setSkin(i);else{shopTab="figures";openShop()}}else if(d.dataset.f!=null){fillI=+d.dataset.f;try{localStorage.setItem("ss-fill",fillI)}catch(e){}drawPickers()}else{modeI=+d.dataset.m;try{localStorage.setItem("ss-mode",modeI)}catch(e){}drawPickers()}});
 // Bots
@@ -422,16 +425,15 @@ scene.add(stormWall);
 
 // Input
 const keys={};let mouseDown=false,locked=false,started=false;
-addEventListener("keydown",e=>{keys[e.code]=true;if(!started)return;
+addEventListener("keydown",e=>{if(e.target&&e.target.id==="chatin")return;keys[e.code]=true;if(!started)return;
  if(e.code==="KeyR")reload();if(e.code==="KeyQ")buildPiece("wall");if(e.code==="KeyE")buildPiece("ramp");if(e.code==="KeyF"){if(LOBBY){if(KIOSK&&Math.hypot(P.pos.x-KIOSK.x,P.pos.z-KIOSK.z)<9){document.exitPointerLock();openShop()}}else openChest()}
- if(e.code==="KeyT")openQuick();if(LOBBY&&e.code==="KeyL")leaveLobby();
+ if(e.code==="KeyT"||e.code==="Enter"){e.preventDefault();openChat();return}if(LOBBY&&e.code==="KeyL")leaveLobby();
  if(LOBBY&&e.code==="KeyI"){const v=$("inv");v.style.display=v.style.display==="none"?"block":"none"}
  if(LOBBY&&["KeyK","KeyB","KeyM"].includes(e.code)){const b=document.querySelector(`[data-lb="${e.code==="KeyK"?"skins":e.code==="KeyB"?"guns":"modes"}"]`);b&&b.click()}
- if($("qpick").style.display==="block"&&e.code.startsWith("Digit")&&e.code.length===6){const n=+e.code.slice(5);if(n>=1){sendQuick(n-1);return}}if(e.code==="KeyG")useSuper();if(e.code==="KeyH")useHyper();if(e.code==="KeyU")useUltra();if(e.code==="ControlLeft"||e.code==="ControlRight"||e.code==="KeyC"){e.preventDefault();slide()}
  if(e.code.startsWith("Digit")){const n=+e.code.slice(5)-1;if(P.inv[n]){P.sel=n;P.reloading=0;hud()}}});
 addEventListener("keyup",e=>{keys[e.code]=false;if(!e.shiftKey)keys.ShiftLeft=keys.ShiftRight=false});
 function lockMouse(){if(touch||locked)return;try{const r=renderer.domElement.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
-addEventListener("mousedown",e=>{if(!started)return;if(e.target.closest&&e.target.closest("#inv,#lobbybar,#lobbymodes,#shop,#qpick"))return;if(!locked&&!touch){lockMouse();if(e.target!==renderer.domElement)return}if(e.button===0)mouseDown=true;if(e.button===2)P.zoom=true});
+addEventListener("mousedown",e=>{if(!started)return;if(e.target.closest&&e.target.closest("#inv,#lobbybar,#lobbymodes,#shop,#chatbox"))return;if(!locked&&!touch){lockMouse();if(e.target!==renderer.domElement)return}if(e.button===0)mouseDown=true;if(e.button===2)P.zoom=true});
 addEventListener("mouseup",e=>{if(e.button===0)mouseDown=false;if(e.button===2)P.zoom=false});
 addEventListener("contextmenu",e=>e.preventDefault());
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement;$("lockhint").style.display=started&&!locked&&!touch&&!lockFailed?"block":"none";document.body.classList.toggle("playing",locked);if(!locked){mouseDown=false;P.zoom=false}});
@@ -734,7 +736,8 @@ function addRemote(pl,team){if(!NET||pl.id===NET.me||remotes.has(pl.id))return;c
  remotes.set(pl.id,{id:pl.id,remote:true,name:pl.name,mesh:m,alive:true,team:team!==undefined?team:"r"+pl.id,hp:100,sh:50,to:new THREE.Vector3(0,-80,0),vel:new THREE.Vector3(),yaw:0,walk:0,sp:0,seen:false,hpBar:hpBar(),tag:nameTag(pl.name)})}
 function dropRemote(id){const r=remotes.get(id);if(!r)return;if(r.alive&&r.seen){burst(r.mesh.position.clone().add(new THREE.Vector3(0,2,0)),0x7df9ff,24);dropLoot(r.mesh.position.x,r.mesh.position.z)}r.alive=false;scene.remove(r.mesh);scene.remove(r.hpBar);scene.remove(r.tag);remotes.delete(id);hud()}
 function onNet(m){const r=remotes.get(m.from);
- if(m.t==="qchat"){chatLine(m.name,m.i);return}
+ if(m.t==="chat"){chatLine(m.mine?"You":m.name,m.text);return}
+ if(m.t==="chatno"){chatLine("Not sent",m.why||"Keep chat friendly.",true);return}
  if(m.t==="ljoin"){addRemote({id:m.id,name:m.name,fig:m.fig},-1);const x=remotes.get(m.id);if(x){x.to.set(HUB.x,HUB.y,HUB.z);x.mesh.position.copy(x.to);x.seen=true}feed(`${m.name} joined the lobby`);return}
  if(m.t==="top"){drawTop(m.top||[]);return}
  if(m.t==="state"&&r){r.to.set(+m.x||0,+m.y||0,+m.z||0);if(!r.seen){r.seen=true;r.mesh.position.copy(r.to)}r.yaw=+m.yaw||0;r.sp=+m.sp||0;r.sl=m.sl;r.dr=m.dr;r.hp=Math.max(0,Math.min(200,+m.hp||0));r.sh=Math.max(0,Math.min(100,+m.sh||0));drawBar(r);
@@ -764,17 +767,25 @@ function lerpOthers(dt){const k=Math.min(1,dt*12);
 let waitingWs=null;
 // Quick chat: fixed messages only (the server passes on a number, never typed text).
 const QUICK=["GG! 👍","Nice shot! 🎯","Let's go! 🔥","Good luck! 🍀","Hi! 👋","Oops 😅","Rematch? 🔁","Wow! 😮","Follow me! 🏃","Thanks! 🙏","Well played! 👏","Bye! 👋"];
-function chatLine(name,i){const q=QUICK[i|0];if(!q)return;const box=$("chatbox");box.style.display="block";const d=document.createElement("div");d.textContent=`${String(name).slice(0,24)}: ${q}`;box.appendChild(d);setTimeout(()=>d.remove(),9000);while(box.children.length>6)box.firstChild.remove()}
-function sendQuick(i){const w=(NET&&NET.ws)||waitingWs;if(!w||w.readyState!==1){flash("QUICK CHAT WORKS WITH OTHER PLAYERS",1.2);return}try{w.send(JSON.stringify({t:"qchat",i}))}catch(e){}chatLine("You",i);$("qpick").style.display="none"}
-function openQuick(){const el=$("qpick");if(el.style.display==="block"){el.style.display="none";return}el.innerHTML=QUICK.map((q,i)=>`<button data-q="${i}">${i<9?i+1+". ":""}${q}</button>`).join("");el.style.display="block"}
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-q]");if(b){e.stopPropagation();sendQuick(+b.dataset.q)}},true);
+let chatMuted=false;
+function chatLine(name,text,bad){const log=$("chatlog");$("chatbox").style.display="block";if(chatMuted&&!bad&&name!=="You")return;const d=document.createElement("div");
+ const n=document.createElement("b");n.textContent=String(name).slice(0,24)+": ";n.style.color=bad?"#ff8a8a":name==="You"?"#ffe14a":"#7df9ff";d.appendChild(n);d.appendChild(document.createTextNode(String(text).slice(0,80)));
+ log.appendChild(d);while(log.children.length>40)log.firstChild.remove();log.scrollTop=log.scrollHeight}
+function chatSocket(){const w=(NET&&NET.ws)||waitingWs;return w&&w.readyState===1?w:null}
+function sendChat(text){const w=chatSocket();text=String(text||"").trim().slice(0,80);if(!text)return;if(!w){chatLine("Chat","You can chat with other players in the lobby and online games.",true);return}
+ try{w.send(JSON.stringify({t:"chat",text}))}catch(e){}}
+function openChat(){const box=$("chatbox"),inp=$("chatin");box.style.display="block";inp.style.display="block";inp.focus()}
+function closeChat(){const inp=$("chatin");inp.value="";inp.style.display="none";inp.blur()}
+$("chatin").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter"){sendChat(e.target.value);closeChat();e.preventDefault()}else if(e.key==="Escape"){closeChat()}});
+$("chatmute").addEventListener("click",()=>{chatMuted=!chatMuted;$("chatmute").textContent=chatMuted?"🔊 Unmute":"🔇 Mute"});
 function startOnline(){const btn=$("play");if(waitingWs){try{waitingWs.close()}catch(e){}waitingWs=null;btn.textContent="Play";return}btn.textContent="Connecting...";let ws;
  try{ws=new WebSocket(MP_URL)}catch(e){btn.disabled=false;btn.textContent="Play";flash("COULDN'T CONNECT",2);return}
  const net={ws,me:null,host:null,isHost:false};waitingWs=ws;
  ws.onopen=()=>ws.send(JSON.stringify({t:"join",name:myName(),fig:skinI,q:duel()||"br"}));
  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
-  if(m.t==="qchat"){chatLine(m.name,m.i);return}
-  if(m.t==="wait"){if(m.need){$("qpick").innerHTML=QUICK.map((q,i)=>`<button data-q="${i}">${q}</button>`).join("");$("qpick").style.display="block";$("result").textContent="In the lobby: "+(m.players||[]).map(x=>x.name).join(", ")}btn.textContent=m.need?`Waiting for players: ${m.count}/${m.need} · tap to cancel`:`Finding players: ${m.count} ready · starts in ${m.startsIn}s`;return}
+  if(m.t==="chat"){chatLine(m.mine?"You":m.name,m.text);return}
+ if(m.t==="chatno"){chatLine("Not sent",m.why||"Keep chat friendly.",true);return}
+  if(m.t==="wait"){if(m.need){$("chatbox").style.display="block";$("chatin").style.display="block";$("result").textContent="In the lobby: "+(m.players||[]).map(x=>x.name).join(", ")}btn.textContent=m.need?`Waiting for players: ${m.count}/${m.need} · tap to cancel`:`Finding players: ${m.count} ready · starts in ${m.startsIn}s`;return}
   if(m.t==="start"){waitingWs=null;net.me=m.you;net.host=m.host;net.isHost=m.host===m.you;NET=net;btn.disabled=false;begin(m.players||[]);return}
   if(NET===net)onNet(m)};
  ws.onclose=()=>{if(NET===net){NET=null;for(const b of bots)if(b.to)b.to=null;if(started)flash("CONNECTION LOST: BOTS TAKE OVER",2)}else if(!started){waitingWs=null;btn.disabled=false;btn.textContent="Play"}};
@@ -815,7 +826,7 @@ document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;
  const lo=t.closest("[data-lo]");if(lo){oppI=+lo.dataset.lo;try{localStorage.setItem("ss-opp",oppI)}catch(_){}drawPickers();drawLobbyModes();return}
  if(t.id==="lmClose"){$("lobbymodes").style.display="none";return}
  if(t.id==="lmPlay"){$("lobbymodes").style.display="none";leaveLobby();start()}});
-function leaveLobby(){if(!LOBBY)return;document.body.classList.remove("lobby");$("lobbybar").style.display="none";$("inv").style.display="none";$("lobbymodes").style.display="none";LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
+function leaveLobby(){if(!LOBBY)return;closeChat();$("chatbox").style.display="none";document.body.classList.remove("lobby");$("lobbybar").style.display="none";$("inv").style.display="none";$("lobbymodes").style.display="none";LOBBY=false;started=false;netClose();for(const id of[...remotes.keys()])dropRemote(id);$("lobbyhud").style.display="none";$("qpick").style.display="none";
  document.exitPointerLock();document.body.classList.add("home");$("menu").style.display="flex";drawPickers()}
 $("lobbyBtn").onclick=()=>enterLobby();
 
