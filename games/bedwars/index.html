@@ -68,6 +68,7 @@ canvas{display:block}
   <div id="sub"></div>
   <div id="hint"></div>
   <div id="breakbar"><i></i></div>
+  <div id="shopbtns" style="position:absolute;right:12px;bottom:12px;display:none;flex-direction:column;gap:6px;pointer-events:auto"><button class="btn" id="bShop" style="background:#2e7d32;font-size:15px;padding:9px 14px">🛒 SHOP (B)</button><button class="btn" id="bUpg" style="background:#6a1b9a;font-size:15px;padding:9px 14px">💎 UPGRADES (U)</button></div>
 </div>
 <div id="lobbytop"></div>
 <div id="lobbyui">
@@ -260,7 +261,9 @@ function drawBoards(){if(BOARD){const k=BOARD.c.getContext("2d");k.fillStyle="#1
 function addGen(x,z,kind,team){const y=3;const col={iron:0xe8e8e8,gold:0xffd54a,diamond:0x4fe3e0,emerald:0x2fd36b}[kind];
  const m=new THREE.Mesh(new THREE.BoxGeometry(.35,.35,.35),new THREE.MeshLambertMaterial({color:col,emissive:col,emissiveIntensity:.35}));m.position.set(x+(kind==="gold"?.4:kind==="iron"?-.4:0),y+.6,z);DEC.add(m);
  const g={x,z,y,kind,team,stock:0,t:0,mesh:m,lab:null,max:{iron:48,gold:12,diamond:4,emerald:2}[kind],takenUntil:0};
- if(kind==="diamond"||kind==="emerald"){g.lab=label("",kind==="diamond"?"#4fe3e0":"#2fd36b",1.1);g.lab.position.set(x,y+2.4,z);DEC.add(g.lab)}GENS.push(g);return g}
+ if(kind==="diamond"||kind==="emerald"){g.lab=label("",kind==="diamond"?"#4fe3e0":"#2fd36b",2);g.lab.position.set(x,y+3.2,z);DEC.add(g.lab);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,40,8,1,true),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.35,depthWrite:false}));beam.position.set(x,y+20,z);DEC.add(beam);
+  const pad=new THREE.Mesh(new THREE.BoxGeometry(1.6,.15,1.6),new THREE.MeshBasicMaterial({color:col}));pad.position.set(x,y+.08,z);DEC.add(pad)}GENS.push(g);return g}
 function genEvery(g){const f=g.team>=0?1+.5*TEAM_ST[g.team].forge:1;return{iron:1.1,gold:6,diamond:30,emerald:55}[g.kind]/f}
 function addNPC(x,z,kind,team){const m=makeChar(0x000000,null,kind==="shop"?0x2e7d32:0x6a1b9a);m.position.set(x,3,z);m.rotation.y=Math.atan2(-(ISL[team][0]-x),-(ISL[team][1]-z))+Math.PI;
  const lb=label(kind==="shop"?"🛒 ITEM SHOP":"💎 UPGRADES","#fff",1);lb.position.set(x,5.4,z);DEC.add(lb);scene.remove(m);DEC.add(m);NPCS.push({x,z,kind,team,mesh:m})}
@@ -268,7 +271,7 @@ function addNPC(x,z,kind,team){const m=makeChar(0x000000,null,kind==="shop"?0x2e
 // ---------- shop ----------
 const SHOP={
  Blocks:[["wool","🧶","Wool x16",{iron:4},e=>{e.blocks.wool+=16}],["wood","🪵","Wood x16",{gold:4},e=>{e.blocks.wood+=16}],["end","🟨","End stone x12",{iron:24},e=>{e.blocks.end+=12}]],
- Melee:[["s1","🗡️","Stone sword",{iron:10},e=>{e.sword=Math.max(e.sword,1)},e=>e.sword>=1],["s2","⚔️","Iron sword",{gold:7},e=>{e.sword=Math.max(e.sword,2)},e=>e.sword>=2],["s3","💎","Diamond sword",{emerald:4},e=>{e.sword=3},e=>e.sword>=3]],
+ Weapons:[["s1","🗡️","Stone sword",{iron:10},e=>{e.sword=Math.max(e.sword,1)},e=>e.sword>=1],["s2","⚔️","Iron sword",{gold:7},e=>{e.sword=Math.max(e.sword,2)},e=>e.sword>=2],["s3","💎","Diamond sword",{emerald:4},e=>{e.sword=3},e=>e.sword>=3]],
  Armor:[["a1","⛓️","Chainmail armor",{iron:24},e=>{e.armor=Math.max(e.armor,1)},e=>e.armor>=1],["a2","🛡️","Iron armor",{gold:12},e=>{e.armor=Math.max(e.armor,2)},e=>e.armor>=2],["a3","💠","Diamond armor",{emerald:6},e=>{e.armor=3},e=>e.armor>=3]],
  Ranged:[["bow","🏹","Bow",{gold:12},e=>{e.bow=true},e=>e.bow],["arrows","➶","Arrows x8",{gold:2},e=>{e.arrows+=8}]],
  Utility:[["gapple","🍎","Golden apple",{gold:3},e=>{e.gapple++}],["fireball","🔥","Fireball",{iron:40},e=>{e.fireball++}],["pearl","🟢","Ender pearl",{emerald:4},e=>{e.pearl++}]]};
@@ -290,6 +293,7 @@ function closePanels(){$("shop").style.display="none";$("upg").style.display="no
 const panelOpen=()=>$("shop").style.display==="block"||$("upg").style.display==="block";
 $("shop").addEventListener("click",e=>{const t=e.target.closest("[data-tab]");if(t){shopTab=t.dataset.tab;drawShop();return}const b=e.target.closest("[data-buy]");if(b)buy(+b.dataset.buy)});
 $("upg").addEventListener("click",e=>{const b=e.target.closest("[data-upg]");if(b)buyUpg(+b.dataset.upg)});
+$("bShop").onclick=()=>openPanel("shop");$("bUpg").onclick=()=>openPanel("upg");
 $("shopclose").onclick=$("upgclose").onclick=()=>{closePanels();lock()};
 
 // ---------- hotbar ----------
@@ -326,6 +330,7 @@ addEventListener("mouseup",e=>{if(e.button===0)mouseL=false;if(e.button===2)mous
 addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("wheel",e=>{if(!P||MODE!=="match")return;const n=hotbar(P).length;P.sel=(P.sel+(e.deltaY>0?1:-1)+n)%n;hud()});
 addEventListener("keydown",e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;keys[e.code]=true;
+ if(MODE==="match"&&(e.code==="KeyB"||e.code==="KeyU")){if(panelOpen()){closePanels();lock()}else openPanel(e.code==="KeyB"?"shop":"upg");return}
  if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else nearNPC()&&openPanel(nearNPC().kind==="shop"?"shop":"upg");return}
  if(e.code==="Escape"&&panelOpen()){closePanels();return}
  if((e.code==="KeyT"||e.code==="Enter")&&MODE==="lobby"){e.preventDefault();openChat();return}
@@ -340,7 +345,7 @@ if(TOUCH){$("touch").style.display="block";const jb=$("joy"),jk=$("joyk");let ji
  renderer.domElement.addEventListener("touchstart",e=>{const t=e.changedTouches[0];if(t.clientX>innerWidth*.35){lid=t.identifier;lx=t.clientX;ly=t.clientY}},{passive:true});
  const hold=(id,on,off)=>{$(id).addEventListener("touchstart",e=>{e.preventDefault();on()},{passive:false});$(id).addEventListener("touchend",e=>{e.preventDefault();off&&off()},{passive:false})};
  hold("tJump",()=>keys.Space=true,()=>keys.Space=false);hold("tHit",()=>{tHit=true;attack()},()=>tHit=false);hold("tUse",()=>{tUse=true;useItem()},()=>tUse=false);
- hold("tShop",()=>{const n=nearNPC();if(n)openPanel(n.kind==="shop"?"shop":"upg")})}
+ hold("tShop",()=>{const n=nearNPC();openPanel(n&&n.kind==="upg"?"upg":"shop")})}
 
 // ---------- chat (lobby) ----------
 let chatOpen=false;
@@ -531,7 +536,7 @@ function onNet(ev){let m;try{m=JSON.parse(ev.data)}catch(e){return}
 function enterLobby(){MODE="lobby";ended=false;NET=null;closePanels();buildLobby();for(const t of TEAM_ST)t.bed=true;
  P=newEnt("me",NAME,Math.abs(hash(NAME))%4,false);P.local=true;P.pos.set(.5,3.05,10);P.yaw=0;ENTS.push(P);
  $("lobbyui").style.display="flex";$("lobbytop").style.display="block";$("chat").style.display="block";$("lobbytop").innerHTML=`🛏️ BEDWARS · ${esc(NAME)}<br><span style="font-size:13px;opacity:.85">Walk into a portal or press a button to play · T to chat</span>`;
- ["hotbar","hearts","res","teams","timer","armorTxt","feed"].forEach(i=>$(i).innerHTML="");feedL=[];$("hint").style.display="none";$("breakbar").style.display="none";$("big").style.opacity=0;$("sub").style.opacity=0;VIEW.visible=false;$("lockhint").style.display=TOUCH?"none":"block";connectLobby();drawBoards()}
+ ["hotbar","hearts","res","teams","timer","armorTxt","feed"].forEach(i=>$(i).innerHTML="");feedL=[];$("shopbtns").style.display="none";$("hint").style.display="none";$("breakbar").style.display="none";$("big").style.opacity=0;$("sub").style.opacity=0;VIEW.visible=false;$("lockhint").style.display=TOUCH?"none":"block";connectLobby();drawBoards()}
 
 // ---------- main loop ----------
 let last=performance.now(),netT=0,portalCd=0;
@@ -560,7 +565,7 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
  for(const p of lobbyPeers.values()){const old=p.mesh.position.clone();p.mesh.position.lerp(p.to,Math.min(1,dt*10));p.mesh.rotation.y=p.yaw;p.vel.copy(p.mesh.position).sub(old).divideScalar(dt||1);animate({mesh:p.mesh,vel:p.vel,heldKind:"",walk:p.walk},dt)}
  netT-=dt;if(netT<=0&&LWS&&LWS.readyState===1){netT=.12;LWS.send(JSON.stringify({t:"bw",k:"lp",x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(2),n:NAME}))}}
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;for(const n of NPCS)if(Math.hypot(n.x-P.pos.x,n.z-P.pos.z)<3.2&&Math.abs(P.pos.y-3)<2.5)return n;return null}
-function stepMatch(dt){matchT+=dt;P.cd-=dt;
+function stepMatch(dt){matchT+=dt;$("shopbtns").style.display=P.alive&&!TOUCH?"flex":"none";P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
  const holding=(mouseL&&locked)||tHit;let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
@@ -576,7 +581,7 @@ function stepMatch(dt){matchT+=dt;P.cd-=dt;
  // generators (the host makes resources; everyone picks up what's next to them)
  for(let i=0;i<GENS.length;i++){const g=GENS[i];if(isHost()){g.t+=dt;const ev=genEvery(g);if(g.t>=ev){g.t-=ev;if(g.stock<g.max)g.stock++}}
   g.mesh.rotation.y+=dt*2;g.mesh.visible=g.stock>0;g.mesh.scale.setScalar(.8+Math.min(1,g.stock/8)*.6);
-  if(g.lab&&Math.random()<dt*4){const left=Math.ceil(genEvery(g)-g.t);const c=g.lab.material.map.image.getContext("2d");c.clearRect(0,0,256,64);c.fillStyle="rgba(0,0,0,.45)";c.fillRect(0,8,256,48);c.font="bold 30px Segoe UI, Arial";c.textAlign="center";c.fillStyle=g.kind==="diamond"?"#4fe3e0":"#2fd36b";c.fillText(`${g.kind==="diamond"?"💎":"🟩"} ${g.stock}${isHost()?` · ${left}s`:""}`,128,43);g.lab.material.map.needsUpdate=true}
+  if(g.lab&&Math.random()<dt*4){const left=Math.ceil(genEvery(g)-g.t);const c=g.lab.material.map.image.getContext("2d");c.clearRect(0,0,256,64);c.fillStyle="rgba(0,0,0,.45)";c.fillRect(0,8,256,48);c.font="bold 24px Segoe UI, Arial";c.textAlign="center";c.fillStyle=g.kind==="diamond"?"#4fe3e0":"#2fd36b";c.fillText(`${g.kind==="diamond"?"💎 Diamonds":"🟩 Emeralds"} ${g.stock}${isHost()?` · ${left}s`:""}`,128,43);g.lab.material.map.needsUpdate=true}
   if(g.stock>0)for(const e of ENTS){if(!e.alive||!(e.local||(e.bot&&isHost())))continue;if(Math.hypot(e.pos.x-g.x,e.pos.z-g.z)<1.7&&Math.abs(e.pos.y-g.y)<2){e.res[g.kind]+=g.stock;if(e.local){sfx(1200,.04,"triangle",.04);hud()}g.stock=0;g.takenUntil=matchT+.8;send({k:"take",g:i});break}}}
  // bots
  if(isHost())for(const b of ENTS)if(b.bot)botTick(b,dt);
