@@ -101,7 +101,7 @@ canvas{display:block}
 const $=id=>document.getElementById(id);
 const NAME=String((window.nebulux&&window.nebulux.username)||"").trim().slice(0,24)||"Anonymous";
 const WS_URL="wss://nebulux-multiplayer.thebluedragonstriker.workers.dev/play?game=bedwars";
-const TOUCH=matchMedia("(pointer:coarse)").matches||"ontouchstart" in window;
+const TOUCH=matchMedia("(pointer:coarse)").matches;
 
 // ---------- saved stats ----------
 let SAVE={wins:0,kills:0,finals:0,beds:0,games:0};
@@ -349,13 +349,17 @@ function updateView(){if(!P)return;const k=heldOf(P)+P.sword+P.team;if(k===viewK
 
 // ---------- input ----------
 const keys={};let locked=false,mouseL=false,mouseR=false,joy={x:0,y:0},tHit=false,tUse=false;
-function lock(){if(TOUCH||MODE==="results")return;try{renderer.domElement.requestPointerLock()}catch(e){}}
+// If the browser won't lock the mouse (some frames block it), clicks still work and you turn by dragging.
+let lockFailed=false;document.addEventListener("pointerlockerror",()=>{lockFailed=true;$("lockhint").textContent="Hold a mouse button and drag to look around";setTimeout(()=>{$("lockhint").style.display="none"},3000)});
+const mouseOn=()=>locked||lockFailed;
+function lock(){if(MODE==="results"||lockFailed)return;try{const r=renderer.domElement.requestPointerLock();if(r&&r.catch)r.catch(()=>{lockFailed=true})}catch(e){lockFailed=true}}
 function unlock(){try{if(document.exitPointerLock)document.exitPointerLock()}catch(e){}}
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement;$("lockhint").style.display=!locked&&!TOUCH&&(MODE==="match"||MODE==="lobby")&&!panelOpen()&&!chatOpen&&$("queue").style.display!=="block"?"block":"none"});
 renderer.domElement.addEventListener("click",()=>{if(!locked&&!panelOpen())lock()});
-document.addEventListener("mousemove",e=>{if(!locked||!P)return;P.yaw-=e.movementX*.0025;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.0025))});
+if(!document.documentElement.requestPointerLock)lockFailed=true;
+document.addEventListener("mousemove",e=>{if(!P||!(locked||(lockFailed&&e.buttons)))return;P.yaw-=e.movementX*.0025;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.0025))});
 const RANGED=["bow","fireball","pearl","gapple"];
-renderer.domElement.addEventListener("mousedown",e=>{if(!locked||!P)return;
+renderer.domElement.addEventListener("mousedown",e=>{if(!P||!mouseOn())return;
  if(e.button===2){mouseR=true;if(MODE==="match"&&targetEnt(P,3.4))attack();else if(RANGED.includes(heldOf(P)))P.swingT=.25;else if(heldOf(P)==="sword")attack();else useItem()}
  if(e.button===0){mouseL=true;if(RANGED.includes(heldOf(P)))useItem()}});
 addEventListener("mouseup",e=>{if(e.button===0)mouseL=false;if(e.button===2)mouseR=false});
@@ -609,12 +613,12 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;let best=null,bd=3.2;for(const n of NPCS){const d=Math.hypot(n.x-P.pos.x,n.z-P.pos.z);if(d<(n.kind==="ender"||n.kind==="tchest"?2.3:bd)&&d<bd&&Math.abs(P.pos.y-3)<2.5){bd=d;best=n}}return best}
 function stepMatch(dt){matchT+=dt;P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
- const holding=((mouseL&&locked)||tHit)&&!RANGED.includes(heldOf(P));let br=false;
+ const holding=((mouseL&&mouseOn())||tHit)&&!RANGED.includes(heldOf(P));let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
    $("breakbar").style.display="block";$("breakbar").firstChild.style.width=Math.min(100,breakProg*100)+"%";if(breakProg>=1){breakAt(P,h.x,h.y,h.z);breakPos=null;breakProg=0}}}
  if(!br){breakPos=null;breakProg=0;$("breakbar").style.display="none"}
- if(((mouseR&&locked)||tHit)&&P.cd<=0&&targetEnt(P,3.4))attack();
- if(((mouseR&&locked)||tUse)&&P.alive&&["wool","wood","end"].includes(heldOf(P))&&!targetEnt(P,3.4)){P.placeT=(P.placeT||0)-dt;if(P.placeT<=0){P.placeT=.18;placeFrom(P,heldOf(P))}}
+ if(((mouseR&&mouseOn())||tHit)&&P.cd<=0&&targetEnt(P,3.4))attack();
+ if(((mouseR&&mouseOn())||tUse)&&P.alive&&["wool","wood","end"].includes(heldOf(P))&&!targetEnt(P,3.4)){P.placeT=(P.placeT||0)-dt;if(P.placeT<=0){P.placeT=.18;placeFrom(P,heldOf(P))}}
  // respawn
  for(const e of ENTS){if(!e.alive&&!e.out&&(e.local||(e.bot&&isHost()))){e.respawnT-=dt;if(e.local&&e.respawnT>0)$("hint").style.display="block",$("hint").textContent=`Respawning in ${Math.ceil(e.respawnT)}…`;if(e.respawnT<=0){spawn(e);if(e.local){$("hint").style.display="none";hud();lock()}}}}
  // heal at base / regen
