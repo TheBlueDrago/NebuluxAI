@@ -27,7 +27,7 @@ export async function onRequestPost(context) {
 
     if (kv && (await isBlocked(kv, "site", name))) return reply(removedPage("site"));
     if (page.removed) return reply(removedPage("site", page.removed));
-    return reply(preparePage(page.html, "site", name));
+    return reply(preparePage(page.html, "site", name, { badge: site.showBadge === true }));
   } catch (err) {
     return json({ error: (err && err.message) || "Could not load the site." }, 500);
   }

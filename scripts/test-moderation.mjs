@@ -5,6 +5,7 @@
 const glue = (...parts) => parts.join("");
 const R = new URL("../", import.meta.url).pathname;
 const { TERMS_VERSION } = await import(new URL("../cloudflare-lib/terms.js", import.meta.url).href);
+const prep = await import(new URL("../cloudflare-lib/pageserve.js", import.meta.url).href);
 const F = R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/";
 const store = new Map(); let writes = 0;
 const kv = {
@@ -70,7 +71,10 @@ assert(b.reports.length === 1 && b.reports[0].count === 2 && b.reports[0].report
 store.set("site:nova", "<html><body>hi</body></html>");
 let page = await serve.onRequestGet({ params: { kind: "site", name: "nova" }, env });
 let html = await page.text();
-assert(html.includes("Report") && html.includes("blackhole-checkout") && html.indexOf("Report") < html.indexOf("</body>"), "report link + bridge injected");
+assert(!html.includes("⚑ Report") && !html.includes("Made with Nebulux AI") && html.includes("blackhole-checkout"), "websites: bridge, no report link, no badge unless turned on");
+assert(prep.preparePage("<html><body></body></html>", "game", "g").includes("⚑ Report"), "games keep the report link");
+assert(prep.preparePage("<html><body></body></html>", "site", "s", { badge: true }).includes("Made with Nebulux AI"), "badge when the owner turns it on");
+assert(!prep.preparePage("<html><body></body></html>", "game", "g").includes("✨"), "no star in the badge");
 
 [s, b] = await j(admin.onRequestPost({ request: req({ action: "hide", kind: "site", name: "nova" }, "admintok"), env }));
 assert(b.reports.length === 0 && b.hidden.length === 1 && b.hidden[0].name === "nova", "hide clears reports, listed as hidden");
@@ -143,7 +147,7 @@ for (let i = 0; i < 3; i++) {
   served = await serveCafe();
 }
 const count = (h, t) => h.split(t).length - 1;
-assert(s === 200 && count(served, "blackhole-checkout") === 1 && count(served, "Report</a>") === 1, "one bridge + one report link after 3 edit/republish rounds");
+assert(s === 200 && count(served, "blackhole-checkout") === 1 && count(served, "Report</a>") === 0, "one bridge and no report link after 3 edit/republish rounds");
 assert(!store.get("site:cafe").includes("data-bh"), "injected scripts not stored");
 const legacyBridge = '<script>(function(){if(window.top!==window)return;window.addEventListener("message",function(e){var d=e.data;if(e.source!==window||!d||d.type!=="blackhole-checkout")return;location.href="x";});})();</script>';
 store.set("site:cafe", "<html><body><h1>Cafe</h1>" + legacyBridge + legacyBridge + "</body></html>");
@@ -219,9 +223,9 @@ store.delete("blocked:site:nova");
 store.set("site:nova", "<html><body><h1>Nova</h1></body></html>");
 entities.PublishedSite[0].html = "https://nebuluxai.pages.dev/published/site/nova?v=1";
 [s, b] = await getSite("nova");
-assert(s === 200 && b.html.includes("<h1>Nova</h1>") && b.html.includes("Report</a>") && b.html.includes("blackhole-checkout"), "KV site served with bridge + report link");
+assert(s === 200 && b.html.includes("<h1>Nova</h1>") && !b.html.includes("Report</a>") && b.html.includes("blackhole-checkout"), "KV site served with bridge");
 [s, b] = await getSite("inline");
-assert(b.html.includes("<h1>Inline</h1>") && b.html.includes("Report</a>"), "inline (direct-write) site gets the report link too");
+assert(b.html.includes("<h1>Inline</h1>") && b.html.includes("blackhole-checkout") && !b.html.includes("⚑ Report"), "inline (direct-write) site goes through the same page prep");
 [s, b] = await getSite("phish");
 assert(b.html.includes("has been removed") && b.html.includes("passwords") && !b.html.includes("evil.example"), "phishing page written straight into the record is not served");
 store.set("blocked:site:inline", "x");

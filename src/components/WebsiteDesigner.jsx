@@ -17,6 +17,7 @@ import GitHubPush from "@/components/designer/GitHubPush";
 import CustomDomain from "@/components/designer/CustomDomain";
 import GitHubOpen from "@/components/designer/GitHubOpen";
 import DownloadZip from "@/components/designer/DownloadZip";
+import BadgeToggle from "@/components/designer/BadgeToggle";
 import SheetSelect from "@/components/SheetSelect";
 import ThemeToggle from "@/components/ThemeToggle";
 import { siteLimit } from "@/lib/publishLimits";
@@ -1032,6 +1033,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                     ))}
                   </div>
                 </div>
+                <BadgeToggle siteName={siteName} userId={user?.id} />
               </div>
             ) : previewHtml ? (
               <iframe

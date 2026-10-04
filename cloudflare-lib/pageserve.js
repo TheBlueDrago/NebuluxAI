@@ -18,23 +18,30 @@ export function withCheckoutBridge(html, name) {
     `location.href="${APP_ORIGIN}/buy?"+new URLSearchParams({site:${site},product:String(d.productId||""),qty:String(d.quantity||1)});});})();</script>`);
 }
 
-// A small "Made with Nebulux AI" badge (brings visitors to the builder — the main way
-// new people discover it) and a "Report" link in the corner, so visitors can flag phishing, scams or abuse
-// (it opens the app's /report page). Only when the page is shown on its own — inside
-// the Blackhole Browser or Games front the app shows its own report button. Put in a
-// closed shadow root on its own tag, so the page's CSS can't restyle or hide it.
-export function withReportLink(html, kind, name) {
+// A small white "Made with Nebulux AI" badge in the corner (like Base44's), and for games a
+// "Report" link so visitors can flag abuse (it opens the app's /report page). Websites have no
+// Report link and show the badge only when the owner turns it on in the dashboard (showBadge
+// on the PublishedSite record). Only when the page is shown on its own. Put in a closed
+// shadow root on its own tag, so the page's CSS can't restyle or hide it.
+export function withReportLink(html, kind, name, { badge = true, report = true } = {}) {
+  if (!badge && !report) return html;
   const href = JSON.stringify(`${APP_ORIGIN}/report?${new URLSearchParams({ kind, name })}`).replace(/</g, "\\u003c");
-  const badge = JSON.stringify(`${APP_ORIGIN}/?${new URLSearchParams({ from: `${kind}:${name}` })}`).replace(/</g, "\\u003c");
+  const badgeHref = JSON.stringify(`${APP_ORIGIN}/?${new URLSearchParams({ from: `${kind}:${name}` })}`).replace(/</g, "\\u003c");
+  const links =
+    (badge ? `<a data-k="b" target="_blank" rel="noopener"><img alt="" src="${APP_ORIGIN}/logo-small.jpg">Made with Nebulux AI</a>` : "") +
+    (report ? `<a data-k="r" target="_blank" rel="noopener">⚑ Report</a>` : "");
   return beforeBodyEnd(html,
     `<script data-bh>(function(){if(window.top!==window)return;function add(){var h=document.createElement("bh-report");` +
-    `h.style.cssText="all:initial;position:fixed;right:8px;bottom:8px;z-index:2147483647";var r=h.attachShadow({mode:"closed"});` +
-    `var st='font:12px system-ui,sans-serif;color:#cbd5e1;background:rgba(15,23,42,.8);padding:4px 9px;border-radius:999px;` +
-    `text-decoration:none;border:1px solid rgba(148,163,184,.35);margin-left:6px';` +
-    `r.innerHTML='<a target="_blank" rel="noopener" style="'+st+'">\u2728 Made with Nebulux AI</a><a target="_blank" rel="noopener" style="'+st+'">\u2691 Report</a>';` +
-    `var a=r.querySelectorAll("a");a[0].href=${badge};a[1].href=${href};` +
+    `h.style.cssText="all:initial;position:fixed;right:12px;bottom:12px;z-index:2147483647";var r=h.attachShadow({mode:"closed"});` +
+    `r.innerHTML=${JSON.stringify(links).replace(/</g, "\\u003c")};` +
+    `var st="display:inline-flex;align-items:center;gap:7px;font:600 13px system-ui,-apple-system,sans-serif;color:#111827;background:#fff;` +
+    `padding:6px 12px 6px 6px;border-radius:10px;text-decoration:none;border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.15);margin-left:8px";` +
+    `r.querySelectorAll("a").forEach(function(a){a.style.cssText=st});var im=r.querySelector("img");` +
+    `if(im)im.style.cssText="width:20px;height:20px;border-radius:5px;object-fit:cover";` +
+    `var b=r.querySelector('[data-k="b"]'),rp=r.querySelector('[data-k="r"]');` +
     // Says whose page this is, so nobody mistakes a user's page for an official one.
-    `a[0].title="Made by someone using Nebulux AI, not by Nebulux AI itself";a[1].title="Report this page to Nebulux AI";` +
+    `if(b){b.href=${badgeHref};b.title="Made by someone using Nebulux AI, not by Nebulux AI itself"}` +
+    `if(rp){rp.href=${href};rp.style.padding="6px 12px";rp.title="Report this page to Nebulux AI"}` +
     `document.documentElement.appendChild(h);}` +
     `if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",add);else add();})();</script>`);
 }
@@ -114,8 +121,10 @@ export function rebrand(html) {
 }
 
 // The page as visitors get it: old copies of the added scripts removed, fresh ones added.
-export function preparePage(html, kind, name) {
+// opts.badge: show the "Made with Nebulux AI" badge on a website (off unless the owner turned it on).
+export function preparePage(html, kind, name, opts = {}) {
   let out = withShareTags(stripInjected(rebrand(html)));
   if (kind === "site") out = withFormInbox(withCheckoutBridge(out, name), name);
+  if (kind === "site") return withReportLink(out, kind, name, { badge: opts.badge === true, report: false });
   return withReportLink(out, kind, name);
 }
