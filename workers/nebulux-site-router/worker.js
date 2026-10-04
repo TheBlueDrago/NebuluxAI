@@ -260,14 +260,16 @@ export default {
     DOMAINS = (env && env.KV) || null;
     var url = new URL(request.url);
     var host = url.hostname.toLowerCase();
+    var root = ROOTS.find(function (r) {
+      return host === r || host.endsWith("." + r);
+    });
+    // People's own domains stay up even while nebuluxai.com is down for maintenance; only
+    // nebuluxai.com and name.nebuluxai.com go down (owner's request, 2026-10-04).
+    if (!root) return customDomain(host);
     var shut = await ownerBlock(request, env, url);
     if (shut) return shut;
     var down = await maintenance(request, env, url);
     if (down) return down;
-    var root = ROOTS.find(function (r) {
-      return host === r || host.endsWith("." + r);
-    });
-    if (!root) return customDomain(host);
     if (host === root || host === "www." + root) {
       var res = await fetch(request);
       // A code file from an older version (gone after an update) comes back from Pages as the app
