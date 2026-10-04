@@ -1141,6 +1141,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 function drawLobbyModes(){const el=$("lobbymodes");
  el.innerHTML=`<h2 style="font-size:34px;font-style:italic;color:#ffe14a">GAME MODES</h2><div style="margin:14px 0">${MODES.map((m,i)=>`<div class="mb ${i===modeI?"on":""}" data-lm="${i}">${m[0]}</div>`).join("")}</div>`+
   (!duel()&&!ranked()?`<div style="margin:6px 0">${["🧱 BUILD","🚫 NO BUILD"].map((f,i)=>`<div class="mb ${i===buildI?"on":""}" data-lbuild="${i}">${f}</div>`).join("")}</div>`:"")+
+  (!duel()&&MODES[modeI][1]>1?`<div style="margin:6px 0">${["🙅 NO FILL","👥 FILL"].map((f,i)=>`<div class="mb ${i===fillI?"on":""}" data-lfill="${i}">${f}</div>`).join("")}</div>`:"")+
   (duel()?`<div style="margin:6px 0">${["🤖 BOTS","🌐 REAL PEOPLE"].map((f,i)=>`<div class="mb ${i===oppI?"on":""}" data-lo="${i}">${f}</div>`).join("")}</div>`:"")+
   `<p style="opacity:.85;max-width:520px;margin:8px auto">${$("fillnote").textContent}</p><button id="lmPlay" style="font:900 24px Segoe UI,Arial;padding:14px 56px;border:0;border-radius:14px;background:linear-gradient(#ffe14a,#ffb000);color:#3a2300;box-shadow:0 6px 0 #b86d00;cursor:pointer">PLAY</button>
   <div><button id="lmClose" style="margin-top:16px;font:800 15px Arial;padding:8px 18px;border:0;border-radius:10px;background:#ff4b4b;color:#fff;cursor:pointer">✕ Back to the lobby</button></div>`}
@@ -1148,6 +1149,7 @@ document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;
  const lb=t.closest("[data-lb]");if(lb){unlockMouse();if(lb.dataset.lb==="modes"){drawPickers();drawLobbyModes();$("lobbymodes").style.display="block"}else{shopTab=lb.dataset.lb==="skins"?"figures":"guns";openShop()}return}
  const lm=t.closest("[data-lm]");if(lm){modeI=+lm.dataset.lm;try{localStorage.setItem("ss-mode",modeI)}catch(_){}drawPickers();drawLobbyModes();return}
  const lbd=t.closest("[data-lbuild]");if(lbd){buildI=+lbd.dataset.lbuild;try{localStorage.setItem("ss-build",buildI)}catch(_){}drawLobbyModes();return}
+ const lf=t.closest("[data-lfill]");if(lf){fillI=+lf.dataset.lfill;try{localStorage.setItem("ss-fill",fillI)}catch(_){}drawPickers();drawLobbyModes();return}
  const lo=t.closest("[data-lo]");if(lo){oppI=+lo.dataset.lo;try{localStorage.setItem("ss-opp",oppI)}catch(_){}drawPickers();drawLobbyModes();return}
  if(t.id==="lmClose"){$("lobbymodes").style.display="none";return}
  if(t.id==="lmPlay"){$("lobbymodes").style.display="none";leaveLobby();$("menu").style.display="none";start()}});
