@@ -324,7 +324,10 @@ function unlock(){try{if(document.exitPointerLock)document.exitPointerLock()}cat
 document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockElement===renderer.domElement;$("lockhint").style.display=!locked&&!TOUCH&&(MODE==="match"||MODE==="lobby")&&!panelOpen()&&!chatOpen&&$("queue").style.display!=="block"?"block":"none"});
 renderer.domElement.addEventListener("click",()=>{if(!locked&&!panelOpen())lock()});
 document.addEventListener("mousemove",e=>{if(!locked||!P)return;P.yaw-=e.movementX*.0025;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.0025))});
-renderer.domElement.addEventListener("mousedown",e=>{if(!locked)return;if(e.button===0){mouseL=true;attack()}if(e.button===2){mouseR=true;useItem()}});
+const RANGED=["bow","fireball","pearl","gapple"];
+renderer.domElement.addEventListener("mousedown",e=>{if(!locked||!P)return;
+ if(e.button===2){mouseR=true;if(MODE==="match"&&targetEnt(P,3.4))attack();else if(RANGED.includes(heldOf(P)))P.swingT=.25;else if(heldOf(P)==="sword")attack();else useItem()}
+ if(e.button===0){mouseL=true;if(RANGED.includes(heldOf(P)))useItem()}});
 addEventListener("mouseup",e=>{if(e.button===0)mouseL=false;if(e.button===2)mouseR=false});
 addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("wheel",e=>{if(!P||MODE!=="match")return;const n=hotbar(P).length;P.sel=(P.sel+(e.deltaY>0?1:-1)+n)%n;hud()});
@@ -395,9 +398,9 @@ function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=i%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
  let bi=0;const BN=["Steve","Alex","Blaze","Cobble","Pixel","Nova","Creeper","Diamond","Ender","Bolt","Rusty","Sky","Frost","Zap","Mango","Echo"];
- for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1)?"defend":"attack";e.think=Math.random()}
+ for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
  for(const e of ENTS)spawn(e);
- hud();updateView();msg("BEDWARS",3,`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
+ hud();updateView();msg("BEDWARS",3,`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
 function addEnt(e){e.mesh=makeChar(TEAMS[e.team].c,e.local?null:e.name);setArmorLook(e);if(e.local)e.mesh.visible=false;ENTS.push(e);return e}
 function spawn(e){const g=teamGeom(e.team);e.pos.set(g.spawn[0]+(Math.random()-.5)*2,3.05,g.spawn[1]+(Math.random()-.5)*2);e.vel.set(0,0,0);e.kb.set(0,0,0);e.hp=20;e.absorb=0;e.alive=true;e.yaw=Math.atan2(-g.ux,-g.uz);e.pitch=0;
  if(e.mesh){e.mesh.visible=!e.local;e.mesh.position.copy(e.pos)}if(e.bot){e.state="farm";e.goal=null;e.launched=false}}
@@ -575,12 +578,12 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;for(const n of NPCS)if(Math.hypot(n.x-P.pos.x,n.z-P.pos.z)<3.2&&Math.abs(P.pos.y-3)<2.5)return n;return null}
 function stepMatch(dt){matchT+=dt;P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
- const holding=(mouseL&&locked)||tHit;let br=false;
+ const holding=((mouseL&&locked)||tHit)&&!RANGED.includes(heldOf(P));let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
    $("breakbar").style.display="block";$("breakbar").firstChild.style.width=Math.min(100,breakProg*100)+"%";if(breakProg>=1){breakAt(P,h.x,h.y,h.z);breakPos=null;breakProg=0}}}
  if(!br){breakPos=null;breakProg=0;$("breakbar").style.display="none"}
- if(holding&&P.cd<=0&&targetEnt(P,3.4))attack();
- if(((mouseR&&locked)||tUse)&&P.alive&&["wool","wood","end"].includes(heldOf(P))){P.placeT=(P.placeT||0)-dt;if(P.placeT<=0){P.placeT=.18;placeFrom(P,heldOf(P))}}
+ if(((mouseR&&locked)||tHit)&&P.cd<=0&&targetEnt(P,3.4))attack();
+ if(((mouseR&&locked)||tUse)&&P.alive&&["wool","wood","end"].includes(heldOf(P))&&!targetEnt(P,3.4)){P.placeT=(P.placeT||0)-dt;if(P.placeT<=0){P.placeT=.18;placeFrom(P,heldOf(P))}}
  // respawn
  for(const e of ENTS){if(!e.alive&&!e.out&&(e.local||(e.bot&&isHost()))){e.respawnT-=dt;if(e.local&&e.respawnT>0)$("hint").style.display="block",$("hint").textContent=`Respawning in ${Math.ceil(e.respawnT)}…`;if(e.respawnT<=0){spawn(e);if(e.local){$("hint").style.display="none";hud();lock()}}}}
  // heal at base / regen
