@@ -47,6 +47,9 @@ canvas{display:block}
 .item .nm{font-weight:800;margin:4px 0}
 .item .co{font-size:13px;font-weight:700}
 .close{margin-top:14px;background:#ff4b4b}
+.crow{display:grid;grid-template-columns:1.4fr .6fr 1fr 1fr .6fr;gap:8px;align-items:center;background:#3b2c7a;border-radius:10px;padding:6px 10px;margin:5px 0;font-weight:800}
+.crow button{font:800 13px "Segoe UI",Arial;border:0;border-radius:8px;padding:7px 6px;cursor:pointer;color:#fff;background:#1e88e5}
+.crow button[disabled]{opacity:.35;cursor:default}
 #touch{position:fixed;inset:0;z-index:4;display:none;pointer-events:none}
 #joy{position:absolute;left:24px;bottom:110px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.35);pointer-events:auto}
 #joyk{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.5)}
@@ -87,6 +90,7 @@ canvas{display:block}
   <div class="tb" id="tShop" style="right:110px;bottom:230px;font-size:20px">🛒</div>
 </div>
 <div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">🛒 ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
+<div class="ov" id="chest"><div class="box"><h2 id="chtitle" style="margin:0;font-size:30px"></h2><p id="chsub" style="margin:6px 0 10px;font-weight:700;opacity:.85"></p><div id="chrows"></div><button class="btn close" id="chclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="upg"><div class="box"><h2 style="margin:0;font-size:30px">💎 TEAM UPGRADES</h2><div id="upgres" style="font-weight:800;margin-top:6px"></div><div class="items" id="upgitems"></div><button class="btn close" id="upgclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="queue" style="background:rgba(0,0,0,.4)"><div class="box"><h2 id="qtitle" style="margin:0;font-size:30px"></h2><p id="qtext" style="font-size:18px;font-weight:700"></p><div id="qlist" style="font-weight:700;opacity:.9"></div><button class="btn close" id="qcancel">✕ LEAVE QUEUE</button></div></div>
 <div class="ov" id="results" style="background:radial-gradient(circle at 50% 30%,rgba(90,40,200,.75),rgba(10,0,40,.92))"><div class="box"><h1 id="rtitle" style="font-size:52px;margin:6px 0;font-style:italic"></h1><p id="rtext" style="font-size:17px;font-weight:700;line-height:1.6"></p><button class="btn" id="ragain" style="background:linear-gradient(#ffe14a,#ffb000);color:#3a2300">PLAY AGAIN</button> <button class="btn" id="rlobby" style="background:linear-gradient(#b8ff9f,#3ed14a);color:#0b3010">🏠 BACK TO LOBBY</button></div></div>
@@ -134,6 +138,8 @@ defB(9,"Diamond block",lam(tex("#4fe3e0",["#36c9c6","#7af0ee"],37)),-1);
 defB(14,"Emerald block",lam(tex("#2fd36b",["#20b85a","#5be88e"],41)),-1);
 TEAMS.forEach((t,i)=>{defB(10+i,t.n+" wool",lam(tex(t.w[0],t.w,43+i,k=>{k.globalAlpha=.25;k.fillStyle="#000";for(let x=0;x<16;x+=2)k.fillRect(x,(x*7)%16,1,1);k.globalAlpha=1})),.35);
  defB(20+i,t.n+" bed",[lam(tex(t.w[0],t.w,53+i)),lam(tex("#f4f4f4",["#e6e6e6"],61)),lam(tex(t.w[0],t.w,53+i))][0],.5,.56)});
+defB(15,"Ender chest",lam(tex("#173a35",["#0f2925","#1f4d46","#2a1745"],71,k=>{k.fillStyle="#0b1d1a";k.fillRect(0,5,16,1);k.fillStyle="#4fe3c0";k.fillRect(7,4,2,3)})),-1);
+defB(16,"Team chest",lam(tex("#a87133",["#8d5c26","#b8823f"],73,k=>{k.fillStyle="#5b3a15";k.fillRect(0,0,16,1);k.fillRect(0,15,16,1);k.fillRect(0,5,16,1);k.fillStyle="#d9d9d9";k.fillRect(7,4,2,3)})),-1);
 const isBed=t=>t>=20&&t<24, isWool=t=>t>=10&&t<14;
 const boxGeo=new THREE.BoxGeometry(1,1,1).translate(.5,.5,.5);
 const bedGeo=new THREE.BoxGeometry(1,.56,1).translate(.5,.28,.5);
@@ -181,7 +187,7 @@ function rayEnt(o,d,e,max){const mn=[e.pos.x-.4,e.pos.y,e.pos.z-.4],mx=[e.pos.x+
 let AC=null;function sfx(f,d,type,vol){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type||"square";o.frequency.value=f;g.gain.value=vol||.05;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 
 // ---------- characters ----------
-const SWORDS=[{n:"Wood sword",c:0xa0723c,d:4,ic:"🗡️"},{n:"Stone sword",c:0x8d8d8d,d:5,ic:"🗡️"},{n:"Iron sword",c:0xe0e0e0,d:6,ic:"⚔️"},{n:"Diamond sword",c:0x4fe3e0,d:7,ic:"⚔️"}];
+const SWORDS=[{n:"Wood sword",c:0xa0723c,d:4,ic:"🗡️"},{n:"Stone sword",c:0x8d8d8d,d:5,ic:"🗡️"},{n:"Iron sword",c:0xe0e0e0,d:6,ic:"⚔️"},{n:"Diamond sword",c:0x4fe3e0,d:7,ic:"⚔️"},{n:"Rageblade",c:0xe0245e,d:9,ic:"🔱"}];
 const ARMORS=[{n:"Leather",red:.12},{n:"Chainmail",red:.3,c:0x9e9e9e},{n:"Iron",red:.45,c:0xdcdcdc},{n:"Diamond",red:.6,c:0x4fe3e0}];
 function label(text,color,scale){const c=document.createElement("canvas");c.width=256;c.height=64;const k=c.getContext("2d");k.fillStyle="rgba(0,0,0,.45)";k.fillRect(0,8,256,48);k.font="bold 34px Segoe UI, Arial";k.textAlign="center";k.fillStyle=color||"#fff";k.fillText(text,128,45);
  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(2*(scale||1),.5*(scale||1),1);s.renderOrder=9;return s}
@@ -197,7 +203,7 @@ function makeChar(col,name,robe){const g=new THREE.Group();const M=c=>new THREE.
  if(name){const tg=label(name,TEAMS.find(t=>t.c===col)?TEAMS.find(t=>t.c===col).css:"#fff",.9);tg.position.y=2.25;g.add(tg);g.userData.tag=tg}
  g.userData={...g.userData,la,ra,ll,rl,held,shirt,pants,body};scene.add(g);return g}
 function heldModel(kind,tier,team){const g=new THREE.Group();const M=c=>new THREE.MeshLambertMaterial({color:c});
- if(kind==="sword"){const b=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,.75),M(SWORDS[tier].c));b.position.z=-.38;g.add(b);const h=new THREE.Mesh(new THREE.BoxGeometry(.26,.06,.06),M(0x5b3a1e));g.add(h)}
+ if(kind==="sword"){const b=new THREE.Mesh(new THREE.BoxGeometry(tier===4?.14:.08,.08,tier===4?1:.75),new THREE.MeshLambertMaterial({color:SWORDS[tier].c,emissive:tier===4?0x6a0020:0}));b.position.z=-.38;g.add(b);const h=new THREE.Mesh(new THREE.BoxGeometry(.26,.06,.06),M(0x5b3a1e));g.add(h)}
  else if(kind==="bow"){const b=new THREE.Mesh(new THREE.TorusGeometry(.3,.03,4,10,Math.PI),M(0x8d6634));b.rotation.y=Math.PI/2;g.add(b)}
  else if(kind==="gapple"){g.add(new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xffd54a)))}
  else if(kind==="fireball"){g.add(new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),new THREE.MeshBasicMaterial({color:0xff7a1a})))}
@@ -229,7 +235,12 @@ function buildArena(){clearWorld();scene.background.setHex(0x8ccfff);scene.fog.c
   setBlock(g.gen[0],2,g.gen[1],8);addGen(g.gen[0]+.5,g.gen[1]+.5,"iron",i);addGen(g.gen[0]+.5,g.gen[1]+.5,"gold",i);
   addNPC(g.shop[0]+.5,g.shop[1]+.5,"shop",i);addNPC(g.upg[0]+.5,g.upg[1]+.5,"upg",i);
   // a little roof over the spawn and some cover blocks
-  for(const s of[-1,1])setBlock(g.cx+g.px*3*s,3,g.cz+g.pz*3*s,6)}
+  for(const s of[-1,1])setBlock(g.cx+g.px*3*s,3,g.cz+g.pz*3*s,6);
+  // two chests behind the spawn: your own ender chest, and the team chest anyone can open
+  const ex=g.cx+g.px*2-g.ux*3,ez=g.cz+g.pz*2-g.uz*3,tx=g.cx-g.px*2-g.ux*3,tz=g.cz-g.pz*2-g.uz*3;
+  setBlock(ex,3,ez,15);setBlock(tx,3,tz,16);
+  NPCS.push({x:ex+.5,z:ez+.5,kind:"ender",team:i});NPCS.push({x:tx+.5,z:tz+.5,kind:"tchest",team:i});
+  const l1=label("🟪 ENDER CHEST","#c9a6ff",.8);l1.position.set(ex+.5,4.6,ez+.5);DEC.add(l1);const l2=label("📦 TEAM CHEST","#ffd27a",.8);l2.position.set(tx+.5,4.6,tz+.5);DEC.add(l2)}
  for(const sx of[-1,1])for(const sz of[-1,1]){const cx=sx*30,cz=sz*30;island(cx,cz,3,2,1,true);setBlock(cx,2,cz,9);addGen(cx+.5,cz+.5,"diamond",-1)}
  island(0,0,7,2,6,true);for(const sx of[-1,1]){setBlock(sx*3,2,0,14);addGen(sx*3+.5,.5,"emerald",-1)}
  for(const[x,z]of[[4,4],[-4,-4],[4,-4],[-4,4]])for(let y=5;y<=7;y++)setBlock(x,y,z,6)}
@@ -271,7 +282,7 @@ function addNPC(x,z,kind,team){const m=makeChar(0x000000,null,kind==="shop"?0x2e
 // ---------- shop ----------
 const SHOP={
  Blocks:[["wool","🧶","Wool x16",{iron:4},e=>{e.blocks.wool+=16}],["wood","🪵","Wood x16",{gold:4},e=>{e.blocks.wood+=16}],["end","🟨","End stone x12",{iron:24},e=>{e.blocks.end+=12}]],
- Weapons:[["s1","🗡️","Stone sword",{iron:10},e=>{e.sword=Math.max(e.sword,1)},e=>e.sword>=1],["s2","⚔️","Iron sword",{gold:7},e=>{e.sword=Math.max(e.sword,2)},e=>e.sword>=2],["s3","💎","Diamond sword",{emerald:4},e=>{e.sword=3},e=>e.sword>=3]],
+ Weapons:[["s1","🗡️","Stone sword",{iron:10},e=>{e.sword=Math.max(e.sword,1)},e=>e.sword>=1],["s2","⚔️","Iron sword",{gold:7},e=>{e.sword=Math.max(e.sword,2)},e=>e.sword>=2],["s3","💎","Diamond sword",{emerald:4},e=>{e.sword=Math.max(e.sword,3)},e=>e.sword>=3],["s4","🔱","Rageblade",{emerald:5,diamond:5,iron:50,gold:10},e=>{e.sword=4},e=>e.sword>=4]],
  Armor:[["a1","⛓️","Chainmail armor",{iron:24},e=>{e.armor=Math.max(e.armor,1)},e=>e.armor>=1],["a2","🛡️","Iron armor",{gold:12},e=>{e.armor=Math.max(e.armor,2)},e=>e.armor>=2],["a3","💠","Diamond armor",{emerald:6},e=>{e.armor=3},e=>e.armor>=3]],
  Ranged:[["bow","🏹","Bow",{gold:12},e=>{e.bow=true},e=>e.bow],["arrows","➶","Arrows x8",{gold:2},e=>{e.arrows+=8}]],
  Utility:[["gapple","🍎","Golden apple",{gold:3},e=>{e.gapple++}],["fireball","🔥","Fireball",{iron:40},e=>{e.fireball++}],["pearl","🟢","Ender pearl",{emerald:4},e=>{e.pearl++}]]};
@@ -289,11 +300,30 @@ function drawUpg(){$("upgres").innerHTML=Object.entries(P.res).map(([k,v])=>`${R
  $("upgitems").innerHTML=UPGS.map(([id,ic,nm,ds,costs],i)=>{const lv=T[id],max=lv>=costs.length,c=max?0:costs[lv];return`<div class="item ${!max&&P.res.diamond>=c?"":"no"}" data-upg="${i}"><div class="ic">${ic}</div><div class="nm">${nm} ${costs.length>1?(lv+"/"+costs.length):""}</div><div class="co">${ds}</div><div class="co" style="margin-top:4px">${max?"✔ Maxed":c+" 💎"}</div></div>`}).join("")}
 function buyUpg(i){const[id,,nm,,costs]=UPGS[i];const T=TEAM_ST[P.team];const lv=T[id];if(lv>=costs.length||P.res.diamond<costs[lv]){sfx(160,.15);return}P.res.diamond-=costs[lv];T[id]=lv+1;send({k:"upg",team:P.team,u:id,lv:lv+1});sfx(990,.1);msg(`Team upgrade: ${nm}${costs.length>1?" "+(lv+1):""}`,1.2);drawUpg();hud()}
 function openPanel(id){if(!P||!P.alive)return;unlock();$(id).style.display="block";id==="shop"?drawShop():drawUpg()}
-function closePanels(){$("shop").style.display="none";$("upg").style.display="none"}
-const panelOpen=()=>$("shop").style.display==="block"||$("upg").style.display==="block";
+function closePanels(){$("shop").style.display="none";$("upg").style.display="none";$("chest").style.display="none"}
+const panelOpen=()=>["shop","upg","chest"].some(id=>$(id).style.display==="block");
 $("shop").addEventListener("click",e=>{const t=e.target.closest("[data-tab]");if(t){shopTab=t.dataset.tab;drawShop();return}const b=e.target.closest("[data-buy]");if(b)buy(+b.dataset.buy)});
 $("upg").addEventListener("click",e=>{const b=e.target.closest("[data-upg]");if(b)buyUpg(+b.dataset.upg)});
 $("shopclose").onclick=$("upgclose").onclick=()=>{closePanels();lock()};
+
+// ---------- chests ----------
+// Ender chest: only yours (every ender chest opens the same one) and it keeps everything when you die.
+// Team chest: one per island, shared with everyone (your teammates, and anyone raiding your base).
+const CH_ITEMS=[["iron","⬜","Iron"],["gold","🟨","Gold"],["diamond","💎","Diamonds"],["emerald","🟩","Emeralds"],["wool","🧶","Wool"],["wood","🪵","Wood"],["end","🟨","End stone"],["arrows","➶","Arrows"],["gapple","🍎","Golden apples"],["fireball","🔥","Fireballs"],["pearl","🟢","Ender pearls"]];
+let ENDER={},TCHEST=[{},{},{},{}],chestAt=null;
+function itemGet(e,k){return k in e.res?e.res[k]:k in e.blocks?e.blocks[k]:e[k]||0}
+function itemSet(e,k,v){if(k in e.res)e.res[k]=v;else if(k in e.blocks)e.blocks[k]=v;else e[k]=v}
+function chestStore(){return chestAt.kind==="ender"?ENDER:TCHEST[chestAt.team]}
+function drawChest(){const st=chestStore(),mine=chestAt.kind==="ender";
+ $("chtitle").textContent=mine?"🟪 YOUR ENDER CHEST":`📦 ${TEAMS[chestAt.team].n.toUpperCase()} TEAM CHEST`;
+ $("chsub").textContent=mine?"Only you can open this. Everything here stays safe when you die.":(chestAt.team===P.team?"Your teammates can use this too, and so can anyone who raids your base.":"Another team's chest: take what you want!");
+ $("chrows").innerHTML=`<div class="crow" style="background:none;padding:0 10px;font-size:12px;opacity:.8"><span>Item</span><span>You</span><span></span><span></span><span>Chest</span></div>`+
+  CH_ITEMS.map(([k,ic,nm])=>{const a=itemGet(P,k),b=st[k]||0;return`<div class="crow"><span>${ic} ${nm}</span><span>${a}</span><button data-put="${k}" ${a?"":"disabled"}>Put in ➡</button><button data-take="${k}" ${b?"":"disabled"} style="background:#43a047">⬅ Take</button><span>${b}</span></div>`}).join("")}
+function chestMove(k,put){const st=chestStore();if(put){const n=itemGet(P,k);if(!n)return;st[k]=(st[k]||0)+n;itemSet(P,k,0)}else{const n=st[k]||0;if(!n)return;itemSet(P,k,itemGet(P,k)+n);st[k]=0}
+ if(chestAt.kind==="tchest")send({k:"chest",team:chestAt.team,c:st});sfx(put?500:700,.05,"triangle",.05);drawChest();hud()}
+$("chest").addEventListener("click",e=>{const a=e.target.closest("[data-put]"),b=e.target.closest("[data-take]");if(a)chestMove(a.dataset.put,true);if(b)chestMove(b.dataset.take,false)});
+$("chclose").onclick=()=>{closePanels();lock()};
+function openNear(n){if(!n)return;if(n.kind==="shop"||n.kind==="upg")openPanel(n.kind);else{chestAt=n;unlock();$("chest").style.display="block";drawChest()}}
 
 // ---------- hotbar ----------
 function hotbar(e){const h=[["sword","sword"]];if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.gapple)h.push(["gapple","gapple"]);if(e.fireball)h.push(["fireball","fireball"]);if(e.pearl)h.push(["pearl","pearl"]);return h.map(x=>x[0])}
@@ -332,7 +362,7 @@ addEventListener("mouseup",e=>{if(e.button===0)mouseL=false;if(e.button===2)mous
 addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("wheel",e=>{if(!P||MODE!=="match")return;const n=hotbar(P).length;P.sel=(P.sel+(e.deltaY>0?1:-1)+n)%n;hud()});
 addEventListener("keydown",e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;keys[e.code]=true;
-  if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else nearNPC()&&openPanel(nearNPC().kind==="shop"?"shop":"upg");return}
+  if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else openNear(nearNPC());return}
  if(e.code==="Escape"&&panelOpen()){closePanels();return}
  if((e.code==="KeyT"||e.code==="Enter")&&MODE==="lobby"){e.preventDefault();openChat();return}
  if(e.code.startsWith("Digit")&&P&&MODE==="match"){const n=+e.code.slice(5)-1;if(n<hotbar(P).length){P.sel=n;hud()}}});
@@ -346,7 +376,7 @@ if(TOUCH){$("touch").style.display="block";const jb=$("joy"),jk=$("joyk");let ji
  renderer.domElement.addEventListener("touchstart",e=>{const t=e.changedTouches[0];if(t.clientX>innerWidth*.35){lid=t.identifier;lx=t.clientX;ly=t.clientY}},{passive:true});
  const hold=(id,on,off)=>{$(id).addEventListener("touchstart",e=>{e.preventDefault();on()},{passive:false});$(id).addEventListener("touchend",e=>{e.preventDefault();off&&off()},{passive:false})};
  hold("tJump",()=>keys.Space=true,()=>keys.Space=false);hold("tHit",()=>{tHit=true;attack()},()=>tHit=false);hold("tUse",()=>{tUse=true;useItem()},()=>tUse=false);
- hold("tShop",()=>{const n=nearNPC();if(n)openPanel(n.kind==="shop"?"shop":"upg")})}
+ hold("tShop",()=>openNear(nearNPC()))}
 
 // ---------- chat (lobby) ----------
 let chatOpen=false;
@@ -393,7 +423,7 @@ $("practice").onclick=()=>{unlock();startMatch("bw2",null)};
 
 // ---------- match ----------
 function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();closePanels();$("lobbyui").style.display="none";$("lobbytop").style.display="none";$("chat").style.display="none";$("results").style.display="none";
- teamSize={bw1:1,bw2:2,bw4:4}[q]||2;MATCH={q};buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
+ teamSize={bw1:1,bw2:2,bw4:4}[q]||2;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
  const people=players&&players.length?players:[{id:"me",name:NAME}];if(!players)NET=null;
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=i%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
@@ -439,7 +469,7 @@ function lookDir(e){return new THREE.Vector3(-Math.sin(e.yaw)*Math.cos(e.pitch),
 function targetEnt(e,max){const o=eye(e),d=lookDir(e);let best=null,bd=max;for(const x of ENTS){if(x===e||!x.alive||x.team===e.team)continue;const t=rayEnt(o,d,x,bd);if(t!=null&&t<bd){bd=t;best=x}}
  const b=ray(o,d,max);if(best&&b&&b.t<bd)return null;return best}
 let breakPos=null,breakProg=0;
-function attack(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;P.swingT=.25;VIEW.userData.sw=.25;const t=targetEnt(P,3.4);if(t&&P.cd<=0){P.cd=.4;hitEnt(P,t,damageFrom(P,SWORDS[P.sword].d))}}
+function attack(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;P.swingT=.25;VIEW.userData.sw=.25;const t=targetEnt(P,3.4);if(t&&P.cd<=0){P.cd=P.sword===4?.3:.4;hitEnt(P,t,damageFrom(P,SWORDS[P.sword].d))}}
 function hitEnt(att,t,dmg){const dx=t.pos.x-att.pos.x,dz=t.pos.z-att.pos.z,l=Math.hypot(dx,dz)||1;const kx=dx/l*8,kz=dz/l*8;
  if(t.local||(t.bot&&isHost()))hurt(t,dmg,att.id,kx,kz);else{sendTo(t,{k:"hit",to2:t.id,d:dmg,kx,kz,by:att.id});t.kb.x+=kx*.2;t.kb.z+=kz*.2}
  if(att.local)sfx(300,.05,"square",.05)}
@@ -539,6 +569,7 @@ function onNet(ev){let m;try{m=JSON.parse(ev.data)}catch(e){return}
  if(k==="hit"){const e=entById(m.to2);if(!e)return;if(e.local||(e.bot&&isHost()))hurt(e,Math.min(20,+m.d||0),m.by,+m.kx||0,+m.kz||0);return}
  if(k==="die"){const e=entById(m.id);if(!e||e.local)return;e.alive=false;if(e.mesh)e.mesh.visible=false;if(m.final)e.out=true;const killer=entById(m.by);announceDeath(e,killer,m.final);if(killer)giveLoot(killer,m.loot);hud();checkEnd();return}
  if(k==="upg"){const T=TEAM_ST[m.team|0];if(T&&m.u in T)T[m.u]=Math.max(T[m.u],m.lv|0);return}
+ if(k==="chest"){if(m.c&&typeof m.c==="object"&&TCHEST[m.team|0]){const c={};for(const[k2]of CH_ITEMS)c[k2]=Math.max(0,Math.min(9999,m.c[k2]|0));TCHEST[m.team|0]=c;if(chestAt&&chestAt.kind==="tchest"&&chestAt.team===(m.team|0)&&$("chest").style.display==="block")drawChest()}return}
  if(k==="take"){const g=GENS[m.g|0];if(g)g.stock=0;return}
  if(k==="proj"){const p={kind:m.kind,owner:entById(m.from)||{},pos:new THREE.Vector3(m.x,m.y,m.z),vel:new THREE.Vector3(m.vx,m.vy,m.vz),life:4,mine:false};p.mesh=projMesh(m.kind);scene.add(p.mesh);PROJ.push(p);return}
  if(k==="end"){endMatch(m.team);return}}
@@ -575,7 +606,7 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
   if(inside&&portalCd<=0&&!QWS){portalCd=3;P.pos.set(.5,3.05,4);if(pt.q==="bots")startMatch("bw2",null);else joinQueue(pt.q)}}
  for(const p of lobbyPeers.values()){const old=p.mesh.position.clone();p.mesh.position.lerp(p.to,Math.min(1,dt*10));p.mesh.rotation.y=p.yaw;p.vel.copy(p.mesh.position).sub(old).divideScalar(dt||1);animate({mesh:p.mesh,vel:p.vel,heldKind:"",walk:p.walk},dt)}
  netT-=dt;if(netT<=0&&LWS&&LWS.readyState===1){netT=.12;LWS.send(JSON.stringify({t:"bw",k:"lp",x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(2),n:NAME}))}}
-function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;for(const n of NPCS)if(Math.hypot(n.x-P.pos.x,n.z-P.pos.z)<3.2&&Math.abs(P.pos.y-3)<2.5)return n;return null}
+function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;let best=null,bd=3.2;for(const n of NPCS){const d=Math.hypot(n.x-P.pos.x,n.z-P.pos.z);if(d<(n.kind==="ender"||n.kind==="tchest"?2.3:bd)&&d<bd&&Math.abs(P.pos.y-3)<2.5){bd=d;best=n}}return best}
 function stepMatch(dt){matchT+=dt;P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
  const holding=((mouseL&&locked)||tHit)&&!RANGED.includes(heldOf(P));let br=false;
@@ -605,7 +636,7 @@ function stepMatch(dt){matchT+=dt;P.cd-=dt;
   if(isHost()){send({k:"b",bots:ENTS.filter(e=>e.bot).map(b=>[b.id,+b.pos.x.toFixed(2),+b.pos.y.toFixed(2),+b.pos.z.toFixed(2),+b.yaw.toFixed(2),Math.ceil(b.hp),b.alive?1:0,b.sword,b.swingT>.15?1:0,b.out?1:0,b.armor,b.heldKind?b.heldKind.replace(/\d+$/,""):"sword"]),g:GENS.map(g=>g.stock)})}}
  P.swingT-=dt;
  // HUD bits
- const n=nearNPC();if(n&&!panelOpen()&&P.alive){$("hint").style.display="block";$("hint").textContent=TOUCH?`Tap 🛒 for the ${n.kind==="shop"?"item shop":"team upgrades"}`:`Press E for the ${n.kind==="shop"?"item shop":"team upgrades"}`}else if(P.alive)$("hint").style.display="none";
+ const n=nearNPC();if(n&&!panelOpen()&&P.alive){$("hint").style.display="block";const what={shop:"item shop",upg:"team upgrades",ender:"your ender chest",tchest:"team chest"}[n.kind];$("hint").textContent=TOUCH?`Tap 🛒 for the ${what}`:`Press E for the ${what}`}else if(P.alive)$("hint").style.display="none";
  const mm=Math.floor(matchT/60),ss=Math.floor(matchT%60);$("timer").textContent=`${QNAME[MATCH.q].split(" ·")[0]} · ${mm}:${String(ss).padStart(2,"0")}`;
  if(Math.random()<dt*2)hud();updateView()}
 
