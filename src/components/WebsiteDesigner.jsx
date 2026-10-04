@@ -16,7 +16,6 @@ import AiChooser from "@/components/AiChooser";
 import GitHubPush from "@/components/designer/GitHubPush";
 import CustomDomain from "@/components/designer/CustomDomain";
 import GitHubOpen from "@/components/designer/GitHubOpen";
-import CodeEditor from "@/components/designer/CodeEditor";
 import DownloadZip from "@/components/designer/DownloadZip";
 import SheetSelect from "@/components/SheetSelect";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -1003,27 +1002,10 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             >
               Dashboard
             </button>
-            <button
-              onClick={() => setPreviewMode("code")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                previewMode === "code" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Edit code
-            </button>
           </div>
 
           <div ref={previewBoxRef} className="flex-1 relative overflow-hidden bg-white">
-            {previewMode === "code" ? (
-              <CodeEditor
-                html={lastAi ? extractHtml(lastAi.content) : ""}
-                disabled={loading}
-                onApply={(html) => {
-                  pushMsg({ role: "ai", content: html, note: "You edited the code." });
-                  setPreviewMode("preview");
-                }}
-              />
-            ) : previewMode === "dashboard" ? (
+            {previewMode === "dashboard" ? (
               <div className="w-full h-full bg-slate-950 p-6 overflow-y-auto">
                 <h2 className="text-lg font-semibold text-white">{siteName}</h2>
                 <p className="text-slate-400 text-sm mt-1">
