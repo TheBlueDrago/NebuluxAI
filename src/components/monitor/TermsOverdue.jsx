@@ -37,6 +37,11 @@ export default function TermsOverdue({ onOpenUser }) {
           <p className="text-sm text-slate-300">
             {data.users.length} of {data.checked} active accounts (removed accounts and yours aren't counted)
           </p>
+          {typeof data.accepted === "number" && (
+            <p className="text-sm text-slate-300 mt-1">
+              ✅ {data.accepted} accepted · ⏳ {data.checked - data.accepted} haven't yet
+            </p>
+          )}
           <ul className="mt-2 max-h-96 overflow-y-auto divide-y divide-slate-800 text-sm">
             {data.users.slice(0, shown).map((u) => (
               <li key={u.id} className="py-1.5 flex items-center gap-2">

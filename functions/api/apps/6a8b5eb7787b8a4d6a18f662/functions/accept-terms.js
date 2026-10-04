@@ -5,7 +5,7 @@
 //
 // { action: "get" }               -> { accepted, version, returning, deadline }
 // { action: "accept", version }   -> { accepted: true }
-// { action: "overdue" } (admins)  -> { users: [{ id, email, name, lastAccepted, created }] }
+// { action: "overdue" } (admins)  -> { users: [{ id, email, name, lastAccepted, created }], checked, accepted }
 //
 // KV (PUBLISHED_HTML): terms:<userId> = { version, at } (the latest acceptance).
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
@@ -48,14 +48,15 @@ export async function onRequestPost(context) {
       // Accounts already removed in Monitor don't count (they're gone), nor admins or the owner's own.
       const removed = new Set(((await kv.get("removed-users", "json")) || []).map((r) => r.userId));
       const out = [];
-      let checked = 0;
+      let checked = 0, accepted = 0;
       for (const u of users) {
         if (!u || !u.id || u.role === "admin" || exempt(u) || u.removed === true || removed.has(u.id)) continue;
         checked++;
         const rec = await kv.get(`terms:${u.id}`, "json");
+        if (rec && rec.version === TERMS_VERSION) accepted++;
         if (isOverdue(rec, parse(u.created_date))) out.push({ id: u.id, email: u.email || "", name: u.full_name || "", lastAccepted: (rec && rec.at) || null, created: u.created_date || null });
       }
-      return json({ users: out, checked });
+      return json({ users: out, checked, accepted });
     }
 
     if (body.action === "accept") {
