@@ -446,14 +446,24 @@ function useItem(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;const h=h
  if(h==="bow"&&P.arrows>0&&P.cd<=0){P.arrows--;P.cd=.6;shoot(P,"arrow");hud();return}
  if(h==="fireball"&&P.fireball>0&&P.cd<=0){P.fireball--;P.cd=.5;shoot(P,"fireball");hud();return}
  if(h==="pearl"&&P.pearl>0&&P.cd<=0){P.pearl--;P.cd=.5;shoot(P,"pearl");hud();return}}
+// Where a block goes: on the face you aim at, or else in the air where you aim, as long as it
+// touches another block (easy bridging). Falls back to the spot in front of your feet.
+function touches(x,y,z){return!!(getB(x+1,y,z)||getB(x-1,y,z)||getB(x,y+1,z)||getB(x,y-1,z)||getB(x,y,z+1)||getB(x,y,z-1))}
+function freeCell(x,y,z){if(getB(x,y,z)||y>24||y<-6)return false;for(const o of ENTS)if(o.alive&&o.pos.x+.3>x&&o.pos.x-.3<x+1&&o.pos.z+.3>z&&o.pos.z-.3<z+1&&o.pos.y+1.8>y&&o.pos.y<y+1)return false;return true}
+function airSpot(e){const o=eye(e),d=lookDir(e);const hit=ray(o,d,5);if(hit){const c=[hit.x+hit.nx,hit.y+hit.ny,hit.z+hit.nz];if(freeCell(...c))return c}
+ for(let t=1;t<=(hit?hit.t:4.5);t+=.2){const x=Math.floor(o.x+d.x*t),y=Math.floor(o.y+d.y*t),z=Math.floor(o.z+d.z*t);if(freeCell(x,y,z)&&touches(x,y,z))return[x,y,z]}
+ const fx=-Math.sin(e.yaw),fz=-Math.cos(e.yaw);for(const r of[.9,.5,1.4]){const x=Math.floor(e.pos.x+fx*r),y=Math.floor(e.pos.y)-1,z=Math.floor(e.pos.z+fz*r);if(freeCell(x,y,z)&&touches(x,y,z))return[x,y,z]}return null}
 function placeFrom(e,kind,at){if(e.blocks[kind]<=0)return false;let x,y,z;
- if(at){[x,y,z]=at}else{const hit=ray(eye(e),lookDir(e),5);if(!hit)return false;x=hit.x+hit.nx;y=hit.y+hit.ny;z=hit.z+hit.nz}
+ if(at){[x,y,z]=at}else{const c=airSpot(e);if(!c)return false;[x,y,z]=c}
  if(getB(x,y,z)||y>24||y<-6)return false;
  for(const o of ENTS)if(o.alive&&o.pos.x+.3>x&&o.pos.x-.3<x+1&&o.pos.z+.3>z&&o.pos.z-.3<z+1&&o.pos.y+1.8>y&&o.pos.y<y+1)return false;
  // not right on top of a generator or shop
  const t=kind==="wool"?10+e.team:kind==="wood"?4:5;setBlock(x,y,z,t,true);e.blocks[kind]--;send({k:"blk",x,y,z,b:t});if(e.local){sfx(220,.05,"triangle",.05);e.swingT=.2;VIEW.userData.sw=.2;hud()}return true}
-function breakAt(e,x,y,z){const t=getB(x,y,z);if(!t)return;if(isBed(t)){const team=t-20;if(team===e.team){if(e.local)msg("That's your own bed!",1);return}breakBed(team,e);send({k:"bed",team,by:e.id});return}
- setBlock(x,y,z,0);send({k:"blk",x,y,z,b:0});if(e.local)sfx(180,.06,"square",.05)}
+function breakAt(e,x,y,z,blast){const t=getB(x,y,z);if(!t)return;if(isBed(t)){const team=t-20;if(team===e.team){if(e.local)msg("That's your own bed!",1);return}breakBed(team,e);send({k:"bed",team,by:e.id});return}
+ setBlock(x,y,z,0);send({k:"blk",x,y,z,b:0});
+ // the block you break goes into your inventory (not ones blown up by a fireball)
+ if(!blast){const kind=isWool(t)?"wool":t===4?"wood":t===5?"end":null;if(kind){e.blocks[kind]++;if(e.local)hud()}}
+ if(e.local)sfx(180,.06,"square",.05)}
 function hardness(e,t){return BDEF[t].hard*(1-.25*TEAM_ST[e.team].haste)}
 
 // projectiles: the thrower decides what they hit
@@ -467,7 +477,7 @@ function stepProj(dt){for(let i=PROJ.length-1;i>=0;i--){const p=PROJ[i];p.life-=
  p.pos.addScaledVector(p.vel,dt);p.mesh.position.copy(p.pos);p.mesh.lookAt(p.pos.clone().add(p.vel));if(p.life<=0||p.pos.y<-40)kill(i)}
  function kill(i){scene.remove(PROJ[i].mesh);PROJ.splice(i,1)}}
 function explode(p,at){sfx(80,.4,"sawtooth",.1);const cx=Math.floor(at.x),cy=Math.floor(at.y),cz=Math.floor(at.z);
- for(let x=-2;x<=2;x++)for(let y=-2;y<=2;y++)for(let z=-2;z<=2;z++){if(x*x+y*y+z*z>5)continue;const t=getB(cx+x,cy+y,cz+z);if(t&&PLACED.has(K(cx+x,cy+y,cz+z))&&(isWool(t)||t===4))breakAt(p.owner,cx+x,cy+y,cz+z)}
+ for(let x=-2;x<=2;x++)for(let y=-2;y<=2;y++)for(let z=-2;z<=2;z++){if(x*x+y*y+z*z>5)continue;const t=getB(cx+x,cy+y,cz+z);if(t&&PLACED.has(K(cx+x,cy+y,cz+z))&&(isWool(t)||t===4))breakAt(p.owner,cx+x,cy+y,cz+z,true)}
  for(const e of ENTS){if(!e.alive)continue;const dx=e.pos.x-at.x,dz=e.pos.z-at.z,dd=Math.hypot(dx,e.pos.y+.9-at.y,dz);if(dd>3.5)continue;const l=Math.hypot(dx,dz)||1;
   const own=e===p.owner;if(own||e.team!==p.owner.team){if(e.local||(e.bot&&isHost()))hurt(e,own?1:3,own?null:p.owner.id,dx/l*14,dz/l*14);else sendTo(e,{k:"hit",to2:e.id,d:3,kx:dx/l*14,kz:dz/l*14,by:p.owner.id})}}}
 
