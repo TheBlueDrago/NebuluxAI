@@ -10,7 +10,10 @@ const WAIT_MS = 12000; // a match starts this long after the first player starts
 const MAX_MSG = 24000; // bytes (a 100-player snapshot)
 const MAX_RATE = 60; // messages per second per player
 const ALLOWED_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*nebuluxai\.com$|^https:\/\/([a-z0-9-]+\.)*nebuluxai\.pages\.dev$|^null$/;
-const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat", "vote", "map", "build", "hitBuild"]);
+const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat", "vote", "map", "build", "hitBuild", "bw"]);
+// Bedwars (its own room, ?game=bedwars): 4 teams of 1, 2 or 4. Real people are put in the match;
+// bots fill the empty spots. A match starts when it's full, or WAIT_MS after the first person waits.
+const TIMED = { br: MAX_PLAYERS, bw1: 4, bw2: 8, bw4: 16 };
 // Quick chat only: a number for one of the game's fixed messages ("GG!", "Nice shot!"...), never
 // typed text, so nobody can send anything unkind or personal.
 const QUICK_COUNT = 12;
@@ -59,7 +62,7 @@ export default {
     if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
     const origin = request.headers.get("Origin") || "null";
     if (!ALLOWED_ORIGIN.test(origin)) return new Response("Forbidden", { status: 403 });
-    const id = env.ARENA.idFromName("storm-strike");
+    const id = env.ARENA.idFromName(url.searchParams.get("game") === "bedwars" ? "bedwars" : "storm-strike");
     return env.ARENA.get(id).fetch(request);
   },
 };
@@ -123,18 +126,18 @@ export class Arena {
         this.send(ws, { t: "lobby", you: a.id, players: others.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig })), top: (await this.state.storage.get("top2")) || [], topR: (await this.state.storage.get("topR")) || [], topW: (await this.state.storage.get("topW")) || [] });
         return;
       }
-      a.q = DUEL[m.q] ? m.q : "br";
+      a.q = DUEL[m.q] || TIMED[m.q] ? m.q : "br";
       a.waitSince = Date.now();
       ws.serializeAttachment(a);
-      if (a.q !== "br") {
+      if (DUEL[a.q]) {
         const need = DUEL[a.q];
         const line = this.sockets().filter((s) => s.a.joined && !s.a.match && s.a.q === a.q);
         if (line.length >= need) await this.startMatch(a.q, line.slice(0, need));
         else for (const s of line) this.send(s.ws, { t: "wait", count: line.length, need, players: line.map((x) => ({ name: x.a.name, fig: x.a.fig })) });
         return;
       }
-      const waiting = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br");
-      if (waiting.length >= MAX_PLAYERS) await this.startMatch();
+      const waiting = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === a.q);
+      if (waiting.length >= TIMED[a.q]) await this.startMatch(a.q);
       else {
         const first = Math.min(...waiting.map((s) => s.a.waitSince || Date.now()));
         const at = first + WAIT_MS;
@@ -218,12 +221,22 @@ export class Arena {
     }
   }
 
+  // Starts every timed queue whose first player has waited long enough, then waits for the next.
   async alarm() {
-    await this.startMatch();
+    const now = Date.now();
+    let next = 0;
+    for (const q of Object.keys(TIMED)) {
+      const line = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === q);
+      if (!line.length) continue;
+      const at = Math.min(...line.map((s) => s.a.waitSince || now)) + WAIT_MS;
+      if (at <= now + 500) await this.startMatch(q);
+      else next = next ? Math.min(next, at) : at;
+    }
+    if (next) await this.state.storage.setAlarm(next);
   }
 
   async startMatch(q = "br", chosen = null) {
-    const waiting = chosen || this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br").slice(0, MAX_PLAYERS);
+    const waiting = chosen || this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === q).slice(0, TIMED[q] || MAX_PLAYERS);
     if (!waiting.length) return;
     const match = crypto.randomUUID().slice(0, 8);
     const players = waiting.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig }));
@@ -234,9 +247,9 @@ export class Arena {
       s.ws.serializeAttachment(s.a);
     }
     for (const s of waiting) this.send(s.ws, { t: "start", q, match, you: s.a.id, host, players, seed: Math.floor(Math.random() * 1e9) });
-    if (q !== "br") return;
+    if (!TIMED[q]) return;
     // Anyone who joined while this one was being set up waits for the next match.
-    const rest = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === "br");
+    const rest = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === q);
     if (rest.length) await this.state.storage.setAlarm(Date.now() + WAIT_MS);
   }
 
