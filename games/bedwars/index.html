@@ -68,7 +68,7 @@ canvas{display:block}
   <div id="sub"></div>
   <div id="hint"></div>
   <div id="breakbar"><i></i></div>
-  <div id="shopbtns" style="position:absolute;right:12px;bottom:12px;display:none;flex-direction:column;gap:6px;pointer-events:auto"><button class="btn" id="bShop" style="background:#2e7d32;font-size:15px;padding:9px 14px">🛒 SHOP (B)</button><button class="btn" id="bUpg" style="background:#6a1b9a;font-size:15px;padding:9px 14px">💎 UPGRADES (U)</button></div>
+  
 </div>
 <div id="lobbytop"></div>
 <div id="lobbyui">
@@ -293,7 +293,6 @@ function closePanels(){$("shop").style.display="none";$("upg").style.display="no
 const panelOpen=()=>$("shop").style.display==="block"||$("upg").style.display==="block";
 $("shop").addEventListener("click",e=>{const t=e.target.closest("[data-tab]");if(t){shopTab=t.dataset.tab;drawShop();return}const b=e.target.closest("[data-buy]");if(b)buy(+b.dataset.buy)});
 $("upg").addEventListener("click",e=>{const b=e.target.closest("[data-upg]");if(b)buyUpg(+b.dataset.upg)});
-$("bShop").onclick=()=>openPanel("shop");$("bUpg").onclick=()=>openPanel("upg");
 $("shopclose").onclick=$("upgclose").onclick=()=>{closePanels();lock()};
 
 // ---------- hotbar ----------
@@ -330,8 +329,7 @@ addEventListener("mouseup",e=>{if(e.button===0)mouseL=false;if(e.button===2)mous
 addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("wheel",e=>{if(!P||MODE!=="match")return;const n=hotbar(P).length;P.sel=(P.sel+(e.deltaY>0?1:-1)+n)%n;hud()});
 addEventListener("keydown",e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;keys[e.code]=true;
- if(MODE==="match"&&(e.code==="KeyB"||e.code==="KeyU")){if(panelOpen()){closePanels();lock()}else openPanel(e.code==="KeyB"?"shop":"upg");return}
- if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else nearNPC()&&openPanel(nearNPC().kind==="shop"?"shop":"upg");return}
+  if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else nearNPC()&&openPanel(nearNPC().kind==="shop"?"shop":"upg");return}
  if(e.code==="Escape"&&panelOpen()){closePanels();return}
  if((e.code==="KeyT"||e.code==="Enter")&&MODE==="lobby"){e.preventDefault();openChat();return}
  if(e.code.startsWith("Digit")&&P&&MODE==="match"){const n=+e.code.slice(5)-1;if(n<hotbar(P).length){P.sel=n;hud()}}});
@@ -345,7 +343,7 @@ if(TOUCH){$("touch").style.display="block";const jb=$("joy"),jk=$("joyk");let ji
  renderer.domElement.addEventListener("touchstart",e=>{const t=e.changedTouches[0];if(t.clientX>innerWidth*.35){lid=t.identifier;lx=t.clientX;ly=t.clientY}},{passive:true});
  const hold=(id,on,off)=>{$(id).addEventListener("touchstart",e=>{e.preventDefault();on()},{passive:false});$(id).addEventListener("touchend",e=>{e.preventDefault();off&&off()},{passive:false})};
  hold("tJump",()=>keys.Space=true,()=>keys.Space=false);hold("tHit",()=>{tHit=true;attack()},()=>tHit=false);hold("tUse",()=>{tUse=true;useItem()},()=>tUse=false);
- hold("tShop",()=>{const n=nearNPC();openPanel(n&&n.kind==="upg"?"upg":"shop")})}
+ hold("tShop",()=>{const n=nearNPC();if(n)openPanel(n.kind==="shop"?"shop":"upg")})}
 
 // ---------- chat (lobby) ----------
 let chatOpen=false;
@@ -536,7 +534,7 @@ function onNet(ev){let m;try{m=JSON.parse(ev.data)}catch(e){return}
 function enterLobby(){MODE="lobby";ended=false;NET=null;closePanels();buildLobby();for(const t of TEAM_ST)t.bed=true;
  P=newEnt("me",NAME,Math.abs(hash(NAME))%4,false);P.local=true;P.pos.set(.5,3.05,10);P.yaw=0;ENTS.push(P);
  $("lobbyui").style.display="flex";$("lobbytop").style.display="block";$("chat").style.display="block";$("lobbytop").innerHTML=`🛏️ BEDWARS · ${esc(NAME)}<br><span style="font-size:13px;opacity:.85">Walk into a portal or press a button to play · T to chat</span>`;
- ["hotbar","hearts","res","teams","timer","armorTxt","feed"].forEach(i=>$(i).innerHTML="");feedL=[];$("shopbtns").style.display="none";$("hint").style.display="none";$("breakbar").style.display="none";$("big").style.opacity=0;$("sub").style.opacity=0;VIEW.visible=false;$("lockhint").style.display=TOUCH?"none":"block";connectLobby();drawBoards()}
+ ["hotbar","hearts","res","teams","timer","armorTxt","feed"].forEach(i=>$(i).innerHTML="");feedL=[];$("hint").style.display="none";$("breakbar").style.display="none";$("big").style.opacity=0;$("sub").style.opacity=0;VIEW.visible=false;$("lockhint").style.display=TOUCH?"none":"block";connectLobby();drawBoards()}
 
 // ---------- main loop ----------
 let last=performance.now(),netT=0,portalCd=0;
@@ -565,7 +563,7 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
  for(const p of lobbyPeers.values()){const old=p.mesh.position.clone();p.mesh.position.lerp(p.to,Math.min(1,dt*10));p.mesh.rotation.y=p.yaw;p.vel.copy(p.mesh.position).sub(old).divideScalar(dt||1);animate({mesh:p.mesh,vel:p.vel,heldKind:"",walk:p.walk},dt)}
  netT-=dt;if(netT<=0&&LWS&&LWS.readyState===1){netT=.12;LWS.send(JSON.stringify({t:"bw",k:"lp",x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(2),n:NAME}))}}
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;for(const n of NPCS)if(Math.hypot(n.x-P.pos.x,n.z-P.pos.z)<3.2&&Math.abs(P.pos.y-3)<2.5)return n;return null}
-function stepMatch(dt){matchT+=dt;$("shopbtns").style.display=P.alive&&!TOUCH?"flex":"none";P.cd-=dt;
+function stepMatch(dt){matchT+=dt;P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
  const holding=(mouseL&&locked)||tHit;let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
