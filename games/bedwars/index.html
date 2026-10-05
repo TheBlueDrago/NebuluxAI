@@ -89,7 +89,7 @@ canvas{display:block}
   <div class="tb" id="tUse" style="right:30px;bottom:200px">🧱</div>
   <div class="tb" id="tShop" style="right:110px;bottom:230px;font-size:20px">🛒</div>
 </div>
-<div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">🛒 ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
+<div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">🛒 ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><input id="promo" maxlength="40" placeholder="Promo code" style="padding:10px 12px;border-radius:10px;border:0;font-size:15px;width:220px"><button class="btn" id="promogo" style="background:#8e24aa;font-size:15px;padding:10px 16px">REDEEM</button></div><div id="promomsg" style="font-weight:800;margin-top:6px"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="chest"><div class="box"><h2 id="chtitle" style="margin:0;font-size:30px"></h2><p id="chsub" style="margin:6px 0 10px;font-weight:700;opacity:.85"></p><div id="chrows"></div><button class="btn close" id="chclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="upg"><div class="box"><h2 style="margin:0;font-size:30px">💎 TEAM UPGRADES</h2><div id="upgres" style="font-weight:800;margin-top:6px"></div><div class="items" id="upgitems"></div><button class="btn close" id="upgclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="queue" style="background:rgba(0,0,0,.4)"><div class="box"><h2 id="qtitle" style="margin:0;font-size:30px"></h2><p id="qtext" style="font-size:18px;font-weight:700"></p><div id="qlist" style="font-weight:700;opacity:.9"></div><button class="btn close" id="qcancel">✕ LEAVE QUEUE</button></div></div>
@@ -325,6 +325,23 @@ $("chest").addEventListener("click",e=>{const a=e.target.closest("[data-put]"),b
 $("chclose").onclick=()=>{closePanels();lock()};
 function openNear(n){if(!n)return;if(n.kind==="shop"||n.kind==="upg")openPanel(n.kind);else{chestAt=n;unlock();$("chest").style.display="block";drawChest()}}
 
+function sha256(str){const K=[],H=[];let n=2,c=0;const isP=x=>{for(let i=2;i*i<=x;i++)if(x%i===0)return false;return true};
+ while(c<64){if(isP(n)){if(c<8)H[c]=(Math.pow(n,1/2)*4294967296)|0;K[c]=(Math.pow(n,1/3)*4294967296)|0;c++}n++}
+ const b=[...new TextEncoder().encode(str)],l=b.length*8;b.push(128);while(b.length%64!==56)b.push(0);for(let i=7;i>=0;i--)b.push(Math.floor(l/Math.pow(2,i*8))&255);
+ const r=(x,y)=>(x>>>y)|(x<<(32-y));
+ for(let o=0;o<b.length;o+=64){const w=[];for(let i=0;i<16;i++)w[i]=(b[o+i*4]<<24)|(b[o+i*4+1]<<16)|(b[o+i*4+2]<<8)|b[o+i*4+3];
+  for(let i=16;i<64;i++){const s0=r(w[i-15],7)^r(w[i-15],18)^(w[i-15]>>>3),s1=r(w[i-2],17)^r(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0}
+  let[a,bb,cc,d,e,f,g,h]=H;
+  for(let i=0;i<64;i++){const t1=(h+(r(e,6)^r(e,11)^r(e,25))+((e&f)^(~e&g))+K[i]+w[i])|0,t2=((r(a,2)^r(a,13)^r(a,22))+((a&bb)^(a&cc)^(bb&cc)))|0;h=g;g=f;f=e;e=(d+t1)|0;d=cc;cc=bb;bb=a;a=(t1+t2)|0}
+  [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=(H[i]+v)|0)}
+ return H.map(v=>(v>>>0).toString(16).padStart(8,"0")).join("")}
+
+const PROMO_HASH="e3b68ec393a99e00a51ad775e1045bd4bd15e07fe6df6db8b814d49dace36d15";
+const promoOn=e=>e&&e.local&&SAVE.promo===true;
+function fillUp(e){for(const r in e.res)e.res[r]=Math.max(e.res[r],9999);for(const b in e.blocks)e.blocks[b]=Math.max(e.blocks[b],999);e.arrows=Math.max(e.arrows,99);e.gapple=Math.max(e.gapple,99);e.fireball=Math.max(e.fireball,99);e.pearl=Math.max(e.pearl,99);e.bow=true}
+$("promogo").onclick=()=>{const v=$("promo").value.trim();if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="✅ Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
+$("promo").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter")$("promogo").click()});
+
 // ---------- hotbar ----------
 function hotbar(e){const h=[["sword","sword"]];if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.gapple)h.push(["gapple","gapple"]);if(e.fireball)h.push(["fireball","fireball"]);if(e.pearl)h.push(["pearl","pearl"]);return h.map(x=>x[0])}
 const ICON={sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
@@ -445,13 +462,13 @@ function hurt(e,d,by,kx,kz){if(!e.alive)return;const red=ARMORS[e.armor].red+.06
  if(e.absorb>0){const a=Math.min(e.absorb,d);e.absorb-=a;d-=a}e.hp-=d;e.kb.x+=kx||0;e.kb.z+=kz||0;if(kx||kz)e.vel.y=Math.max(e.vel.y,6.2);
  if(by){e.lastHit=by;e.lastHitT=matchT}if(e.local){sfx(140,.12,"sawtooth",.06);hud()}if(e.hp<=0)die(e,by)}
 function die(e,byId){if(!e.alive)return;e.alive=false;e.hp=0;if(e.mesh)e.mesh.visible=false;const killer=ENTS.find(x=>x.id===byId)||(e.lastHit&&matchT-e.lastHitT<10?ENTS.find(x=>x.id===e.lastHit):null);
- const final=!TEAM_ST[e.team].bed;const loot={...e.res};
- // you lose your resources, blocks and sword; you keep your armor
- e.res={iron:0,gold:0,diamond:0,emerald:0};e.blocks={wool:0,wood:0,end:0};e.sword=e.sword===4?4:0;e.bow=false;e.arrows=0;e.gapple=0;e.fireball=0;e.pearl=0;
- if(final){e.out=true}else e.respawnT=5;
+ const final=!TEAM_ST[e.team].bed;const loot=promoOn(e)?null:{...e.res};
+ // you lose your resources, blocks and sword; you keep your armor (with the promo code you keep it all)
+ if(promoOn(e)){}else{e.res={iron:0,gold:0,diamond:0,emerald:0};e.blocks={wool:0,wood:0,end:0};e.sword=e.sword===4?4:0;e.bow=false;e.arrows=0;e.gapple=0;e.fireball=0;e.pearl=0}
+ if(final){e.out=true}else e.respawnT=promoOn(e)?0:5;
  const kn=killer?killer.name:"the void";announceDeath(e,killer,final);
- if(killer)giveLoot(killer,loot);
- send({k:"die",id:e.id,by:killer?killer.id:null,final,loot});if(e.local){unlock();closePanels();msg(final?"ELIMINATED":"YOU DIED",3,final?`Your bed is gone. Killed by ${kn}.`:`Killed by ${kn}. Respawning in 5 seconds…`);hud()}checkEnd()}
+ if(killer&&!promoOn(e))giveLoot(killer,loot);
+ send({k:"die",id:e.id,by:killer?killer.id:null,final,loot});if(e.local){unlock();closePanels();msg(final?"ELIMINATED":"YOU DIED",3,final?`Your bed is gone. Killed by ${kn}.`:(promoOn(e)?`Killed by ${kn}. Back in!`:`Killed by ${kn}. Respawning in 5 seconds…`));hud()}checkEnd()}
 function announceDeath(e,killer,final){const c=t=>`<span style="color:${TEAMS[t.team].css}">${esc(t.name)}</span>`;feed(killer?`${c(killer)} ⚔ ${c(e)}${final?" <b>FINAL KILL!</b>":""}`:`${c(e)} fell into the void${final?" <b>FINAL</b>":""}`);
  if(killer&&killer.local){SAVE.kills++;if(final)SAVE.finals++;save();sfx(660,.1,"triangle",.07)}}
 function giveLoot(k,loot){if(!loot)return;if(k.local||(k.bot&&isHost())){for(const r in loot)k.res[r]+=loot[r]||0;if(k.local){const t=Object.entries(loot).filter(([,v])=>v).map(([r,v])=>`+${v} ${RES_IC[r]}`).join(" ");if(t)feed(t);hud()}}}
@@ -611,7 +628,7 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
  for(const p of lobbyPeers.values()){const old=p.mesh.position.clone();p.mesh.position.lerp(p.to,Math.min(1,dt*10));p.mesh.rotation.y=p.yaw;p.vel.copy(p.mesh.position).sub(old).divideScalar(dt||1);animate({mesh:p.mesh,vel:p.vel,heldKind:"",walk:p.walk},dt)}
  netT-=dt;if(netT<=0&&LWS&&LWS.readyState===1){netT=.12;LWS.send(JSON.stringify({t:"bw",k:"lp",x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(2),n:NAME}))}}
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;let best=null,bd=3.2;for(const n of NPCS){const d=Math.hypot(n.x-P.pos.x,n.z-P.pos.z);if(d<(n.kind==="ender"||n.kind==="tchest"?2.3:bd)&&d<bd&&Math.abs(P.pos.y-3)<2.5){bd=d;best=n}}return best}
-function stepMatch(dt){matchT+=dt;P.cd-=dt;
+function stepMatch(dt){matchT+=dt;if(promoOn(P)&&P.alive)fillUp(P);P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
  const holding=((mouseL&&mouseOn())||tHit)&&!RANGED.includes(heldOf(P));if(((mouseL&&mouseOn())||tHit)&&P.cd<=0&&!RANGED.includes(heldOf(P))&&targetEnt(P,3.4))attack();let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
