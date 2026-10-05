@@ -429,7 +429,7 @@ $("practice").onclick=()=>{unlock();startMatch("bw2",null)};
 function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();closePanels();$("lobbyui").style.display="none";$("lobbytop").style.display="none";$("chat").style.display="none";$("results").style.display="none";
  teamSize={bw1:1,bw2:2,bw4:4}[q]||2;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
  const people=players&&players.length?players:[{id:"me",name:NAME}];if(!players)NET=null;
- const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=i%4;perTeam[t]++;assign.push([p,t])});
+ const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=Math.floor(i/teamSize)%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
  let bi=0;const BN=["Steve","Alex","Blaze","Cobble","Pixel","Nova","Creeper","Diamond","Ender","Bolt","Rusty","Sky","Frost","Zap","Mango","Echo"];
  for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
