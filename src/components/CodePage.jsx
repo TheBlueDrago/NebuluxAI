@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { askConfirm, askText, showNotice } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReportReply from "@/components/chat/ReportReply";
-import { RotateCcw, Globe, Github, X, Search, ArrowLeft, ExternalLink, Loader2, FileCode, Upload, LogOut, Code } from "lucide-react";
+import { RotateCcw, Globe, Github, X, Search, ArrowLeft, ExternalLink, Loader2, FileCode, Upload, LogOut, Code, Maximize2, Minimize2 } from "lucide-react";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
@@ -12,8 +12,7 @@ import BlackholeIcon from "@/components/BlackholeIcon";
 import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
-import useBuildMode, { BUILD_NOTE, ANSWER_NOTE, resolveIntent } from "@/hooks/useBuildMode";
-import ModeToggle from "@/components/chat/ModeToggle";
+import useBuildMode, { BUILD_NOTE, DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
 import useStickToBottom from "@/hooks/useStickToBottom";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import { secretKeyIn } from "@/lib/privateInfo";
@@ -37,6 +36,12 @@ import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, l
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
 const AI_NAMES = { ai: "AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
 const NEW_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new";
+// A full web page in a reply (an html code block), to run in the Nebulux Browser.
+const htmlOf = (text) => {
+  const m = String(text || "").match(/```html?\s*\n([\s\S]*?)```/i);
+  return m && /<(html|body|canvas|div|script)\b/i.test(m[1]) ? m[1] : "";
+};
+const PREVIEW_NOTE = "Websites, games and apps you write as one HTML file open and run in the Nebulux Browser next to this chat automatically, so never tell the person to copy the code into a file or explain how to open it in a browser.";
 const lastCodeBlock = (text) => {
   const all = [...String(text || "").matchAll(/```[^\n]*\n([\s\S]*?)```/g)];
   return all.length ? all[all.length - 1][1] : "";
@@ -79,6 +84,19 @@ export default function CodePage({ userInitial }) {
 
   // ---- browser ----
   const browserRef = useRef(null);
+  const pendingPreview = useRef(null);
+  const openPreview = (html, title) => {
+    setPanel("browser");
+    if (browserRef.current) browserRef.current.preview(html, title);
+    else pendingPreview.current = [html, title];
+  };
+  useEffect(() => {
+    if (panel === "browser" && browserRef.current && pendingPreview.current) {
+      browserRef.current.preview(...pendingPreview.current);
+      pendingPreview.current = null;
+    }
+  });
+  const [wide, setWide] = useState(false);
   const [browsing, setBrowsing] = useState(false);
 
   // ---- github ----
@@ -170,9 +188,9 @@ export default function CodePage({ userInitial }) {
       }
     }
     if (reqIdRef.current !== myId) return;
-    const intent = resolveIntent(text, buildMode.mode);
+    const intent = resolveIntent(text, "discuss"); // code only when asked for
     try {
-      const modeNote = intent.build ? BUILD_NOTE : ANSWER_NOTE;
+      const modeNote = (intent.build ? BUILD_NOTE : DISCUSS_NOTE) + "\n" + PREVIEW_NOTE;
       const eff = effortFor(effort, text, { build: intent.build });
       abortRef.current?.abort();
       const abort = new AbortController();
@@ -185,6 +203,9 @@ export default function CodePage({ userInitial }) {
       spend(res.credits);
       const content = res.content ?? "";
       setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) }]);
+      // Built a page: run it in the Nebulux Browser right away.
+      const page = htmlOf(content);
+      if (page) openPreview(page, text.slice(0, 40));
     } catch (e) {
       if (reqIdRef.current !== myId) return;
       setLive("");
@@ -276,6 +297,11 @@ export default function CodePage({ userInitial }) {
                         </button>
                       )}
                       <div className="flex flex-wrap justify-end gap-1 mt-1 -mb-1 font-sans">
+                        {htmlOf(m.content) && (
+                          <button type="button" onClick={() => openPreview(htmlOf(m.content), "Preview")} title="Run it in the Nebulux Browser" className="inline-flex items-center gap-1 p-1 rounded-md text-[12px] text-[var(--cl-faint)] hover:text-[var(--cl-text)]">
+                            ▶ Preview
+                          </button>
+                        )}
                         {lastCodeBlock(m.content) && (
                           <button type="button" onClick={() => saveToRepo(lastCodeBlock(m.content))} title="Save this code to your GitHub repo" className="inline-flex items-center gap-1 p-1 rounded-md text-[12px] text-[var(--cl-faint)] hover:text-[var(--cl-text)]">
                             <Upload className="w-3.5 h-3.5" /> Save to GitHub
@@ -358,7 +384,6 @@ export default function CodePage({ userInitial }) {
                 <AiChooser value={ai} onChange={setAi} plan={plan} allowFable={true} />
                 <EffortPicker value={effort} onChange={setEffort} />
                 <AboutMeButton userId={userId} />
-                <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />
               </div>
             </div>
             {!empty && <p className="text-center text-[11.5px] text-[var(--cl-faint)] mt-2">Nebulux AI can make mistakes. Check important info, and never share passwords or card numbers with it.</p>}
@@ -368,10 +393,13 @@ export default function CodePage({ userInitial }) {
 
       {/* side panel */}
       {panel && (
-        <aside className="fixed inset-0 z-40 sm:static sm:z-auto sm:w-[50%] sm:max-w-[760px] h-full flex flex-col bg-[var(--cl-side)] border-l border-[var(--cl-border)] text-[var(--cl-text)]">
+        <aside className={`${wide ? "fixed inset-0 z-50" : "fixed inset-0 z-40 sm:static sm:z-auto sm:w-[50%] sm:max-w-[760px]"} h-full flex flex-col bg-[var(--cl-side)] border-l border-[var(--cl-border)] text-[var(--cl-text)]`}>
           <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-[var(--cl-border)]">
             {panel === "browser" ? <Globe className="w-4 h-4 text-[var(--cl-muted)]" /> : <Github className="w-4 h-4 text-[var(--cl-muted)]" />}
             <span className="text-[14px] font-medium flex-1">{panel === "browser" ? "Nebulux Browser" : "GitHub"}</span>
+            <button onClick={() => setWide((w) => !w)} className="hidden sm:block p-1.5 rounded-lg hover:bg-[var(--cl-card)] text-[var(--cl-muted)]" title={wide ? "Back to normal size" : "Full screen"} aria-label={wide ? "Back to normal size" : "Full screen"}>
+              {wide ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
             <button onClick={() => setPanel("")} className="p-1.5 rounded-lg hover:bg-[var(--cl-card)] text-[var(--cl-muted)]" aria-label="Close panel">
               <X className="w-4 h-4" />
             </button>

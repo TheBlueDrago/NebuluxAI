@@ -5,7 +5,7 @@
 // KV (PUBLISHED_HTML): terms:<userId> = { version, at }.
 
 // Accepted once, kept: this only changes when the owner wants everyone to accept again.
-export const TERMS_VERSION = "2026-09-27"; // new wording (full responsibility); everyone asked again
+export const TERMS_VERSION = "2026-10-05"; // the Nebulux Browser added to the Terms and Privacy Policy; everyone asked again
 // The owner's own accounts: not asked again and never listed as inactive (owner's request).
 export const EXEMPT = new Set(["thebluedragonstriker@gmail.com", "hiuhinarra@gmail.com", "narra.vidish@gmail.com"]);
 export const exempt = (u) => EXEMPT.has(String((u && u.email) || "").trim().toLowerCase());

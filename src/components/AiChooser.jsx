@@ -11,7 +11,8 @@ const OPTIONS = [
   { id: "fable", label: "Space", icon: Star, color: "text-fuchsia-300" },
 ];
 
-export default function AiChooser({ value, onChange, plan, allowFable }) {
+// labels: other names for the options in one place (the home chat calls Nebulux Code "Ultra").
+export default function AiChooser({ value, onChange, plan, allowFable, labels = {} }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -50,7 +51,7 @@ export default function AiChooser({ value, onChange, plan, allowFable }) {
         {current.id === "fable" && (
           <span title="This AI uses more credits than the others" className="text-amber-400 font-bold cursor-help leading-none">!</span>
         )}
-        {current.label}
+        {labels[current.id] || current.label}
         <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
       </button>
       <AnimatePresence>
@@ -81,7 +82,7 @@ export default function AiChooser({ value, onChange, plan, allowFable }) {
                   <span className="flex items-center gap-2">
                     <o.icon className={`w-4 h-4 ${o.color}`} />
                     {o.id === "fable" && <span title="This AI uses more credits than the others" className="text-amber-400 font-bold cursor-help">!</span>}
-                    {o.label}
+                    {labels[o.id] || o.label}
                   </span>
                   {offHere ? (
                     <Lock className="w-3.5 h-3.5 text-slate-500" />

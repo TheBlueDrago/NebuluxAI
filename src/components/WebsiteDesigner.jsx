@@ -10,7 +10,6 @@ import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
-import ModeToggle from "@/components/chat/ModeToggle";
 import { base44 } from "@/api/base44Client";
 import AiChooser from "@/components/AiChooser";
 import CustomDomain from "@/components/designer/CustomDomain";
@@ -487,7 +486,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
     if (reqIdRef.current !== myId) return;
     const spendFor = { ai: onSpendAI, code: onSpendAICode, opus5: onSpendGalaxy5, fable: onSpendSpace5 };
     // Normal Nebulux AI always builds; the code AIs can also just answer a question.
-    const intent = ai !== "ai" ? resolveIntent(text, buildMode.mode) : { build: true };
+    const intent = resolveIntent(text, "build"); // a question never changes the page
     try {
       const lastHtml = prior.filter(isHtmlMsg).pop()?.content || "";
       // Only the last few requests are sent: a long history on top of a big page makes the
@@ -955,7 +954,6 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
               <VoiceInput onText={(t) => setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t))} />
               <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} />
               <EffortPicker value={effort} onChange={setEffort} />
-              {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
             </div>
             <input
               ref={fileInputRef}

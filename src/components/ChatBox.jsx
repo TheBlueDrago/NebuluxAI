@@ -15,8 +15,7 @@ import AiChooser from "@/components/AiChooser";
 import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
-import useBuildMode, { BUILD_NOTE, ANSWER_NOTE, resolveIntent } from "@/hooks/useBuildMode";
-import ModeToggle from "@/components/chat/ModeToggle";
+import useBuildMode, { BUILD_NOTE, DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import { TIER_OF_AI } from "@/lib/creditRefresh";
 import OutOfCredits from "@/components/chat/OutOfCredits";
@@ -59,7 +58,7 @@ const writeContinue = (v) => {
 
 const CODE_SYS = "You are Nebulux Code Assistant. Help with programming. Give clear, correct code with brief explanations.";
 const FABLE_SYS = "You are Space, Nebulux AI's premium creative model. Be imaginative and high-quality.";
-const AI_NAMES = { ai: "Nebulux AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
+const AI_NAMES = { ai: "Nebulux AI", code: "Ultra", opus5: "Galaxy", fable: "Space" };
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
 // Shown in an empty chat so new people see what they can make right away.
 // Sent when an answer stopped at the length limit (the server marks it "more").
@@ -162,8 +161,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     setFiles([]);
     const fileNote = otherFiles.length ? `\n[Attached files (names only): ${otherFiles.map((f) => f.name).join(", ")}]` : "";
     const sys = ai === "code" ? CODE_SYS : ai === "fable" ? FABLE_SYS : "";
-    const intent = ai !== "ai" ? resolveIntent(text, buildMode.mode) : { build: true };
-    const modeNote = ai !== "ai" ? (intent.build ? BUILD_NOTE : ANSWER_NOTE) + "\n\n" : "";
+    const intent = ai !== "ai" ? resolveIntent(text, "discuss") : { build: true }; // code only when asked for
+    const modeNote = ai !== "ai" ? (intent.build ? BUILD_NOTE : DISCUSS_NOTE) + "\n\n" : "";
     const cardNote = ai !== "ai" ? "" : wantsFlashcards(text) ? FLASHCARD_NOTE : wantsQuiz(text) ? QUIZ_NOTE : "";
     const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${history}${text}${fileNote}`;
     if (reqIdRef.current !== myId) return;
@@ -599,11 +598,10 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t));
               }}
             />
-            <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} />
+            <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} labels={{ code: "Ultra" }} />
             <EffortPicker value={effort} onChange={setEffort} />
             <AboutMeButton userId={shell?.currentUser?.id} />
             {selectedAi === "ai" && <StudyModeButton />}
-            {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
           </div>
           </div>
           <input

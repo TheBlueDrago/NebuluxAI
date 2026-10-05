@@ -77,6 +77,13 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
 
   // The AI uses this: look something up (shown in the current tab), and what's on screen now.
   useImperativeHandle(ref, () => ({
+    // A website or game the AI just built: opened in a new tab and run (it's the person's own code,
+    // so its scripts run, still in the locked-down frame).
+    preview: (html, title) => {
+      const t = { id: nextId++, history: [{ type: "page", url: "nebulux://preview", title: title || "Preview", text: "", html: String(html || ""), own: true }], idx: 0 };
+      setTabs((ts) => [...ts, t]);
+      setActive(t.id);
+    },
     search: async (q) => {
       const e = await load("search", q);
       if (e) push(e);
@@ -85,7 +92,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
     current: () => entry,
   }));
 
-  const secure = entry.type === "page" && /^https:/i.test(entry.url);
+  const secure = entry.type === "page" && (entry.own || /^https:/i.test(entry.url));
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-[var(--cl-side)]">
@@ -168,7 +175,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
             />
           </div>
         </form>
-        {entry.type === "page" && (
+        {entry.type === "page" && !entry.own && (
           <a href={entry.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]" title="Open in a normal tab" aria-label="Open in a normal tab">
             <ExternalLink className="w-4 h-4" />
           </a>
@@ -212,7 +219,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
         )}
         {entry.type === "page" &&
           (entry.html ? (
-            <iframe ref={frameRef} key={entry.url} title={entry.title || entry.url} srcDoc={entry.html + LINK_SCRIPT} sandbox="allow-scripts" referrerPolicy="no-referrer" className="w-full h-full bg-white border-0" />
+            <iframe ref={frameRef} key={entry.own ? tab.id + ":" + tab.idx : entry.url} title={entry.title || entry.url} srcDoc={entry.own ? entry.html : entry.html + LINK_SCRIPT} sandbox="allow-scripts" referrerPolicy="no-referrer" className="w-full h-full bg-white border-0" />
           ) : (
             <div className="h-full overflow-y-auto px-4 py-3 whitespace-pre-wrap text-[13.5px] text-[var(--cl-muted)]">{entry.text}</div>
           ))}

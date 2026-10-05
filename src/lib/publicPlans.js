@@ -9,7 +9,7 @@ export const PUBLIC_PLANS = [
     price: "$0",
     period: "",
     blurb: "Try everything and publish your first site and game.",
-    features: ["100 Nebulux AI, 75 Code, 50 Galaxy and 25 Space credits every month", "3 published websites", "Unlimited games", "ZIP download, GitHub and custom domains", "Free web address"],
+    features: ["100 Nebulux AI, 75 Code, 50 Galaxy and 25 Space credits every month", "3 published websites", "Unlimited games", "ZIP download, two-way GitHub sync and custom domains", "Free web address"],
   },
   {
     id: "pro",
@@ -22,7 +22,7 @@ export const PUBLIC_PLANS = [
       "50 each of Code, Galaxy and Space credits",
       "3 published websites",
       "3 new games a month",
-      "Download a ZIP or push to GitHub",
+      "Download a ZIP, two-way GitHub sync allowed",
     ],
     highlight: true,
   },
@@ -37,7 +37,7 @@ export const PUBLIC_PLANS = [
       "150 Nebulux AI credits a month",
       "100 each of Code, Galaxy and Space credits",
       "3 published websites, 5 new games a month",
-      "Download a ZIP or push to GitHub",
+      "Download a ZIP, two-way GitHub sync allowed",
     ],
   },
   {

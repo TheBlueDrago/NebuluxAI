@@ -90,7 +90,7 @@ export function CodeWorkspace() {
   const shell = useAppShell();
   // Opened by address without Pro or higher: back to the chat, with the upgrade popup.
   React.useEffect(() => {
-    if (shell.codeAllowed === false && shell.credits?.plan) {
+    if (shell.codeAllowed === false) {
       shell.setUpgradeOpen(true);
       shell.navigate("/chat", { replace: true });
     }

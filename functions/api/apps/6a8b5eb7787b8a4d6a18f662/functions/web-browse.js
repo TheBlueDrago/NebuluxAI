@@ -66,9 +66,31 @@ export function pageText(html) {
   return { title, text: text.slice(0, MAX_TEXT) };
 }
 
-// The page as the Nebulux Browser shows it: the site's own look (styles and pictures load from the
-// site through <base>), with every script, event handler and embedded frame removed, so a page
-// can't run code. The browser adds its own small link handler instead (src/components/code/NebuluxBrowser.jsx).
+// The page as the Nebulux Browser shows it: the site's own look, with every script, event handler
+// and embedded frame removed, so a page can't run code. The browser adds its own small link handler
+// instead (src/components/code/NebuluxBrowser.jsx). Every address in the page (links, pictures,
+// stylesheets, CSS url()s) is made absolute here: the app's security policy also covers the frame
+// the page is shown in, and it ignores a <base> tag pointing at another site.
+const abs = (v, base) => {
+  const s = String(v || "").trim();
+  if (!s || /^(#|data:|mailto:|tel:|about:|blob:)/i.test(s)) return s;
+  try {
+    return new URL(s.replace(/&amp;/g, "&"), base).href;
+  } catch {
+    return s;
+  }
+};
+const absCss = (css, base) => String(css).replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi, (m, q, u) => `url("${abs(u, base)}")`).replace(/@import\s+(["'])([^"']+)\1/gi, (m, q, u) => `@import "${abs(u, base)}"`);
+export function absolutize(h, base) {
+  return h
+    .replace(/\b(href|src|action|poster|formaction|data-src)\s*=\s*"([^"]*)"/gi, (m, a, v) => `${a}="${abs(v, base).replace(/"/g, "%22")}"`)
+    .replace(/\b(href|src|action|poster|formaction|data-src)\s*=\s*'([^']*)'/gi, (m, a, v) => `${a}='${abs(v, base).replace(/'/g, "%27")}'`)
+    .replace(/\b(href|src|action|poster)\s*=\s*([^\s"'>]+)/gi, (m, a, v) => `${a}="${abs(v, base).replace(/"/g, "%22")}"`)
+    .replace(/\b(srcset|data-srcset)\s*=\s*"([^"]*)"/gi, (m, a, v) => `${a}="${v.split(",").map((p) => { const [u, ...rest] = p.trim().split(/\s+/); return [abs(u, base), ...rest].join(" "); }).join(", ")}"`)
+    .replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, a, css, b) => a + absCss(css, base) + b)
+    .replace(/\bstyle\s*=\s*"([^"]*)"/gi, (m, css) => `style="${absCss(css, base).replace(/"/g, "'")}"`);
+}
+
 export function viewHtml(raw, url) {
   const safeUrl = String(url).replace(/"/g, "%22");
   let h = String(raw || "")
@@ -79,6 +101,7 @@ export function viewHtml(raw, url) {
     .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?(refresh|content-security-policy|set-cookie)[^>]*>/gi, "")
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
     .replace(/(href|src|action|formaction|xlink:href)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, '$1="#"');
+  h = absolutize(h, url);
   const base = `<base href="${safeUrl}">`;
   h = /<head[^>]*>/i.test(h) ? h.replace(/<head[^>]*>/i, (m) => m + base) : base + h;
   return h.slice(0, 1500000);

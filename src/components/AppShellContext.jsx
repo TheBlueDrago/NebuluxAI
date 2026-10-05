@@ -12,6 +12,8 @@ import TwoStepGate from "@/components/TwoStepGate";
 import { applyThemeClass, readUserTheme, writeUserTheme } from "@/lib/theme";
 import { restoreChats } from "@/lib/chatStash";
 
+import CodeArt from "@/components/chat/CodeArt";
+
 const CODE_PLANS = ["pro", "team", "enterprise", "max"];
 
 const AppShellContext = createContext(null);
@@ -102,11 +104,13 @@ export function AppShellProvider({ children }) {
 
   const goHome = useCallback(() => { navigate("/chat"); setSidebarOpen(false); }, [navigate]);
   // Nebulux Code is for Pro and up (admins always): anyone else gets an upgrade popup instead.
-  const codeAllowed = isAdmin || CODE_PLANS.includes(credits.plan);
+  // Unknown until both the account and its plan have loaded (null): only a known "no" blocks it,
+  // so an admin clicking Code a moment after the page opens isn't told to upgrade.
+  const codeAllowed = !currentUser || !credits.plan ? null : isAdmin || CODE_PLANS.includes(credits.plan);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const goCode = useCallback(() => {
     setSidebarOpen(false);
-    if (!codeAllowed) {
+    if (codeAllowed === false) {
       setUpgradeOpen(true);
       return;
     }
@@ -165,6 +169,7 @@ export function AppShellProvider({ children }) {
       {upgradeOpen && (
         <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center p-4" onClick={() => setUpgradeOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upgrade-title" className="w-full max-w-md rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] p-6 shadow-2xl text-[var(--cl-text)]">
+            <CodeArt className="w-full h-auto rounded-xl mb-4" />
             <h2 id="upgrade-title" className="font-serif text-2xl">Upgrade to use Nebulux Code</h2>
             <p className="mt-2 text-[14.5px] leading-relaxed text-[var(--cl-muted)]">Nebulux Code is included with Pro and higher plans. Upgrade to build apps, websites and games with the coding AI.</p>
             <div className="mt-6 flex justify-end gap-2">
