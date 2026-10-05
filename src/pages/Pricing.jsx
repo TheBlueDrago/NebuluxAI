@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PricingCards from "@/components/landing/PricingCards";
-import CreditPacksTable from "@/components/landing/CreditPacksTable";
 
 const QUESTIONS = [
   ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs, like building a whole website, use more than a quick question. Every plan gets a fresh allowance each month, and you can buy one-time packs any time."],
@@ -23,9 +22,6 @@ export default function Pricing() {
         <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">Start free. Pro is $15 a month, Team is $20 a month for up to 3 people, and credit packs start at $0.99 with no subscription.</p>
       </section>
       <PricingCards />
-      <section id="packs" className="mt-10 max-w-3xl mx-auto scroll-mt-24">
-        <CreditPacksTable />
-      </section>
       <section className="mt-20 max-w-3xl mx-auto">
         <h2 className="text-center text-3xl font-bold text-white">Pricing questions</h2>
         <div className="mt-8 divide-y divide-slate-800 border-y border-slate-800">

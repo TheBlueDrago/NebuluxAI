@@ -13,9 +13,7 @@ import useBuildMode, { DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode"
 import ModeToggle from "@/components/chat/ModeToggle";
 import { base44 } from "@/api/base44Client";
 import AiChooser from "@/components/AiChooser";
-import GitHubPush from "@/components/designer/GitHubPush";
 import CustomDomain from "@/components/designer/CustomDomain";
-import GitHubOpen from "@/components/designer/GitHubOpen";
 import DownloadZip from "@/components/designer/DownloadZip";
 import BadgeToggle from "@/components/designer/BadgeToggle";
 import SheetSelect from "@/components/SheetSelect";
@@ -790,17 +788,6 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
           >
             <Crown className="w-4 h-4" /> Upgrade
           </button>
-          <GitHubOpen
-            siteName={siteName}
-            plan={plan}
-            onUpgrade={onUpgrade}
-            hasPage={!!previewHtml}
-            onOpen={(html, note) => {
-              pushMsg({ role: "ai", content: html, note });
-              setPreviewMode("preview");
-            }}
-          />
-          <GitHubPush html={previewHtml} siteName={siteName} plan={plan} onUpgrade={onUpgrade} />
           <CustomDomain siteName={siteName} plan={plan} onUpgrade={onUpgrade} openKey={domainOpen.key} initialHost={domainOpen.host} />
           <DownloadZip html={previewHtml} name={siteName} plan={plan} onUpgrade={onUpgrade} />
           <button

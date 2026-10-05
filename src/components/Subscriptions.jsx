@@ -8,7 +8,6 @@ import { Check, ArrowRight, Loader2, Gift, Lock, X } from "lucide-react";
 const EnterpriseApply = lazy(() => import("@/pages/Enterprise"));
 import { useNavigate, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import CreditPacks from "@/components/shop/CreditPacks";
 import { savedDiscount, saveDiscount, promoPctFor } from "@/lib/promoDiscount";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
 
@@ -309,15 +308,6 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
         </button>
       </div>
 
-      {/* Credits */}
-      <div className="mt-16 w-full max-w-4xl mx-auto">
-        <SectionTitle title="Credits" sub={SALES_OPEN ? "Rather not subscribe? Buy 25 to 100 credits for any AI, whatever your plan." : "Credit packs are coming soon in later updates."} />
-        <div className="mt-8">
-          <Soon>
-          <CreditPacks discount={discount} onBuy={onBuyPack || ((id) => navigate("/billing", { state: { productId: id } }))} />
-          </Soon>
-        </div>
-      </div>
 
       {/* Promo codes */}
       <div className="mt-16 mb-6 w-full max-w-md mx-auto">

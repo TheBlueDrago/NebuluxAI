@@ -215,3 +215,39 @@
   .bh-rise, .bh-fade-in, .bh-up, .bh-up-late { animation: none; }
   .bh-reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* The Claude-style message box (ChatBox claude): its pickers sit flat inside the box. */
+.claude-composer .bg-slate-800\/70 { background-color: transparent !important; border-color: transparent !important; color: var(--cl-muted) !important; }
+.claude-composer .bg-slate-800\/70:hover { background-color: var(--cl-border) !important; }
+
+/* Claude-style screens (sidebar, chat home): one set of colors for dark, one for light mode. */
+:root { --cl-bg: #0c0a1d; --cl-side: #080616; --cl-card: #17132f; --cl-border: #2d2654; --cl-text: #f3f0ff; --cl-muted: #c6bfeb; --cl-faint: #8c85b8; --cl-hover: #1f1a40; --cl-accent: #c86cf2; --cl-accent2: #6f5cff; --cl-focus: #5a4ba3; }
+:root.light { --cl-bg: #f7f4ff; --cl-side: #efe9ff; --cl-card: #ffffff; --cl-border: #ddd3f7; --cl-text: #1b1433; --cl-muted: #3e3466; --cl-faint: #786da3; --cl-hover: #e6defc; --cl-accent: #9b4dca; --cl-accent2: #6a4cff; --cl-focus: #b9a8ef; }
+
+/* Account and settings window (Profile.jsx): Claude's flat look, in both themes. */
+.claude-modal { background: var(--cl-card) !important; border-color: var(--cl-border) !important; color: var(--cl-text); }
+.claude-modal h3, .claude-modal h2, .claude-modal .text-white { color: var(--cl-text) !important; }
+.claude-modal .text-slate-200, .claude-modal .text-slate-300 { color: var(--cl-muted) !important; }
+.claude-modal .text-slate-400, .claude-modal .text-slate-500 { color: var(--cl-faint) !important; }
+.claude-modal button.bg-slate-800, .claude-modal .bg-slate-800, .claude-modal .bg-slate-800\/50, .claude-modal .bg-slate-800\/70 { background: transparent !important; border: 1px solid var(--cl-border) !important; color: var(--cl-text) !important; }
+.claude-modal button.bg-slate-800:hover, .claude-modal .hover\:bg-slate-700:hover { background: var(--cl-hover) !important; }
+.claude-modal .rounded-xl { border-radius: 0.6rem; }
+.claude-modal [class*="bg-gradient-to-"]:not(.keep-color) { background: var(--cl-hover) !important; border-color: var(--cl-border) !important; color: var(--cl-text) !important; }
+.claude-modal .bg-red-700 { background: transparent !important; border: 1px solid var(--cl-border) !important; color: #e5484d !important; }
+.claude-modal .bg-red-700:hover { background: var(--cl-hover) !important; }
+.claude-modal .h-px.bg-slate-700\/50 { background: var(--cl-border) !important; }
+.claude-modal .bg-indigo-600, .claude-modal .bg-indigo-500 { background: var(--cl-text) !important; color: var(--cl-bg) !important; }
+
+/* Nebula clouds behind the chat and Code pages (soft colored glows over deep space). */
+.nebula-bg {
+  background-color: var(--cl-bg);
+  background-image:
+    radial-gradient(ellipse 60% 45% at 18% 20%, rgba(200, 108, 242, 0.16), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 85% 75%, rgba(111, 92, 255, 0.16), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 70% 15%, rgba(56, 189, 248, 0.08), transparent 70%);
+}
+:root.light .nebula-bg {
+  background-image:
+    radial-gradient(ellipse 60% 45% at 18% 20%, rgba(200, 108, 242, 0.12), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 85% 75%, rgba(111, 92, 255, 0.10), transparent 70%);
+}

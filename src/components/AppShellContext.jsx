@@ -12,6 +12,8 @@ import TwoStepGate from "@/components/TwoStepGate";
 import { applyThemeClass, readUserTheme, writeUserTheme } from "@/lib/theme";
 import { restoreChats } from "@/lib/chatStash";
 
+const CODE_PLANS = ["pro", "team", "enterprise", "max"];
+
 const AppShellContext = createContext(null);
 
 export const useAppShell = () => useContext(AppShellContext);
@@ -99,12 +101,17 @@ export function AppShellProvider({ children }) {
   const avatarInitial = (currentUser?.full_name || currentUser?.email || "U").trim().charAt(0).toUpperCase();
 
   const goHome = useCallback(() => { navigate("/chat"); setSidebarOpen(false); }, [navigate]);
+  // Nebulux Code is for Pro and up (admins always): anyone else gets an upgrade popup instead.
+  const codeAllowed = isAdmin || CODE_PLANS.includes(credits.plan);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const goCode = useCallback(() => {
-    // Access follows credits: anyone with Nebulux Code credits can use it, and anyone without
-    // gets the page's out-of-credits card, where they can buy some whatever their plan.
-    navigate("/chat/code");
     setSidebarOpen(false);
-  }, [navigate]);
+    if (!codeAllowed) {
+      setUpgradeOpen(true);
+      return;
+    }
+    navigate("/chat/code");
+  }, [navigate, codeAllowed]);
   const goDesigner = useCallback(() => { navigate("/chat/designer"); setSidebarOpen(false); }, [navigate]);
   const goGames = useCallback(() => { navigate("/chat/games"); setSidebarOpen(false); }, [navigate]);
   const goGameDesigner = useCallback(() => { navigate("/chat/game-designer", { state: { fresh: Date.now() } }); setSidebarOpen(false); }, [navigate]);
@@ -135,7 +142,7 @@ export function AppShellProvider({ children }) {
   const value = {
     currentUser, conv, credits, lightMode, toggleLight,
     isAdmin, isBanned, isBlocked, isUnverified, blockedUntil, effPlan, avatarInitial,
-    sidebarOpen, setSidebarOpen,
+    sidebarOpen, setSidebarOpen, codeAllowed, setUpgradeOpen,
     navigate, goHome, goCode, goDesigner, goGames, goGameDesigner, goPlans, goMonitor, goPromos, newChat, goBilling, openProfile, closeProfile, goBack,
   };
 
@@ -155,6 +162,18 @@ export function AppShellProvider({ children }) {
       <NamePrompt user={currentUser} ready={termsOk} onDone={nameDone} />
       <WelcomeReward open={welcomeOpen && termsOk && nameOk} onClose={() => setWelcomeOpen(false)} onClaimed={credits.sync} />
       {/* A new account's first visit: a short guided tour, or explore alone (after any invite reward). */}
+      {upgradeOpen && (
+        <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center p-4" onClick={() => setUpgradeOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upgrade-title" className="w-full max-w-md rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] p-6 shadow-2xl text-[var(--cl-text)]">
+            <h2 id="upgrade-title" className="font-serif text-2xl">Upgrade to use Nebulux Code</h2>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-[var(--cl-muted)]">Nebulux Code is included with Pro and higher plans. Upgrade to build apps, websites and games with the coding AI.</p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setUpgradeOpen(false)} className="rounded-lg border border-[var(--cl-border)] px-4 py-2 text-[14px] text-[var(--cl-muted)] hover:bg-[var(--cl-border)]/60">Not now</button>
+              <button onClick={() => { setUpgradeOpen(false); goPlans(); }} className="rounded-lg bg-[var(--cl-text)] px-4 py-2 text-[14px] font-medium text-[var(--cl-bg)] hover:opacity-90">Upgrade</button>
+            </div>
+          </div>
+        </div>
+      )}
       <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || welcomeOpen || isBanned || isBlocked || isUnverified} />
     </AppShellContext.Provider>
   );

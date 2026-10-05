@@ -80,6 +80,20 @@ export async function listPages(token, fullName, branch) {
     .slice(0, 300);
 }
 
+// Every file in the repo (for Nebulux Code's file list), skipping big files and folders like node_modules.
+export async function listFiles(token, fullName, branch) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(fullName)) throw new Error("Pick a repository.");
+  const tree = await gh(token, `/repos/${fullName}/git/trees/${encodeURIComponent(branch || "HEAD")}?recursive=1`).catch((e) => {
+    if (e.status === 409) return { tree: [] };
+    throw e;
+  });
+  return (tree.tree || [])
+    .filter((f) => f.type === "blob" && !/(^|\/)(node_modules|\.git|vendor|dist|build)\//.test(f.path) && f.size < 400_000)
+    .map((f) => f.path)
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 1000);
+}
+
 // One text file from the repo (UTF-8). Resolves "" when it doesn't exist.
 export async function readFile(token, fullName, path) {
   try {

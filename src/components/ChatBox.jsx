@@ -66,7 +66,14 @@ const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus
 const KEEP_GOING = "Keep going from exactly where you stopped.";
 
 
-export default function ChatBox({ conversation, createConversation, addMessage, removeMessage, renameConversation, plan, exhausted, remaining, spend, userInitial }) {
+// claude: the full-page home screen look (like Claude's): a big greeting with the message box in the
+// middle when the chat is empty, replies as plain text, and the message box at the bottom after that.
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
+export default function ChatBox({ conversation, createConversation, addMessage, removeMessage, renameConversation, plan, exhausted, remaining, spend, userInitial, claude = false }) {
   // ?ask=... (from the Ideas page or a guide): the question starts typed in the box, not sent,
   // so nothing is charged until the person presses send. Taken out of the address after.
   const [input, setInput] = useState(() => {
@@ -343,13 +350,19 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
 
   const announce = useReplyAnnouncer(messages, loading, conversation?.id);
 
+  const empty = claude && messages.length === 0 && !loading;
+  const firstName = String(shell?.currentUser?.full_name || "").trim().split(/\s+/)[0];
   return (
-    <div className="w-full max-w-3xl px-3 sm:px-4">
+    <div className={claude ? "w-full h-full flex flex-col" : "w-full max-w-3xl px-3 sm:px-4"}>
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>
       {/* No backdrop blur, smooth scrolling or scroll trapping here: on phones (iPhones especially)
           they got in the way of scrolling the messages. At either end, a swipe scrolls the page. */}
       <div
-        className={`relative bg-slate-900/80 border rounded-3xl overflow-hidden shadow-2xl ${dragging ? "border-indigo-400" : "border-slate-700/50"}`}
+        className={
+          claude
+            ? `relative flex-1 min-h-0 flex flex-col ${empty ? "justify-center" : ""} ${dragging ? "ring-2 ring-[var(--cl-accent)]/60" : ""}`
+            : `relative bg-slate-900/80 border rounded-3xl overflow-hidden shadow-2xl ${dragging ? "border-indigo-400" : "border-slate-700/50"}`
+        }
         onDragOver={(e) => {
           if (!hasFiles(e)) return;
           e.preventDefault();
@@ -371,8 +384,25 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <p className="text-sm font-medium">Drop pictures to ask about them</p>
           </div>
         )}
-        <div ref={scrollRef} className="h-[55vh] sm:h-96 overflow-y-auto overscroll-y-auto p-4 sm:p-6 space-y-4">
-          {messages.length === 0 && !loading && (
+        <div
+          ref={scrollRef}
+          className={
+            claude
+              ? empty
+                ? "flex-none px-4 pb-6"
+                : "flex-1 min-h-0 overflow-y-auto overscroll-y-auto pt-14 pb-6 space-y-6 px-[max(1rem,calc((100%_-_48rem)/2))]"
+              : "h-[55vh] sm:h-96 overflow-y-auto overscroll-y-auto p-4 sm:p-6 space-y-4"
+          }
+        >
+          {empty && (
+            <div className="flex items-center justify-center gap-3 text-center">
+              <BlackholeIcon className="keep-color w-9 h-9 sm:w-10 sm:h-10" />
+              <h1 className="font-serif text-[30px] sm:text-[40px] leading-tight text-[var(--cl-text)] tracking-tight">
+                {greeting()}{firstName ? `, ${firstName}` : ""}
+              </h1>
+            </div>
+          )}
+          {!claude && messages.length === 0 && !loading && (
             <div className="h-full flex flex-col items-center justify-center text-center">
               <div className="keep-color w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center mb-3">
                 <BlackholeIcon className="w-full h-full" />
@@ -384,11 +414,17 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
           {messages.map((m, i) => (
             <div key={i} className={`flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[80%] min-w-0 px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  m.role === "user"
-                    ? "whitespace-pre-wrap bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm"
-                    : "bg-slate-800 text-slate-100 rounded-bl-sm border border-slate-700/50"
-                }`}
+                className={
+                  claude
+                    ? m.role === "user"
+                      ? "max-w-[80%] min-w-0 px-4 py-2.5 rounded-2xl whitespace-pre-wrap bg-[var(--cl-hover)] text-[var(--cl-text)] text-[15px] leading-relaxed"
+                      : "w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif"
+                    : `max-w-[80%] min-w-0 px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                        m.role === "user"
+                          ? "whitespace-pre-wrap bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm"
+                          : "bg-slate-800 text-slate-100 rounded-bl-sm border border-slate-700/50"
+                      }`
+                }
               >
                 {m.role === "user" ? (
                   m.content
@@ -448,7 +484,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
-              {m.role === "user" && (
+              {m.role === "user" && !claude && (
                 <div className="keep-color w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
                   {userInitial || "U"}
                 </div>
@@ -513,7 +549,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
           )}
         </div>
 
-        <div className="border-t border-slate-700/50 p-3">
+        <div className={claude ? "w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3" : "border-t border-slate-700/50 p-3"}>
           <QueueList q={q} loading={loading} />
 
           {files.length > 0 && (
@@ -524,7 +560,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             </div>
           )}
           {isExhausted && !loading && <OutOfCredits tier={TIER_OF_AI[selectedAi]} />}
-          <div className="flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-indigo-500/50 transition-colors">
+          <div className={claude ? "claude-composer bg-[var(--cl-card)] border border-[var(--cl-border)] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,.25)] focus-within:border-[var(--cl-focus)] transition-colors" : ""}>
+          <div className={claude ? "flex items-end gap-2" : "flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-indigo-500/50 transition-colors"}>
             <textarea
               ref={inputRef}
               value={input}
@@ -540,13 +577,13 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               }}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={queued ? "Type to queue your next message…" : "Message Nebulux AI..."}
-              rows={1}
-              className="flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"
+              placeholder={queued ? "Type to queue your next message…" : claude ? "How can I help you today?" : "Message Nebulux AI..."}
+              rows={claude && empty ? 2 : 1}
+              className={claude ? "flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]" : "flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"}
             />
-            <SendOrStopButton loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} />
+            <SendOrStopButton loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} {...(claude ? { gradient: "from-[var(--cl-accent)] to-[var(--cl-accent2)]" } : {})} />
           </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+          <div className={claude ? "flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pb-1" : "flex flex-wrap items-center gap-x-2 gap-y-1 mt-2"}>
             {/* Like Claude's: files, microphone, AI, strength, then credits and context on the right. */}
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -567,6 +604,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <AboutMeButton userId={shell?.currentUser?.id} />
             {selectedAi === "ai" && <StudyModeButton />}
             {buildMode.visible && <ModeToggle mode={buildMode.mode} onChange={buildMode.setMode} />}
+          </div>
           </div>
           <input
             ref={cameraRef}
@@ -592,7 +630,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               e.target.value = "";
             }}
           />
-          <p className="text-center text-xs text-slate-600 mt-2">Nebulux AI can make mistakes. Check important info, and never share passwords or card numbers with it.</p>
+          <p className={claude ? `text-center text-[11.5px] text-[var(--cl-faint)] mt-2 ${empty ? "hidden" : ""}` : "text-center text-xs text-slate-600 mt-2"}>Nebulux AI can make mistakes. Check important info, and never share passwords or card numbers with it.</p>
         </div>
       </div>
     </div>

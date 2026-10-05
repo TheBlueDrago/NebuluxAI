@@ -37,3 +37,4 @@ base44/.app.jsonc
 # Local Cloudflare dev state (wrangler pages dev / wrangler dev)
 .wrangler/
 db/import.sql
+.preview/

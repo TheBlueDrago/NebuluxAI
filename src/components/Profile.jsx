@@ -247,7 +247,7 @@ export default function Profile({ open, onClose, initialView = "main", onMonitor
             role="dialog"
             aria-modal="true"
             aria-label="Account and settings"
-            className="w-full max-w-sm max-h-[calc(100dvh-2rem)] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl overflow-y-auto overscroll-contain"
+            className="claude-modal w-full max-w-md max-h-[calc(100dvh-2rem)] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl overflow-y-auto overscroll-contain"
           >
             {pwStep === "sent" ? (
               <div className="p-6">
