@@ -447,7 +447,7 @@ function hurt(e,d,by,kx,kz){if(!e.alive)return;const red=ARMORS[e.armor].red+.06
 function die(e,byId){if(!e.alive)return;e.alive=false;e.hp=0;if(e.mesh)e.mesh.visible=false;const killer=ENTS.find(x=>x.id===byId)||(e.lastHit&&matchT-e.lastHitT<10?ENTS.find(x=>x.id===e.lastHit):null);
  const final=!TEAM_ST[e.team].bed;const loot={...e.res};
  // you lose your resources, blocks and sword; you keep your armor
- e.res={iron:0,gold:0,diamond:0,emerald:0};e.blocks={wool:0,wood:0,end:0};e.sword=0;e.bow=false;e.arrows=0;e.gapple=0;e.fireball=0;e.pearl=0;
+ e.res={iron:0,gold:0,diamond:0,emerald:0};e.blocks={wool:0,wood:0,end:0};e.sword=e.sword===4?4:0;e.bow=false;e.arrows=0;e.gapple=0;e.fireball=0;e.pearl=0;
  if(final){e.out=true}else e.respawnT=5;
  const kn=killer?killer.name:"the void";announceDeath(e,killer,final);
  if(killer)giveLoot(killer,loot);
