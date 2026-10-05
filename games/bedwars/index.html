@@ -181,7 +181,7 @@ function ray(o,d,max){let x=Math.floor(o.x),y=Math.floor(o.y),z=Math.floor(o.z);
   if(tx<ty&&tx<tz){x+=sx;t=tx;tx+=tdx;nx=-sx;ny=0;nz=0}else if(ty<tz){y+=sy;t=ty;ty+=tdy;nx=0;ny=-sy;nz=0}else{z+=sz;t=tz;tz+=tdz;nx=0;ny=0;nz=-sz}
   if(t>max)return null}return null}
 // ray against a character's box -> distance or null
-function rayEnt(o,d,e,max){const mn=[e.pos.x-.4,e.pos.y,e.pos.z-.4],mx=[e.pos.x+.4,e.pos.y+1.9,e.pos.z+.4],O=[o.x,o.y,o.z],D=[d.x,d.y,d.z];let t0=0,t1=max;
+function rayEnt(o,d,e,max){const w=mine(e)?.9:.4,hh=mine(e)?2.6:1.9;const mn=[e.pos.x-w,e.pos.y,e.pos.z-w],mx=[e.pos.x+w,e.pos.y+hh,e.pos.z+w],O=[o.x,o.y,o.z],D=[d.x,d.y,d.z];let t0=0,t1=max;
  for(let i=0;i<3;i++){if(Math.abs(D[i])<1e-9){if(O[i]<mn[i]||O[i]>mx[i])return null;continue}let a=(mn[i]-O[i])/D[i],b=(mx[i]-O[i])/D[i];if(a>b){const q=a;a=b;b=q}t0=Math.max(t0,a);t1=Math.min(t1,b);if(t0>t1)return null}return t0}
 
 // ---------- sound ----------
@@ -206,6 +206,7 @@ function makeChar(col,name,robe){const g=new THREE.Group();const M=c=>new THREE.
 function heldModel(kind,tier,team){const g=new THREE.Group();const M=c=>new THREE.MeshLambertMaterial({color:c});
  if(kind==="sword"){const b=new THREE.Mesh(new THREE.BoxGeometry(tier===4?.14:.08,.08,tier===4?1:.75),new THREE.MeshLambertMaterial({color:SWORDS[tier].c,emissive:tier===4?0x6a0020:0}));b.position.z=-.38;g.add(b);const h=new THREE.Mesh(new THREE.BoxGeometry(.26,.06,.06),M(0x5b3a1e));g.add(h)}
  else if(kind==="axe"){const st=new THREE.Mesh(new THREE.BoxGeometry(.06,.06,.7),M(0x6d4426));st.position.z=-.3;g.add(st);const hd=new THREE.Mesh(new THREE.BoxGeometry(.06,.26,.2),M([0xa0723c,0x8d8d8d,0xe0e0e0,0x4fe3e0][tier]||0x8d8d8d));hd.position.set(0,.08,-.58);g.add(hd)}
+ else if(kind==="bed2"){const b=new THREE.Mesh(new THREE.BoxGeometry(.3,.14,.4),BDEF[20].mat);g.add(b)}
  else if(kind==="bow"){const b=new THREE.Mesh(new THREE.TorusGeometry(.3,.03,4,10,Math.PI),M(0x8d6634));b.rotation.y=Math.PI/2;g.add(b)}
  else if(kind==="gapple"){g.add(new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xffd54a)))}
  else if(kind==="fireball"){g.add(new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),new THREE.MeshBasicMaterial({color:0xff7a1a})))}
@@ -347,8 +348,8 @@ $("promogo").onclick=()=>{const v=$("promo").value.trim();if(sha256(v)===PROMO_H
 $("promo").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter")$("promogo").click()});
 
 // ---------- hotbar ----------
-function hotbar(e){const h=[["sword","sword"]];if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.gapple)h.push(["gapple","gapple"]);if(e.fireball)h.push(["fireball","fireball"]);if(e.pearl)h.push(["pearl","pearl"]);return h.map(x=>x[0])}
-const ICON={axe:"🪓",sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
+function hotbar(e){const h=[["sword","sword"]];if(e.bed2)h.push(["bed2","bed2"]);if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.gapple)h.push(["gapple","gapple"]);if(e.fireball)h.push(["fireball","fireball"]);if(e.pearl)h.push(["pearl","pearl"]);return h.map(x=>x[0])}
+const ICON={bed2:"🛏️",axe:"🪓",sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
 function heldOf(e){const h=hotbar(e);if(e.sel>=h.length)e.sel=h.length-1;return h[Math.max(0,e.sel)]}
 function countOf(e,k){return k==="wool"||k==="wood"||k==="end"?e.blocks[k]:k==="bow"?e.arrows:k==="sword"?0:e[k]}
 
@@ -361,7 +362,7 @@ function hud(){if(!P)return;const h=hotbar(P);
  const hp=Math.max(0,Math.ceil(P.hp*20/maxHp(P)));let hs="";for(let i=0;i<10;i++)hs+=hp>=i*2+2?"❤️":hp>=i*2+1?"💔":"🖤";$("hearts").innerHTML=hs+(maxHp(P)>20?` ${Math.ceil(P.hp)}/${maxHp(P)}`:"")+(P.absorb>0?" 💛"+Math.ceil(P.absorb):"");
  $("armorTxt").textContent=`${ARMORS[P.armor].n} armor · ${SWORDS[P.sword].n}`;
  $("res").innerHTML=Object.entries(P.res).map(([k,v])=>`${RES_IC[k]} ${v}`).join("<br>");
- $("teams").innerHTML=TEAMS.map((t,i)=>{const al=ENTS.filter(e=>e.team===i&&!e.out).length;return`<span style="color:${t.css}">■ ${t.n}</span> ${TEAM_ST[i].bed?"✔":al?"✘":"☠"} ${al}${i===P.team?" ← YOU":""}`}).join("<br>")}
+ $("teams").innerHTML=TEAMS.map((t,i)=>{const al=ENTS.filter(e=>e.team===i&&!e.out).length;return`<span style="color:${t.css}">■ ${t.n}</span> ${hasBed(i)?"✔":al?"✘":"☠"} ${al}${i===P.team?" ← YOU":""}`}).join("<br>")}
 $("hotbar").addEventListener("click",e=>{const s=e.target.closest("[data-sl]");if(s&&P){P.sel=+s.dataset.sl;hud()}});
 
 // ---------- first-person view model ----------
@@ -442,7 +443,10 @@ const QNAME={bw1:"SOLOS · 4 teams of 1",bw2:"DUOS · 4 teams of 2",bw4:"SQUADS 
 // 10 times stronger, but you move slower and attack slower; fireballs cost a lot more and are huge.
 const BIG=()=>!!(MATCH&&MATCH.q==="v100");
 const mine=e=>BIG()&&e&&e.local;
-const maxHp=e=>mine(e)?100:20;// 1 v 100: 5x health
+const maxHp=e=>mine(e)?100:20;
+let SECOND=null;// where your second bed was placed
+const hasBed=t=>TEAM_ST[t].bed||(BIG()&&t===0&&!!SECOND);
+function bedAt(t){if(TEAM_ST[t].bed){const g=teamGeom(t);return new THREE.Vector3(g.bed[0][0]+.5,3,g.bed[0][1]+.5)}return SECOND?new THREE.Vector3(SECOND.x+.5,SECOND.y,SECOND.z+.5):null}// 1 v 100: 5x health
 function joinQueue(q){if(QWS)return;queueMode=q;unlock();$("queue").style.display="block";$("qtitle").textContent="🛏️ "+QNAME[q];$("qtext").textContent="Connecting…";$("qlist").textContent="";
  let started=false;const fallback=setTimeout(()=>{if(!started){leaveQueue();startMatch(q,null)}},6000);
  try{QWS=new WebSocket(WS_URL)}catch(e){clearTimeout(fallback);leaveQueue();startMatch(q,null);return}
@@ -460,26 +464,27 @@ $("v100").onclick=()=>{unlock();startMatch("v100",null)};
 
 // ---------- match ----------
 function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();closePanels();$("lobbyui").style.display="none";$("lobbytop").style.display="none";$("chat").style.display="none";$("results").style.display="none";
- teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
+ teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;SECOND=null;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
  const people=players&&players.length?players:[{id:"me",name:NAME}];if(!players)NET=null;
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=Math.floor(i/teamSize)%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
  let bi=0;const BN=["Steve","Alex","Blaze","Cobble","Pixel","Nova","Creeper","Diamond","Ender","Bolt","Rusty","Sky","Frost","Zap","Mango","Echo"];
- if(q==="v100"){const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
+ if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
  else for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
  for(const e of ENTS)spawn(e);
  hud();updateView();msg(q==="v100"?"1 V 100":"BEDWARS",3,q==="v100"?"100 bots are coming for you. You have 5x health, 15x damage and no knockback!":`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
 function addEnt(e){e.mesh=makeChar(TEAMS[e.team].c,e.local?null:e.name);setArmorLook(e);if(e.local)e.mesh.visible=false;ENTS.push(e);return e}
-function spawn(e){const g=teamGeom(e.team);e.pos.set(g.spawn[0]+(Math.random()-.5)*2,3.05,g.spawn[1]+(Math.random()-.5)*2);e.vel.set(0,0,0);e.kb.set(0,0,0);e.hp=maxHp(e);e.absorb=0;e.alive=true;e.yaw=Math.atan2(-g.ux,-g.uz);e.pitch=0;
+function spawn(e){const g=teamGeom(e.team);e.pos.set(g.spawn[0]+(Math.random()-.5)*2,3.05,g.spawn[1]+(Math.random()-.5)*2);
+ if(e.local&&BIG()&&!TEAM_ST[e.team].bed&&SECOND)e.pos.set(SECOND.x+.5,SECOND.y+1.05,SECOND.z+.5);e.vel.set(0,0,0);e.kb.set(0,0,0);e.hp=maxHp(e);e.absorb=0;e.alive=true;e.yaw=Math.atan2(-g.ux,-g.uz);e.pitch=0;
  if(e.mesh){e.mesh.visible=!e.local;e.mesh.position.copy(e.pos)}if(e.bot){e.state="farm";e.goal=null;e.launched=false}}
 
 // damage / death
 function damageFrom(att,base){const T=TEAM_ST[att.team];return base+(T.sharp?1:0)}
-function hurt(e,d,by,kx,kz){if(!e.alive)return;const red=ARMORS[e.armor].red+.06*TEAM_ST[e.team].prot;d=d*(1-Math.min(.8,red));
+function hurt(e,d,by,kx,kz){if(!e.alive)return;const red=ARMORS[e.armor].red+.06*TEAM_ST[e.team].prot;d=d*(1-Math.min(.8,red))*(mine(e)?1.5:1);
  if(e.absorb>0){const a=Math.min(e.absorb,d);e.absorb-=a;d-=a}e.hp-=d;const kbm=mine(e)?0:1-.15*e.armor;e.kb.x+=(kx||0)*kbm;e.kb.z+=(kz||0)*kbm;if((kx||kz)&&kbm)e.vel.y=Math.max(e.vel.y,6.2*(1-.08*e.armor));
  if(by){e.lastHit=by;e.lastHitT=matchT}if(e.local){sfx(140,.12,"sawtooth",.06);hud()}if(e.hp<=0)die(e,by)}
 function die(e,byId){if(!e.alive)return;e.alive=false;e.hp=0;if(e.mesh)e.mesh.visible=false;const killer=ENTS.find(x=>x.id===byId)||(e.lastHit&&matchT-e.lastHitT<10?ENTS.find(x=>x.id===e.lastHit):null);
- const final=!TEAM_ST[e.team].bed;const loot=promoOn(e)?null:{...e.res};
+ const final=!hasBed(e.team);if(e.bed2&&!promoOn(e))e.bed2=0;/* dying with the second bed still in your inventory loses it */const loot=promoOn(e)?null:{...e.res};
  // you lose your resources, blocks and sword; you keep your armor (with the promo code you keep it all)
  if(promoOn(e)){}else{e.res={iron:0,gold:0,diamond:0,emerald:0};e.blocks={wool:0,wood:0,end:0};e.sword=e.sword===4?4:0;e.axe=Math.max(0,(e.axe||0)-1);e.bow=false;e.arrows=0;e.gapple=0;e.fireball=0;e.pearl=0}
  if(final){e.out=true}else e.respawnT=promoOn(e)?0:5;
@@ -494,7 +499,7 @@ function breakBed(team,byE){if(!TEAM_ST[team].bed)return;TEAM_ST[team].bed=false
  if(P&&P.team===team){msg("BED DESTROYED!",3,"You will no longer respawn!");sfx(200,.6,"sawtooth",.08)}else sfx(500,.25,"triangle",.07);
  if(byE&&byE.local){SAVE.beds++;save()}hud();checkEnd()}
 function checkEnd(){if(ended||!isHost())return;
- if(BIG()){const meIn=ENTS.some(e=>e.team===0&&!e.out&&(e.alive||TEAM_ST[0].bed)),botsIn=ENTS.some(e=>e.bot&&!e.out&&(e.alive||TEAM_ST[e.team].bed));if(!meIn)endMatch(-2);else if(!botsIn)endMatch(0);return}
+ if(BIG()){const meIn=ENTS.some(e=>e.team===0&&!e.out&&(e.alive||hasBed(0))),botsIn=ENTS.some(e=>e.bot&&!e.out&&(e.alive||TEAM_ST[e.team].bed));if(!meIn)endMatch(-2);else if(!botsIn)endMatch(0);return}
  const alive=[0,1,2,3].filter(t=>ENTS.some(e=>e.team===t&&!e.out&&(e.alive||TEAM_ST[t].bed)));if(alive.length<=1){const w=alive.length?alive[0]:-1;send({k:"end",team:w});endMatch(w)}}
 function endMatch(w){if(ended)return;ended=true;MODE="results";unlock();$("lockhint").style.display="none";$("hint").style.display="none";closePanels();SAVE.games++;const won=P&&w===P.team;if(won)SAVE.wins++;save();
  $("rtitle").textContent=won?"🏆 VICTORY!":"GAME OVER";$("rtitle").style.color=won?"#ffe14a":"#fff";
@@ -519,6 +524,7 @@ function hitEnt(att,t,dmg){flashEnt(t);if(att.local)hitMark();const dx=t.pos.x-a
  if(att.local)sfx(300,.05,"square",.05)}
 function useItem(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;const h=heldOf(P);
  if(h==="wool"||h==="wood"||h==="end"){placeFrom(P,h);P.placeT=.3;return}
+ if(h==="bed2"&&P.bed2){const c=airSpot(P);if(!c)return;setBlock(c[0],c[1],c[2],20+P.team,true);SECOND={x:c[0],y:c[1],z:c[2]};P.bed2=0;send({k:"blk",x:c[0],y:c[1],z:c[2],b:20+P.team});msg("SECOND BED PLACED",2,"You can respawn here too.");sfx(700,.2,"triangle",.08);hud();return}
  if(h==="gapple"&&P.gapple>0){P.gapple--;P.hp=Math.min(maxHp(P),P.hp+(mine(P)?40:8));P.absorb=4;sfx(700,.1);hud();return}
  if(h==="bow"&&P.arrows>0&&P.cd<=0){P.arrows--;P.cd=BIG()?1.5:.6;shoot(P,"arrow");hud();return}
  if(h==="fireball"&&P.fireball>0&&P.cd<=0){P.fireball--;P.cd=.5;shoot(P,"fireball");hud();return}
@@ -542,7 +548,9 @@ function placeFrom(e,kind,at){if(e.blocks[kind]<=0)return false;let x,y,z;
  for(const o of ENTS)if(o.alive&&o.pos.x+.3>x&&o.pos.x-.3<x+1&&o.pos.z+.3>z&&o.pos.z-.3<z+1&&o.pos.y+1.8>y&&o.pos.y<y+1)return false;
  // not right on top of a generator or shop
  const t=kind==="wool"?10+e.team:kind==="wood"?4:5;setBlock(x,y,z,t,true);e.blocks[kind]--;send({k:"blk",x,y,z,b:t});if(e.local){sfx(220,.05,"triangle",.05);e.swingT=.2;VIEW.userData.sw=.2;hud()}return true}
-function breakAt(e,x,y,z,blast){const t=getB(x,y,z);if(!t)return;if(isBed(t)){const team=t-20;if(team===e.team){if(e.local)msg("That's your own bed!",1);return}breakBed(team,e);send({k:"bed",team,by:e.id});return}
+function breakAt(e,x,y,z,blast){const t=getB(x,y,z);if(!t)return;if(isBed(t)){const team=t-20;if(team===e.team){if(e.local)msg("That's your own bed!",1);return}
+  if(SECOND&&SECOND.x===x&&SECOND.y===y&&SECOND.z===z){setBlock(x,y,z,0);SECOND=null;send({k:"blk",x,y,z,b:0});feed(`🛏️ Your second bed was destroyed by ${esc(e.name)}`);if(P&&P.team===team)msg("SECOND BED DESTROYED!",2.5);hud();checkEnd();return}
+  breakBed(team,e);send({k:"bed",team,by:e.id});return}
  setBlock(x,y,z,0);send({k:"blk",x,y,z,b:0});
  // the block you break goes into your inventory (not ones blown up by a fireball)
  if(!blast){const kind=isWool(t)?"wool":t===4?"wood":t===5?"end":null;if(kind){e.blocks[kind]++;if(e.local)hud()}}
@@ -619,10 +627,10 @@ function botTick(b,dt){if(!b.alive)return;b.think-=dt;b.cd-=dt;
   else if(b.state==="guard")goal=b.res.iron<30?new THREE.Vector3(g.gen[0]+.5,3,g.gen[1]+.5):new THREE.Vector3(g.bed[0][0]-g.ux*1.5+.5,3,g.bed[0][1]-g.uz*1.5+.5);
   else if(out&&Math.hypot(b.pos.x-g.cx,b.pos.z-g.cz)<6.5&&!b.launched){goal=new THREE.Vector3(g.cx+g.ux*7-g.px*2+.5,3,g.cz+g.uz*7-g.pz*2+.5);if(Math.hypot(goal.x-b.pos.x,goal.z-b.pos.z)<2)b.launched=true}
   else if(b.state==="loot"){const gn=nearestGen(b,b.lootKind);if(!gn){b.state="farm"}else{goal=new THREE.Vector3(gn.x,3,gn.z);if(Math.hypot(gn.x-b.pos.x,gn.z-b.pos.z)<1.2){b.lootT+=dt;if(b.lootT>(b.lootKind==="diamond"?35:60)||b.res[b.lootKind]>=(b.lootKind==="diamond"?8:6)){b.state="farm";b.launched=false}}}}
-  else if(b.state==="attack"&&b.target!=null){const tg=teamGeom(b.target);if(TEAM_ST[b.target].bed)goal=new THREE.Vector3(tg.bed[0][0]+.5,3,tg.bed[0][1]+.5);else{const v=ENTS.find(e=>e.team===b.target&&e.alive);goal=v?v.pos:new THREE.Vector3(tg.cx,3,tg.cz)}}}
+  else if(b.state==="attack"&&b.target!=null){const tg=teamGeom(b.target);if(hasBed(b.target))goal=bedAt(b.target);else{const v=ENTS.find(e=>e.team===b.target&&e.alive);goal=v?v.pos:new THREE.Vector3(tg.cx,3,tg.cz)}}}
  let wx=0,wz=0;
  if(goal){const dx=goal.x-b.pos.x,dz=goal.z-b.pos.z,d=Math.hypot(dx,dz);b.yaw=Math.atan2(-dx,-dz);
-  const near=fight?2.4:(b.state==="attack"&&b.target!=null&&TEAM_ST[b.target].bed?1.6:.6);
+  const near=fight?2.4:(b.state==="attack"&&b.target!=null&&hasBed(b.target)?1.6:.6);
   if(d>near){wx=dx/d;wz=dz/d}
   // fighting: circle the enemy, back off a little after each hit, jump for critical hits
   if(fight){const s=Math.sin(matchT*2.3+hash(b.id))*.7;const back=b.cd>.3&&d<2.6?-.6:0;const fx=wx||dx/(d||1),fz=wz||dz/(d||1);wx=fx*(d>near?1:back)-fz*s;wz=fz*(d>near?1:back)+fx*s;b.pitch=Math.atan2(fight.pos.y-b.pos.y,d)*.8}
@@ -636,9 +644,9 @@ function botTick(b,dt){if(!b.alive)return;b.think-=dt;b.cd-=dt;
   if(b.bump&&(wx||wz)){const bx=Math.floor(b.pos.x+wx*.8),bz=Math.floor(b.pos.z+wz*.8);for(const yy of[Math.floor(b.pos.y),Math.floor(b.pos.y)+1]){if(canBreak(bx,yy,bz)&&!isBed(getB(bx,yy,bz))){b.brk=(b.brk||0)+dt;if(b.brk>hardness(b,getB(bx,yy,bz))*1.2){breakAt(b,bx,yy,bz);b.brk=0}break}}
    if(b.onGround&&!canBreak(bx,Math.floor(b.pos.y),bz))b.vel.y=8.4}
   // at the enemy bed: dig through the defense, then break it
-  if(!fight&&b.state==="attack"&&b.target!=null&&TEAM_ST[b.target].bed&&d<3.2){const tg=teamGeom(b.target);const o=eye(b),to=new THREE.Vector3(tg.bed[0][0]+.5,3.3,tg.bed[0][1]+.5);const dir=to.clone().sub(o).normalize();const h=ray(o,dir,5);
+  if(!fight&&b.state==="attack"&&b.target!=null&&hasBed(b.target)&&d<3.2){const tg=teamGeom(b.target);const o=eye(b),to=bedAt(b.target).add(new THREE.Vector3(0,.3,0));const dir=to.clone().sub(o).normalize();const h=ray(o,dir,5);
    if(h&&canBreak(h.x,h.y,h.z)){b.brk=(b.brk||0)+dt;b.swingT=.25;if(b.brk>hardness(b,h.b)*1.1){breakAt(b,h.x,h.y,h.z);b.brk=0}}}}
- if(fight&&b.cd<=0&&b.pos.distanceTo(fight.pos)<3.2){b.cd=(b.sword===4?.4:.5)+Math.random()*.25;b.swingT=.25;hitEnt(b,fight,damageFrom(b,SWORDS[b.sword].d))}
+ if(fight&&b.cd<=0&&b.pos.distanceTo(fight.pos)<(mine(fight)?4.6:3.2)){b.cd=(b.sword===4?.4:.5)+Math.random()*.25;b.swingT=.25;hitEnt(b,fight,damageFrom(b,SWORDS[b.sword].d))}
  if(fight&&b.onGround&&Math.random()<dt*1.2)b.vel.y=8.4;
  b.vel.x=wx*4.3+b.kb.x;b.vel.z=wz*4.3+b.kb.z;b.bump=false;moveEnt(b,dt)}
 
@@ -698,7 +706,7 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
  netT-=dt;if(netT<=0&&LWS&&LWS.readyState===1){netT=.12;LWS.send(JSON.stringify({t:"bw",k:"lp",x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(2),n:NAME}))}}
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;let best=null,bd=3.2;for(const n of NPCS){const d=Math.hypot(n.x-P.pos.x,n.z-P.pos.z);if(d<(n.kind==="ender"||n.kind==="tchest"?2.3:bd)&&d<bd&&Math.abs(P.pos.y-3)<2.5){bd=d;best=n}}return best}
 function stepMatch(dt){matchT+=dt;
- {const h=heldOf(P);const sp=P.alive&&!panelOpen()&&["wool","wood","end"].includes(h)&&P.blocks[h]>0?airSpot(P):null;GHOST.visible=!!sp;if(sp)GHOST.position.set(sp[0],sp[1],sp[2])}if(promoOn(P)&&P.alive)fillUp(P);P.cd-=dt;
+ {const h=heldOf(P);const sp=P.alive&&!panelOpen()&&((["wool","wood","end"].includes(h)&&P.blocks[h]>0)||(h==="bed2"&&P.bed2))?airSpot(P):null;GHOST.visible=!!sp;if(sp)GHOST.position.set(sp[0],sp[1],sp[2])}if(promoOn(P)&&P.alive)fillUp(P);P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
  const holding=(mouseL||tHit)&&!RANGED.includes(heldOf(P));if((mouseL||tHit)&&P.cd<=0&&!RANGED.includes(heldOf(P))&&targetEnt(P,3.4))attack();let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
