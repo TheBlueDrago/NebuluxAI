@@ -358,7 +358,7 @@ $("promogo").onclick=()=>{const v=$("promo").value.trim();
 $("promo").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter")$("promogo").click()});
 
 // ---------- hotbar ----------
-function hotbar(e){const h=[["sword","sword"]];if(e.baton)h.push(["baton","baton"]);if(e.turret)h.push(["turret","turret"]);if(e.bed2)h.push(["bed2","bed2"]);if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);for(const r of["iron","gold","diamond","emerald"])if(e.res[r])h.push([r,r]);if(e.fireball)h.push(["fireball","fireball"]);return h.map(x=>x[0])}
+function hotbar(e){const h=[["sword","sword"]];if(e.baton)h.push(["baton","baton"]);if(e.turret)h.push(["turret","turret"]);if(e.bed2)h.push(["bed2","bed2"]);if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.fireball)h.push(["fireball","fireball"]);return h.map(x=>x[0])}
 const ICON={baton:"🏏",iron:"⬜",gold:"🟨",diamond:"💎",emerald:"🟩",turret:"🔥",bed2:"🛏️",axe:"🪓",sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
 function heldOf(e){const h=hotbar(e);if(e.sel>=h.length)e.sel=h.length-1;return h[Math.max(0,e.sel)]}
 function countOf(e,k){if(k in e.res)return e.res[k];if(k==="turret")return e.turret;return k==="wool"||k==="wood"||k==="end"?e.blocks[k]:k==="bow"?e.arrows:k==="sword"?0:e[k]}
