@@ -10,29 +10,7 @@ export default function GamesDesignerWorkspace() {
 
   return (
     <div className="relative z-10 h-screen pb-14 sm:pb-0">
-      <AnimatePresence>
-        {sidebarOpen && (
-          <div className="absolute top-20 left-4 z-40">
-            <Sidebar
-              conversations={conv.conversations}
-              activeId={conv.activeId}
-              onSelect={(id) => { conv.selectConversation(id); shell.navigate("/chat"); }}
-              onRename={conv.renameConversation}
-              onDelete={conv.deleteConversation}
-              onRefresh={conv.reload}
-              onGoHome={shell.goHome}
-              onGoCode={shell.goCode}
-              onNewChat={shell.newChat}
-              onGoSubscriptions={shell.goPlans}
-              onGoDesigner={shell.goDesigner}
-              onGoGames={shell.goGames}
-              onGoMonitor={shell.goMonitor}
-              isAdmin={isAdmin}
-              credits={credits}
-            />
-          </div>
-        )}
-      </AnimatePresence>
+      {sidebarOpen && <Sidebar />}
       <GamesDesigner
         onToggleSidebar={() => setSidebarOpen((o) => !o)}
         onOpenProfile={() => openProfile("main")}

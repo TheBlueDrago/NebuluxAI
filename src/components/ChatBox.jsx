@@ -91,6 +91,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [selectedAi, setSelectedAi] = useState("ai");
+  // Ultra (the coding AI) is Pro and up: anyone below that is moved back to the normal AI.
+  const codeAllowedHere = useAppShell()?.codeAllowed;
+  useEffect(() => {
+    if (codeAllowedHere === false && selectedAi === "code") setSelectedAi("ai");
+  }, [codeAllowedHere, selectedAi]);
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   // Pasted screenshots and dropped pictures are attached like the + button's (up to 10 files).

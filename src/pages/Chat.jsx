@@ -55,7 +55,7 @@ function ChatLayout() {
   // The profile opens over whatever page is showing (see openProfile), so that page stays put behind it.
   const profileView = loc.state?.profile;
   const profileOpen = !!profileView;
-  const showTabbar = ["/chat", "/chat/code", "/chat/designer", "/chat/designer/build"].includes(loc.pathname) && !isBanned && !isBlocked && !isUnverified;
+  const showTabbar = ["/chat/designer", "/chat/designer/build"].includes(loc.pathname) && !isBanned && !isBlocked && !isUnverified;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black overflow-hidden relative">

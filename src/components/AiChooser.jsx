@@ -28,7 +28,8 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
   // (from a plan, a bought pack, referrals, promo codes or an admin). Before credits load,
   // allow the basics and fall back to the plan for the others. An AI with no credits can
   // still be picked: the out-of-credits card then offers to buy its credits (any plan) or upgrade.
-  const credits = useAppShell()?.credits;
+  const shell = useAppShell();
+  const credits = shell?.credits;
   const REMAINING = { ai: "aiRemaining", code: "aiCodeRemaining", opus5: "galaxy5Remaining", fable: "space5Remaining" };
   const canUse = (id) => {
     if ((id === "opus5" || id === "fable") && !allowFable) return false;
@@ -65,6 +66,8 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
             {OPTIONS.map((o) => {
               const allowed = canUse(o.id);
               const offHere = (o.id === "opus5" || o.id === "fable") && !allowFable;
+              // The coding AI is Pro and up: below that it opens the upgrade popup.
+              const needsPro = o.id === "code" && shell?.codeAllowed === false;
               return (
                 <button
                   key={o.id}
@@ -72,6 +75,11 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
                   disabled={offHere}
                   onClick={() => {
                     if (offHere) return;
+                    if (needsPro) {
+                      setOpen(false);
+                      shell.setUpgradeOpen(true);
+                      return;
+                    }
                     onChange(o.id);
                     setOpen(false);
                   }}
@@ -84,7 +92,7 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
                     {o.id === "fable" && <span title="This AI uses more credits than the others" className="text-amber-400 font-bold cursor-help">!</span>}
                     {labels[o.id] || o.label}
                   </span>
-                  {offHere ? (
+                  {offHere || needsPro ? (
                     <Lock className="w-3.5 h-3.5 text-slate-500" />
                   ) : (
                     !allowed && <span className="text-[10px] font-semibold text-amber-300">Buy credits</span>

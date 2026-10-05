@@ -14,7 +14,7 @@ import { restoreChats } from "@/lib/chatStash";
 
 import CodeArt from "@/components/chat/CodeArt";
 
-const CODE_PLANS = ["pro", "team", "enterprise", "max"];
+const CODE_PLANS = ["pro", "team", "enterprise", "max", "secret"];
 
 const AppShellContext = createContext(null);
 
@@ -103,10 +103,10 @@ export function AppShellProvider({ children }) {
   const avatarInitial = (currentUser?.full_name || currentUser?.email || "U").trim().charAt(0).toUpperCase();
 
   const goHome = useCallback(() => { navigate("/chat"); setSidebarOpen(false); }, [navigate]);
-  // Nebulux Code is for Pro and up (admins always): anyone else gets an upgrade popup instead.
+  // Nebulux Code is for Pro and up, admins included: anyone else gets an upgrade popup instead.
   // Unknown until both the account and its plan have loaded (null): only a known "no" blocks it,
   // so an admin clicking Code a moment after the page opens isn't told to upgrade.
-  const codeAllowed = !currentUser || !credits.plan ? null : isAdmin || CODE_PLANS.includes(credits.plan);
+  const codeAllowed = !currentUser || !credits.plan ? null : CODE_PLANS.includes(credits.plan); // plan only: admins too (owner, 2026-10-05)
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const goCode = useCallback(() => {
     setSidebarOpen(false);

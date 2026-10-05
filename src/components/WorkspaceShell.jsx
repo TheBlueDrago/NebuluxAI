@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppShell } from "@/components/AppShellContext";
 import ClaudeSidebar from "@/components/ClaudeSidebar";
+import Sidebar from "@/components/Sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ChatBox from "@/components/ChatBox";
 import CodePage from "@/components/CodePage";
@@ -43,16 +44,7 @@ export function WorkspaceShell() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <AnimatePresence>
-            {sidebarOpen && (
-              <>
-                <motion.div className="fixed inset-0 z-40 bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSidebarOpen(false)} />
-                <motion.div className="fixed inset-y-0 left-0 z-50" initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ duration: 0.2, ease: "easeOut" }}>
-                  <ClaudeSidebar shell={shell} mobile onClose={() => setSidebarOpen(false)} path={loc.pathname} />
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+          {sidebarOpen && <Sidebar />}
         </>
       )}
       <main className="flex-1 min-w-0 h-full flex flex-col items-center overflow-hidden">

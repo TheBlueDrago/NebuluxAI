@@ -197,38 +197,7 @@ export default function GamesFront() {
   const play = (name) => navigate(`/chat/game/${name}`);
   return (
     <div className="h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden relative">
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)}
-            />
-            <div className="absolute top-16 left-4 z-50">
-              <Sidebar
-                conversations={conv.conversations}
-                activeId={conv.activeId}
-                onSelect={(id) => { conv.selectConversation(id); navigate("/chat"); }}
-                onRename={conv.renameConversation}
-                onDelete={conv.deleteConversation}
-                onRefresh={conv.reload}
-                onGoHome={shell.goHome}
-                onGoCode={shell.goCode}
-                onNewChat={shell.newChat}
-                onGoSubscriptions={shell.goPlans}
-                onGoDesigner={shell.goDesigner}
-                onGoGames={shell.goGames}
-                onGoMonitor={shell.goMonitor}
-                isAdmin={isAdmin}
-                credits={credits}
-              />
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      {sidebarOpen && <Sidebar />}
 
       {/* Top bar */}
       <header className="h-14 shrink-0 flex items-center gap-3 px-4 border-b border-white/10 bg-slate-950/90 backdrop-blur z-30">

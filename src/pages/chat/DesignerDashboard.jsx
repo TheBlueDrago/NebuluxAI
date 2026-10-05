@@ -354,38 +354,7 @@ export default function DesignerDashboard() {
     <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-black text-slate-100 overflow-hidden relative">
       <div className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px]" />
 
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            <motion.div
-              className="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)}
-            />
-            <div className="absolute top-16 left-4 z-50">
-              <Sidebar
-                conversations={conv.conversations}
-                activeId={conv.activeId}
-                onSelect={(id) => { conv.selectConversation(id); navigate("/chat"); }}
-                onRename={conv.renameConversation}
-                onDelete={conv.deleteConversation}
-                onRefresh={conv.reload}
-                onGoHome={shell.goHome}
-                onGoCode={shell.goCode}
-                onNewChat={shell.newChat}
-                onGoSubscriptions={shell.goPlans}
-                onGoDesigner={shell.goDesigner}
-                onGoGames={shell.goGames}
-                onGoMonitor={shell.goMonitor}
-                isAdmin={isAdmin}
-                credits={credits}
-              />
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      {sidebarOpen && <Sidebar />}
 
       {/* Top bar */}
       <header className="relative z-20 h-14 shrink-0 flex items-center gap-3 px-4 border-b border-slate-700/50 bg-slate-900/70 backdrop-blur-xl">
