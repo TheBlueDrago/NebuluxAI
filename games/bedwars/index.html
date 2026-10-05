@@ -156,7 +156,7 @@ function setBlock(x,y,z,t,placed){const k=K(x,y,z);const old=W.get(k)||0;if(old=
  if(old){const r=BT[old];const i=r.idx.get(k);const last=r.keys.length-1;if(i!==last){const lk=r.keys[last];r.keys[i]=lk;r.idx.set(lk,i);r.mesh.getMatrixAt(last,_m);r.mesh.setMatrixAt(i,_m)}
   r.keys.pop();r.idx.delete(k);r.mesh.count=r.keys.length;r.mesh.instanceMatrix.needsUpdate=true;W.delete(k);PLACED.delete(k)}
  if(t){const r=btype(t);const i=r.keys.length;if(i>=CAP)return;r.keys.push(k);r.idx.set(k,i);_m.makeTranslation(x,y,z);r.mesh.setMatrixAt(i,_m);r.mesh.count=i+1;r.mesh.instanceMatrix.needsUpdate=true;W.set(k,t);if(placed)PLACED.add(k)}}
-function clearWorld(){for(const t in BT){const r=BT[t];r.keys=[];r.idx.clear();r.mesh.count=0}W.clear();PLACED.clear();
+function clearWorld(){if(typeof TURRETS!=="undefined"){for(const t of TURRETS){scene.remove(t.mesh);for(const sh of t.shots)scene.remove(sh.m)}TURRETS=[]}for(const t in BT){const r=BT[t];r.keys=[];r.idx.clear();r.mesh.count=0}W.clear();PLACED.clear();
  while(DEC.children.length)DEC.remove(DEC.children[0]);for(const e of ENTS)if(e.mesh)scene.remove(e.mesh);ENTS.length=0;for(const p of PROJ)scene.remove(p.mesh);PROJ.length=0;GENS.length=0;NPCS.length=0;PORTALS.length=0}
 const canBreak=(x,y,z)=>{const t=getB(x,y,z);return t&&(PLACED.has(K(x,y,z))||isBed(t))};
 
@@ -348,8 +348,8 @@ const promoOn=e=>e&&e.local&&SAVE.promo===true;
 function fillUp(e){for(const r in e.res)e.res[r]=Math.max(e.res[r],9999);for(const b in e.blocks)e.blocks[b]=Math.max(e.blocks[b],999);e.arrows=Math.max(e.arrows,99);e.gapple=Math.max(e.gapple,99);e.fireball=Math.max(e.fireball,99);e.pearl=Math.max(e.pearl,99);e.bow=true}
 const TURRET_HASH="61fe51a9b155d3934ffb25d185f1f5a3daa6de4ce2f758dd7ee72172c5a7912e";
 $("promogo").onclick=()=>{const v=$("promo").value.trim();
- if(sha256(v)===TURRET_HASH){$("promo").value="";if(!BIG()){$("promomsg").textContent="That code only works in 1 v 100.";return}if(P.gotTurrets){$("promomsg").textContent="You already have your 10 turrets this match.";return}
-  P.gotTurrets=true;P.turret=10;$("promomsg").textContent="🔥 10 fireball turrets! Place them, then start the raid to switch them on.";sfx(990,.2,"triangle",.08);hud();return}if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="✅ Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
+ if(sha256(v)===TURRET_HASH){$("promo").value="";if(P.gotTurrets){$("promomsg").textContent="You already got your turret"+(BIG()?"s":"")+" this match.";return}
+  P.gotTurrets=true;P.turret=BIG()?10:1;$("promomsg").textContent=BIG()?"🔥 10 fireball turrets! Place them, then start the raid to switch them on.":"🔥 1 base turret! It shoots anyone who comes onto your island.";sfx(990,.2,"triangle",.08);hud();return}if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="✅ Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
 $("promo").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter")$("promogo").click()});
 
 // ---------- hotbar ----------
@@ -473,7 +473,7 @@ $("v100").onclick=()=>{unlock();startMatch("v100",null)};
 
 // ---------- match ----------
 function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();closePanels();$("lobbyui").style.display="none";$("lobbytop").style.display="none";$("chat").style.display="none";$("results").style.display="none";
- teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;SECOND=null;RAID=false;waveShown=0;for(const t of TURRETS)scene.remove(t.mesh);TURRETS=[];MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
+ teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;SECOND=null;RAID=false;waveShown=0;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
  const people=players&&players.length?players:[{id:"me",name:NAME}];if(!players)NET=null;
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=Math.floor(i/teamSize)%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
@@ -596,13 +596,15 @@ function placeTurret(c){const g=new THREE.Group();const base=new THREE.Mesh(new 
  const head=new THREE.Group();head.position.y=.85;const ball=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8),new THREE.MeshLambertMaterial({color:0xff6d00,emissive:0xff3d00,emissiveIntensity:.6}));head.add(ball);
  const barrel=new THREE.Mesh(new THREE.BoxGeometry(.14,.14,.8),new THREE.MeshLambertMaterial({color:0x212121}));barrel.position.z=-.45;head.add(barrel);g.add(head);
  g.position.set(c[0]+.5,c[1],c[2]+.5);scene.add(g);
- TURRETS.push({mesh:g,head,x:c[0]+.5,y:c[1]+.85,z:c[2]+.5,cd:0,shots:[]})}
+ TURRETS.push({mesh:g,head,x:c[0]+.5,y:c[1]+.85,z:c[2]+.5,cd:0,shots:[],big:BIG(),team:P.team})}
 function stepTurrets(dt){for(const t of TURRETS){
-  if(RAID){t.cd-=dt;let best=null,bd=220;for(const e of ENTS){if(!e.bot||!e.alive)continue;const d=Math.hypot(e.pos.x-t.x,e.pos.y+1-t.y,e.pos.z-t.z);if(d<bd){bd=d;best=e}}
-   if(best){t.head.rotation.y=Math.atan2(-(best.pos.x-t.x),-(best.pos.z-t.z));while(t.cd<=0){t.cd+=.1;const m=new THREE.Mesh(TGEO,TMAT);m.position.set(t.x,t.y,t.z);scene.add(m);t.shots.push({m,tg:best,life:3})}}}
+  const on=t.big?RAID:true;if(on){t.cd-=dt;let best=null,bd=t.big?220:30;const g=teamGeom(t.team);
+   for(const e of ENTS){if(!e.alive||e.team===t.team)continue;if(t.big&&!e.bot)continue;if(!t.big&&Math.hypot(e.pos.x-g.cx,e.pos.z-g.cz)>10)continue;const d=Math.hypot(e.pos.x-t.x,e.pos.y+1-t.y,e.pos.z-t.z);if(d<bd){bd=d;best=e}}
+   if(!best)t.cd=Math.max(t.cd,0);
+   if(best){t.head.rotation.y=Math.atan2(-(best.pos.x-t.x),-(best.pos.z-t.z));while(t.cd<=0){t.cd+=t.big?.1:.2;const m=new THREE.Mesh(TGEO,TMAT);m.position.set(t.x,t.y,t.z);scene.add(m);t.shots.push({m,tg:best,life:3})}}}
   for(let i=t.shots.length-1;i>=0;i--){const sh=t.shots[i];sh.life-=dt;const tg=sh.tg;const to=new THREE.Vector3(tg.pos.x,tg.pos.y+1,tg.pos.z).sub(sh.m.position);const d=to.length();
    if(!tg.alive||sh.life<=0){scene.remove(sh.m);t.shots.splice(i,1);continue}
-   if(d<1.2){hurt(tg,25,P?P.id:null,to.x/d*10,to.z/d*10);flashEnt(tg);scene.remove(sh.m);t.shots.splice(i,1);continue}
+   if(d<1.2){const kx=to.x/d*45,kz=to.z/d*45,dmg=t.big?25:4;if(tg.local||(tg.bot&&isHost()))hurt(tg,dmg,P?P.id:null,kx,kz);else sendTo(tg,{k:"hit",to2:tg.id,d:dmg,kx,kz,by:P?P.id:null});tg.vel.y=Math.max(tg.vel.y,9);flashEnt(tg);scene.remove(sh.m);t.shots.splice(i,1);continue}
    sh.m.position.addScaledVector(to,Math.min(1,95*dt/d))}}}
 
 // ---------- bots (run by the match host) ----------
@@ -765,7 +767,8 @@ function stepMatch(dt){matchT+=dt;
  const n=nearNPC();if(n&&!panelOpen()&&P.alive){$("hint").style.display="block";const what={shop:"item shop",upg:"team upgrades",ender:"your ender chest",tchest:"team chest"}[n.kind];$("hint").textContent=TOUCH?`Tap 🛒 for the ${what}`:`Press E for the ${what}`}else if(P.alive)$("hint").style.display="none";
  if(BIG()){$("raidbtn").style.display=!RAID&&P.alive&&!panelOpen()?"block":"none";if(!RAID&&Math.random()<dt*3&&!nearNPC())$("hint").style.display="block",$("hint").textContent="Get ready: build, buy and place turrets. Press R or the button when you want the bots to attack.";
   if(RAID){const w=Math.min(7,Math.floor((matchT-RAID_T)/25)+1);if(w>waveShown){waveShown=w;if(w>1)msg(`WAVE ${w}`,2,"More bots are coming!");feed(`⚔️ Wave ${w} of 7 is attacking`)}}
-  stepTurrets(dt)}
+}
+ stepTurrets(dt);
  const mm=Math.floor(matchT/60),ss=Math.floor(matchT%60);$("timer").textContent=`${QNAME[MATCH.q].split(" ·")[0]} · ${mm}:${String(ss).padStart(2,"0")}`;
  if(Math.random()<dt*2)hud();updateView()}
 
