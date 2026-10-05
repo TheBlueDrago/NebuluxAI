@@ -82,6 +82,7 @@ canvas{display:block}
   <button class="btn" id="v100" style="background:linear-gradient(#ff7043,#d84315)">💯 1 v 100</button>
 </div>
 <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something nice… (Enter to send)"></div>
+<button class="btn" id="raidbtn" style="display:none;position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:9;background:linear-gradient(#ff5252,#b71c1c);font-size:22px">⚔️ LET THE RAID BEGIN (R)</button>
 <div id="lockhint">Click to play · Esc to free the mouse</div>
 <div id="touch">
   <div id="joy"><div id="joyk"></div></div>
@@ -206,6 +207,7 @@ function makeChar(col,name,robe){const g=new THREE.Group();const M=c=>new THREE.
 function heldModel(kind,tier,team){const g=new THREE.Group();const M=c=>new THREE.MeshLambertMaterial({color:c});
  if(kind==="sword"){const b=new THREE.Mesh(new THREE.BoxGeometry(tier===4?.14:.08,.08,tier===4?1:.75),new THREE.MeshLambertMaterial({color:SWORDS[tier].c,emissive:tier===4?0x6a0020:0}));b.position.z=-.38;g.add(b);const h=new THREE.Mesh(new THREE.BoxGeometry(.26,.06,.06),M(0x5b3a1e));g.add(h)}
  else if(kind==="axe"){const st=new THREE.Mesh(new THREE.BoxGeometry(.06,.06,.7),M(0x6d4426));st.position.z=-.3;g.add(st);const hd=new THREE.Mesh(new THREE.BoxGeometry(.06,.26,.2),M([0xa0723c,0x8d8d8d,0xe0e0e0,0x4fe3e0][tier]||0x8d8d8d));hd.position.set(0,.08,-.58);g.add(hd)}
+ else if(kind==="turret"){const b=new THREE.Mesh(new THREE.BoxGeometry(.25,.25,.25),new THREE.MeshLambertMaterial({color:0x37474f}));g.add(b);const t=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),new THREE.MeshBasicMaterial({color:0xff6d00}));t.position.y=.18;g.add(t)}
  else if(kind==="bed2"){const b=new THREE.Mesh(new THREE.BoxGeometry(.3,.14,.4),BDEF[20].mat);g.add(b)}
  else if(kind==="bow"){const b=new THREE.Mesh(new THREE.TorusGeometry(.3,.03,4,10,Math.PI),M(0x8d6634));b.rotation.y=Math.PI/2;g.add(b)}
  else if(kind==="gapple"){g.add(new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xffd54a)))}
@@ -344,14 +346,17 @@ function sha256(str){const K=[],H=[];let n=2,c=0;const isP=x=>{for(let i=2;i*i<=
 const PROMO_HASH="e3b68ec393a99e00a51ad775e1045bd4bd15e07fe6df6db8b814d49dace36d15";
 const promoOn=e=>e&&e.local&&SAVE.promo===true;
 function fillUp(e){for(const r in e.res)e.res[r]=Math.max(e.res[r],9999);for(const b in e.blocks)e.blocks[b]=Math.max(e.blocks[b],999);e.arrows=Math.max(e.arrows,99);e.gapple=Math.max(e.gapple,99);e.fireball=Math.max(e.fireball,99);e.pearl=Math.max(e.pearl,99);e.bow=true}
-$("promogo").onclick=()=>{const v=$("promo").value.trim();if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="✅ Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
+const TURRET_HASH="61fe51a9b155d3934ffb25d185f1f5a3daa6de4ce2f758dd7ee72172c5a7912e";
+$("promogo").onclick=()=>{const v=$("promo").value.trim();
+ if(sha256(v)===TURRET_HASH){$("promo").value="";if(!BIG()){$("promomsg").textContent="That code only works in 1 v 100.";return}if(P.gotTurrets){$("promomsg").textContent="You already have your 10 turrets this match.";return}
+  P.gotTurrets=true;P.turret=10;$("promomsg").textContent="🔥 10 fireball turrets! Place them, then start the raid to switch them on.";sfx(990,.2,"triangle",.08);hud();return}if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="✅ Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
 $("promo").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter")$("promogo").click()});
 
 // ---------- hotbar ----------
-function hotbar(e){const h=[["sword","sword"]];if(e.bed2)h.push(["bed2","bed2"]);if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.gapple)h.push(["gapple","gapple"]);if(e.fireball)h.push(["fireball","fireball"]);if(e.pearl)h.push(["pearl","pearl"]);return h.map(x=>x[0])}
-const ICON={bed2:"🛏️",axe:"🪓",sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
+function hotbar(e){const h=[["sword","sword"]];if(e.turret)h.push(["turret","turret"]);if(e.bed2)h.push(["bed2","bed2"]);if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.gapple)h.push(["gapple","gapple"]);if(e.fireball)h.push(["fireball","fireball"]);if(e.pearl)h.push(["pearl","pearl"]);return h.map(x=>x[0])}
+const ICON={turret:"🔥",bed2:"🛏️",axe:"🪓",sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
 function heldOf(e){const h=hotbar(e);if(e.sel>=h.length)e.sel=h.length-1;return h[Math.max(0,e.sel)]}
-function countOf(e,k){return k==="wool"||k==="wood"||k==="end"?e.blocks[k]:k==="bow"?e.arrows:k==="sword"?0:e[k]}
+function countOf(e,k){if(k==="turret")return e.turret;return k==="wool"||k==="wood"||k==="end"?e.blocks[k]:k==="bow"?e.arrows:k==="sword"?0:e[k]}
 
 // ---------- HUD ----------
 let msgT=0,feedL=[];
@@ -387,14 +392,15 @@ const isUI=t=>!!(t&&t.closest&&t.closest("button,input,.ov,#hotbar,#chat,#lobbyu
 document.addEventListener("mousedown",e=>{if(TOUCH||!P||isUI(e.target))return;
  if(!locked&&!panelOpen()&&!chatOpen&&(MODE==="match"||MODE==="lobby"))lock(true);
  if(MODE!=="match"||panelOpen()||!P.alive)return;e.preventDefault();
- if(e.button===2){mouseR=true;const h=heldOf(P);if(targetEnt(P,3.4))attack();else if(["wool","wood","end"].includes(h)){useItem()}else attack()}
+ if(e.button===2){mouseR=true;const h=heldOf(P);if(targetEnt(P,3.4))attack();else if(["wool","wood","end","bed2","turret"].includes(h)){useItem()}else attack()}
  if(e.button===0){mouseL=true;if(RANGED.includes(heldOf(P)))useItem();else attack()}},true);
 addEventListener("blur",()=>{mouseL=mouseR=false});
 addEventListener("mouseup",e=>{if(e.button===0)mouseL=false;if(e.button===2)mouseR=false});
 addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("wheel",e=>{if(!P||MODE!=="match")return;const n=hotbar(P).length;P.sel=(P.sel+(e.deltaY>0?1:-1)+n)%n;hud()});
 addEventListener("keydown",e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;keys[e.code]=true;
-  if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else openNear(nearNPC());return}
+  if(e.code==="KeyR"&&MODE==="match"&&BIG()&&!RAID){startRaid();return}
+ if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else openNear(nearNPC());return}
  if(e.code==="Escape"&&panelOpen()){closePanels();return}
  if((e.code==="KeyT"||e.code==="Enter")&&MODE==="lobby"){e.preventDefault();openChat();return}
  if(e.code.startsWith("Digit")&&P&&MODE==="match"){const n=+e.code.slice(5)-1;if(n<hotbar(P).length){P.sel=n;hud()}}});
@@ -444,7 +450,10 @@ const QNAME={bw1:"SOLOS · 4 teams of 1",bw2:"DUOS · 4 teams of 2",bw4:"SQUADS 
 const BIG=()=>!!(MATCH&&MATCH.q==="v100");
 const mine=e=>BIG()&&e&&e.local;
 const maxHp=e=>mine(e)?100:20;
-let SECOND=null;// where your second bed was placed
+let SECOND=null,RAID=false,RAID_T=0,TURRETS=[],waveShown=0;
+// Bots wait at home until you start the raid, then come in waves of 15, 25 seconds apart.
+function startRaid(){if(!BIG()||RAID||!P)return;RAID=true;RAID_T=matchT;$("raidbtn").style.display="none";$("hint").style.display="none";msg("THE RAID BEGINS!",2.5,"Wave 1 is coming");sfx(220,.6,"sawtooth",.1);lock()}
+$("raidbtn").onclick=()=>startRaid();// where your second bed was placed
 const hasBed=t=>TEAM_ST[t].bed||(BIG()&&t===0&&!!SECOND);
 function bedAt(t){if(TEAM_ST[t].bed){const g=teamGeom(t);return new THREE.Vector3(g.bed[0][0]+.5,3,g.bed[0][1]+.5)}return SECOND?new THREE.Vector3(SECOND.x+.5,SECOND.y,SECOND.z+.5):null}// 1 v 100: 5x health
 function joinQueue(q){if(QWS)return;queueMode=q;unlock();$("queue").style.display="block";$("qtitle").textContent="🛏️ "+QNAME[q];$("qtext").textContent="Connecting…";$("qlist").textContent="";
@@ -464,12 +473,12 @@ $("v100").onclick=()=>{unlock();startMatch("v100",null)};
 
 // ---------- match ----------
 function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();closePanels();$("lobbyui").style.display="none";$("lobbytop").style.display="none";$("chat").style.display="none";$("results").style.display="none";
- teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;SECOND=null;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
+ teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;SECOND=null;RAID=false;waveShown=0;for(const t of TURRETS)scene.remove(t.mesh);TURRETS=[];MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
  const people=players&&players.length?players:[{id:"me",name:NAME}];if(!players)NET=null;
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=Math.floor(i/teamSize)%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
  let bi=0;const BN=["Steve","Alex","Blaze","Cobble","Pixel","Nova","Creeper","Diamond","Ender","Bolt","Rusty","Sky","Frost","Zap","Mango","Echo"];
- if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
+ if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.wave=Math.floor(i/15);e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
  else for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
  for(const e of ENTS)spawn(e);
  hud();updateView();msg(q==="v100"?"1 V 100":"BEDWARS",3,q==="v100"?"100 bots are coming for you. You have 5x health, 15x damage and no knockback!":`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
@@ -524,6 +533,7 @@ function hitEnt(att,t,dmg){flashEnt(t);if(att.local)hitMark();const dx=t.pos.x-a
  if(att.local)sfx(300,.05,"square",.05)}
 function useItem(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;const h=heldOf(P);
  if(h==="wool"||h==="wood"||h==="end"){placeFrom(P,h);P.placeT=.3;return}
+ if(h==="turret"&&P.turret>0){const c=airSpot(P);if(!c)return;placeTurret(c);P.turret--;sfx(500,.1,"square",.06);hud();return}
  if(h==="bed2"&&P.bed2){const c=airSpot(P);if(!c)return;setBlock(c[0],c[1],c[2],20+P.team,true);SECOND={x:c[0],y:c[1],z:c[2]};P.bed2=0;send({k:"blk",x:c[0],y:c[1],z:c[2],b:20+P.team});msg("SECOND BED PLACED",2,"You can respawn here too.");sfx(700,.2,"triangle",.08);hud();return}
  if(h==="gapple"&&P.gapple>0){P.gapple--;P.hp=Math.min(maxHp(P),P.hp+(mine(P)?40:8));P.absorb=4;sfx(700,.1);hud();return}
  if(h==="bow"&&P.arrows>0&&P.cd<=0){P.arrows--;P.cd=BIG()?1.5:.6;shoot(P,"arrow");hud();return}
@@ -578,6 +588,23 @@ function explode(p,at){const huge=mine(p.owner);const br=huge?6:2,reach=huge?10:
 function boom(at){const m=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),new THREE.MeshBasicMaterial({color:0xff8a1a,transparent:true,opacity:.8}));m.position.copy(at);scene.add(m);let t=0;
  const step=()=>{t+=.05;m.scale.setScalar(1+t*20);m.material.opacity=.8*(1-t);if(t<1)requestAnimationFrame(step);else scene.remove(m)};step()}
 
+// ---------- turrets (1 v 100 secret code) ----------
+// A turret sits on a block spot and, once the raid has begun, fires 10 glowing fireballs a second at
+// the nearest bot anywhere on the map. Each fireball flies straight at its target.
+const TGEO=new THREE.SphereGeometry(.22,8,6),TMAT=new THREE.MeshBasicMaterial({color:0xff7a1a});
+function placeTurret(c){const g=new THREE.Group();const base=new THREE.Mesh(new THREE.BoxGeometry(.9,.6,.9),new THREE.MeshLambertMaterial({color:0x37474f}));base.position.y=.3;g.add(base);
+ const head=new THREE.Group();head.position.y=.85;const ball=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8),new THREE.MeshLambertMaterial({color:0xff6d00,emissive:0xff3d00,emissiveIntensity:.6}));head.add(ball);
+ const barrel=new THREE.Mesh(new THREE.BoxGeometry(.14,.14,.8),new THREE.MeshLambertMaterial({color:0x212121}));barrel.position.z=-.45;head.add(barrel);g.add(head);
+ g.position.set(c[0]+.5,c[1],c[2]+.5);scene.add(g);
+ TURRETS.push({mesh:g,head,x:c[0]+.5,y:c[1]+.85,z:c[2]+.5,cd:0,shots:[]})}
+function stepTurrets(dt){for(const t of TURRETS){
+  if(RAID){t.cd-=dt;let best=null,bd=220;for(const e of ENTS){if(!e.bot||!e.alive)continue;const d=Math.hypot(e.pos.x-t.x,e.pos.y+1-t.y,e.pos.z-t.z);if(d<bd){bd=d;best=e}}
+   if(best){t.head.rotation.y=Math.atan2(-(best.pos.x-t.x),-(best.pos.z-t.z));while(t.cd<=0){t.cd+=.1;const m=new THREE.Mesh(TGEO,TMAT);m.position.set(t.x,t.y,t.z);scene.add(m);t.shots.push({m,tg:best,life:3})}}}
+  for(let i=t.shots.length-1;i>=0;i--){const sh=t.shots[i];sh.life-=dt;const tg=sh.tg;const to=new THREE.Vector3(tg.pos.x,tg.pos.y+1,tg.pos.z).sub(sh.m.position);const d=to.length();
+   if(!tg.alive||sh.life<=0){scene.remove(sh.m);t.shots.splice(i,1);continue}
+   if(d<1.2){hurt(tg,25,P?P.id:null,to.x/d*10,to.z/d*10);flashEnt(tg);scene.remove(sh.m);t.shots.splice(i,1);continue}
+   sh.m.position.addScaledVector(to,Math.min(1,95*dt/d))}}}
+
 // ---------- bots (run by the match host) ----------
 function nearestEnemy(b,r){let best=null,bd=r;for(const e of ENTS){if(!e.alive||e.team===b.team||(BIG()&&b.bot&&e.bot))continue;const d=e.pos.distanceTo(b.pos);if(d<bd){bd=d;best=e}}return best}
 // Bots buy with what they've earned: blocks, swords and armor, axes, golden apples, team
@@ -616,7 +643,7 @@ function botTick(b,dt){if(!b.alive)return;b.think-=dt;b.cd-=dt;
    if(b.blocks.wool<12){b.state="farm";b.launched=false}
    else if(b.state==="farm"&&b.blocks.wool>=64&&atHome){const r=Math.random();
     // go get diamonds or emeralds sometimes, otherwise attack
-    if(BIG()){b.state=matchT>45?"attack":"farm"}else if(b.res.diamond<10&&r<.35){b.state="loot";b.lootKind="diamond"}else if(b.sword>=2&&b.res.emerald<6&&r<.55){b.state="loot";b.lootKind="emerald"}else b.state="attack";b.launched=false;b.lootT=0}
+    if(BIG()){b.state=RAID&&matchT-RAID_T>=b.wave*25?"attack":"farm"}else if(b.res.diamond<10&&r<.35){b.state="loot";b.lootKind="diamond"}else if(b.sword>=2&&b.res.emerald<6&&r<.55){b.state="loot";b.lootKind="emerald"}else b.state="attack";b.launched=false;b.lootT=0}
    if(b.role==="defend"&&(b.state==="attack"||b.state==="loot")&&TEAM_ST[b.team].bed)b.state="guard";
    if(b.state==="attack"){const alive=[0,1,2,3].filter(t=>t!==b.team&&(!BIG()||t===0)&&ENTS.some(e=>e.team===t&&!e.out));
     if(b.target==null||!alive.includes(b.target)){// the closest team, with a bed if possible
@@ -706,7 +733,7 @@ function stepLobby(dt){portalCd-=dt;for(const pt of PORTALS){pt.pl.material.opac
  netT-=dt;if(netT<=0&&LWS&&LWS.readyState===1){netT=.12;LWS.send(JSON.stringify({t:"bw",k:"lp",x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(2),n:NAME}))}}
 function nearNPC(){if(MODE!=="match"||!P||!P.alive)return null;let best=null,bd=3.2;for(const n of NPCS){const d=Math.hypot(n.x-P.pos.x,n.z-P.pos.z);if(d<(n.kind==="ender"||n.kind==="tchest"?2.3:bd)&&d<bd&&Math.abs(P.pos.y-3)<2.5){bd=d;best=n}}return best}
 function stepMatch(dt){matchT+=dt;
- {const h=heldOf(P);const sp=P.alive&&!panelOpen()&&((["wool","wood","end"].includes(h)&&P.blocks[h]>0)||(h==="bed2"&&P.bed2))?airSpot(P):null;GHOST.visible=!!sp;if(sp)GHOST.position.set(sp[0],sp[1],sp[2])}if(promoOn(P)&&P.alive)fillUp(P);P.cd-=dt;
+ {const h=heldOf(P);const sp=P.alive&&!panelOpen()&&((["wool","wood","end"].includes(h)&&P.blocks[h]>0)||(h==="bed2"&&P.bed2)||(h==="turret"&&P.turret>0))?airSpot(P):null;GHOST.visible=!!sp;if(sp)GHOST.position.set(sp[0],sp[1],sp[2])}if(promoOn(P)&&P.alive)fillUp(P);P.cd-=dt;
  // breaking blocks: hold the button on a placed block (or a bed)
  const holding=(mouseL||tHit)&&!RANGED.includes(heldOf(P));if((mouseL||tHit)&&P.cd<=0&&!RANGED.includes(heldOf(P))&&targetEnt(P,3.4))attack();let br=false;
  if(holding&&P.alive&&!panelOpen()&&!targetEnt(P,3.4)){const h=ray(eye(P),lookDir(P),5);if(h&&canBreak(h.x,h.y,h.z)){br=true;const key=K(h.x,h.y,h.z);if(breakPos!==key){breakPos=key;breakProg=0}breakProg+=dt/hardness(P,h.b);if(Math.random()<dt*6){P.swingT=.25;VIEW.userData.sw=.25}
@@ -736,7 +763,9 @@ function stepMatch(dt){matchT+=dt;
  P.swingT-=dt;
  // HUD bits
  const n=nearNPC();if(n&&!panelOpen()&&P.alive){$("hint").style.display="block";const what={shop:"item shop",upg:"team upgrades",ender:"your ender chest",tchest:"team chest"}[n.kind];$("hint").textContent=TOUCH?`Tap 🛒 for the ${what}`:`Press E for the ${what}`}else if(P.alive)$("hint").style.display="none";
- if(BIG()&&matchT<45&&Math.random()<dt*3)$("hint").style.display="block",$("hint").textContent=`⚠️ 100 bots attack in ${Math.ceil(45-matchT)} seconds: get ready!`;else if(BIG()&&matchT>=45&&matchT<46)$("hint").style.display="none";
+ if(BIG()){$("raidbtn").style.display=!RAID&&P.alive&&!panelOpen()?"block":"none";if(!RAID&&Math.random()<dt*3&&!nearNPC())$("hint").style.display="block",$("hint").textContent="Get ready: build, buy and place turrets. Press R or the button when you want the bots to attack.";
+  if(RAID){const w=Math.min(7,Math.floor((matchT-RAID_T)/25)+1);if(w>waveShown){waveShown=w;if(w>1)msg(`WAVE ${w}`,2,"More bots are coming!");feed(`⚔️ Wave ${w} of 7 is attacking`)}}
+  stepTurrets(dt)}
  const mm=Math.floor(matchT/60),ss=Math.floor(matchT%60);$("timer").textContent=`${QNAME[MATCH.q].split(" ·")[0]} · ${mm}:${String(ss).padStart(2,"0")}`;
  if(Math.random()<dt*2)hud();updateView()}
 
