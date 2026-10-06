@@ -25,6 +25,8 @@ import AiChooser from "@/components/AiChooser";
 import { useAppShell } from "@/components/AppShellContext";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import { base44 } from "@/api/base44Client";
+import { appParams } from "@/lib/app-params";
+import { Cloud, Monitor, ChevronDown, Check } from "lucide-react";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, listFiles, readFile, pushFile } from "@/lib/githubClient";
 
@@ -44,6 +46,71 @@ const PREVIEW_NOTE = "Websites, games and apps you write as one HTML file open a
 const lastCodeBlock = (text) => {
   const all = [...String(text || "").matchAll(/```[^\n]*\n([\s\S]*?)```/g)];
   return all.length ? all[all.length - 1][1] : "";
+};
+
+// The AI can ask the person something with a box of choices (like Claude does):
+//   ```ask
+//   {"question": "...", "options": ["...", "..."]}
+//   ```
+const ASK_NOTE = 'When you need the person to decide something before going on, ask with ONE block exactly like this at the end of your reply, with 2 to 4 short options (they can also type their own answer):\n```ask\n{"question": "Which style do you want?", "options": ["Dark and neon", "Clean and white"]}\n```';
+const askOf = (text) => {
+  const m = String(text || "").match(/```ask\s*\n([\s\S]*?)```/i);
+  if (!m) return null;
+  try {
+    const a = JSON.parse(m[1]);
+    const options = (Array.isArray(a.options) ? a.options : []).map(String).filter(Boolean).slice(0, 6);
+    return a.question ? { question: String(a.question), options, rest: text.replace(m[0], "").trim() } : null;
+  } catch {
+    return null;
+  }
+};
+
+function AskBox({ ask, onAnswer, disabled }) {
+  const [other, setOther] = useState("");
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-3 font-sans">
+      <p className="text-[14px] font-medium text-[var(--cl-text)] mb-2">{ask.question}</p>
+      <div className="space-y-1.5">
+        {ask.options.map((o, i) => (
+          <button key={i} disabled={disabled} onClick={() => onAnswer(o)} className="w-full text-left flex items-center gap-2 rounded-lg border border-[var(--cl-border)] px-3 py-2 text-[13.5px] text-[var(--cl-text)] hover:bg-[var(--cl-hover)] disabled:opacity-50">
+            <span className="w-5 h-5 rounded-md bg-[var(--cl-hover)] text-[11px] flex items-center justify-center text-[var(--cl-muted)]">{i + 1}</span>
+            {o}
+          </button>
+        ))}
+        <form onSubmit={(e) => { e.preventDefault(); if (other.trim()) onAnswer(other.trim()); }} className="flex gap-1.5">
+          <input value={other} onChange={(e) => setOther(e.target.value)} disabled={disabled} placeholder="Other…" className="flex-1 rounded-lg border border-[var(--cl-border)] bg-transparent px-3 py-2 text-[13.5px] outline-none text-[var(--cl-text)] focus:border-[var(--cl-focus)]" />
+          <button disabled={disabled || !other.trim()} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-3 text-[13px] font-medium disabled:opacity-40">Send</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Cloud sessions run on the server (nebulux-cloud-jobs), so a reply still finishes if this device
+// goes offline or the tab closes; it is picked up when the page is back.
+const PENDING_KEY = "nx-code-pending";
+const callJob = async (payload) => {
+  const token = localStorage.getItem("base44_access_token") || appParams.token;
+  const res = await fetch(`/api/apps/${appParams.appId}/functions/cloud-job`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-App-Id": String(appParams.appId), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok && !data.status) throw Object.assign(new Error(data.error || "Cloud session failed"), { response: { status: res.status, data } });
+  return data;
+};
+const waitForJob = async (id, signal) => {
+  for (;;) {
+    if (signal?.aborted) throw Object.assign(new Error("stopped"), { name: "AbortError" });
+    try {
+      const j = await callJob({ action: "get", id });
+      if (j.status === "done" || j.status === "error" || j.status === "missing") return j;
+    } catch {
+      // Offline or a blip: the job keeps running on the server, so just try again.
+    }
+    await new Promise((r) => setTimeout(r, 2500));
+  }
 };
 
 function PanelButton({ icon: Icon, label, on, onClick }) {
@@ -80,7 +147,13 @@ export default function CodePage({ userInitial }) {
   // Both kinds can open the Nebulux Browser. Cloud: the chat is kept with your account. Local: the
   // session stays in this browser only.
   const [session, setSession] = useState(() => { try { return localStorage.getItem("nx-code-session") || "cloud"; } catch { return "cloud"; } });
-  const pickSession = (v) => { setSession(v); try { localStorage.setItem("nx-code-session", v); } catch { /* fine */ } };
+  const [sessionMenu, setSessionMenu] = useState(false);
+  const pickSession = async (v) => {
+    setSessionMenu(false);
+    if (v === "cloud" && session !== "cloud" && !(await askConfirm("Switch to a cloud session?\n\nIt runs on Nebulux's servers, so it keeps working even if you close this tab or go offline. It can open the Nebulux Browser and look things up on the web for you.\n\nThe cloud browser is separate from yours: it is NOT signed in to your accounts, so it can't use sites you're logged into."))) return;
+    setSession(v);
+    try { localStorage.setItem("nx-code-session", v); } catch { /* fine */ }
+  };
   const scrollRef = useRef(null);
   const reqIdRef = useRef(0);
   const abortRef = useRef(null);
@@ -212,9 +285,21 @@ export default function CodePage({ userInitial }) {
       abortRef.current?.abort();
       const abort = new AbortController();
       abortRef.current = abort;
-      const res = await streamChat({ prompt: `${modeNote}\n\n${context}${text}`, question: text, model: MODELS[whichAi] || MODELS.code, effort: eff }, (soFar) => {
-        if (reqIdRef.current === myId) setLive(soFar);
-      }, { signal: abort.signal });
+      const req = { prompt: `${modeNote}\n${ASK_NOTE}\n\n${context}${text}`, question: text, model: MODELS[whichAi] || MODELS.code, effort: eff };
+      let res;
+      if (session === "cloud") {
+        const id = (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/[^a-zA-Z0-9-]/g, "");
+        await callJob({ action: "start", id, body: req });
+        try { localStorage.setItem(PENDING_KEY, JSON.stringify({ id, text })); } catch { /* fine */ }
+        const j = await waitForJob(id, abort.signal);
+        try { localStorage.removeItem(PENDING_KEY); } catch { /* fine */ }
+        if (j.status !== "done") throw Object.assign(new Error(j.error || "Cloud session failed"), { response: { data: { error: j.error || "The cloud session lost this reply. Please try again.", credits: j.credits } } });
+        res = j;
+      } else {
+        res = await streamChat(req, (soFar) => {
+          if (reqIdRef.current === myId) setLive(soFar);
+        }, { signal: abort.signal });
+      }
       if (reqIdRef.current !== myId) return;
       setLive("");
       spend(res.credits);
@@ -237,6 +322,21 @@ export default function CodePage({ userInitial }) {
     }
   };
 
+  // A cloud reply that was still running when the page closed: pick it up.
+  useEffect(() => {
+    let p = null;
+    try { p = JSON.parse(localStorage.getItem(PENDING_KEY) || "null"); } catch { /* fine */ }
+    if (!p?.id) return;
+    setMessages((m) => (m.length ? m : [{ role: "user", content: p.text || "" }]));
+    setLoading(true);
+    waitForJob(p.id).then((j) => {
+      try { localStorage.removeItem(PENDING_KEY); } catch { /* fine */ }
+      if (j.credits) spend(j.credits);
+      setMessages((m) => [...m, { role: "ai", content: j.status === "done" ? j.content || "" : `⚠ ${j.error || "The cloud session lost this reply. Please try again."}` }]);
+    }).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const q = useMessageQueue({ run: (t) => runPrompt(t), remaining: { [ai]: remaining[ai] ?? (exhausted ? 0 : Infinity) }, names: AI_NAMES, selectedAi: ai });
   useStickToBottom(scrollRef, [messages, loading, live, q.queue.length], messages.filter((m) => m.role === "user").length);
 
@@ -250,6 +350,11 @@ export default function CodePage({ userInitial }) {
       setMessages((m) => [...m, { role: "ai", content: `${live.trimEnd()}\n\n_(stopped)_` }]);
       setLive("");
     }
+  };
+
+  const answer = (text) => {
+    if (loading || exhausted) return;
+    runPrompt(text);
   };
 
   const send = async () => {
@@ -314,12 +419,29 @@ export default function CodePage({ userInitial }) {
                     <Github className="w-4 h-4" /> Sign in with GitHub
                   </button>
                 )}
-                <div className="flex rounded-lg border border-[var(--cl-border)] overflow-hidden">
-                  {[["cloud", "Cloud session"], ["local", "Local session"]].map(([v, l]) => (
-                    <button key={v} onClick={() => pickSession(v)} title={v === "cloud" ? "Kept with your account" : "Stays on this device only"} className={`px-3 py-1.5 ${session === v ? "bg-[var(--cl-text)] text-[var(--cl-bg)]" : "bg-[var(--cl-card)] text-[var(--cl-muted)]"}`}>
-                      {l}
-                    </button>
-                  ))}
+                <div className="relative">
+                  <button onClick={() => setSessionMenu((o) => !o)} className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 text-[var(--cl-text)]">
+                    {session === "cloud" ? <Cloud className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                    {session === "cloud" ? "Cloud" : "Local"}
+                    <ChevronDown className="w-3.5 h-3.5 text-[var(--cl-muted)]" />
+                  </button>
+                  {sessionMenu && (
+                    <div className="absolute z-30 left-0 mt-1 w-72 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-xl p-1 text-left">
+                      {[
+                        ["local", Monitor, "Local", "Runs in this tab while it's open."],
+                        ["cloud", Cloud, "Cloud", "Runs on Nebulux's servers. Keeps working if you close the tab or go offline."],
+                      ].map(([v, Icon, l, d]) => (
+                        <button key={v} onClick={() => pickSession(v)} className="w-full flex items-start gap-2.5 rounded-lg px-2.5 py-2 hover:bg-[var(--cl-hover)]">
+                          <Icon className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />
+                          <span className="flex-1">
+                            <span className="block text-[13.5px] text-[var(--cl-text)]">{l}</span>
+                            <span className="block text-[12px] text-[var(--cl-muted)]">{d}</span>
+                          </span>
+                          {session === v && <Check className="w-4 h-4 mt-0.5 text-[var(--cl-text)]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -330,7 +452,16 @@ export default function CodePage({ userInitial }) {
                     m.content
                   ) : (
                     <>
-                      <Markdown text={m.content} />
+                      {(() => {
+                        const ask = askOf(m.content);
+                        if (!ask) return <Markdown text={m.content} />;
+                        return (
+                          <>
+                            {ask.rest && <Markdown text={ask.rest} />}
+                            <AskBox ask={ask} onAnswer={answer} disabled={i !== messages.length - 1 || loading} />
+                          </>
+                        );
+                      })()}
                       {i === messages.length - 1 && !loading && !exhausted && m.content.startsWith("⚠") && (
                         <button type="button" onClick={retryLast} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--cl-text)] px-3 py-1.5 text-xs font-semibold text-[var(--cl-bg)]">
                           <RotateCcw className="w-3.5 h-3.5" /> Try again
@@ -371,7 +502,7 @@ export default function CodePage({ userInitial }) {
             ))}
             {loading && live && (
               <div className="w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif">
-                <Markdown text={live} />
+                <Markdown text={live.replace(/```ask[\s\S]*$/i, "")} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-[var(--cl-accent)] animate-pulse" />
               </div>
             )}

@@ -1,0 +1,14 @@
+# Nebulux Code cloud sessions: runs an AI request on the server so it finishes even if the
+# person's device goes offline or closes the tab. Deploy from this folder: npx wrangler deploy
+name = "nebulux-cloud-jobs"
+main = "worker.js"
+compatibility_date = "2026-09-22"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "JOB"
+class_name = "CloudJob"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CloudJob"]
