@@ -11,10 +11,12 @@ import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
 import { base44 } from "@/api/base44Client";
+import { showNotice as showNoticeLater } from "@/lib/dialogs";
 import AiChooser from "@/components/AiChooser";
 import CustomDomain from "@/components/designer/CustomDomain";
 import DownloadZip from "@/components/designer/DownloadZip";
-import BadgeToggle from "@/components/designer/BadgeToggle";
+import VisualEditor from "@/components/designer/VisualEditor";
+import SiteDashboard from "@/components/designer/SiteDashboard";
 import SheetSelect from "@/components/SheetSelect";
 import ThemeToggle from "@/components/ThemeToggle";
 import { siteLimit } from "@/lib/publishLimits";
@@ -688,6 +690,28 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   };
 
   const reload = () => setReloadKey((k) => k + 1);
+  // The visual editor is for Pro and up (like Nebulux Code): others get the upgrade popup.
+  const openEditor = () => {
+    if (shell?.codeAllowed === false) {
+      shell.setUpgradeOpen({ title: "Upgrade to use the editor", text: "Dragging blocks, typing on the page and styling it yourself is included with Pro and higher plans. You can still change your site any time by asking the AI in the chat." });
+      return;
+    }
+    if (!previewHtml) return showNoticeLater("Build a site first, then you can edit it here.");
+    setPreviewMode("edit");
+  };
+  const saveEdits = async (html) => {
+    const packed = await packImages(html);
+    setMessages((m) => [...m, { role: "ai", content: packed, edited: true }]);
+    setPreviewMode("preview");
+  };
+  // Every version the AI or the editor made, for the dashboard.
+  const versions = messages
+    .map((m, i) => ({ m, i }))
+    .filter(({ m }) => isHtmlMsg(m))
+    .map(({ m, i }) => {
+      const ask = [...messages.slice(0, i)].reverse().find((x) => x.role === "user");
+      return { index: i, content: m.content, label: m.edited ? "Edited in the visual editor" : m.restored ? "Restored an earlier version" : ask ? `"${String(ask.content).slice(0, 80)}"` : "Built by the AI" };
+    });
   const [qrUrl, setQrUrl] = useState("");
   const previewBoxRef = useRestartWhenShown(reload);
 
@@ -981,6 +1005,15 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
               Preview
             </button>
             <button
+              onClick={openEditor}
+              title="Edit the page visually (Pro and up)"
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                previewMode === "edit" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Edit
+            </button>
+            <button
               onClick={() => setPreviewMode("dashboard")}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                 previewMode === "dashboard" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
@@ -991,35 +1024,25 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
           </div>
 
           <div ref={previewBoxRef} className="flex-1 relative overflow-hidden bg-white">
-            {previewMode === "dashboard" ? (
-              <div className="w-full h-full bg-slate-950 p-6 overflow-y-auto">
-                <h2 className="text-lg font-semibold text-white">{siteName}</h2>
-                <p className="text-slate-400 text-sm mt-1">
-                  Plan: <span className="text-slate-200 capitalize">{effPlan}</span>
-                </p>
-                <div className="mt-5">
-                  <p className="text-slate-300 text-sm font-medium mb-3">
-                    People ({members.length + 1}/{cap})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="flex items-center gap-2 bg-slate-800 rounded-full pl-1 pr-3 py-1">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold text-white">
-                        {ownerInitial}
-                      </div>
-                      <span className="text-slate-200 text-xs">{user?.email || "You"}</span>
-                    </div>
-                    {members.map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-slate-800 rounded-full pl-1 pr-3 py-1">
-                        <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-200">
-                          {initialOf(m)}
-                        </div>
-                        <span className="text-slate-200 text-xs">{m}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <BadgeToggle siteName={siteName} userId={user?.id} />
-              </div>
+            {previewMode === "edit" && previewHtml ? (
+              <VisualEditor key={lastAi?.content?.length || 0} html={previewHtml} onSave={saveEdits} onCancel={() => setPreviewMode("preview")} />
+            ) : previewMode === "dashboard" ? (
+              <SiteDashboard
+                siteName={siteName}
+                onRename={(n) => setSiteName(sanitizeSite(n))}
+                html={previewHtml}
+                plan={plan}
+                onUpgrade={onUpgrade}
+                user={user}
+                members={members}
+                cap={cap}
+                canAdd={canAdd}
+                onInvite={() => setShowInvite(true)}
+                onPublish={() => setShowPublish(true)}
+                builds={versions}
+                onRestore={(content) => { setMessages((m) => [...m, { role: "ai", content, restored: true }]); setPreviewMode("preview"); }}
+                onEdit={openEditor}
+              />
             ) : previewHtml ? (
               <iframe
                 key={reloadKey}
