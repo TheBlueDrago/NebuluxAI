@@ -16,10 +16,18 @@ export async function onRequestGet({ request, env }) {
   const res = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "Nebulux" },
-    body: JSON.stringify({ client_id: env.GITHUB_CLIENT_ID, client_secret: env.GITHUB_CLIENT_SECRET, code, redirect_uri: new URL("/github/callback", request.url).toString() }),
+    body: JSON.stringify({ client_id: String(env.GITHUB_CLIENT_ID || "").trim(), client_secret: String(env.GITHUB_CLIENT_SECRET || "").trim(), code, redirect_uri: new URL("/github/callback", request.url).toString() }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!data.access_token) return page("", "GitHub didn't give access. Close this and try again.");
+  if (!data.access_token) {
+    // GitHub's own reason, so a setup mistake can be fixed (e.g. a wrong client secret).
+    const why = {
+      incorrect_client_credentials: "The GitHub client ID or secret saved in Cloudflare is wrong. Generate a new client secret on GitHub and save it again.",
+      redirect_uri_mismatch: "The callback URL in your GitHub app settings must be exactly " + new URL("/github/callback", request.url).toString(),
+      bad_verification_code: "That sign-in link expired. Close this and try again.",
+    }[data.error] || (data.error_description || data.error || "No answer from GitHub (" + res.status + ")");
+    return page("", "GitHub didn't give access: " + String(why).replace(/[<>&]/g, "") + "");
+  }
   const t = JSON.stringify(data.access_token);
   return page(
     `try{localStorage.setItem("bh-github-token",${t})}catch(e){}try{window.opener&&window.opener.postMessage({type:"nx-github",token:${t}},location.origin)}catch(e){}setTimeout(function(){if(window.opener)window.close();else location.replace("/code")},400);`,

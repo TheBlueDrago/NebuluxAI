@@ -17,7 +17,7 @@ const css = `
   0%{transform:scale(.12) rotate(-160deg);animation-timing-function:cubic-bezier(.15,.75,.35,1)}
   24%{transform:scale(6.2) rotate(-95deg);animation-timing-function:cubic-bezier(.55,0,.25,1)}
   100%{transform:scale(1) rotate(0deg)}}
-@keyframes nx-soft{0%{opacity:0;filter:blur(14px) brightness(2.3) saturate(1.5)}12%{opacity:1}70%{opacity:1;filter:blur(2px) brightness(1.25) saturate(1.3)}100%{opacity:0;filter:blur(0) brightness(1.1) saturate(1.2)}}
+@keyframes nx-soft{0%{opacity:0;filter:blur(10px) brightness(2.4) saturate(1.6)}10%{opacity:1;filter:blur(3px) brightness(1.9) saturate(1.6)}70%{opacity:1;filter:blur(0) brightness(1.5) saturate(1.45)}100%{opacity:0;filter:brightness(1.25) saturate(1.3)}}
 @keyframes nx-crisp{0%,62%{opacity:0}100%{opacity:1}}
 @keyframes nx-halo{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 @keyframes nx-breathe{0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0)}50%{transform:translate(-50%,-50%) scale(1.1) rotate(20deg)}}
@@ -59,8 +59,8 @@ export default function Intro() {
           <div className="nx-float relative">
             {/* the nebula: the logo picture blown up, turning, shrinking into the logo */}
             <div className="nx-bloom relative w-28 h-28">
-              <img src="/logo-small.jpg" alt="" draggable="false" className="nx-soft absolute inset-0 w-full h-full object-cover select-none" />
-              <img src="/logo-small.jpg" alt="" draggable="false" className="nx-crisp absolute inset-0 w-full h-full object-cover rounded-[22%] select-none" style={{ boxShadow: "0 0 50px 8px rgba(192,132,252,.35)" }} />
+              <img src="/logo.png" alt="" draggable="false" className="nx-soft absolute inset-0 w-full h-full object-cover select-none" />
+              <img src="/logo.png" alt="" draggable="false" className="nx-crisp absolute inset-0 w-full h-full object-cover rounded-[22%] select-none" style={{ boxShadow: "0 0 50px 8px rgba(192,132,252,.45)", filter: "brightness(1.25) saturate(1.3)" }} />
             </div>
           </div>
           {/* the explosion, centered on the logo */}

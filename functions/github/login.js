@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env }) {
   const state = crypto.randomUUID();
   const back = new URL("/github/callback", request.url).toString();
   const to = new URL("https://github.com/login/oauth/authorize");
-  to.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
+  to.searchParams.set("client_id", String(env.GITHUB_CLIENT_ID).trim());
   to.searchParams.set("redirect_uri", back);
   to.searchParams.set("scope", "repo");
   to.searchParams.set("state", state);

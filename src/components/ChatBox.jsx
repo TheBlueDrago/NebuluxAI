@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { notifyDone } from "@/lib/prefs";
+import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
 import { askConfirm } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
@@ -141,6 +142,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     let convId = conversation?.id || convIdRef.current;
     const isFirst = !convId || messages.length === 0;
     if (!convId) convId = createConversation();
+    if (isFirst) recordSession(shell?.currentUser?.id, "chat");
     convIdRef.current = convId;
 
     addMessage(convId, { role: "user", content: text + (files.length ? ` (attached: ${files.map((f) => f.name).join(", ")})` : "") });
@@ -190,6 +192,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       spend?.[ai]?.(res.credits);
       const content = res.content ?? "";
       notifyDone(content);
+      recordMessage(shell?.currentUser?.id, ai, text.length + content.length, "chat");
       addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) });
       if (talkBackRef.current) speakText(content);
       // Away on another tab: ring the bell and play the chime.
@@ -406,6 +409,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               <h1 className="font-serif text-[30px] sm:text-[40px] leading-tight text-[var(--cl-text)] tracking-tight">
                 {greeting()}{firstName ? `, ${firstName}` : ""}
               </h1>
+            </div>
+          )}
+          {empty && (
+            <div className="w-full max-w-2xl mx-auto mt-6">
+              <CodeStats userId={shell?.currentUser?.id} names={AI_NAMES} kind="chat" />
             </div>
           )}
           {!claude && messages.length === 0 && !loading && (

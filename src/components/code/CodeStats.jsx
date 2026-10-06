@@ -3,45 +3,45 @@ import React, { useMemo, useState } from "react";
 // Your Nebulux Code activity on the new-chat screen (like Claude Code's): sessions, messages,
 // tokens, active days, peak hour, favorite model, and a calendar of active days. Counted in this
 // browser only, per account.
-const KEY = (userId) => `nx-code-stats:${userId || "anon"}`;
+const KEY = (userId, kind = "code") => `nx-${kind}-stats:${userId || "anon"}`;
 const MAX = 5000;
 const DAY = 86400000;
 
-export function readStats(userId) {
+export function readStats(userId, kind) {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY(userId)) || "null");
+    const s = JSON.parse(localStorage.getItem(KEY(userId, kind)) || "null");
     return s && Array.isArray(s.msgs) ? s : { sessions: [], msgs: [] };
   } catch {
     return { sessions: [], msgs: [] };
   }
 }
-const write = (userId, s) => {
+const write = (userId, s, kind) => {
   try {
-    localStorage.setItem(KEY(userId), JSON.stringify({ sessions: s.sessions.slice(-MAX), msgs: s.msgs.slice(-MAX) }));
+    localStorage.setItem(KEY(userId, kind), JSON.stringify({ sessions: s.sessions.slice(-MAX), msgs: s.msgs.slice(-MAX) }));
   } catch {
     // Storage full or blocked: the numbers just don't grow.
   }
 };
-export function recordSession(userId) {
-  const s = readStats(userId);
+export function recordSession(userId, kind) {
+  const s = readStats(userId, kind);
   s.sessions.push(Date.now());
-  write(userId, s);
+  write(userId, s, kind);
 }
 // chars: the message plus the reply; tokens are about a quarter of that.
-export function recordMessage(userId, model, chars) {
-  const s = readStats(userId);
+export function recordMessage(userId, model, chars, kind) {
+  const s = readStats(userId, kind);
   s.msgs.push([Date.now(), model, Math.max(0, chars | 0)]);
-  write(userId, s);
+  write(userId, s, kind);
 }
 
 const short = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n));
 const hourName = (h) => (h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`);
 const dayKey = (t) => new Date(t).toDateString();
 
-export default function CodeStats({ userId, names }) {
+export default function CodeStats({ userId, names, kind }) {
   const [tab, setTab] = useState("overview");
   const [range, setRange] = useState("all");
-  const data = useMemo(() => readStats(userId), [userId]);
+  const data = useMemo(() => readStats(userId, kind), [userId, kind]);
   const since = range === "7d" ? Date.now() - 7 * DAY : range === "30d" ? Date.now() - 30 * DAY : 0;
   const msgs = data.msgs.filter((m) => m[0] >= since);
   const sessions = data.sessions.filter((t) => t >= since).length;
@@ -102,7 +102,7 @@ export default function CodeStats({ userId, names }) {
               </div>
             ))}
           </div>
-          <div className="mt-3 flex gap-[3px] overflow-hidden" aria-label="Days you used Nebulux Code">
+          <div className="mt-3 flex gap-[3px] overflow-hidden" aria-label="Days you used Nebulux AI">
             {Array.from({ length: weeks }, (_, w) => (
               <div key={w} className="flex flex-col gap-[3px] flex-1 min-w-0">
                 {Array.from({ length: 7 }, (_, d) => {
