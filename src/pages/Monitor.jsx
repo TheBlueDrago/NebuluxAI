@@ -63,6 +63,7 @@ export default function Monitor({ onBack }) {
     // Mirror it on the User row so it shows everywhere; the server record is enough if this fails.
     await base44.entities.User.update(id, row).catch((e) => console.warn("Monitor: User row not updated", e));
     setUsers((us) => us.map((u) => (u.id === id ? { ...u, ...row } : u)));
+    if ("plan" in patch) window.dispatchEvent(new Event("nx-plan-changed"));
     if (patch.banned === false) setHeld((list) => list.filter((r) => r.userId !== id));
     if ("removed" in patch) {
       setRemoved((list) => [

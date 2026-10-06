@@ -69,7 +69,6 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
   const del = async (c) => {
     if (await askConfirm("Delete this chat?")) conv.deleteConversation(c.id);
   };
-  const aiLeft = credits.aiTotal > 1e12 ? "Unlimited" : `${Math.max(0, (credits.aiTotal ?? 0) - (credits.aiUsed ?? 0))} credits left`;
 
   return (
     <aside
@@ -219,7 +218,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
             <>
               <span className="flex-1 min-w-0">
                 <span className="block text-[13.5px] text-[var(--cl-text)] truncate">{name}</span>
-                <span className="block text-[12px] text-[var(--cl-faint)] truncate">{PLAN_NAMES[effPlan] || "Free plan"} · {aiLeft}</span>
+                <span className="block text-[12px] text-[var(--cl-faint)] truncate">{PLAN_NAMES[effPlan] || "Free plan"}</span>
               </span>
               <ChevronUp className="w-4 h-4 text-[var(--cl-faint)]" />
             </>

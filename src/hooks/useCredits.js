@@ -21,6 +21,19 @@ export function useCredits() {
     }
   }, []);
 
+  // Plans change from outside (Monitor, a promo code, a payment): check again when the tab is back.
+  useEffect(() => {
+    const again = () => document.visibilityState === "visible" && refresh();
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", again);
+    window.addEventListener("nx-plan-changed", refresh);
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", again);
+      window.removeEventListener("nx-plan-changed", refresh);
+    };
+  }, [refresh]);
+
   useEffect(() => {
     refresh();
     base44.functions
