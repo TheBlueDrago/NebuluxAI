@@ -156,7 +156,7 @@ export async function basePlanOf(kv, request, user, grant, details, purchases) {
       endsAt = until;
     }
   };
-  if (user.role === "admin") consider("admin", "admin");
+  // Admins get their real plan (free until they redeem a code or buy one), owner 2026-10-06.
   if (grant && grant.plan && !(grant.planExpiresAt && new Date(grant.planExpiresAt) < new Date())) consider(grant.plan, "grant", grant.planExpiresAt || null);
   const paid = await paidPlan(request, user, purchases);
   consider(paid.plan, "paid");

@@ -4,6 +4,8 @@ import App from '@/App.jsx'
 import '@/index.css'
 // Catches the browser's "install app" offer as soon as it's made (see Profile → Install app).
 import '@/lib/installPrompt'
+// Settings → Appearance → Chat font, before the first paint.
+try { document.documentElement.dataset.chatFont = localStorage.getItem('nx-chat-font') || 'default' } catch { /* fine */ }
 
 // Pages load on demand. After a new deploy, a tab opened earlier can ask for page files
 // that no longer exist; reload once to pick up the new version instead of breaking.

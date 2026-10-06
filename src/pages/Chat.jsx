@@ -4,6 +4,7 @@ import { showNotice } from "@/lib/dialogs";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppShellProvider, useAppShell } from "@/components/AppShellContext";
 import Profile from "@/components/Profile";
+import ClaudeSettings from "@/components/ClaudeSettings";
 import PromoExpiredPopup from "@/components/PromoExpiredPopup";
 import TeamWelcomePopup from "@/components/TeamWelcomePopup";
 import BanScreen from "@/components/BanScreen";
@@ -54,7 +55,9 @@ function ChatLayout() {
 
   // The profile opens over whatever page is showing (see openProfile), so that page stays put behind it.
   const profileView = loc.state?.profile;
-  const profileOpen = !!profileView;
+  // Settings and the account menu open the Claude-style window; the other views are the older one.
+  const claudeView = profileView === "main" || profileView === "settings";
+  const profileOpen = !!profileView && !claudeView;
   const showTabbar = ["/chat/designer", "/chat/designer/build"].includes(loc.pathname) && !isBanned && !isBlocked && !isUnverified;
 
   return (
@@ -74,6 +77,7 @@ function ChatLayout() {
         </Suspense>
       )}
 
+      <ClaudeSettings open={claudeView} onClose={closeProfile} />
       <Profile
         open={profileOpen}
         initialView={profileView || "main"}

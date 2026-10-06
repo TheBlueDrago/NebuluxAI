@@ -251,3 +251,7 @@
     radial-gradient(ellipse 60% 45% at 18% 20%, rgba(200, 108, 242, 0.12), transparent 70%),
     radial-gradient(ellipse 55% 50% at 85% 75%, rgba(111, 92, 255, 0.10), transparent 70%);
 }
+
+/* Settings → Appearance → Chat font */
+html[data-chat-font="sans"] .font-serif { font-family: ui-sans-serif, system-ui, sans-serif; }
+html[data-chat-font="mono"] .font-serif { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
