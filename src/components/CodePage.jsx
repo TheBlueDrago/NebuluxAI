@@ -170,7 +170,7 @@ export default function CodePage({ userInitial }) {
     const path = await askText(`Save this code to which file in ${repo}?`, { defaultValue: attached[0]?.path || "index.html", placeholder: "src/app.js" });
     if (!path) return;
     // Nothing goes to GitHub without a yes: show it running first, then ask.
-    const html = htmlOf(code) || (/<(html|body|canvas)b/i.test(code) ? code : "");
+    const html = htmlOf(code) || (/<(html|body|canvas)\b/i.test(code) ? code : "");
     if (html) openPreview(html, `Preview: ${path}`);
     if (!(await askConfirm(`${html ? "This is running in the Nebulux Browser now. " : ""}Push it to ${repo}/${path}?`))) return;
     try {
