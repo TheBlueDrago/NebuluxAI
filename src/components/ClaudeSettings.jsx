@@ -144,12 +144,6 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
     }
     showNotice("Saved.");
   };
-  const ghSignIn = () => {
-    const w = window.open("/github/login", "nx-github", "width=620,height=760");
-    if (!w) window.location.href = "/github/login";
-    const onStore = (e) => e.key === "bh-github-token" && e.newValue && (setGh(e.newValue), window.removeEventListener("storage", onStore));
-    window.addEventListener("storage", onStore);
-  };
   const plan = PLAN_NAMES[effPlan] || "Free";
   const go = (fn) => () => { onClose(); fn(); };
 
@@ -264,9 +258,9 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
             <Github className="w-6 h-6 text-[var(--cl-text)]" />
             <div className="flex-1 min-w-0">
               <p className="text-[15px] text-[var(--cl-text)]">GitHub</p>
-              <p className="text-[13px] text-[var(--cl-muted)]">{gh ? `Connected${ghUser ? ` as ${ghUser}` : ""}` : "Open and save code in your repositories from Nebulux Code."}</p>
+              <p className="text-[13px] text-[var(--cl-muted)]">{gh ? `Connected${ghUser ? ` as ${ghUser}` : ""}` : "Only in Nebulux Code (Pro and up): open and save code in your repositories."}</p>
             </div>
-            {gh ? <Btn onClick={() => { forgetToken(); setGh(""); setGhUser(""); }}>Disconnect</Btn> : <Btn onClick={ghSignIn}>Connect</Btn>}
+            {gh ? <Btn onClick={() => { forgetToken(); setGh(""); setGhUser(""); }}>Disconnect</Btn> : <Btn onClick={go(shell.goCode)}>Connect in Nebulux Code</Btn>}
           </div>
           <div className="flex items-center gap-3 p-4">
             <Globe className="w-6 h-6 text-[var(--cl-text)]" />
