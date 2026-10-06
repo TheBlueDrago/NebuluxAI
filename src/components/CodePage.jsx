@@ -27,6 +27,8 @@ import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 import { Cloud, Monitor, ChevronDown, Check } from "lucide-react";
+import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
+import { GitBranch, FolderGit2 } from "lucide-react";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, listFiles, readFile, pushFile } from "@/lib/githubClient";
 
@@ -132,6 +134,8 @@ export default function CodePage({ userInitial }) {
   const credits = shell?.credits || {};
   const userId = shell?.currentUser?.id;
   const plan = shell?.effPlan;
+  const u = shell?.currentUser;
+  const firstName = String(u?.full_name || u?.email?.split("@")[0] || "there").trim().split(/\s+/)[0];
   const buildMode = useBuildMode("code");
   const [effort, setEffort] = useEffort();
   const [ai, setAi] = useState("code");
@@ -258,6 +262,7 @@ export default function CodePage({ userInitial }) {
   const runPrompt = async (text, before = messages.length, whichAi = ai) => {
     let context = aboutMeBlock(readAboutMe(userId)) + historyBlock(messages.slice(0, before));
     if (attached.length) context += `Files from the GitHub repo ${repo}:\n\n` + attached.map((f) => `${f.path}:\n\`\`\`\n${f.text}\n\`\`\``).join("\n\n") + "\n\n";
+    if (before === 0) recordSession(userId);
     setMessages((m) => [...m, { role: "user", content: text }]);
     setInput("");
     setLoading(true);
@@ -304,6 +309,7 @@ export default function CodePage({ userInitial }) {
       setLive("");
       spend(res.credits);
       const content = res.content ?? "";
+      recordMessage(userId, whichAi, text.length + content.length);
       setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) }]);
       // Built a page: run it in the Nebulux Browser right away.
       const page = htmlOf(content);
@@ -395,54 +401,15 @@ export default function CodePage({ userInitial }) {
           <PanelButton icon={Github} label={ghToken ? (repo ? repo.split("/")[1] : "GitHub") : "Connect GitHub"} on={panel === "github"} onClick={() => setPanel((p) => (p === "github" ? "" : "github"))} />
         </div>
 
-        <div className={`flex-1 min-h-0 flex flex-col ${empty ? "justify-center" : ""}`}>
-          <div ref={scrollRef} className={empty ? "flex-none px-4 pb-6" : "flex-1 min-h-0 overflow-y-auto pt-2 pb-6 space-y-6 px-[max(1rem,calc((100%_-_48rem)/2))]"}>
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div ref={scrollRef} className={empty ? "flex-1 min-h-0 overflow-y-auto px-4 pb-6" : "flex-1 min-h-0 overflow-y-auto pt-2 pb-6 space-y-6 px-[max(1rem,calc((100%_-_48rem)/2))]"}>
             {empty && (
-              <div className="flex items-center justify-center gap-3 text-center">
-                <span className="keep-color w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-sky-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <Code className="w-6 h-6 text-white" />
-                </span>
-                <h1 className="font-serif text-[30px] sm:text-[40px] leading-tight text-[var(--cl-text)] tracking-tight">What are we building?</h1>
-              </div>
-            )}
-            {empty && (
-              <div className="mt-5 max-w-xl mx-auto flex flex-wrap items-center justify-center gap-2 text-[13px]">
-                {ghToken ? (
-                  <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 outline-none text-[var(--cl-text)] max-w-[16rem]">
-                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "No repository"}</option>
-                    {repos.map((r) => (
-                      <option key={r.full_name} value={r.full_name}>{r.full_name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <button onClick={ghConnect} className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 text-[var(--cl-text)]">
-                    <Github className="w-4 h-4" /> Sign in with GitHub
-                  </button>
-                )}
-                <div className="relative">
-                  <button onClick={() => setSessionMenu((o) => !o)} className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 text-[var(--cl-text)]">
-                    {session === "cloud" ? <Cloud className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
-                    {session === "cloud" ? "Cloud" : "Local"}
-                    <ChevronDown className="w-3.5 h-3.5 text-[var(--cl-muted)]" />
-                  </button>
-                  {sessionMenu && (
-                    <div className="absolute z-30 left-0 mt-1 w-72 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-xl p-1 text-left">
-                      {[
-                        ["local", Monitor, "Local", "Runs in this tab while it's open."],
-                        ["cloud", Cloud, "Cloud", "Runs on Nebulux's servers. Keeps working if you close the tab or go offline."],
-                      ].map(([v, Icon, l, d]) => (
-                        <button key={v} onClick={() => pickSession(v)} className="w-full flex items-start gap-2.5 rounded-lg px-2.5 py-2 hover:bg-[var(--cl-hover)]">
-                          <Icon className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />
-                          <span className="flex-1">
-                            <span className="block text-[13.5px] text-[var(--cl-text)]">{l}</span>
-                            <span className="block text-[12px] text-[var(--cl-muted)]">{d}</span>
-                          </span>
-                          {session === v && <Check className="w-4 h-4 mt-0.5 text-[var(--cl-text)]" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              <div className="w-full max-w-3xl mx-auto pt-4">
+                <div className="flex items-center gap-2.5 mb-8">
+                  <BlackholeIcon className="w-8 h-8" />
+                  <h1 className="text-[24px] sm:text-[28px] text-[var(--cl-text)] tracking-tight">What's up next, {firstName}?</h1>
                 </div>
+                <CodeStats userId={userId} names={AI_NAMES} />
               </div>
             )}
             {messages.map((m, i) => (
@@ -517,6 +484,52 @@ export default function CodePage({ userInitial }) {
           {/* message box */}
           <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3">
             <QueueList q={q} loading={loading} />
+            {empty && (
+              <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[14px]">
+                <div className="relative">
+                  <button onClick={() => setSessionMenu((o) => !o)} className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] px-2.5 py-1 text-[var(--cl-text)]">
+                    {session === "cloud" ? <Cloud className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                    {session === "cloud" ? "Cloud" : "Local"}
+                    <ChevronDown className="w-3.5 h-3.5 text-[var(--cl-muted)]" />
+                  </button>
+                  {sessionMenu && (
+                    <div className="absolute z-30 left-0 mt-1 w-72 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-xl p-1 text-left">
+                      {[
+                        ["local", Monitor, "Local", "Runs in this tab while it's open."],
+                        ["cloud", Cloud, "Cloud", "Runs on Nebulux's servers. Keeps working if you close the tab or go offline."],
+                      ].map(([v, Icon, l, d]) => (
+                        <button key={v} onClick={() => pickSession(v)} className="w-full flex items-start gap-2.5 rounded-lg px-2.5 py-2 hover:bg-[var(--cl-hover)]">
+                          <Icon className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />
+                          <span className="flex-1">
+                            <span className="block text-[13.5px] text-[var(--cl-text)]">{l}</span>
+                            <span className="block text-[12px] text-[var(--cl-muted)]">{d}</span>
+                          </span>
+                          {session === v && <Check className="w-4 h-4 mt-0.5 text-[var(--cl-text)]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {ghToken ? (
+                  <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="rounded-lg bg-[var(--cl-card)] px-2.5 py-1.5 outline-none text-[var(--cl-text)] max-w-[16rem]">
+                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "No repository"}</option>
+                    {repos.map((r) => (
+                      <option key={r.full_name} value={r.full_name}>{r.full_name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <button onClick={ghConnect} className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] px-2.5 py-1 text-[var(--cl-text)]">
+                    <Github className="w-4 h-4" /> Sign in with GitHub
+                  </button>
+                )}
+                {ghToken && repo && (
+                  <span className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] px-2.5 py-1 text-[var(--cl-text)]">
+                    <GitBranch className="w-4 h-4 text-[var(--cl-muted)]" />
+                    {repos.find((r) => r.full_name === repo)?.branch || "main"}
+                  </span>
+                )}
+              </div>
+            )}
             {exhausted && !loading && <OutOfCredits tier={{ ai: "ai", code: "aiCode", opus5: "galaxy5", fable: "space5" }[ai]} />}
             {attached.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -544,7 +557,7 @@ export default function CodePage({ userInitial }) {
                   }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  placeholder={queued ? "Type to queue your next message…" : panel === "browser" ? "Ask anything: Nebulux looks it up on the web first…" : "Describe what to build or fix…"}
+                  placeholder={queued ? "Type to queue your next message…" : panel === "browser" ? "Ask anything: Nebulux looks it up on the web first…" : "Describe a task or ask a question"}
                   rows={empty ? 2 : 1}
                   className="flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]"
                 />
@@ -552,9 +565,10 @@ export default function CodePage({ userInitial }) {
               </div>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pb-1">
                 <VoiceInput onText={(t) => setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t))} />
+                <AboutMeButton userId={userId} />
+                <span className="flex-1" />
                 <AiChooser value={ai} onChange={setAi} plan={plan} allowFable={true} />
                 <EffortPicker value={effort} onChange={setEffort} />
-                <AboutMeButton userId={userId} />
               </div>
             </div>
             {!empty && <p className="text-center text-[11.5px] text-[var(--cl-faint)] mt-2">Nebulux AI can make mistakes. Check important info, and never share passwords or card numbers with it.</p>}
