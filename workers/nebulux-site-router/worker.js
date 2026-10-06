@@ -231,8 +231,8 @@ async function maintenance(request, env, url) {
       var res = new Response(null, {
         status: 302,
         headers: {
-          // The app on nebuluxai.com; a site's own home page on its own address.
-          location: url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com" ? "/chat" : "/",
+          // The home page that explains Nebulux AI (owner, 2026-10-06); signing in there opens the AI.
+          location: "/",
           // On nebuluxai.com the pass covers every site address too (nova.nebuluxai.com...).
           // A custom domain (like www.blackhole-ai-tech.com) gets its own pass from this same link there.
           "set-cookie": "nx_owner=" + key + "; Path=/; Max-Age=7776000; Secure; HttpOnly; SameSite=Lax" +
