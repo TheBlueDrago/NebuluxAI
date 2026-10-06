@@ -35,7 +35,6 @@ import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, l
 //   files to the chat, and save the AI's code back to the repo.
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
 const AI_NAMES = { ai: "AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
-const NEW_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new";
 // A full web page in a reply (an html code block), to run in the Nebulux Browser.
 const htmlOf = (text) => {
   const m = String(text || "").match(/```html?\s*\n([\s\S]*?)```/i);
@@ -78,6 +77,10 @@ export default function CodePage({ userInitial }) {
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [panel, setPanel] = useState(""); // "", "browser", "github"
+  // Both kinds can open the Nebulux Browser. Cloud: the chat is kept with your account. Local: the
+  // session stays in this browser only.
+  const [session, setSession] = useState(() => { try { return localStorage.getItem("nx-code-session") || "cloud"; } catch { return "cloud"; } });
+  const pickSession = (v) => { setSession(v); try { localStorage.setItem("nx-code-session", v); } catch { /* fine */ } };
   const scrollRef = useRef(null);
   const reqIdRef = useRef(0);
   const abortRef = useRef(null);
@@ -102,7 +105,6 @@ export default function CodePage({ userInitial }) {
   // ---- github ----
   const [ghToken, setGhToken] = useState(savedToken);
   const [ghUser, setGhUser] = useState("");
-  const [ghTokenIn, setGhTokenIn] = useState("");
   const [repos, setRepos] = useState([]);
   const [repo, setRepo] = useState(() => savedRepo("code"));
   const [files, setFiles] = useState([]);
@@ -111,7 +113,7 @@ export default function CodePage({ userInitial }) {
   const [ghBusy, setGhBusy] = useState("");
   const [ghErr, setGhErr] = useState("");
   useEffect(() => {
-    if (panel !== "github" || !ghToken) return;
+    if ((panel !== "github" && messages.length) || !ghToken || repos.length) return;
     setGhBusy("repos");
     listRepos(ghToken)
       .then(setRepos)
@@ -127,19 +129,26 @@ export default function CodePage({ userInitial }) {
       .catch((e) => setGhErr(e.message))
       .finally(() => setGhBusy(""));
   }, [panel, ghToken, repo, repos]);
-  const ghConnect = async () => {
+  // Sign in with GitHub in a small window; /github/callback hands the token back here.
+  const ghConnect = () => {
     setGhErr("");
     setGhBusy("connect");
-    try {
-      setGhUser(await connect(ghTokenIn));
-      setGhToken(ghTokenIn.trim());
-      setGhTokenIn("");
-    } catch (e) {
-      setGhErr(e.message);
-    } finally {
-      setGhBusy("");
-    }
+    const w = window.open("/github/login", "nx-github", "width=620,height=760");
+    if (!w) window.location.href = "/github/login";
   };
+  useEffect(() => {
+    const got = (t) => {
+      if (!t) return;
+      setGhBusy("");
+      setGhToken(t);
+      connect(t).then(setGhUser).catch((e) => setGhErr(e.message));
+    };
+    const onMsg = (e) => e.origin === window.location.origin && e.data?.type === "nx-github" && got(e.data.token);
+    const onStore = (e) => e.key === "bh-github-token" && got(e.newValue);
+    window.addEventListener("message", onMsg);
+    window.addEventListener("storage", onStore);
+    return () => { window.removeEventListener("message", onMsg); window.removeEventListener("storage", onStore); };
+  }, []);
   const toggleFile = async (path) => {
     if (attached.some((f) => f.path === path)) return setAttached((a) => a.filter((f) => f.path !== path));
     if (attached.length >= 6) return showNotice("You can add up to 6 files at a time.");
@@ -160,6 +169,10 @@ export default function CodePage({ userInitial }) {
     }
     const path = await askText(`Save this code to which file in ${repo}?`, { defaultValue: attached[0]?.path || "index.html", placeholder: "src/app.js" });
     if (!path) return;
+    // Nothing goes to GitHub without a yes: show it running first, then ask.
+    const html = htmlOf(code) || (/<(html|body|canvas)b/i.test(code) ? code : "");
+    if (html) openPreview(html, `Preview: ${path}`);
+    if (!(await askConfirm(`${html ? "This is running in the Nebulux Browser now. " : ""}Push it to ${repo}/${path}?`))) return;
     try {
       const url = await pushFile(ghToken, repo, code, `Update ${path} from Nebulux Code`, path.replace(/^\/+/, ""));
       showNotice(`Saved to ${repo}/${path}.\n${url}`);
@@ -178,7 +191,11 @@ export default function CodePage({ userInitial }) {
     setLive("");
     const myId = ++reqIdRef.current;
     // The browser is open: look it up first, so the answer can use what's on the web.
-    if (panel === "browser" && browserRef.current) {
+    if (!browserRef.current) {
+      setPanel("browser");
+      await new Promise((r) => setTimeout(r, 80));
+    }
+    if (browserRef.current) {
       const cur = browserRef.current.current();
       if (cur?.type === "page" && cur.text) context += `The person has this web page open in the Nebulux Browser (${cur.url}):\n${cur.text.slice(0, 8000)}\n\n`;
       else {
@@ -281,6 +298,29 @@ export default function CodePage({ userInitial }) {
                   <Code className="w-6 h-6 text-white" />
                 </span>
                 <h1 className="font-serif text-[30px] sm:text-[40px] leading-tight text-[var(--cl-text)] tracking-tight">What are we building?</h1>
+              </div>
+            )}
+            {empty && (
+              <div className="mt-5 max-w-xl mx-auto flex flex-wrap items-center justify-center gap-2 text-[13px]">
+                {ghToken ? (
+                  <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 outline-none text-[var(--cl-text)] max-w-[16rem]">
+                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "No repository"}</option>
+                    {repos.map((r) => (
+                      <option key={r.full_name} value={r.full_name}>{r.full_name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <button onClick={ghConnect} className="flex items-center gap-1.5 rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 text-[var(--cl-text)]">
+                    <Github className="w-4 h-4" /> Sign in with GitHub
+                  </button>
+                )}
+                <div className="flex rounded-lg border border-[var(--cl-border)] overflow-hidden">
+                  {[["cloud", "Cloud session"], ["local", "Local session"]].map(([v, l]) => (
+                    <button key={v} onClick={() => pickSession(v)} title={v === "cloud" ? "Kept with your account" : "Stays on this device only"} className={`px-3 py-1.5 ${session === v ? "bg-[var(--cl-text)] text-[var(--cl-bg)]" : "bg-[var(--cl-card)] text-[var(--cl-muted)]"}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {messages.map((m, i) => (
@@ -412,18 +452,10 @@ export default function CodePage({ userInitial }) {
               {!ghToken ? (
                 <div className="space-y-2.5 text-[13.5px] text-[var(--cl-muted)]">
                   <p>Connect your GitHub account to work on your repositories here: add their files to the chat, and save the AI's code back.</p>
-                  <ol className="list-decimal pl-5 space-y-1 text-[13px]">
-                    <li>
-                      Make a token on{" "}
-                      <a href={NEW_TOKEN_URL} target="_blank" rel="noopener noreferrer" className="underline text-[var(--cl-text)]">GitHub</a>{" "}
-                      with <b className="text-[var(--cl-text)]">Contents: Read and write</b> for the repos you want.
-                    </li>
-                    <li>Paste it here. It stays in this browser and only goes to GitHub.</li>
-                  </ol>
-                  <input value={ghTokenIn} onChange={(e) => setGhTokenIn(e.target.value)} placeholder="github_pat_…" type="password" className="w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)]" />
-                  <button onClick={ghConnect} disabled={!ghTokenIn.trim() || ghBusy === "connect"} className="w-full rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] py-2 font-medium disabled:opacity-50">
-                    {ghBusy === "connect" ? "Connecting…" : "Connect GitHub"}
+                  <button onClick={ghConnect} className="w-full flex items-center justify-center gap-2 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] py-2 font-medium">
+                    <Github className="w-4 h-4" /> {ghBusy === "connect" ? "Waiting for GitHub…" : "Sign in with GitHub"}
                   </button>
+                  <p className="text-[12px]">You log in on GitHub and approve access to your repositories. Nothing to copy or paste.</p>
                 </div>
               ) : (
                 <>
