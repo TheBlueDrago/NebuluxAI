@@ -156,7 +156,9 @@ const toHex = (c) => {
   if (m.length === 4 && +m[3] === 0) return "";
   return "#" + m.slice(0, 3).map((v) => (+v).toString(16).padStart(2, "0")).join("");
 };
-const WIDTHS = { desktop: "100%", tablet: "820px", phone: "390px" };
+// Each device is drawn at its real width (so the page's own phone/tablet layout kicks in), then
+// scaled down to fit the space, inside a frame shaped like the device.
+const DEVICES = { desktop: { w: 1280, h: 800, pad: 0, r: 10 }, tablet: { w: 820, h: 1180, pad: 14, r: 28 }, phone: { w: 390, h: 844, pad: 12, r: 44 } };
 
 export default function VisualEditor({ html, onSave, onCancel }) {
   const parked = useMemo(() => parkScripts(html || ""), [html]);
@@ -169,6 +171,19 @@ export default function VisualEditor({ html, onSave, onCancel }) {
   const [ver, setVer] = useState(0); // reloads the frame only for undo/redo
   const [dirty, setDirty] = useState(false);
   const frame = useRef(null);
+  const stage = useRef(null);
+  const [box, setBox] = useState({ w: 800, h: 600 });
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setBox({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const dv = DEVICES[device];
+  // desktop fills the height it's given; tablet and phone keep their real shape
+  const devH = device === "desktop" ? Math.max(500, Math.round((box.h - 16) * (dv.w / Math.max(1, box.w - 16)))) : dv.h;
+  const scale = Math.min(1, (box.w - 16) / (dv.w + dv.pad * 2), (box.h - 16) / (devH + dv.pad * 2));
   const pending = useRef(null);
 
   const send = (m) => frame.current?.contentWindow?.postMessage({ nxCmd: m.cmd, ...m }, "*");
@@ -258,16 +273,27 @@ export default function VisualEditor({ html, onSave, onCancel }) {
         </aside>
 
         {/* page */}
-        <div className="flex-1 min-w-0 bg-slate-800/60 overflow-auto flex justify-center p-2 sm:p-4">
-          <iframe
-            ref={frame}
-            key={ver}
-            srcDoc={withRuntime(doc)}
-            title="Visual editor"
-            sandbox="allow-scripts"
-            className="bg-white rounded-lg shadow-2xl h-full transition-[width] duration-300"
-            style={{ width: WIDTHS[device], maxWidth: "100%" }}
-          />
+        <div ref={stage} className="flex-1 min-w-0 bg-slate-800/60 overflow-hidden flex items-center justify-center relative">
+          <div
+            className="shrink-0 transition-all duration-300"
+            style={{ width: (dv.w + dv.pad * 2) * scale, height: (devH + dv.pad * 2) * scale }}
+          >
+            <div
+              className="bg-slate-950 shadow-2xl origin-top-left transition-all duration-300"
+              style={{ width: dv.w + dv.pad * 2, height: devH + dv.pad * 2, padding: dv.pad, borderRadius: dv.r, transform: `scale(${scale})`, boxShadow: device === "desktop" ? undefined : "0 0 0 2px #334155, 0 25px 60px rgba(0,0,0,.5)" }}
+            >
+              <iframe
+                ref={frame}
+                key={ver}
+                srcDoc={withRuntime(doc)}
+                title="Visual editor"
+                sandbox="allow-scripts"
+                className="bg-white block"
+                style={{ width: dv.w, height: devH, borderRadius: Math.max(6, dv.r - dv.pad) }}
+              />
+            </div>
+          </div>
+          <span className="absolute bottom-2 right-3 text-[11px] text-slate-400">{dv.w}px · {Math.round(scale * 100)}%</span>
         </div>
 
         {/* style */}
