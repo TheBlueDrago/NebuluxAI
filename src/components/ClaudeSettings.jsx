@@ -1,82 +1,111 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, User, Palette, Plug, BarChart3, CreditCard, Shield, Github, Globe, Check, ChevronRight } from "lucide-react";
+import { X, Search, Settings as Gear, UserCircle, ShieldCheck, CreditCard, Gauge, Briefcase, Brain, Code, Plug, KeyRound, Monitor, Sun, Moon, Github, Globe, Check, ChevronRight, ArrowUpRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAppShell } from "@/components/AppShellContext";
 import { readAboutMe, saveAboutMe, ABOUT_MAX } from "@/lib/aboutMe";
 import { savedToken, forgetToken, connect } from "@/lib/githubClient";
 import { showNotice } from "@/lib/dialogs";
+import { LANGUAGES, readLanguage, saveLanguage, readMotion, saveMotion, readNotify, saveNotify } from "@/lib/prefs";
 
-// The Claude-style Settings window: a list of sections on the left (General, Appearance,
-// Connectors, Usage, Billing, Account) and the section on the right. The bigger account jobs
-// (password, two-step, deleting the account, published sites and games, referrals) still open
-// the older account window, which has them all.
-const SECTIONS = [
-  ["general", "General", User],
-  ["appearance", "Appearance", Palette],
-  ["connectors", "Connectors", Plug],
-  ["usage", "Usage", BarChart3],
-  ["billing", "Billing", CreditCard],
-  ["account", "Account", Shield],
+// The Settings window, laid out like Claude's: a search box and grouped sections on the left,
+// the section on the right. Only things Nebulux really has (and that are free) are listed.
+// The bigger account jobs (password, two-step, deleting the account, published sites and
+// games, referrals) open the older account window, which has them all.
+const GROUPS = [
+  ["Settings", [
+    ["general", "General", Gear],
+    ["account", "Account", UserCircle],
+    ["privacy", "Privacy", ShieldCheck],
+    ["billing", "Billing", CreditCard],
+    ["usage", "Usage", Gauge],
+    ["capabilities", "Capabilities", Briefcase],
+    ["memory", "Memory", Brain],
+    ["code", "Nebulux Code", Code],
+  ]],
+  ["Customize", [["connectors", "Connectors", Plug]]],
+  ["Platform", [["api", "API keys", KeyRound]]],
 ];
+export const SETTINGS_TABS = GROUPS.flatMap(([, items]) => items.map(([k]) => k));
 const PLAN_NAMES = { free: "Free", pro: "Pro", team: "Team", enterprise: "Enterprise", max: "Max", secret: "Secret" };
-const FONT_KEY = "nx-chat-font";
+const FONTS = [["default", "Nebulux Serif"], ["system", "System"], ["mono", "Mono"]];
+const lsGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* fine */ } };
 
 const Row = ({ title, sub, children }) => (
-  <div className="flex items-center justify-between gap-4 py-4 border-b border-[var(--cl-border)]/70 last:border-0">
+  <div className="flex items-center justify-between gap-4 py-4 border-b border-[var(--cl-border)]/70">
     <div className="min-w-0">
-      <p className="text-[14px] text-[var(--cl-text)]">{title}</p>
-      {sub && <p className="text-[12.5px] text-[var(--cl-muted)] mt-0.5">{sub}</p>}
+      <p className="text-[15px] text-[var(--cl-text)]">{title}</p>
+      {sub && <p className="text-[13.5px] text-[var(--cl-muted)] mt-0.5">{sub}</p>}
     </div>
     <div className="shrink-0">{children}</div>
   </div>
 );
+const H = ({ children, first }) => <h2 className={`text-[17px] font-semibold text-[var(--cl-text)] ${first ? "" : "mt-10"} mb-1`}>{children}</h2>;
 const Btn = ({ children, onClick, danger }) => (
-  <button onClick={onClick} className={`rounded-lg border px-3 py-1.5 text-[13px] ${danger ? "border-red-500/40 text-red-400 hover:bg-red-500/10" : "border-[var(--cl-border)] text-[var(--cl-text)] hover:bg-[var(--cl-hover)]"}`}>
-    {children}
+  <button onClick={onClick} className={`rounded-lg border px-3 py-1.5 text-[13.5px] ${danger ? "border-red-500/40 text-red-400 hover:bg-red-500/10" : "border-[var(--cl-border)] text-[var(--cl-text)] hover:bg-[var(--cl-hover)]"}`}>{children}</button>
+);
+const Toggle = ({ on, onChange, label }) => (
+  <button role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} className={`w-11 h-6 rounded-full relative transition-colors ${on ? "bg-blue-500" : "bg-[var(--cl-hover)]"}`}>
+    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
   </button>
 );
-const H = ({ children }) => <h2 className="text-[19px] font-semibold text-[var(--cl-text)] mb-2">{children}</h2>;
+const Segmented = ({ value, onChange, options }) => (
+  <div className="flex rounded-lg bg-[var(--cl-hover)]/60 p-0.5">
+    {options.map(([k, l]) => (
+      <button key={k} onClick={() => onChange(k)} aria-label={typeof l === "string" ? l : k} className={`px-3 py-1 rounded-md text-[14px] ${value === k ? "bg-[var(--cl-card)] text-[var(--cl-text)] shadow" : "text-[var(--cl-muted)]"}`}>{l}</button>
+    ))}
+  </div>
+);
+const Select = ({ value, onChange, options }) => (
+  <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent text-[14.5px] text-[var(--cl-text)] outline-none cursor-pointer text-right">
+    {options.map(([k, l]) => <option key={k} value={k} className="bg-[var(--cl-card)]">{l}</option>)}
+  </select>
+);
 
 function Bar({ label, used, total }) {
   const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
   return (
     <div className="py-3">
-      <div className="flex justify-between text-[13.5px] mb-1.5">
+      <div className="flex justify-between text-[14px] mb-1.5">
         <span className="text-[var(--cl-text)]">{label}</span>
-        <span className="text-[var(--cl-muted)]">{total > 0 ? `${pct}% used` : "Not in your plan"}</span>
+        <span className="text-[var(--cl-muted)]">{total > 1e12 ? "Unlimited" : total > 0 ? `${pct}% used` : "Not in your plan"}</span>
       </div>
       <div className="h-2 rounded-full bg-[var(--cl-hover)] overflow-hidden">
-        <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : "bg-[var(--cl-accent,#a78bfa)]"}`} style={{ width: `${pct}%` }} />
+        <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : "bg-blue-500"}`} style={{ width: `${total > 1e12 ? 0 : pct}%` }} />
       </div>
-      {total > 0 && <p className="text-[12px] text-[var(--cl-faint)] mt-1">{Math.max(0, total - used)} of {total} credits left</p>}
     </div>
   );
 }
 
-export default function ClaudeSettings({ open, onClose }) {
+export default function ClaudeSettings({ open, initialTab = "general", onClose }) {
   const shell = useAppShell();
   const { currentUser, credits = {}, effPlan, lightMode, toggleLight, openProfile, goPlans } = shell;
-  const [tab, setTab] = useState("general");
+  const [tab, setTab] = useState(initialTab);
+  const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [about, setAbout] = useState("");
-  const [font, setFont] = useState(() => { try { return localStorage.getItem(FONT_KEY) || "default"; } catch { return "default"; } });
+  const [theme, setTheme] = useState(() => lsGet("nx-theme-mode", lightMode ? "light" : "dark"));
+  const [font, setFont] = useState(() => lsGet("nx-chat-font", "default"));
+  const [motion, setMotion] = useState(readMotion);
+  const [lang, setLang] = useState(readLanguage);
+  const [notify, setNotify] = useState(readNotify);
+  const [web, setWeb] = useState(() => lsGet("nx-web", "on") === "on");
+  const [followUps, setFollowUps] = useState(() => lsGet("nx-followups", "on") === "on");
+  const [codeSession, setCodeSession] = useState(() => lsGet("nx-code-session", "cloud"));
   const [gh, setGh] = useState(savedToken);
   const [ghUser, setGhUser] = useState("");
 
   useEffect(() => {
     if (!open) return;
+    setTab(SETTINGS_TABS.includes(initialTab) ? initialTab : "general");
     setName(currentUser?.full_name || "");
     setAbout(readAboutMe(currentUser?.id));
     setGh(savedToken());
-  }, [open, currentUser]);
+  }, [open, initialTab, currentUser]);
   useEffect(() => {
     if (gh) connect(gh).then(setGhUser).catch(() => setGhUser(""));
   }, [gh]);
-  useEffect(() => {
-    document.documentElement.dataset.chatFont = font;
-    try { localStorage.setItem(FONT_KEY, font); } catch { /* fine */ }
-  }, [font]);
   useEffect(() => {
     if (!open) return;
     const k = (e) => e.key === "Escape" && onClose();
@@ -86,8 +115,26 @@ export default function ClaudeSettings({ open, onClose }) {
 
   if (!open || typeof document === "undefined") return null;
 
-  const saveGeneral = async () => {
-    saveAboutMe(currentUser?.id, about);
+  const pickTheme = (t) => {
+    setTheme(t);
+    lsSet("nx-theme-mode", t);
+    const wantLight = t === "system" ? window.matchMedia?.("(prefers-color-scheme: light)").matches : t === "light";
+    if (!!wantLight !== !!lightMode) toggleLight();
+  };
+  const pickFont = (f) => {
+    setFont(f);
+    lsSet("nx-chat-font", f);
+    document.documentElement.dataset.chatFont = f;
+  };
+  const pickNotify = async (on) => {
+    if (on && typeof Notification !== "undefined" && Notification.permission !== "granted") {
+      const p = await Notification.requestPermission().catch(() => "denied");
+      if (p !== "granted") return showNotice("Your browser blocked notifications. Allow them for this site in the browser's settings, then try again.");
+    }
+    setNotify(on);
+    saveNotify(on);
+  };
+  const saveProfile = async () => {
     if (name.trim() && name.trim() !== currentUser?.full_name) {
       try {
         await base44.auth.updateMe({ full_name: name.trim() });
@@ -104,133 +151,172 @@ export default function ClaudeSettings({ open, onClose }) {
     window.addEventListener("storage", onStore);
   };
   const plan = PLAN_NAMES[effPlan] || "Free";
+  const go = (fn) => () => { onClose(); fn(); };
 
   const body = {
     general: (
       <>
-        <H>Profile</H>
-        <label className="block text-[13px] text-[var(--cl-muted)] mt-3 mb-1">Full name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14px]" />
-        <label className="block text-[13px] text-[var(--cl-muted)] mt-4 mb-1">What should Nebulux AI know about you?</label>
-        <textarea value={about} onChange={(e) => setAbout(e.target.value.slice(0, ABOUT_MAX))} rows={4} placeholder="e.g. I'm in 8th grade, I like games, keep answers short." className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14px] resize-none" />
-        <p className="text-[12px] text-[var(--cl-faint)] mt-1">Kept in this browser and sent with your messages so answers fit you.</p>
-        <div className="mt-4 flex justify-end">
-          <button onClick={saveGeneral} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[13.5px] font-medium">Save changes</button>
+        <H first>Appearance</H>
+        <Row title="Theme">
+          <Segmented value={theme} onChange={pickTheme} options={[["system", <Monitor key="s" className="w-4 h-4" />], ["light", <Sun key="l" className="w-4 h-4" />], ["dark", <Moon key="d" className="w-4 h-4" />]]} />
+        </Row>
+        <Row title="Chat font"><Select value={font} onChange={pickFont} options={FONTS} /></Row>
+        <Row title="Motion" sub="Reduce animation in streaming responses and other interface elements.">
+          <Segmented value={motion} onChange={(v) => (setMotion(v), saveMotion(v))} options={[["system", "System"], ["reduced", "Reduced"]]} />
+        </Row>
+        <H>Language</H>
+        <Row title="Reply language" sub="The language Nebulux AI answers in."><Select value={lang} onChange={(v) => (setLang(v), saveLanguage(v))} options={LANGUAGES.map((l) => [l, l])} /></Row>
+        <H>Notifications</H>
+        <Row title="Response completions" sub="Get notified when Nebulux AI has finished a response. Useful for long-running tasks.">
+          <Toggle on={notify} onChange={pickNotify} label="Response completions" />
+        </Row>
+      </>
+    ),
+    account: (
+      <>
+        <H first>Account</H>
+        <label className="block text-[13.5px] text-[var(--cl-muted)] mt-4 mb-1">Full name</label>
+        <div className="flex gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14.5px]" />
+          <button onClick={saveProfile} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 text-[13.5px] font-medium">Save</button>
+        </div>
+        <Row title="Email" sub={currentUser?.email} />
+        <Row title="Password" sub="Get a link to set a new one."><Btn onClick={() => openProfile("security")}>Change</Btn></Row>
+        <Row title="Two-step sign-in" sub="A code by email when you sign in."><Btn onClick={() => openProfile("twostep")}>Manage</Btn></Row>
+        <Row title="Refer friends" sub="Get credits when friends join."><Btn onClick={() => openProfile("refer")}>Open</Btn></Row>
+        <Row title="Delete account" sub="Removes your account and everything you published."><Btn danger onClick={() => openProfile("delete")}>Delete account</Btn></Row>
+      </>
+    ),
+    privacy: (
+      <>
+        <H first>Privacy</H>
+        <p className="text-[14px] text-[var(--cl-muted)]">Nebulux never sells your data. Your chats are used to answer you, not to train models.</p>
+        <Row title="Published websites" sub="Take sites down or delete them."><Btn onClick={() => openProfile("sites")}>Manage <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
+        <Row title="Published games"><Btn onClick={() => openProfile("games")}>Manage <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
+        <Row title="Privacy Policy"><Btn onClick={() => window.open("/privacy", "_blank", "noopener")}>Read <ArrowUpRight className="inline w-3.5 h-3.5" /></Btn></Row>
+        <Row title="Terms of Service"><Btn onClick={() => window.open("/terms", "_blank", "noopener")}>Read <ArrowUpRight className="inline w-3.5 h-3.5" /></Btn></Row>
+      </>
+    ),
+    billing: (
+      <>
+        <H first>Billing</H>
+        <div className="mt-3 rounded-xl border border-[var(--cl-border)] p-4 flex items-center gap-4">
+          <div className="flex-1">
+            <p className="text-[16px] font-medium text-[var(--cl-text)]">{plan} plan</p>
+            <p className="text-[13px] text-[var(--cl-muted)]">{credits.planEndsAt ? `Ends ${new Date(credits.planEndsAt).toLocaleDateString()}` : effPlan && effPlan !== "free" ? "Active" : "Upgrade for Nebulux Code and more credits."}</p>
+          </div>
+          <button onClick={go(goPlans)} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[13.5px] font-medium">{effPlan && effPlan !== "free" ? "Change plan" : "Upgrade"}</button>
+        </div>
+        <Row title="Subscription and team" sub="Seats, team members and your plan's details."><Btn onClick={() => openProfile("subscription")}>Manage</Btn></Row>
+        <Row title="Invoices and cancelling" sub="Questions about a payment, or cancel."><Btn onClick={() => window.open("/contact?topic=billing", "_blank", "noopener")}>Contact us</Btn></Row>
+      </>
+    ),
+    usage: (
+      <>
+        <H first>Usage</H>
+        <p className="text-[14px] text-[var(--cl-muted)]">{plan} plan · credits refill every month.</p>
+        <Bar label="Nebulux AI" used={credits.aiUsed || 0} total={credits.aiTotal || 0} />
+        <Bar label="Ultra / Nebulux Code" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
+        <Bar label="Galaxy" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
+        <Bar label="Space" used={credits.space5Used || 0} total={credits.space5Total || 0} />
+      </>
+    ),
+    capabilities: (
+      <>
+        <H first>Capabilities</H>
+        <Row title="Web search" sub="Let Nebulux AI look things up on the web when a question needs fresh facts.">
+          <Toggle on={web} onChange={(v) => (setWeb(v), lsSet("nx-web", v ? "on" : "off"))} label="Web search" />
+        </Row>
+        <Row title="Suggested follow-ups" sub="Show quick follow-up questions under replies.">
+          <Toggle on={followUps} onChange={(v) => (setFollowUps(v), lsSet("nx-followups", v ? "on" : "off"))} label="Suggested follow-ups" />
+        </Row>
+      </>
+    ),
+    memory: (
+      <>
+        <H first>Memory</H>
+        <p className="text-[14px] text-[var(--cl-muted)] mb-3">What Nebulux AI should know about you. It's sent with your messages so answers fit you, and kept only in this browser.</p>
+        <textarea value={about} onChange={(e) => setAbout(e.target.value.slice(0, ABOUT_MAX))} rows={6} placeholder="e.g. I'm in 8th grade, I like games, keep answers short." className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14.5px] resize-none" />
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-[12.5px] text-[var(--cl-faint)]">{about.length}/{ABOUT_MAX}</span>
+          <div className="flex gap-2">
+            <Btn onClick={() => { setAbout(""); saveAboutMe(currentUser?.id, ""); }}>Clear</Btn>
+            <button onClick={() => { saveAboutMe(currentUser?.id, about); showNotice("Saved."); }} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-1.5 text-[13.5px] font-medium">Save</button>
+          </div>
         </div>
       </>
     ),
-    appearance: (
+    code: (
       <>
-        <H>Appearance</H>
-        <p className="text-[13.5px] text-[var(--cl-muted)] mt-3 mb-2">Color mode</p>
-        <div className="grid grid-cols-2 gap-3 max-w-sm">
-          {[["light", "Light", true], ["dark", "Dark", false]].map(([k, l, isLight]) => (
-            <button key={k} onClick={() => lightMode !== isLight && toggleLight()} className={`rounded-xl border-2 p-2 text-left ${lightMode === isLight ? "border-[var(--cl-focus,#a78bfa)]" : "border-[var(--cl-border)]"}`}>
-              <div className={`h-16 rounded-lg mb-2 ${isLight ? "bg-[#f5f3ff]" : "bg-[#0d0b1a]"} border border-[var(--cl-border)] p-2 space-y-1.5`}>
-                <div className={`h-1.5 w-10 rounded ${isLight ? "bg-[#c4b5fd]" : "bg-[#4c3d8f]"}`} />
-                <div className={`h-1.5 w-16 rounded ${isLight ? "bg-[#ddd6fe]" : "bg-[#2d2654]"}`} />
-                <div className={`h-1.5 w-12 rounded ${isLight ? "bg-[#ddd6fe]" : "bg-[#2d2654]"}`} />
-              </div>
-              <span className="text-[13px] text-[var(--cl-text)]">{l}</span>
-            </button>
-          ))}
-        </div>
-        <p className="text-[13.5px] text-[var(--cl-muted)] mt-6 mb-2">Chat font</p>
-        <div className="grid grid-cols-3 gap-3 max-w-sm">
-          {[["default", "Default", "font-serif"], ["sans", "Sans", "font-sans"], ["mono", "Mono", "font-mono"]].map(([k, l, cls]) => (
-            <button key={k} onClick={() => setFont(k)} className={`rounded-xl border-2 py-3 ${font === k ? "border-[var(--cl-focus,#a78bfa)]" : "border-[var(--cl-border)]"}`}>
-              <span className={`block text-[22px] text-[var(--cl-text)] ${cls}`}>Aa</span>
-              <span className="text-[12.5px] text-[var(--cl-muted)]">{l}</span>
-            </button>
-          ))}
-        </div>
+        <H first>Nebulux Code</H>
+        <Row title="Default session" sub="Cloud keeps working if you close the tab or go offline.">
+          <Segmented value={codeSession} onChange={(v) => (setCodeSession(v), lsSet("nx-code-session", v))} options={[["local", "Local"], ["cloud", "Cloud"]]} />
+        </Row>
+        <Row title="Open Nebulux Code" sub="Needs Pro or higher."><Btn onClick={go(shell.goCode)}>Open</Btn></Row>
       </>
     ),
     connectors: (
       <>
-        <H>Connectors</H>
-        <p className="text-[13px] text-[var(--cl-muted)]">Let Nebulux work with other apps you use.</p>
+        <H first>Connectors</H>
+        <p className="text-[14px] text-[var(--cl-muted)]">Let Nebulux work with other apps you use.</p>
         <div className="mt-4 rounded-xl border border-[var(--cl-border)] divide-y divide-[var(--cl-border)]">
           <div className="flex items-center gap-3 p-4">
             <Github className="w-6 h-6 text-[var(--cl-text)]" />
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] text-[var(--cl-text)]">GitHub</p>
-              <p className="text-[12.5px] text-[var(--cl-muted)]">{gh ? `Connected${ghUser ? ` as ${ghUser}` : ""}` : "Open and save code in your repositories from Nebulux Code."}</p>
+              <p className="text-[15px] text-[var(--cl-text)]">GitHub</p>
+              <p className="text-[13px] text-[var(--cl-muted)]">{gh ? `Connected${ghUser ? ` as ${ghUser}` : ""}` : "Open and save code in your repositories from Nebulux Code."}</p>
             </div>
             {gh ? <Btn onClick={() => { forgetToken(); setGh(""); setGhUser(""); }}>Disconnect</Btn> : <Btn onClick={ghSignIn}>Connect</Btn>}
           </div>
           <div className="flex items-center gap-3 p-4">
             <Globe className="w-6 h-6 text-[var(--cl-text)]" />
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] text-[var(--cl-text)]">Nebulux Browser</p>
-              <p className="text-[12.5px] text-[var(--cl-muted)]">Web search and pages in Nebulux Code. Always on, nothing to set up.</p>
+              <p className="text-[15px] text-[var(--cl-text)]">Nebulux Browser</p>
+              <p className="text-[13px] text-[var(--cl-muted)]">Web search and pages in Nebulux Code.</p>
             </div>
-            <span className="flex items-center gap-1 text-[12.5px] text-emerald-400"><Check className="w-4 h-4" /> On</span>
+            <span className="flex items-center gap-1 text-[13px] text-emerald-400"><Check className="w-4 h-4" /> On</span>
           </div>
         </div>
       </>
     ),
-    usage: (
+    api: (
       <>
-        <H>Usage</H>
-        <p className="text-[13px] text-[var(--cl-muted)]">{plan} plan · credits refill every month.</p>
-        <div className="mt-3">
-          <Bar label="Nebulux AI" used={credits.aiUsed || 0} total={credits.aiTotal || 0} />
-          <Bar label="Ultra / Nebulux Code" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
-          <Bar label="Galaxy" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
-          <Bar label="Space" used={credits.space5Used || 0} total={credits.space5Total || 0} />
-        </div>
-      </>
-    ),
-    billing: (
-      <>
-        <H>Billing</H>
-        <div className="mt-3 rounded-xl border border-[var(--cl-border)] p-4 flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-[15px] font-medium text-[var(--cl-text)]">{plan} plan</p>
-            <p className="text-[12.5px] text-[var(--cl-muted)]">
-              {credits.planEndsAt ? `Ends ${new Date(credits.planEndsAt).toLocaleDateString()}` : effPlan && effPlan !== "free" ? "Active" : "Upgrade for Nebulux Code, more credits and more."}
-            </p>
-          </div>
-          <button onClick={() => { onClose(); goPlans(); }} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[13.5px] font-medium">{effPlan && effPlan !== "free" ? "Change plan" : "Upgrade"}</button>
-        </div>
-        <Row title="Subscription and team" sub="Seats, team members and your plan's details."><Btn onClick={() => openProfile("subscription")}>Manage</Btn></Row>
-        <Row title="Invoices and cancelling" sub="Questions about a payment, or cancel."><Btn onClick={() => window.open("/contact?topic=billing", "_blank", "noopener")}>Contact us</Btn></Row>
-      </>
-    ),
-    account: (
-      <>
-        <H>Account</H>
-        <Row title="Email" sub={currentUser?.email} />
-        <Row title="Password" sub="Get a link to set a new one."><Btn onClick={() => openProfile("security")}>Change</Btn></Row>
-        <Row title="Two-step sign-in" sub="A code by email when you sign in."><Btn onClick={() => openProfile("twostep")}>Manage</Btn></Row>
-        <Row title="Published websites"><Btn onClick={() => openProfile("sites")}>View <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
-        <Row title="Published games"><Btn onClick={() => openProfile("games")}>View <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
-        <Row title="Refer friends" sub="Get credits when friends join."><Btn onClick={() => openProfile("refer")}>Open</Btn></Row>
-        <Row title="Delete account" sub="Removes your account and everything you published."><Btn danger onClick={() => openProfile("delete")}>Delete</Btn></Row>
+        <H first>API keys</H>
+        <p className="text-[14px] text-[var(--cl-muted)]">Use Nebulux AI from your own apps and code with an API key. Coming soon: keys will show here.</p>
       </>
     ),
   }[tab];
 
+  const ql = q.trim().toLowerCase();
   return createPortal(
-    <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-3 sm:p-6" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()} className="w-full max-w-4xl h-[min(640px,calc(100dvh-1.5rem))] rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] shadow-2xl flex flex-col sm:flex-row overflow-hidden">
-        <nav className="sm:w-52 shrink-0 border-b sm:border-b-0 sm:border-r border-[var(--cl-border)] p-3 flex sm:flex-col gap-1 overflow-x-auto">
-          <div className="hidden sm:flex items-center justify-between px-2 pb-3">
-            <span className="text-[17px] font-semibold text-[var(--cl-text)]">Settings</span>
+    <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-0 sm:p-6" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()} className="w-full max-w-6xl h-full sm:h-[min(860px,calc(100dvh-3rem))] sm:rounded-2xl bg-[var(--cl-bg)] border border-[var(--cl-border)] shadow-2xl flex flex-col sm:flex-row overflow-hidden">
+        <nav className="sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-[var(--cl-border)] p-3 flex flex-col overflow-y-auto max-h-[40vh] sm:max-h-none">
+          <div className="flex items-center gap-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-3 py-2 mb-3">
+            <Search className="w-4 h-4 text-[var(--cl-muted)]" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="flex-1 bg-transparent outline-none text-[14.5px] text-[var(--cl-text)] placeholder:text-[var(--cl-faint)]" />
           </div>
-          {SECTIONS.map(([k, l, Icon]) => (
-            <button key={k} onClick={() => setTab(k)} className={`shrink-0 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14px] text-left ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/60 hover:text-[var(--cl-text)]"}`}>
-              <Icon className="w-4 h-4" />
-              {l}
-            </button>
-          ))}
+          {GROUPS.map(([group, items]) => {
+            const shown = items.filter(([, l]) => !ql || l.toLowerCase().includes(ql));
+            if (!shown.length) return null;
+            return (
+              <div key={group} className="mb-3">
+                <p className="px-2.5 py-1.5 text-[13px] text-[var(--cl-faint)]">{group}</p>
+                {shown.map(([k, l, Icon]) => (
+                  <button key={k} onClick={() => setTab(k)} className={`w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-[15px] text-left ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/60 hover:text-[var(--cl-text)]"}`}>
+                    <Icon className="w-[18px] h-[18px]" />
+                    <span className="flex-1">{l}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
-        <div className="relative flex-1 min-h-0 overflow-y-auto p-5 sm:p-8">
+        <div className="relative flex-1 min-h-0 overflow-y-auto px-5 py-6 sm:px-10 sm:py-12">
           <button onClick={onClose} aria-label="Close settings" className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--cl-muted)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]">
             <X className="w-5 h-5" />
           </button>
-          {body}
+          <div className="max-w-3xl">{body}</div>
         </div>
       </div>
     </div>,

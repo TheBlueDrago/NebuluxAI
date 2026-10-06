@@ -1,4 +1,6 @@
 import { appParams } from "@/lib/app-params";
+// Settings → Capabilities → Web search.
+const noWeb = () => { try { return localStorage.getItem("nx-web") === "off"; } catch { return false; } };
 import { startActivity, updateActivity, finishActivity } from "@/lib/aiActivity";
 
 // Calls the chatCompletion function in streaming mode so replies appear as they're
@@ -65,7 +67,7 @@ async function streamOnce(body, onDelta, { signal, onMeta } = {}) {
       "X-App-Id": String(appId),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ ...body, stream: true }),
+    body: JSON.stringify({ ...body, stream: true, ...(noWeb() ? { noWeb: true } : {}) }),
     signal,
   });
 

@@ -5,6 +5,8 @@ const hasCode = (t) => /```/.test(t);
 const words = (t) => t.split(/\s+/).filter(Boolean).length;
 
 export function followUps(question, answer) {
+  // Settings → Capabilities → Suggested follow-ups.
+  try { if (localStorage.getItem("nx-followups") === "off") return []; } catch { /* fine */ }
   const a = String(answer || "");
   const q = String(question || "");
   if (!a.trim() || a.startsWith("⚠") || /_\(stopped\)_\s*$/.test(a) || /Sorry, something went wrong/.test(a)) return [];

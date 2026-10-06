@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Sparkles, Gift, HelpCircle, LogOut, Ticket } from "lucide-react";
+import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Sparkles, Gift, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink } from "lucide-react";
+import { useInstallApp } from "@/lib/installPrompt";
+import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
 import { markSessionOnly, noteSignedOut } from "@/lib/sessionOnly";
 import { stashChats } from "@/lib/chatStash";
@@ -44,6 +46,19 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
   const [editValue, setEditValue] = useState("");
   const [pins, setPins] = useState(pinnedIds);
   const [menu, setMenu] = useState(false);
+  const [more, setMore] = useState(false);
+  const app = useInstallApp();
+  // Ctrl+, (Cmd+, on a Mac) opens Settings, like Claude.
+  useEffect(() => {
+    const k = (e) => (e.ctrlKey || e.metaKey) && e.key === "," && (e.preventDefault(), openProfile("general"));
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [openProfile]);
+  const getApps = () => {
+    if (app.canPrompt) app.install();
+    else if (app.ios) showNotice("On iPhone or iPad: tap the Share button in Safari, then Add to Home Screen.");
+    else showNotice("Nebulux AI is already installed here, or this browser can't install apps. In Chrome or Edge, use the install icon in the address bar.");
+  };
   useEffect(() => {
     if (!menu) return;
     const off = (e) => !e.target.closest?.("[data-acct]") && setMenu(false);
@@ -187,23 +202,77 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
         {/* Claude-style account menu: opens upward from your name */}
         {menu && (
           <div className="absolute bottom-full left-2 right-2 mb-1 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5 text-[14px] z-10">
-            <p className="px-3 pt-1 pb-2 text-[12.5px] text-[var(--cl-faint)] truncate">{currentUser?.email}</p>
-            {[
-              [Settings, "Settings", () => openProfile("settings")],
-              [Sparkles, "Upgrade plan", shell.goPlans],
-              [Gift, "Refer friends", () => openProfile("refer")],
-              ...(isAdmin ? [[Activity, "Monitor", shell.goMonitor], [Ticket, "Promo codes", shell.goPromos]] : []),
-              [HelpCircle, "Get help", () => window.open("/contact", "_blank", "noopener")],
-            ].map(([Icon, label, fn]) => (
-              <button key={label} onClick={() => { setMenu(false); fn(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
-                <Icon className="w-4 h-4 text-[var(--cl-muted)]" />
-                {label}
-              </button>
-            ))}
+            <p className="px-3 pt-1 pb-2 text-[13px] text-[var(--cl-faint)] truncate">{currentUser?.email}</p>
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <Settings className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Settings</span>
+              <span className="text-[12px] text-[var(--cl-faint)]">Ctrl+,</span>
+            </button>
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("usage"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <Gauge className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Usage</span>
+            </button>
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <Languages className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Language</span>
+            </button>
+            <button onClick={() => { setMenu(false); setMore(false); window.open("/contact", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <HelpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Get help</span>
+            </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
-            <button onClick={logOut} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); shell.goPlans(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <ArrowUpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Upgrade plan</span>
+            </button>
+            <button onClick={() => { setMenu(false); setMore(false); getApps(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <LayoutGrid className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Get apps and extensions</span>
+            </button>
+            <button onClick={() => { setMenu(false); setMore(false); window.open("/whats-new", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <History className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">View changelog</span>
+            </button>
+            <div className="relative">
+              <button onClick={() => setMore((m) => !m)} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+                <Info className="w-4 h-4 text-[var(--cl-muted)]" />
+                <span className="flex-1">Learn more</span>
+                <ChevronRight className="w-4 h-4 text-[var(--cl-faint)]" />
+              </button>
+              {more && (
+                <div className="absolute left-full bottom-0 ml-1 w-48 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5">
+                  {[["About Nebulux AI", "/about"], ["Guides", "/guides"], ["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Safety", "/safety"]].map(([l, h]) => (
+                    <a key={h} href={h} target="_blank" rel="noopener" onClick={() => { setMenu(false); setMore(false); }} className="block px-3 py-1.5 text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">{l}</a>
+                  ))}
+                </div>
+              )}
+            </div>
+            {isAdmin && (
+              <>
+                <button onClick={() => { setMenu(false); setMore(false); shell.goMonitor(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+                  <Activity className="w-4 h-4 text-[var(--cl-muted)]" />
+                  <span className="flex-1">Monitor</span>
+                </button>
+                <button onClick={() => { setMenu(false); setMore(false); shell.goPromos(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+                  <Ticket className="w-4 h-4 text-[var(--cl-muted)]" />
+                  <span className="flex-1">Promo codes</span>
+                </button>
+              </>
+            )}
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("refer"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <Gift className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Refer friends</span>
+            </button>
+            <div className="my-1 h-px bg-[var(--cl-border)]" />
+            <button onClick={() => { setMenu(false); openProfile("api"); if (mobile) onClose?.(); }} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <KeyRound className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />
+              <span className="flex-1">Get API keys<span className="block text-[12.5px] text-[var(--cl-faint)]">on Nebulux Platform</span></span>
+              <ExternalLink className="w-4 h-4 text-[var(--cl-muted)]" />
+            </button>
+            <div className="my-1 h-px bg-[var(--cl-border)]" />
+            <button onClick={() => { setMenu(false); setMore(false); logOut(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <LogOut className="w-4 h-4 text-[var(--cl-muted)]" />
-              Log out
+              <span className="flex-1">Log out</span>
             </button>
           </div>
         )}

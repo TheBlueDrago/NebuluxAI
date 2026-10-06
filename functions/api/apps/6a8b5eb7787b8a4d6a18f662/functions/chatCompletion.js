@@ -427,7 +427,7 @@ export async function onRequestPost(context) {
     // The reply stops at what the user's credits cover: whole credits x effort multiplier.
     const maxChars = internal ? Infinity : Math.floor(left / mult) * CHARS_PER_CREDIT;
     const maxTokens = internal ? 1024 : 0;
-    const search = !internal && wantsSearch(body.question) && (await searchAllowed());
+    const search = !internal && body.noWeb !== true && wantsSearch(body.question) && (await searchAllowed());
 
     // Charge for what was produced. A cut reply takes every remaining credit, which
     // pauses the chat until the user has more.

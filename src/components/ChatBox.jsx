@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { notifyDone } from "@/lib/prefs";
 import { askConfirm } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
@@ -188,6 +189,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
       spend?.[ai]?.(res.credits);
       const content = res.content ?? "";
+      notifyDone(content);
       addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) });
       if (talkBackRef.current) speakText(content);
       // Away on another tab: ring the bell and play the chime.

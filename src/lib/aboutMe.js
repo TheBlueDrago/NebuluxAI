@@ -1,3 +1,4 @@
+import { languageNote } from "@/lib/prefs";
 // "About you": a few words people write once so the AI tailors every answer (grade, interests,
 // how they like answers). Kept only in this browser, per account; sent with each message like
 // the message itself (the Privacy Policy covers what goes to the AI).
@@ -32,4 +33,4 @@ export function onAboutMe(fn) {
 
 // The note sent before the conversation, or "" when there's nothing saved.
 export const aboutMeBlock = (text) =>
-  text ? `About the person you're talking to (from their own settings; use it to tailor your answers and don't repeat it back unless asked): ${text}\n\n` : "";
+  languageNote() + (text ? `About the person you're talking to (from their own settings; use it to tailor your answers and don't repeat it back unless asked): ${text}\n\n` : "");

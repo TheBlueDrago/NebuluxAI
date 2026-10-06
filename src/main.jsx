@@ -5,6 +5,7 @@ import '@/index.css'
 // Catches the browser's "install app" offer as soon as it's made (see Profile → Install app).
 import '@/lib/installPrompt'
 // Settings → Appearance → Chat font, before the first paint.
+try { if (localStorage.getItem('nx-motion') === 'reduced') document.documentElement.classList.add('reduce-motion') } catch { /* fine */ }
 try { document.documentElement.dataset.chatFont = localStorage.getItem('nx-chat-font') || 'default' } catch { /* fine */ }
 
 // Pages load on demand. After a new deploy, a tab opened earlier can ask for page files

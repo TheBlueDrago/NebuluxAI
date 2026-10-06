@@ -27,6 +27,7 @@ import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 import { Cloud, Monitor, ChevronDown, Check } from "lucide-react";
+import { notifyDone } from "@/lib/prefs";
 import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
 import { GitBranch, FolderGit2 } from "lucide-react";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
@@ -310,6 +311,7 @@ export default function CodePage({ userInitial }) {
       spend(res.credits);
       const content = res.content ?? "";
       recordMessage(userId, whichAi, text.length + content.length);
+      notifyDone(content);
       setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) }]);
       // Built a page: run it in the Nebulux Browser right away.
       const page = htmlOf(content);
