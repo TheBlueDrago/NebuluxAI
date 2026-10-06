@@ -6,6 +6,7 @@ import { siteUrl } from "@/lib/blackholeDomain";
 import { privateInfoOnPage } from "@/lib/privateInfo";
 import CustomDomain from "@/components/designer/CustomDomain";
 import DownloadZip from "@/components/designer/DownloadZip";
+import GitHubPush from "@/components/designer/GitHubPush";
 import BadgeToggle from "@/components/designer/BadgeToggle";
 import SiteMessages from "@/components/designer/SiteMessages";
 import SiteSignIns from "@/components/designer/SiteSignIns";
@@ -159,6 +160,7 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
       <>
         <H sub="Take your site to other places.">Integrations</H>
         <div className="grid sm:grid-cols-2 gap-3">
+          <Card title="GitHub" sub="Save the site's code to one of your repositories."><GitHubPush html={html} siteName={siteName} plan={plan} onUpgrade={onUpgrade} /></Card>
           <Card title="Download" sub="Get the files to host anywhere."><DownloadZip html={html} name={siteName} plan={plan} onUpgrade={onUpgrade} /></Card>
         </div>
       </>
