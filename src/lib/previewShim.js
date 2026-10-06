@@ -57,6 +57,12 @@ const BASE_SHIM = `<script>(function(){
     note("Other pages open on your published site.");
   });
   window.addEventListener("submit",function(e){if(e.defaultPrevented)return;e.preventDefault();note("Form submitted (preview).")});
+  // "Sign in with Google" (NebuluxAuth, added to published sites): a pretend account here.
+  (function(){var user=null,fns=[];function paint(){try{document.querySelectorAll("[data-nx-signed-in]").forEach(function(el){el.hidden=!user});document.querySelectorAll("[data-nx-signed-out]").forEach(function(el){el.hidden=!!user});document.querySelectorAll("[data-nx-user]").forEach(function(el){var f=el.getAttribute("data-nx-user");if(f==="picture"&&el.tagName==="IMG"){if(user)el.src=user.picture;else el.removeAttribute("src")}else el.textContent=user?(user[f]||""):""})}catch(_){}}
+    function fire(){paint();fns.forEach(function(f){try{f(user)}catch(_){}});try{dispatchEvent(new CustomEvent("nebulux-auth",{detail:user}))}catch(_){}}
+    window.NebuluxAuth={get user(){return user},token:null,signIn:function(){user={email:"you@example.com",name:"Preview Visitor",picture:"data:image/svg+xml,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='20' fill='#6366f1'/><text x='20' y='26' font-size='18' text-anchor='middle' fill='white' font-family='sans-serif'>P</text></svg>")};note("Preview: on your published site this opens Google sign-in.");fire()},signOut:function(){user=null;fire()},onChange:function(f){if(typeof f==="function"){fns.push(f);try{f(user)}catch(_){}}}};
+    document.addEventListener("click",function(e){var t=e.target&&e.target.closest&&e.target.closest("[data-nx-signin],[data-nx-signout]");if(!t)return;e.preventDefault();if(t.hasAttribute("data-nx-signin"))NebuluxAuth.signIn();else NebuluxAuth.signOut()});
+    if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",paint);else paint()})();
   // The designer's section picker: click the site's own link to that section if it has one
   // (so view-switching sites show it), otherwise scroll to it.
   window.addEventListener("message",function(e){

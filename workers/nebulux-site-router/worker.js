@@ -159,6 +159,8 @@ var BLOCKED_PAGE =
 async function ownerBlock(request, env, url) {
   var key = (env && env.OWNER_KEY) || "";
   if (await hasPass(request, key)) return null;
+  // "Sign in with Google" on people's own sites (their custom domains stay up during maintenance).
+  if (path.indexOf("/site-auth/") === 0 && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   var passes = cookiesOf(request, "nx_owner");
   if (key && url.pathname.indexOf("/__owner/") === 0 && (await sameText(url.pathname.slice(9), key))) return null;
   var old = String((env && env.OLD_OWNER_KEYS) || "").split(",").map(function (s) {

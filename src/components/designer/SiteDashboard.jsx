@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { LayoutDashboard, Users, Database, Globe, Plug, ShieldCheck, Code2, History, Settings, ExternalLink, Copy, Check, Rocket, Inbox, Trash2, RotateCcw, EyeOff, Eye, Plus, AlertTriangle } from "lucide-react";
+import { LogIn, LayoutDashboard, Users, Database, Globe, Plug, ShieldCheck, Code2, History, Settings, ExternalLink, Copy, Check, Rocket, Inbox, Trash2, RotateCcw, EyeOff, Eye, Plus, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { askConfirm, showNotice } from "@/lib/dialogs";
 import { siteUrl } from "@/lib/blackholeDomain";
@@ -9,6 +9,7 @@ import DownloadZip from "@/components/designer/DownloadZip";
 import GitHubPush from "@/components/designer/GitHubPush";
 import BadgeToggle from "@/components/designer/BadgeToggle";
 import SiteMessages from "@/components/designer/SiteMessages";
+import SiteSignIns from "@/components/designer/SiteSignIns";
 import ShareLink from "@/components/designer/ShareLink";
 import { QrButton } from "@/components/designer/QrDialog";
 
@@ -18,6 +19,7 @@ import { QrButton } from "@/components/designer/QrDialog";
 const SECTIONS = [
   ["overview", "Overview", LayoutDashboard],
   ["people", "People", Users],
+  ["signin", "Sign in", LogIn],
   ["data", "Data", Database],
   ["domains", "Domains", Globe],
   ["integrations", "Integrations", Plug],
@@ -138,6 +140,7 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
         </Card>
       </>
     ),
+    signin: <SiteSignIns site={siteName} />,
     data: (
       <>
         <H sub="What visitors send through the forms on your published site.">Data</H>

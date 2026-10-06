@@ -2,6 +2,7 @@
 // [name].js and the get-site-html function): the scripts added to every page, the
 // "removed" page, and the response headers. No imports besides injected.js.
 import { stripInjected } from "./injected.js";
+import { withSiteAuth } from "./siteauth.js";
 
 const APP_ORIGIN = "https://nebuluxai.com";
 
@@ -124,7 +125,7 @@ export function rebrand(html) {
 // opts.badge: show the "Made with Nebulux AI" badge on a website (off unless the owner turned it on).
 export function preparePage(html, kind, name, opts = {}) {
   let out = withShareTags(stripInjected(rebrand(html)));
-  if (kind === "site") out = withFormInbox(withCheckoutBridge(out, name), name);
+  if (kind === "site") out = withSiteAuth(withFormInbox(withCheckoutBridge(out, name), name), name);
   if (kind === "site") return withReportLink(out, kind, name, { badge: opts.badge === true, report: false });
   return withReportLink(out, kind, name);
 }
