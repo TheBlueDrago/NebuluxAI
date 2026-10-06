@@ -10,7 +10,7 @@ const SKIP = /^\/(buy|report|site\/|play\/|terms|privacy|contact|ThankYou|promo-
 function shouldShow() {
   if (SKIP.test(window.location.pathname)) return false;
   // Not in the installed app (home screen): the phone starts it fresh on almost every launch,
-  // so it would play the 4.6-second intro every time someone opens it.
+  // so it would play the 4.7-second intro every time someone opens it.
   if (window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true) return false;
   // Devices set to reduce motion skip the animated intro altogether.
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
@@ -23,14 +23,14 @@ function shouldShow() {
   return true;
 }
 
-// Shows for 4 seconds, then fades out over 0.6s (a CSS transition, no animation library).
+// Shows for about 4 seconds, then fades out over 0.6s (a CSS transition, no animation library).
 export default function Splash() {
   const [phase, setPhase] = useState(() => (shouldShow() ? "show" : "gone"));
   // Both timers start once, on mount (re-running on each phase change would cancel the second).
   useEffect(() => {
     if (phase !== "show") return;
-    const fade = setTimeout(() => setPhase("leaving"), 4000);
-    const done = setTimeout(() => setPhase("gone"), 4600);
+    const fade = setTimeout(() => setPhase("leaving"), 4100);
+    const done = setTimeout(() => setPhase("gone"), 4700);
     return () => {
       clearTimeout(fade);
       clearTimeout(done);
