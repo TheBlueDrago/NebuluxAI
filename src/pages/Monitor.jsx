@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Search, Loader2, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { askConfirm, showNotice } from "@/lib/dialogs";
 import UserCard from "@/components/monitor/UserCard";
 import UserDetail from "@/components/monitor/UserDetail";
 import RevenueAnalytics from "@/components/monitor/RevenueAnalytics";
@@ -69,6 +70,17 @@ export default function Monitor({ onBack }) {
         ...list.filter((r) => r.userId !== id),
       ]);
     }
+  };
+  // One click: every account back to the Free plan (owner, 2026-10-06).
+  const [freeing, setFreeing] = useState(false);
+  const allFree = async () => {
+    const paid = users.filter((u) => u.plan && u.plan !== "free");
+    if (!(await askConfirm(`Put all ${paid.length} account${paid.length === 1 ? "" : "s"} with a plan on the Free plan? Purchases people paid for still count.`))) return;
+    setFreeing(true);
+    let failed = 0;
+    for (const u of paid) await apply(u.id, { plan: "free", planExpiresAt: null }).catch(() => failed++);
+    setFreeing(false);
+    showNotice(failed ? `Done, but ${failed} couldn't be changed. Try again.` : "Everyone is on the Free plan now.");
   };
   const removedIds = new Set(removed.map((r) => r.userId));
   const heldIds = new Set(held.map((r) => r.userId));
@@ -198,6 +210,13 @@ export default function Monitor({ onBack }) {
         </div>
       )}
 
+      {!loading && (
+        <div className="w-full max-w-3xl mt-6">
+          <button onClick={allFree} disabled={freeing} className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+            {freeing ? "Changing plans…" : "Make everyone Free"}
+          </button>
+        </div>
+      )}
       {!loading && staleCount > 0 && (
         <div className="w-full max-w-3xl mt-6">
           <button onClick={() => setShowStale((v) => !v)} className="text-slate-400 text-sm hover:text-slate-200">
