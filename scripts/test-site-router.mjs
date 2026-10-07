@@ -87,7 +87,7 @@ assert(res.status === 404, "deeper addresses aren't sites");
 {
   const env = { MAINTENANCE: "on", OWNER_KEY: "owner-secret-123", KV: { get: async () => null } };
   let r = await worker.fetch(new Request("https://nebuluxai.com/chat"), env);
-  assert(r.status === 503 && (await r.text()).includes("temporarily down"), "maintenance: visitors see the down page");
+  assert(r.status === 503 && (await r.text()).includes("down for maintenance"), "maintenance: visitors see the down page");
   r = await worker.fetch(new Request("https://nova.nebuluxai.com/"), env);
   assert(r.status === 503, "maintenance: published sites are down too");
   r = await worker.fetch(new Request("https://nebuluxai.com/__owner/wrong"), env);

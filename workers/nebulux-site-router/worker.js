@@ -116,7 +116,7 @@ function notFoundPage(rawName) {
 // MAINTENANCE to "off" in wrangler.toml and redeploy to open the site again.
 // On while env.MAINTENANCE is "on" (wrangler.toml [vars]).
 var DOWN_PAGE =
-  "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex'><title>Nebulux AI</title><style>body{background:#05060f;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}h1{font-size:22px;font-weight:600;max-width:420px;line-height:1.4}</style></head><body><h1>Sorry, this website is temporarily down. Come back later.</h1></body></html>";
+  "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex'><title>Nebulux AI</title><style>body{background:#05060f;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}h1{font-size:22px;font-weight:600;max-width:420px;line-height:1.4}</style></head><body><h1>Sorry, Nebulux AI is down for maintenance right now. Come back soon!</h1></body></html>";
 
 function cookieOf(request, name) {
   var m = (request.headers.get("cookie") || "").match(new RegExp("(?:^|;\\s*)" + name + "=([^;]+)"));
@@ -159,6 +159,7 @@ var BLOCKED_PAGE =
 async function ownerBlock(request, env, url) {
   var key = (env && env.OWNER_KEY) || "";
   if (await hasPass(request, key)) return null;
+  var path = url.pathname;
   // "Sign in with Google" on people's own sites (their custom domains stay up during maintenance).
   if (path.indexOf("/site-auth/") === 0 && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   // The Nebulux API (nebuluxai.com/v1/...): called from people's own code with an API key.
@@ -251,6 +252,7 @@ async function maintenance(request, env, url) {
     }
   }
   if (await hasPass(request, key)) return null;
+  var path = url.pathname;
   // Devices with the old installed app fetch this to remove it (public/sw.js).
   if (path === "/sw.js") return null;
   // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
