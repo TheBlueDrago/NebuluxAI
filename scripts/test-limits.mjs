@@ -24,7 +24,7 @@ assert(limitError("game", "free", Array.from({ length: 50 }, (_, i) => game(`202
 const store = new Map();
 const kv = {
   // Test accounts have accepted the user agreement (its own tests: test-terms.mjs).
-  get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: "2026-10-05" } : null),
+  get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: "2026-10-07" } : null),
   getWithMetadata: async (k) => ({ value: store.get(k) ?? null, metadata: store.has(k + "#meta") ? JSON.parse(store.get(k + "#meta")) : null }),
   put: async (k, v, o) => {
     store.set(k, String(v));

@@ -5,7 +5,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 
 // Public /terms and /privacy pages, linked from sign-up, log-in, billing and the
 // report page. Plain language on purpose; keep them in step with what the app does.
-const UPDATED = "October 2, 2026";
+const UPDATED = "October 7, 2026";
 // Optional: a support address to show instead of the contact form (/contact).
 const CONTACT_EMAIL = "";
 
@@ -88,6 +88,21 @@ export function Terms() {
         inside the Nebulux Browser, the AI may be able to use that account the way you could. Only open pages and sign in
         to accounts there if you are OK with the AI using them, and never enter bank, card or other sensitive details in it.
         You are responsible for what happens on websites and accounts you use through it.
+      </p>
+
+      <h2>Cloud sessions in Nebulux Code</h2>
+      <p>
+        In a <strong>cloud session</strong>, your request is run on our servers, so it keeps going if you close the tab
+        or go offline, and the reply is waiting when you come back. Replies are kept on our servers for about a day and
+        then deleted. A <strong>local session</strong> runs while your tab is open and keeps the chat in your browser.
+      </p>
+
+      <h2>Sign-in on websites you publish</h2>
+      <p>
+        Websites you publish can let visitors <strong>sign in with Google</strong>. If you add it, you are responsible for
+        how you use your visitors' information: tell them on your site what you use their name and email for, only ask
+        people to sign in when your site needs it, and never use it for spam or anything unlawful. With Pro or higher you
+        can use your own Google sign-in app; you're then also responsible for following Google's rules for it.
       </p>
 
       <h2>What you publish</h2>
@@ -187,7 +202,8 @@ export function Privacy() {
         <li><strong>Resend</strong> — sends our emails (sign-up codes, password resets, two-step codes, support replies).</li>
         <li><strong>GitHub</strong> — only if you connect your GitHub account in Nebulux Code. Your GitHub token stays in your browser and is only sent to GitHub; the files you add to a chat are sent to the AI with your question.</li>
         <li><strong>DuckDuckGo and the websites you open</strong> — when you use the Nebulux Browser in Nebulux Code, your searches go to DuckDuckGo and the pages you open are fetched by our server. The AI can see, read and act on whatever you open there, including pages you are signed in to.</li>
-        <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress.</li>
+        <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress. Cloud sessions in Nebulux Code run there and their replies are deleted after about a day.</li>
+        <li><strong>Google sign-in on published websites</strong> — when you sign in to a website someone made with Nebulux AI, Google gives us your name, email address and profile picture. We keep them so <strong>that website's owner can see who signed in</strong> (and how often), and we sign you in to that site. The owner can remove you from their list, and you can ask us to delete it. If the owner uses their own Google sign-in app, Google's screen shows their app instead of ours.</li>
         <li>
           <strong>Google (Gemini API)</strong> — writes the AI answers, so your prompts and chat context are sent to
           Google. On the plan we use, Google may keep them and use them to improve its products, and people at
