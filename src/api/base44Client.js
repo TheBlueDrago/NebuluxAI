@@ -180,7 +180,7 @@ const auth = {
   register: (payload) => call("POST", `/apps/${appId}/auth/register`, { data: payload }),
   verifyOtp: ({ email, otpCode }) => call("POST", `/apps/${appId}/auth/verify-otp`, { data: { email, otp_code: otpCode } }),
   resendOtp: (email) => call("POST", `/apps/${appId}/auth/resend-otp`, { data: { email } }),
-  resetPasswordRequest: (email) => call("POST", `/apps/${appId}/auth/reset-password-request`, { data: { email } }),
+  resetPasswordRequest: (email, turnstileToken) => call("POST", `/apps/${appId}/auth/reset-password-request`, { data: { email, ...(turnstileToken ? { turnstile_token: turnstileToken } : {}) } }),
   resetPassword: ({ resetToken, newPassword }) => call("POST", `/apps/${appId}/auth/reset-password`, { data: { reset_token: resetToken, new_password: newPassword } }),
   changePassword: ({ userId, currentPassword, newPassword }) => call("POST", `/apps/${appId}/auth/change-password`, { data: { user_id: userId, current_password: currentPassword, new_password: newPassword } }),
 };

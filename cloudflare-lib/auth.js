@@ -12,6 +12,7 @@
 // password (Base44 never gave it out): their first sign-in emails them a link to set one.
 import { create, getRow, all } from "./db.js";
 import { passwordProblem } from "../src/lib/passwordCheck.js";
+import { turnstileOk, TURNSTILE_FAILED } from "./turnstile.js";
 
 const SESSION_DAYS = 60;
 const enc = new TextEncoder();
@@ -223,6 +224,10 @@ export async function handleAuth(db, env, request, path, body) {
   const origin = new URL(request.url).origin.replace(/\/\/[^/]*pages\.dev$/, "//nebuluxai.com");
   try {
     const action = path.replace(/^auth\//, "");
+    // The "I'm not a robot" check on the two forms that send emails (cloudflare-lib/turnstile.js).
+    if ((action === "register" || action === "reset-password-request") && !(await turnstileOk(env, request, body.turnstile_token))) {
+      return { status: 400, body: { message: TURNSTILE_FAILED, code: "turnstile" } };
+    }
     let out;
     if (action === "login") out = await login(db, env, body, origin);
     else if (action === "register") out = await register(db, env, body);

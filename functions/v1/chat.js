@@ -5,7 +5,7 @@
 // Paid from the key owner's prepaid API balance (the Playground too), only while their
 // "Use API key credits" switch is on (Settings → Usage). See cloudflare-lib/apirun.js.
 import { keyOwner, noteUse } from "../../cloudflare-lib/apikeys.js";
-import { allow } from "../../cloudflare-lib/ratelimit.js";
+import { allow, hits, bump } from "../../cloudflare-lib/ratelimit.js";
 import { dollars } from "../../cloudflare-lib/apibilling.js";
 import { MODELS, toPrompt, billedAI } from "../../cloudflare-lib/apirun.js";
 
@@ -17,8 +17,14 @@ export const onRequestOptions = () => new Response(null, { status: 204, headers:
 
 export async function onRequestPost(context) {
   const { request, env } = context;
+  // Someone trying key after key from one network is stopped for a while (30 wrong keys in 10 minutes).
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  if ((await hits(`apikey-bad:${ip}`, 600)) >= 30) return fail("Too many wrong API keys from this network. Wait 10 minutes.", 429, "rate_limit");
   const owner = await keyOwner(env.DB, request);
-  if (!owner) return fail("Missing or wrong API key. Send it as: Authorization: Bearer nx-sk-...", 401, "authentication");
+  if (!owner) {
+    await bump(`apikey-bad:${ip}`, 600);
+    return fail("Missing or wrong API key. Send it as: Authorization: Bearer nx-sk-...", 401, "authentication");
+  }
   if (!(await allow(`apikey:${owner.id}`, 20, 60))) return fail("Too many requests: up to 20 a minute per key.", 429, "rate_limit");
   const body = await request.json().catch(() => null);
   if (!body) return fail("Send a JSON body.", 400);

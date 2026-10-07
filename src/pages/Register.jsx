@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import ShowPasswordButton from "@/components/ShowPasswordButton";
 import { markSessionOnly } from "@/lib/sessionOnly";
 import EmailTypoHint, { useEmailTypo } from "@/components/EmailTypoHint";
 import usePageTitle from "@/hooks/usePageTitle";
+import Turnstile, { useTurnstileOn } from "@/components/Turnstile";
 
 export default function Register() {
   usePageTitle("Create your account");
@@ -34,6 +35,10 @@ export default function Register() {
   const [otpCode, setOtpCode] = useState("");
   const [invited] = useState(() => hasPendingReferral());
   const typo = useEmailTypo(email);
+  // The "I'm not a robot" check (components/Turnstile.jsx), once the owner switches it on.
+  const robotCheck = useRef(null);
+  const robotOn = useTurnstileOn();
+  const [robotToken, setRobotToken] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +53,10 @@ export default function Register() {
       return;
     }
     if (typo.pauseForTypo()) return; // the sign-up code would go to the misspelled address
+    if (robotOn && !robotToken) {
+      setError("Please finish the \"I'm not a robot\" check first.");
+      return;
+    }
     setLoading(true);
     try {
       // A failed check must never block sign-up (Base44's register refuses existing accounts anyway).
@@ -69,10 +78,11 @@ export default function Register() {
         setError("An account with this email already exists. Try logging in.");
         return;
       }
-      await base44.auth.register({ email, password });
+      await base44.auth.register({ email, password, ...(robotToken ? { turnstile_token: robotToken } : {}) });
       setShowOtp(true);
     } catch (err) {
       setError(err.message || "Registration failed");
+      robotCheck.current?.reset(); // each answer works once
     } finally {
       setLoading(false);
     }
@@ -262,6 +272,7 @@ export default function Register() {
             />
           </div>
         </div>
+        <Turnstile ref={robotCheck} onToken={setRobotToken} className="flex justify-center" />
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
             <>

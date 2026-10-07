@@ -20,6 +20,8 @@ export async function onRequestPost(context) {
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
   if (!(await allow(`siteai:${site}:${ip}`, 8, 60))) return out({ error: "You're sending messages very fast. Wait a moment." }, 429);
   if (!(await allow(`siteai:${site}`, 300, 3600))) return out({ error: "This website's AI is very busy. Try again later." }, 429);
+  // The site's owner pays for every message, so one visitor (or a bot) can't run their balance down.
+  if (!(await allow(`siteai-day:${site}:${ip}`, 60, 86400))) return out({ error: "You've reached today's limit for this website's AI. Come back tomorrow." }, 429);
   const msgs = (Array.isArray(body.messages) ? body.messages : [{ role: "user", content: String(body.message || "") }])
     .filter((m) => m && (m.role === "user" || m.role === "assistant"))
     .slice(-12)

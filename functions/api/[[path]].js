@@ -18,6 +18,7 @@
 import { authLimit } from "../../cloudflare-lib/authlimit.js";
 import { handleEntities } from "../../cloudflare-lib/db.js";
 import { handleAuth, sessionUser, logout, googleStart, googleCallback } from "../../cloudflare-lib/auth.js";
+import { turnstileOn } from "../../cloudflare-lib/turnstile.js";
 
 const APP_ID = "6a8b5eb7787b8a4d6a18f662";
 const jsonRes = (status, body) =>
@@ -44,7 +45,7 @@ async function ownBackend(context, path, url) {
   if (path === "apps/auth/login" || path === "apps/auth/google/start") return googleStart(env, request);
   if (path === "apps/auth/google/callback") return googleCallback(db, env, request);
   if (path.startsWith("apps/auth/")) return Response.redirect(url.origin + "/login", 302);
-  if (path === `apps/public/prod/public-settings/by-id/${APP_ID}`) return jsonRes(200, { id: APP_ID, public_settings: {} });
+  if (path === `apps/public/prod/public-settings/by-id/${APP_ID}`) return jsonRes(200, { id: APP_ID, public_settings: { turnstile_site_key: turnstileOn(env) ? env.TURNSTILE_SITE_KEY : null } });
   const prefix = `apps/${APP_ID}/`;
   if (!path.startsWith(prefix)) return null;
   const rest = path.slice(prefix.length);
