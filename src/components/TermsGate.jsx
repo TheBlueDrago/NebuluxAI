@@ -13,7 +13,7 @@ const monthName = (v) => new Date(`${v}-15T00:00:00Z`).toLocaleDateString([], { 
 const dayName = (iso) => new Date(iso).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
 const seenKey = (id, v) => `nx-terms:${id}:${v}`;
 // The agreement's version when the server can't be asked (keep in step with accept-terms.js).
-const FALLBACK_VERSION = "2026-10-07";
+const FALLBACK_VERSION = "2026-10-07-api";
 
 const POINTS = [
   "You're 13 or older. If you're under 18, a parent or guardian agrees to these terms with you.",

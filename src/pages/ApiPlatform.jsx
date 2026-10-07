@@ -7,20 +7,21 @@ import BlackholeIcon from "@/components/BlackholeIcon";
 import { askConfirm } from "@/lib/dialogs";
 
 // The Nebulux Platform (nebuluxai.com/api): make API keys and use Nebulux AI from your own code.
-// Keys: functions/.../api-keys.js; the API itself: functions/v1/chat.js (uses your normal credits).
+// Keys: functions/.../api-keys.js; the API itself: functions/v1/chat.js (paid from prepaid per-AI balances, Billing).
 const API_URL = "https://nebuluxai.com/v1/chat";
+// id, name, what it's good at, price multiplier (Nebulux AI: $0.10 per request + $0.10 per reply credit)
 const MODELS = [
-  ["nebulux-ai", "Nebulux AI", "Fast, everyday answers.", "Nebulux AI credits"],
-  ["ultra", "Ultra", "Coding and harder questions.", "Ultra credits"],
-  ["galaxy", "Galaxy", "Stronger reasoning.", "Galaxy credits"],
-  ["space", "Space", "The strongest model.", "Space credits"],
+  ["nebulux-ai", "Nebulux AI", "Fast, everyday answers.", 1],
+  ["galaxy", "Galaxy", "Coding and harder questions.", 2],
+  ["space", "Space", "Stronger reasoning.", 3],
+  ["nebula", "Nebula", "The strongest model.", 5],
 ];
 const NAV = [
   ["overview", "Overview", Home],
   ["keys", "API keys", KeyRound],
   ["playground", "Playground", FlaskConical],
   ["docs", "Docs", BookOpen],
-  ["usage", "Usage", Gauge],
+  ["billing", "Billing", Gauge],
 ];
 const when = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "Never");
 
@@ -95,7 +96,18 @@ export default function ApiPlatform() {
   const [menuFor, setMenuFor] = useState(""); // the ••• menu on a row
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
-  const [credits, setCredits] = useState(null);
+  const [bill, setBill] = useState(null); // API balance, agreement, history
+  const [agreeTick, setAgreeTick] = useState(false);
+  const [amount, setAmount] = useState(5);
+  const [fundModel, setFundModel] = useState("nebulux-ai"); // which AI to add funds to
+  const [grantAmt, setGrantAmt] = useState(5);
+  const loadBill = () => base44.functions.invoke("api-billing", { action: "status" }).then((r) => setBill(r.data)).catch(() => setBill({}));
+  const billCall = async (body, tag) => {
+    setBusy(tag); setErr("");
+    try { const d = (await base44.functions.invoke("api-billing", body)).data; setBill(d); return d; }
+    catch (e) { setErr(e?.response?.data?.error || "Something went wrong. Please try again."); return null; }
+    finally { setBusy(""); }
+  };
   // playground
   const [pgKey, setPgKey] = useState("");
   const [pgModel, setPgModel] = useState("nebulux-ai");
@@ -107,7 +119,7 @@ export default function ApiPlatform() {
     document.title = "Nebulux Platform · API keys";
     if (!isAuthenticated) return;
     base44.functions.invoke("api-keys", { action: "list" }).then((r) => setKeys(r.data?.keys || [])).catch(() => setKeys([]));
-    base44.functions.invoke("credits").then((r) => setCredits(r.data)).catch(() => {});
+    loadBill();
   }, [isAuthenticated]);
 
   const call = async (body, tag) => {
@@ -119,6 +131,7 @@ export default function ApiPlatform() {
   const create = async () => {
     const d = await call({ action: "create", name: name.trim() || "My key" }, "create");
     if (d) { setKeys(d.keys); setNewKey(d.key); setPgKey(d.key); setName(""); setCreating(false); }
+    else if (/agree|funds/i.test(err || "")) setCreating(false);
   };
   const revoke = async (k) => {
     if (!(await askConfirm(`Delete the key "${k.name}"? Apps using it stop working right away.`))) return;
@@ -136,6 +149,7 @@ export default function ApiPlatform() {
       });
       const data = await res.json().catch(() => ({ error: { message: "No answer" } }));
       setPgOut({ status: res.status, data, ms: Date.now() - t0 });
+      loadBill();
     } catch (e) {
       setPgOut({ status: 0, data: { error: { message: String(e.message || e) } }, ms: Date.now() - t0 });
     }
@@ -152,14 +166,24 @@ export default function ApiPlatform() {
     );
   }
 
-  const tiers = credits?.tiers || {};
-  const tierOf = { "nebulux-ai": "ai", ultra: "aiCode", galaxy: "galaxy5", space: "space5" };
+  const ready = !!(bill && bill.agreed && bill.funded && bill.total > 0);
+  const balOf = (m) => (bill?.balanceTexts || {})[m] || "$0.00";
+  const minOf = (m) => (bill?.minTopup || {})[m] || 2;
+  const price = (m) => `${(0.1 * m).toFixed(2)}`;
+  // Shown on API keys and the Playground until billing is set up.
+  const setupBanner = !ready && bill && (
+    <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-[14px]">
+      <p className="font-medium text-amber-200">Set up billing first</p>
+      <p className="text-amber-100/80 mt-1">{!bill.agreed ? "Agree to API billing and add funds" : "Add funds to your API balance"} before you can make keys or use the Playground. Every request is charged.</p>
+      <button onClick={() => setTab("billing")} className="mt-3 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-3 py-1.5 text-[13px] font-medium">Go to Billing</button>
+    </div>
+  );
   const body = {
     overview: (
       <>
         <H sub="Use Nebulux AI from your own website, app, bot or script.">Welcome, {String(user?.full_name || "developer").split(" ")[0]}</H>
-        <div className="grid sm:grid-cols-3 gap-3 mb-6">
-          {[["1", "Make a key", "API keys → Create key. Copy it somewhere safe.", () => setTab("keys")], ["2", "Try it", "Send a message in the Playground.", () => setTab("playground")], ["3", "Build", "Call the API from your code.", () => setTab("docs")]].map(([n, t, d, go]) => (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[["1", "Set up billing", "Agree to API billing and add funds.", () => setTab("billing")], ["2", "Make a key", "API keys → Create key. Copy it somewhere safe.", () => setTab("keys")], ["3", "Turn it on", "Nebulux AI → Settings → Usage → Use API key credits.", () => window.open("/chat", "_blank", "noopener")], ["4", "Build", "Call the API from your code, or try the Playground.", () => setTab("docs")]].map(([n, t, d, go]) => (
             <button key={n} onClick={go} className="text-left rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-4 hover:border-[var(--cl-focus,#a78bfa)]">
               <span className="w-7 h-7 rounded-full bg-[var(--cl-hover)] flex items-center justify-center text-[13px] font-semibold">{n}</span>
               <p className="mt-2 font-medium">{t}</p>
@@ -169,7 +193,7 @@ export default function ApiPlatform() {
         </div>
         <p className="text-[14px] text-[var(--cl-muted)] mb-2">Quick start</p>
         <Code lang="curl">{curl(pgKey)}</Code>
-        <p className="text-[12.5px] text-[var(--cl-faint)] mt-3">Every call uses your normal Nebulux credits, the same as chatting. Up to 20 requests a minute per key.</p>
+        <p className="text-[12.5px] text-[var(--cl-faint)] mt-3">Every call is paid from your prepaid API balance (Billing), never your plan credits. Up to 20 requests a minute per key.</p>
       </>
     ),
     keys: (
@@ -177,10 +201,11 @@ export default function ApiPlatform() {
         <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
           <div>
             <h1 className="text-[26px] font-semibold">API keys</h1>
-            <p className="text-[14px] text-[var(--cl-muted)] mt-1">Keys let your code use Nebulux AI as you, with your credits.</p>
+            <p className="text-[14px] text-[var(--cl-muted)] mt-1">Keys let your code use Nebulux AI as you. Every request is paid from that AI's prepaid balance.</p>
           </div>
-          <button onClick={() => { setErr(""); setCreating(true); }} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-3.5 py-2 text-[14px] font-medium"><Plus className="w-4 h-4" /> Create Key</button>
+          <button onClick={() => { setErr(""); if (!ready) setTab("billing"); else setCreating(true); }} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-3.5 py-2 text-[14px] font-medium"><Plus className="w-4 h-4" /> Create Key</button>
         </div>
+        {setupBanner}
         {err && !creating && <p className="mb-3 text-[13px] text-amber-300">{err}</p>}
         <div className="rounded-xl border border-[var(--cl-border)] overflow-x-auto">
           <table className="w-full text-left text-[13.5px] min-w-[640px]">
@@ -254,13 +279,15 @@ export default function ApiPlatform() {
     playground: (
       <>
         <H sub="Send a real request to the API and see exactly what comes back.">Playground</H>
+        {setupBanner}
+        <p className="mb-4 text-[13px] text-[var(--cl-muted)]">Every Playground message is a real API request: <b className="text-[var(--cl-text)]">it's charged to that AI's balance</b> ({balOf(pgModel)} left for {MODELS.find((x) => x[0] === pgModel)?.[1]}), the same as from your code.</p>
         <div className="grid gap-3">
           <label className="text-[13px] text-[var(--cl-muted)]">API key
             <input value={pgKey} onChange={(e) => setPgKey(e.target.value)} placeholder="nx-sk-..." type="password" className="mt-1 w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-2 outline-none focus:border-[var(--cl-focus)] text-[14px] text-[var(--cl-text)]" />
           </label>
           <label className="text-[13px] text-[var(--cl-muted)]">Model
             <select value={pgModel} onChange={(e) => setPgModel(e.target.value)} className="mt-1 w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-2 outline-none text-[14px] text-[var(--cl-text)]">
-              {MODELS.map(([id, n]) => <option key={id} value={id}>{n} ({id})</option>)}
+              {MODELS.map(([id, n, , m]) => <option key={id} value={id}>{n} ({id}) · from {price(m * 2)} a request · {balOf(id)} left</option>)}
             </select>
           </label>
           <label className="text-[13px] text-[var(--cl-muted)]">System (optional)
@@ -270,7 +297,7 @@ export default function ApiPlatform() {
             <textarea value={pgMsg} onChange={(e) => setPgMsg(e.target.value)} rows={3} className="mt-1 w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-2 outline-none focus:border-[var(--cl-focus)] text-[14px] text-[var(--cl-text)] resize-none" />
           </label>
           <div>
-            <button onClick={run} disabled={!pgKey.trim() || !pgMsg.trim() || pgOut?.loading} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[14px] font-medium disabled:opacity-50">
+            <button onClick={run} disabled={!ready || !pgKey.trim() || !pgMsg.trim() || pgOut?.loading} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[14px] font-medium disabled:opacity-50">
               {pgOut?.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send
             </button>
             {!pgKey && <span className="ml-3 text-[12.5px] text-[var(--cl-faint)]">Make a key first, or paste one you saved.</span>}
@@ -300,14 +327,17 @@ export default function ApiPlatform() {
         <Code lang="json">{`{\n  "id": "nx-…",\n  "object": "chat.completion",\n  "model": "nebulux-ai",\n  "content": "Silent stars drift by…",\n  "credits_left": 4210\n}`}</Code>
         <h2 className="font-semibold mt-6 mb-2">Models</h2>
         <div className="rounded-xl border border-[var(--cl-border)] overflow-hidden text-[14px]">
-          {MODELS.map(([id, n, d, c]) => (
-            <div key={id} className="grid grid-cols-[8rem_1fr] sm:grid-cols-[9rem_1fr_11rem] gap-2 px-4 py-2.5 border-b last:border-0 border-[var(--cl-border)]">
+          <div className="grid grid-cols-[7rem_1fr_6rem_7rem] gap-2 px-4 py-2 border-b border-[var(--cl-border)] text-[12px] text-[var(--cl-faint)]"><span>Model</span><span></span><span>Input</span><span>Output</span></div>
+          {MODELS.map(([id, n, d, m]) => (
+            <div key={id} className="grid grid-cols-[7rem_1fr_6rem_7rem] gap-2 px-4 py-2.5 border-b last:border-0 border-[var(--cl-border)]">
               <code className="text-[var(--cl-text)]">{id}</code>
               <span className="text-[var(--cl-muted)]">{n}: {d}</span>
-              <span className="hidden sm:block text-[var(--cl-faint)]">uses {c}</span>
+              <span>{price(m)}<span className="text-[var(--cl-faint)] text-[11px]"> /request</span></span>
+              <span>{price(m)}<span className="text-[var(--cl-faint)] text-[11px]"> /credit</span></span>
             </div>
           ))}
         </div>
+        <p className="text-[12.5px] text-[var(--cl-muted)] mt-2">A request costs its input price once, plus the output price for each credit of reply: 1 credit per started 10,000 characters (about 2,500 tokens), doubled on high effort. A short Nebulux AI answer costs $0.20; the same on Nebula costs $1.00. The response shows <code>cost_usd</code> and <code>balance_usd</code>.</p>
         <h2 className="font-semibold mt-6 mb-2">Examples</h2>
         <div className="grid gap-3">
           <Code lang="JavaScript">{js(pgKey)}</Code>
@@ -316,28 +346,78 @@ export default function ApiPlatform() {
         </div>
         <h2 className="font-semibold mt-6 mb-2">Errors</h2>
         <ul className="text-[14px] text-[var(--cl-muted)] space-y-1 list-disc pl-5">
-          <li><b className="text-[var(--cl-text)]">401</b> wrong or deleted key · <b className="text-[var(--cl-text)]">400</b> bad request · <b className="text-[var(--cl-text)]">429</b> more than 20 requests a minute, or out of credits · <b className="text-[var(--cl-text)]">503</b> the AI is busy, try again in a moment.</li>
+          <li><b className="text-[var(--cl-text)]">401</b> wrong or deleted key · <b className="text-[var(--cl-text)]">400</b> bad request · <b className="text-[var(--cl-text)]">402</b> your API balance is empty · <b className="text-[var(--cl-text)]">403</b> "Use API key credits" is off (Nebulux AI → Settings → Usage) · <b className="text-[var(--cl-text)]">429</b> more than 20 requests a minute · <b className="text-[var(--cl-text)]">503</b> the AI is busy, try again in a moment.</li>
           <li>Errors look like <code>{'{ "error": { "type": "...", "message": "..." } }'}</code>.</li>
         </ul>
         <h2 className="font-semibold mt-6 mb-2">Keep your key safe</h2>
-        <p className="text-[14px] text-[var(--cl-muted)]">Anyone with your key can use your credits. Call the API from a server, not from a public web page, and never commit a key to GitHub. If one leaks, delete it in API keys and make a new one.</p>
+        <p className="text-[14px] text-[var(--cl-muted)]">Anyone with your key can spend your API balance. Call the API from a server, not from a public web page, and never commit a key to GitHub. If one leaks, delete it in API keys and make a new one.</p>
       </>
     ),
-    usage: (
+    billing: (
       <>
-        <H sub="API calls use the same credits as chatting. They refill every month.">Usage</H>
-        <div className="grid gap-3">
-          {MODELS.map(([id, n]) => {
-            const t = tiers[tierOf[id]] || { total: 0, used: 0, remaining: 0 };
-            const pct = t.total > 0 ? Math.min(100, Math.round((t.used / t.total) * 100)) : 0;
-            return (
-              <div key={id} className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-4">
-                <div className="flex justify-between text-[14px] mb-2"><span className="font-medium">{n}</span><span className="text-[var(--cl-muted)]">{t.total > 1e12 ? "Unlimited" : t.total > 0 ? `${Math.max(0, t.remaining)} of ${t.total} left` : "Not in your plan"}</span></div>
-                <div className="h-2 rounded-full bg-[var(--cl-hover)] overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} /></div>
+        <H sub="Prepaid: add money, and every API request, Playground message and website AI answer takes its cost from it.">Billing</H>
+        {err && <p className="mb-3 text-[13px] text-amber-300">{err}</p>}
+        <p className="text-[13px] text-[var(--cl-muted)] mb-2">Each AI has its own balance: money added to one AI only pays for that AI. {bill?.useApi ? "API key credits are on." : "API key credits are off: turn them on in Nebulux AI → Settings → Usage."}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {MODELS.map(([id, n, , m]) => (
+            <button key={id} onClick={() => { setFundModel(id); setAmount(minOf(id)); }} className={`text-left rounded-xl border bg-[var(--cl-card)] p-4 ${fundModel === id ? "border-[var(--cl-text)]" : "border-[var(--cl-border)]"}`}>
+              <p className="text-[13px] text-[var(--cl-muted)]">{n}</p>
+              <p className="text-[24px] font-semibold mt-0.5">{balOf(id)}</p>
+              <p className="text-[11.5px] text-[var(--cl-faint)] mt-0.5">{price(m)} in · {price(m)}/credit out</p>
+            </button>
+          ))}
+        </div>
+        <div className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-5 mb-4">
+          <p className="text-[14px] font-medium">Add funds to {MODELS.find((x) => x[0] === fundModel)?.[1]}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[minOf(fundModel), 10, 25, 50].filter((d, i, arr) => arr.indexOf(d) === i && d >= minOf(fundModel)).map((d) => (
+              <button key={d} onClick={() => setAmount(d)} className={`rounded-lg border px-3 py-1.5 text-[14px] ${amount === d ? "border-[var(--cl-text)] bg-[var(--cl-hover)]" : "border-[var(--cl-border)] text-[var(--cl-muted)]"}`}>${d}</button>
+            ))}
+          </div>
+          <button onClick={() => (bill?.agreed ? billCall({ action: "topup", model: fundModel, dollars: amount }, "topup") : setErr("Agree to API billing below first."))} disabled={busy === "topup"} className="mt-3 w-full sm:w-auto rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-5 py-2 text-[14px] font-medium disabled:opacity-50">Add ${amount} with a card</button>
+          <p className="text-[11.5px] text-[var(--cl-faint)] mt-2">Smallest amount: Nebulux AI ${minOf("nebulux-ai")}, Galaxy ${minOf("galaxy")}, Space ${minOf("space")}, Nebula ${minOf("nebula")}. A real card is needed: cards that can't pay, or with no money, are refused.</p>
+        </div>
+
+        <div className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-5 mb-4">
+          <p className="text-[15px] font-semibold">API billing agreement</p>
+          <ul className="mt-2 text-[13.5px] text-[var(--cl-muted)] space-y-1.5 list-disc pl-5">
+            <li><b className="text-[var(--cl-text)]">You are charged every time</b> an API request is made with one of your keys, <b className="text-[var(--cl-text)]">including every message you send in the Playground</b>, and every answer the AI gives on your websites if you turned on AI for visitors.</li>
+            <li>The price depends on the AI (Nebulux AI $0.10 per request plus $0.10 per credit of reply; Galaxy 2x, Space 3x, Nebula 5x) and is taken right away from <b className="text-[var(--cl-text)]">that AI's own prepaid balance</b>. Each AI's balance only pays for that AI.</li>
+            <li>Money added to your API balance is not refundable and can't be turned into plan credits. Requests stop when the balance runs out.</li>
+            <li>You are responsible for everything done with your keys: keep them secret. If one leaks, delete it; requests already made stay charged.</li>
+            <li>You need to be 18 or older, or have a parent or guardian's permission, to add money.</li>
+          </ul>
+          {bill?.agreed ? (
+            <p className="mt-3 flex items-center gap-2 text-[13.5px] text-emerald-400"><Check className="w-4 h-4" /> You agreed to API billing.</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-[13.5px]"><input type="checkbox" checked={agreeTick} onChange={(e) => setAgreeTick(e.target.checked)} /> I agree to be charged for every API request and Playground message.</label>
+              <button onClick={() => billCall({ action: "agree" }, "agree")} disabled={!agreeTick || busy === "agree"} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-1.5 text-[13.5px] font-medium disabled:opacity-40">Agree</button>
+            </div>
+          )}
+        </div>
+
+        {user?.role === "admin" && (
+          <div className="rounded-xl border border-dashed border-[var(--cl-border)] p-4 mb-4 flex flex-wrap items-center gap-2 text-[13.5px]">
+            <span className="text-[var(--cl-muted)]">Admin: add test balance to {MODELS.find((x) => x[0] === fundModel)?.[1]} on your account</span>
+            <input type="number" min="1" max="1000" value={grantAmt} onChange={(e) => setGrantAmt(Number(e.target.value))} className="w-24 rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-2 py-1" />
+            <button onClick={() => billCall({ action: "grant", model: fundModel, dollars: grantAmt }, "grant")} disabled={busy === "grant"} className="rounded-lg border border-[var(--cl-border)] px-3 py-1">Add</button>
+          </div>
+        )}
+
+        <p className="text-[14px] font-medium mb-2">History</p>
+        <div className="rounded-xl border border-[var(--cl-border)] divide-y divide-[var(--cl-border)] text-[13.5px]">
+          {!bill?.ledger?.length ? (
+            <p className="p-4 text-[var(--cl-muted)]">Nothing yet.</p>
+          ) : (
+            bill.ledger.map((l, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="flex-1 min-w-0 truncate">{l.kind === "charge" ? l.note || "API request" : l.kind === "grant" ? `Balance added · ${MODELS.find((x) => x[0] === l.model)?.[1] || l.model}` : `Funds added · ${MODELS.find((x) => x[0] === l.model)?.[1] || l.model}`}</span>
+                <span className="text-[var(--cl-faint)] text-[12px] whitespace-nowrap">{new Date(l.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</span>
+                <span className={`w-24 text-right tabular-nums ${l.amount < 0 ? "text-[var(--cl-muted)]" : "text-emerald-400"}`}>{l.amount < 0 ? "-" : "+"}${(Math.abs(l.amount) / 100000).toFixed(2)}</span>
               </div>
-            );
-          })}
-          <p className="text-[13px] text-[var(--cl-muted)]">Calls per key are on the API keys page. Need more? <Link to="/chat/shop" className="underline text-[var(--cl-text)]">See plans</Link>.</p>
+            ))
+          )}
         </div>
       </>
     ),

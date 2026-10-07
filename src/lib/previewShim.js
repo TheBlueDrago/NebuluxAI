@@ -57,6 +57,8 @@ const BASE_SHIM = `<script>(function(){
     note("Other pages open on your published site.");
   });
   window.addEventListener("submit",function(e){if(e.defaultPrevented)return;e.preventDefault();note("Form submitted (preview).")});
+  // AI for visitors (NebuluxAI, added to published sites): a pretend reply here, nothing is charged.
+  window.NebuluxAI={chat:function(input){var q=typeof input==="string"?input:((input&&input.length&&input[input.length-1].content)||"");return new Promise(function(res){setTimeout(function(){res("(Preview) This is where the AI answers \\""+String(q).slice(0,60)+"\\". On your published site, real answers come once you turn on AI for visitors in Dashboard → AI.")},600)})}};
   // "Sign in with Google" (NebuluxAuth, added to published sites): a pretend account here.
   (function(){var user=null,fns=[];function paint(){try{document.querySelectorAll("[data-nx-signed-in]").forEach(function(el){el.hidden=!user});document.querySelectorAll("[data-nx-signed-out]").forEach(function(el){el.hidden=!!user});document.querySelectorAll("[data-nx-user]").forEach(function(el){var f=el.getAttribute("data-nx-user");if(f==="picture"&&el.tagName==="IMG"){if(user)el.src=user.picture;else el.removeAttribute("src")}else el.textContent=user?(user[f]||""):""})}catch(_){}}
     function fire(){paint();fns.forEach(function(f){try{f(user)}catch(_){}});try{dispatchEvent(new CustomEvent("nebulux-auth",{detail:user}))}catch(_){}}

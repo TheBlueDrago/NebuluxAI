@@ -94,6 +94,16 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
   const [followUps, setFollowUps] = useState(() => lsGet("nx-followups", "on") === "on");
   const [codeSession, setCodeSession] = useState(() => lsGet("nx-code-session", "cloud"));
   const [gh, setGh] = useState(savedToken);
+  // Usage: plan credits (chatting) vs. API key credits (the prepaid balance API keys and website AI use)
+  const [usageView, setUsageView] = useState("plan");
+  const [api, setApi] = useState(null);
+  const [apiErr, setApiErr] = useState("");
+  const loadApi = () => base44.functions.invoke("api-billing", { action: "status" }).then((r) => setApi(r.data)).catch(() => setApi({ error: true }));
+  const setUseApi = async (on) => {
+    setApiErr("");
+    try { setApi((await base44.functions.invoke("api-billing", { action: "set-mode", useApi: on })).data); }
+    catch (e) { setApiErr(e?.response?.data?.error || "Couldn't change that. Please try again."); }
+  };
   const [ghUser, setGhUser] = useState("");
 
   useEffect(() => {
@@ -103,6 +113,10 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
     setAbout(readAboutMe(currentUser?.id));
     setGh(savedToken());
   }, [open, initialTab, currentUser]);
+  useEffect(() => {
+    if (open && tab === "usage" && !api) loadApi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tab]);
   useEffect(() => {
     if (gh) connect(gh).then(setGhUser).catch(() => setGhUser(""));
   }, [gh]);
@@ -208,11 +222,36 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
     usage: (
       <>
         <H first>Usage</H>
-        <p className="text-[14px] text-[var(--cl-muted)]">{plan} plan · credits refill every month.</p>
-        <Bar label="Nebulux AI" used={credits.aiUsed || 0} total={credits.aiTotal || 0} />
-        <Bar label="Ultra / Nebulux Code" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
-        <Bar label="Galaxy" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
-        <Bar label="Space" used={credits.space5Used || 0} total={credits.space5Total || 0} />
+        <div className="mt-2 mb-4"><Segmented value={usageView} onChange={setUsageView} options={[["plan", "Plan credits"], ["api", "API key credits"]]} /></div>
+        {usageView === "plan" ? (
+          <>
+            <p className="text-[14px] text-[var(--cl-muted)]">{plan} plan · credits for chatting, refilled every month.</p>
+            <Bar label="Nebulux AI" used={credits.aiUsed || 0} total={credits.aiTotal || 0} />
+            <Bar label="Ultra / Nebulux Code" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
+            <Bar label="Galaxy" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
+            <Bar label="Space" used={credits.space5Used || 0} total={credits.space5Total || 0} />
+          </>
+        ) : !api ? (
+          <p className="text-[14px] text-[var(--cl-muted)]">Loading…</p>
+        ) : (
+          <>
+            <p className="text-[14px] text-[var(--cl-muted)]">Your prepaid API balance pays for API keys, the Playground and AI on your websites. Plan credits are never used for those.</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {[["nebulux-ai", "Nebulux AI"], ["galaxy", "Galaxy"], ["space", "Space"], ["nebula", "Nebula"]].map(([id, n]) => (
+                <div key={id} className="rounded-xl border border-[var(--cl-border)] p-3">
+                  <p className="text-[12.5px] text-[var(--cl-muted)]">{n}</p>
+                  <p className="text-[20px] font-semibold text-[var(--cl-text)]">{(api.balanceTexts || {})[id] || "$0.00"}</p>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => window.open("/api", "_blank", "noopener")} className="mt-3 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[13.5px] font-medium">Add funds <ArrowUpRight className="inline w-4 h-4" /></button>
+            <Row title="Use API key credits" sub={api.useApi ? "On: your API keys and website AI work, and every request is charged to your API balance." : "Off: your API keys and website AI don't work until you turn this on."}>
+              <Toggle on={!!api.useApi} onChange={setUseApi} label="Use API key credits" />
+            </Row>
+            {!api.agreed && <p className="mt-2 text-[13px] text-amber-400">Agree to API billing on the Nebulux Platform first, then turn this on.</p>}
+            {apiErr && <p className="mt-2 text-[13px] text-amber-400">{apiErr}</p>}
+          </>
+        )}
       </>
     ),
     capabilities: (

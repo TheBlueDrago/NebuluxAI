@@ -6,6 +6,7 @@ import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { listKeys, createKey, revokeKey } from "../../../../../cloudflare-lib/apikeys.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
+import { account } from "../../../../../cloudflare-lib/apibilling.js";
 
 export async function onRequestPost({ request, env }) {
   const user = await currentUser(request);
@@ -15,6 +16,10 @@ export async function onRequestPost({ request, env }) {
   const action = String(body.action || "list");
   if (action === "create") {
     if (!(await allow(`apikey-new:${user.id}`, 10, 3600))) return json({ error: TOO_MANY }, 429);
+    // A key needs the API billing agreement and money added first (prepaid; every request is charged).
+    const a = await account(env.DB, user.id);
+    if (!a.agreedAt) return json({ error: "Agree to API billing first.", needs: "agree" }, 400);
+    if (!a.funded || !Object.values(a.balances).some((v) => v > 0)) return json({ error: "Add funds to at least one AI's balance first. Every request is paid from it.", needs: "funds" }, 400);
     const r = await createKey(env.DB, user.id, body.name);
     if (r.error) return json(r, 400);
     return json({ key: r.key, keys: await listKeys(env.DB, user.id) });

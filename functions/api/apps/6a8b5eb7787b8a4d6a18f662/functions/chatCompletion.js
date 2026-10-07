@@ -381,6 +381,9 @@ export async function onRequestPost(context) {
     // per-user rate, so they can't be used as unlimited free AI (the Gemini free-tier
     // quota is shared by everyone's chats).
     const internal = !!body.internal;
+    // A request from the Nebulux API (functions/v1/chat.js) billed to the caller's prepaid API
+    // balance instead of plan credits. Only that server code knows the header's secret.
+    const apiBill = !internal && !!env.SITE_AUTH_KEY && request.headers.get("x-nx-api-billing") === env.SITE_AUTH_KEY;
     if (!internal && !(await termsAccepted(env.PUBLISHED_HTML, ent.user))) return json({ error: TERMS_MESSAGE, terms: true }, 403);
     // Credits are charged by the length of the reply, so a giant message would cost its sender
     // almost nothing while using up the shared AI quota. Designer messages carry the whole
@@ -396,7 +399,7 @@ export async function onRequestPost(context) {
     const mult = EFFORT_MULT[effort];
 
     let left = Infinity;
-    if (!internal) {
+    if (!internal && !apiBill) {
       // Replies started at the same moment all see the same balance and their charges can
       // overwrite each other (KV has no locks), so a script firing many at once could get
       // free credits. Nobody types faster than this; it caps what that could ever gain.
@@ -432,7 +435,7 @@ export async function onRequestPost(context) {
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
     // The reply stops at what the user's credits cover: whole credits x effort multiplier.
-    const maxChars = internal ? Infinity : Math.floor(left / mult) * CHARS_PER_CREDIT;
+    const maxChars = internal ? Infinity : apiBill ? Math.max(200, Number(body.apiMaxChars) || 0) : Math.floor(left / mult) * CHARS_PER_CREDIT;
     const maxTokens = internal ? 1024 : 0;
     const search = !internal && body.noWeb !== true && wantsSearch(body.question) && (await searchAllowed());
 
@@ -440,6 +443,7 @@ export async function onRequestPost(context) {
     // pauses the chat until the user has more.
     const settle = async (text, cut, stopped) => {
       if (internal) return {};
+      if (apiBill) return { apiChars: (text || "").length, ...(cut ? { cut: true } : {}) }; // the API charges its own balance
       // Stopped by the user: what was written so far is charged (nothing if nothing was).
       if (stopped && !text) return { stopped: true, charged: 0 };
       const cost = cut ? left : creditsFor(text, effort);

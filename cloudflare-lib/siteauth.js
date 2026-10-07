@@ -126,8 +126,20 @@ export function siteAuthScript(site) {
   );
 }
 
+// window.NebuluxAI.chat(textOrMessages) -> Promise<string>: AI for the site's visitors, paid from
+// the owner's API balance when they turned it on (functions/v1/site-chat.js). No key in the page.
+export function siteAIScript(site) {
+  const S = JSON.stringify(site).replace(/</g, "\\u003c");
+  return (
+    `<script data-bh>(function(){var S=${S},U=${JSON.stringify(APP_ORIGIN + "/v1/site-chat")};` +
+    `window.NebuluxAI={chat:function(input){var msgs=typeof input==="string"?[{role:"user",content:input}]:input;` +
+    `return fetch(U,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site:S,messages:msgs})})` +
+    `.then(function(r){return r.json().then(function(d){if(!r.ok||d.error)throw new Error(d.error||"The AI isn't available right now.");return d.content})})}}})();</script>`
+  );
+}
+
 export function withSiteAuth(html, site) {
-  const tag = siteAuthScript(site);
+  const tag = siteAuthScript(site) + siteAIScript(site);
   const head = html.match(/<head[^>]*>/i);
   if (head) return html.slice(0, head.index + head[0].length) + tag + html.slice(head.index + head[0].length);
   return tag + html;

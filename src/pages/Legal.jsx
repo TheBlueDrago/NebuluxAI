@@ -105,6 +105,20 @@ export function Terms() {
         can use your own Google sign-in app; you're then also responsible for following Google's rules for it.
       </p>
 
+      <h2>The Nebulux API and API billing</h2>
+      <p>
+        On the Nebulux Platform (nebuluxai.com/api) you can make API keys to use Nebulux AI from your own code, and turn on
+        AI for visitors on your websites. These are <strong>paid separately from your plan</strong>, from prepaid balances:
+      </p>
+      <ul>
+        <li><strong>You are charged every time</strong> a request is made with one of your API keys, <strong>including every message you send in the Playground</strong>, and every answer the AI gives on your websites if you turned on AI for visitors.</li>
+        <li>Each AI has its own prepaid balance (Nebulux AI, Galaxy, Space and Nebula), and a request is paid from the balance of the AI it uses. Prices: Nebulux AI $0.10 per request plus $0.10 per credit of reply (one credit per started 10,000 characters, more on high effort); Galaxy 2x, Space 3x, Nebula 5x. The smallest amounts you can add are $2, $3, $4 and $5.</li>
+        <li>You need to agree to API billing and add money before you can make a key or use the Playground, and turn on <strong>Settings → Usage → Use API key credits</strong> before your keys and website AI work.</li>
+        <li>Money added to an API balance is not refundable, can't be moved between AIs and can't be turned into plan credits. Requests stop when a balance runs out.</li>
+        <li>You are responsible for everything done with your keys. Keep them secret; if one leaks, delete it. Requests already made stay charged.</li>
+        <li>You must be 18 or older, or have a parent or guardian's permission, to add money.</li>
+      </ul>
+
       <h2>What you publish</h2>
       <ul>
         <li>You keep ownership of what you create. By publishing a site or game you let us host, show and copy it as needed to run Nebulux AI.</li>
@@ -203,6 +217,7 @@ export function Privacy() {
         <li><strong>GitHub</strong> — only if you connect your GitHub account in Nebulux Code. Your GitHub token stays in your browser and is only sent to GitHub; the files you add to a chat are sent to the AI with your question.</li>
         <li><strong>DuckDuckGo and the websites you open</strong> — when you use the Nebulux Browser in Nebulux Code, your searches go to DuckDuckGo and the pages you open are fetched by our server. The AI can see, read and act on whatever you open there, including pages you are signed in to.</li>
         <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress. Cloud sessions in Nebulux Code run there and their replies are deleted after about a day.</li>
+        <li><strong>API keys and API billing</strong> — we keep your API keys only in scrambled form (we can't read them back), plus each key's name and when and how often it's used, your API balances, and a history of what was added and what each request cost.</li>
         <li><strong>Google sign-in on published websites</strong> — when you sign in to a website someone made with Nebulux AI, Google gives us your name, email address and profile picture. We keep them so <strong>that website's owner can see who signed in</strong> (and how often), and we sign you in to that site. The owner can remove you from their list, and you can ask us to delete it. If the owner uses their own Google sign-in app, Google's screen shows their app instead of ours.</li>
         <li>
           <strong>Google (Gemini API)</strong> — writes the AI answers, so your prompts and chat context are sent to
