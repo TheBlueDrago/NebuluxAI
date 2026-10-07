@@ -6,7 +6,7 @@ import { base44 } from "@/api/base44Client";
 // people when Nebulux AI opens. Shown partly hidden; Download gets the full list as a CSV for an
 // email tool (a few times an hour, and each download is written to the admin log).
 // A cell starting with = + - or @ could run as a formula in Excel or Sheets: make it plain text.
-const safeCell = (v) => (/^[=+-@	]/.test(String(v)) ? "'" + v : String(v));
+const safeCell = (v) => (/^[=+\-@\t\r]/.test(String(v)) ? "'" + v : String(v));
 
 export default function Waitlist() {
   const [people, setPeople] = useState(null);
