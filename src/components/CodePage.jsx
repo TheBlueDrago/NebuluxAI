@@ -70,6 +70,39 @@ const askOf = (text) => {
   }
 };
 
+// The AI asks to switch the chat to another of the person's repos; nothing changes until they say yes.
+//   ```switch-repo
+//   {"repo": "owner/name"}
+//   ```
+const switchOf = (text) => {
+  const m = String(text || "").match(/```switch-repo\s*\n([\s\S]*?)```/i);
+  if (!m) return null;
+  try {
+    const r = String(JSON.parse(m[1]).repo || "");
+    return /^[\w.-]+\/[\w.-]+$/.test(r) ? { repo: r, rest: text.replace(m[0], "").trim() } : null;
+  } catch {
+    return null;
+  }
+};
+
+function SwitchRepoBox({ repo, current, onYes, done }) {
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-3 font-sans text-[14px]">
+      {done ? (
+        <p className="flex items-center gap-2 text-[var(--cl-muted)]"><Check className="w-4 h-4 text-emerald-400" /> {current === repo ? `This chat is now working on ${repo}.` : "Kept the current repository."}</p>
+      ) : (
+        <>
+          <p className="text-[var(--cl-text)] mb-2">Switch this chat to <b>{repo}</b>? Its files replace the ones from {current || "no repository"}.</p>
+          <div className="flex gap-2">
+            <button onClick={() => onYes(true)} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-3 py-1.5 text-[13px] font-medium">Switch</button>
+            <button onClick={() => onYes(false)} className="rounded-lg border border-[var(--cl-border)] px-3 py-1.5 text-[13px] text-[var(--cl-muted)]">No, keep {current ? current.split("/")[1] : "it"}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AskBox({ ask, onAnswer, disabled }) {
   const [other, setOther] = useState("");
   return (
@@ -192,12 +225,11 @@ export default function CodePage({ userInitial }) {
   const [repos, setRepos] = useState([]);
   const [repo, setRepo] = useState(() => savedRepo("code"));
   const [files, setFiles] = useState([]);
-  const [fileFilter, setFileFilter] = useState("");
   const [attached, setAttached] = useState([]); // [{ path, text }]
   const [ghBusy, setGhBusy] = useState("");
   const [ghErr, setGhErr] = useState("");
   useEffect(() => {
-    if ((panel !== "github" && messages.length) || !ghToken || repos.length) return;
+    if (!ghToken || repos.length) return;
     setGhBusy("repos");
     listRepos(ghToken)
       .then(setRepos)
@@ -205,7 +237,7 @@ export default function CodePage({ userInitial }) {
       .finally(() => setGhBusy(""));
   }, [panel, ghToken]);
   useEffect(() => {
-    if (panel !== "github" || !ghToken || !repo) return;
+    if (!ghToken || !repo) return;
     const r = repos.find((x) => x.full_name === repo);
     setGhBusy("files");
     listFiles(ghToken, repo, r?.branch)
@@ -233,19 +265,43 @@ export default function CodePage({ userInitial }) {
     window.addEventListener("storage", onStore);
     return () => { window.removeEventListener("message", onMsg); window.removeEventListener("storage", onStore); };
   }, []);
-  const toggleFile = async (path) => {
-    if (attached.some((f) => f.path === path)) return setAttached((a) => a.filter((f) => f.path !== path));
-    if (attached.length >= 6) return showNotice("You can add up to 6 files at a time.");
-    setGhBusy(path);
+  // Add the whole repo to the chat: every text file (no pictures, fonts, videos or lock files),
+  // up to ALL_CHARS in total so the AI can still answer (biggest files trimmed first).
+  const ALL_CHARS = 400000;
+  const SKIP = /\.(png|jpe?g|gif|webp|avif|ico|bmp|svgz?|pdf|zip|gz|tgz|rar|7z|mp4|mov|webm|mp3|wav|ogg|woff2?|ttf|otf|eot|exe|dll|so|bin|wasm|psd|lock)$|(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$/i;
+  const [allProgress, setAllProgress] = useState("");
+  const addAll = async () => {
+    const paths = files.filter((f) => !SKIP.test(f));
+    if (!paths.length) return showNotice("No text files to add in this repository.");
+    setGhErr("");
+    setGhBusy("all");
+    const got = [];
+    let total = 0, skipped = 0;
     try {
-      const text = await readFile(ghToken, repo, path);
-      setAttached((a) => [...a, { path, text: text.slice(0, 30000) }]);
+      for (let i = 0; i < paths.length; i += 6) {
+        setAllProgress(`${Math.min(i + 6, paths.length)}/${paths.length}`);
+        const batch = await Promise.all(paths.slice(i, i + 6).map((path) => readFile(ghToken, repo, path).then((text) => ({ path, text })).catch(() => null)));
+        for (const f of batch) {
+          if (!f || !f.text || /\u0000/.test(f.text.slice(0, 2000))) continue; // unreadable or binary
+          const text = f.text.slice(0, 30000);
+          if (total + text.length > ALL_CHARS) { skipped++; continue; }
+          total += text.length;
+          got.push({ path: f.path, text });
+        }
+      }
+      setAttached(got);
+      if (skipped) showNotice(`Added ${got.length} files. ${skipped} more didn't fit, so ask about those separately or add them one by one.`);
     } catch (e) {
       setGhErr(e.message);
     } finally {
       setGhBusy("");
+      setAllProgress("");
     }
   };
+  useEffect(() => {
+    if (ghToken && repo && files.length) addAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
   const saveToRepo = async (code) => {
     if (!ghToken || !repo) {
       setPanel("github");
@@ -297,7 +353,8 @@ export default function CodePage({ userInitial }) {
       abortRef.current?.abort();
       const abort = new AbortController();
       abortRef.current = abort;
-      const req = { prompt: `${modeNote}\n${ASK_NOTE}\n\n${context}${text}`, question: text, model: MODELS[whichAi] || MODELS.code, effort: eff };
+      const repoNote = ghToken && repos.length ? `\nThe person's GitHub repositories: ${repos.slice(0, 100).map((r) => r.full_name).join(", ")}. This chat is working on: ${repo || "none"}. If they ask to switch, open or work on a different one of these repositories, don't pretend you switched: reply with one short sentence and ONE block exactly like this (the app asks them to confirm, then loads it):\n\`\`\`switch-repo\n{"repo": "owner/name"}\n\`\`\`\n` : "";
+      const req = { prompt: `${modeNote}\n${ASK_NOTE}${repoNote}\n\n${context}${text}`, question: text, model: MODELS[whichAi] || MODELS.code, effort: eff };
       let res;
       if (session === "cloud") {
         const id = (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/[^a-zA-Z0-9-]/g, "");
@@ -397,7 +454,6 @@ export default function CodePage({ userInitial }) {
   const canSend = input.trim().length > 0 && (queued || !exhausted);
   const announce = useReplyAnnouncer(messages, loading, "code");
   const empty = messages.length === 0 && !loading;
-  const shownFiles = files.filter((f) => !fileFilter || f.toLowerCase().includes(fileFilter.toLowerCase())).slice(0, 300);
 
   return (
     <div className="w-full h-full flex">
@@ -429,6 +485,19 @@ export default function CodePage({ userInitial }) {
                   ) : (
                     <>
                       {(() => {
+                        const sw = switchOf(m.content);
+                        if (sw) return (
+                          <>
+                            {sw.rest && <Markdown text={sw.rest} />}
+                            <SwitchRepoBox repo={sw.repo} current={repo} done={!!m.switchDone} onYes={(yes) => {
+                              if (yes) {
+                                if (!repos.some((r) => r.full_name === sw.repo)) return showNotice(`${sw.repo} isn't one of your repositories.`);
+                                setRepo(sw.repo); rememberRepo("code", sw.repo); setAttached([]);
+                              }
+                              setMessages((all) => all.map((x, k) => (k === i ? { ...x, switchDone: true } : x)));
+                            }} />
+                          </>
+                        );
                         const ask = askOf(m.content);
                         if (!ask) return <Markdown text={m.content} />;
                         return (
@@ -478,7 +547,7 @@ export default function CodePage({ userInitial }) {
             ))}
             {loading && live && (
               <div className="w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif">
-                <Markdown text={live.replace(/```ask[\s\S]*$/i, "")} />
+                <Markdown text={live.replace(/```(ask|switch-repo)[\s\S]*$/i, "")} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-[var(--cl-accent)] animate-pulse" />
               </div>
             )}
@@ -521,7 +590,7 @@ export default function CodePage({ userInitial }) {
                 </div>
                 {ghToken ? (
                   <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="rounded-lg bg-[var(--cl-card)] px-2.5 py-1.5 outline-none text-[var(--cl-text)] max-w-[16rem]">
-                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "No repository"}</option>
+                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "Choose repo"}</option>
                     {repos.map((r) => (
                       <option key={r.full_name} value={r.full_name}>{r.full_name}</option>
                     ))}
@@ -540,7 +609,15 @@ export default function CodePage({ userInitial }) {
               </div>
             )}
             {exhausted && !loading && <OutOfCredits tier={{ ai: "ai", code: "aiCode", opus5: "galaxy5", fable: "space5" }[ai]} />}
-            {attached.length > 0 && (
+            {attached.length > 8 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-2.5 py-1 text-[12.5px] text-[var(--cl-muted)]">
+                  <FileCode className="w-3.5 h-3.5" /> {repo}: {attached.length} files ({Math.round(attached.reduce((a, f) => a + f.text.length, 0) / 1000)}k characters)
+                  <button onClick={() => setAttached([])} aria-label="Remove all files" className="hover:text-[var(--cl-text)]"><X className="w-3 h-3" /></button>
+                </span>
+              </div>
+            )}
+            {attached.length > 0 && attached.length <= 8 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {attached.map((f) => (
                   <span key={f.path} className="inline-flex items-center gap-1 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-2 py-1 text-[12.5px] text-[var(--cl-muted)]">
@@ -621,29 +698,21 @@ export default function CodePage({ userInitial }) {
                     </button>
                   </div>
                   <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-2 text-[13.5px] outline-none text-[var(--cl-text)]">
-                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "Pick a repository"}</option>
+                    <option value="">{ghBusy === "repos" ? "Loading repositories…" : "Choose repo"}</option>
                     {repos.map((r) => (
                       <option key={r.full_name} value={r.full_name}>{r.full_name}{r.private ? " (private)" : ""}</option>
                     ))}
                   </select>
                   {repo && (
-                    <>
-                      <input value={fileFilter} onChange={(e) => setFileFilter(e.target.value)} placeholder="Find a file" className="w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-1.5 text-[13px] outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)]" />
-                      <p className="text-[11.5px] text-[var(--cl-faint)] -mt-1">Click files to add them to the chat. Code in the AI's replies can be saved back with "Save to GitHub".</p>
-                      <div className="flex-1 min-h-0 overflow-y-auto -mx-1">
-                        {ghBusy === "files" && <p className="flex items-center gap-2 px-1 text-[13px] text-[var(--cl-muted)]"><Loader2 className="w-4 h-4 animate-spin" /> Loading files…</p>}
-                        {shownFiles.map((f) => {
-                          const on = attached.some((a) => a.path === f);
-                          return (
-                            <button key={f} onClick={() => toggleFile(f)} className={`w-full flex items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] ${on ? "bg-[var(--cl-card)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-card)]"}`}>
-                              {ghBusy === f ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileCode className="w-3.5 h-3.5 shrink-0" />}
-                              <span className="truncate">{f}</span>
-                              {on && <span className="ml-auto text-[11px] text-[var(--cl-accent)]">added</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
+                    <div className="rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-3 py-2.5 text-[13px] text-[var(--cl-muted)]">
+                      {ghBusy === "files" || ghBusy === "all" ? (
+                        <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Adding the repo to the chat{allProgress ? ` (${allProgress})` : "…"}</span>
+                      ) : attached.length ? (
+                        <span className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> {attached.length} files from {repo.split("/")[1]} are in the chat. The AI sees all of it.</span>
+                      ) : (
+                        <span>No text files found in this repository.</span>
+                      )}
+                    </div>
                   )}
                 </>
               )}
