@@ -35,10 +35,10 @@ const codeInfo = (children) => {
   return { lang, text };
 };
 
-function CodeBlock({ children }) {
+function CodeBlock({ children, noPreview }) {
   const ref = useRef(null);
   const { lang, text } = codeInfo(children);
-  const canPreview = previewable(lang, text);
+  const canPreview = !noPreview && previewable(lang, text);
   if (lang === "flashcards") return <Flashcards text={text} />;
   if (lang === "quiz") return <Quiz text={text} />;
   return (
@@ -76,9 +76,13 @@ const components = {
 let mathLoaded = null;
 const loadMath = () => (mathLoaded ||= import("@/lib/mathPlugins"));
 
+// Someone else's text (a shared chat): code is shown, never run, so nobody can put a fake
+// sign-in page in a chat and send it around.
+const safeComponents = { ...components, pre: (props) => <CodeBlock {...props} noPreview /> };
+
 // AI replies rendered as Markdown (headings, lists, bold, code, math). Raw HTML in a reply
-// is shown as text, never rendered (react-markdown's default).
-export default function Markdown({ text }) {
+// is shown as text, never rendered (react-markdown's default). untrusted: no live previews.
+export default function Markdown({ text, untrusted = false }) {
   const { text: shown, hasMath } = prepareMath(text);
   const [math, setMath] = useState(null);
   useEffect(() => {
@@ -97,7 +101,7 @@ export default function Markdown({ text }) {
       <ReactMarkdown
         remarkPlugins={useMath ? [remarkGfm, math.remarkMathPlugin] : [remarkGfm]}
         rehypePlugins={useMath ? [math.rehypeKatexPlugin] : []}
-        components={components}
+        components={untrusted ? safeComponents : components}
       >
         {useMath ? shown : text || ""}
       </ReactMarkdown>

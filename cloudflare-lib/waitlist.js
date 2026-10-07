@@ -18,6 +18,9 @@ export async function joinWaitlist(db, email) {
   const e = cleanEmail(email);
   if (!db || !e) return false;
   await ensure(db);
+  // At most 20,000 sign-ups, so bots spread over many networks can't fill the database.
+  const n = await db.prepare("SELECT COUNT(*) AS n FROM waitlist").first();
+  if (n && n.n >= 20000) return true;
   await db.prepare("INSERT OR IGNORE INTO waitlist (email, joined_at) VALUES (?, ?)").bind(e, new Date().toISOString()).run();
   return true;
 }

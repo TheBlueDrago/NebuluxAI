@@ -280,6 +280,9 @@ async function maintenance(request, env, url) {
   // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
   // (domainconnect/nebuluxai.com.website.json logoUrl). Only on the main address.
   if (path === "/logo-small.jpg" && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
+  // Keep working while the site is down (they serve people's own websites and code, not the app):
+  // "Sign in with Google" on published websites, and the Nebulux API (/v1/, API keys only).
+  if ((path.indexOf("/site-auth/") === 0 || path.indexOf("/v1/") === 0) && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   var main = url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com";
   var page = DOWN_PAGE;
   if (main && path === "/__waitlist" && request.method === "POST") page = await waitlistPost(request, env);
