@@ -528,7 +528,7 @@ function spawn(e){if(e.local&&typeof promoOn==="function"&&promoOn(e))fillUp(e);
 // damage / death
 function damageFrom(att,base){const T=TEAM_ST[att.team];return base+(T.sharp?1:0)+(kitOf(att)==="brute"?1:0)}
 function hurt(e,d,by,kx,kz){if(!e.alive)return;const red=ARMORS[e.armor].red+.06*TEAM_ST[e.team].prot;d=d*(1-Math.min(.8,red))*(mine(e)?1.5:1);
- if(e.absorb>0){const a=Math.min(e.absorb,d);e.absorb-=a;d-=a}e.hp-=d;const kbm=mine(e)?0:1-.15*e.armor;e.kb.x+=(kx||0)*kbm;e.kb.z+=(kz||0)*kbm;if((kx||kz)&&kbm)e.vel.y=Math.max(e.vel.y,Math.hypot(kx,kz)>40?15:6.2*(1-.08*e.armor));
+ if(e.absorb>0){const a=Math.min(e.absorb,d);e.absorb-=a;d-=a}e.hp-=d;const huge=Math.hypot(kx||0,kz||0)>150;const kbm=mine(e)?0:huge?1:1-.15*e.armor;e.kb.x+=(kx||0)*kbm;e.kb.z+=(kz||0)*kbm;if((kx||kz)&&kbm)e.vel.y=Math.max(e.vel.y,huge?24:Math.hypot(kx,kz)>40?15:6.2*(1-.08*e.armor));
  if(by){e.lastHit=by;e.lastHitT=matchT}if(e.local){sfx(140,.12,"sawtooth",.06);hud()}if(e.hp<=0)die(e,by)}
 function die(e,byId){if(!e.alive)return;e.alive=false;e.hp=0;if(e.mesh)e.mesh.visible=false;const killer=ENTS.find(x=>x.id===byId)||(e.lastHit&&matchT-e.lastHitT<10?ENTS.find(x=>x.id===e.lastHit):null);
  const final=!hasBed(e.team);if(e.bed2&&!promoOn(e))e.bed2=0;/* dying with the second bed still in your inventory loses it */const loot=promoOn(e)?null:{...e.res};
@@ -566,7 +566,7 @@ let breakPos=null,breakProg=0;
 function attack(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;P.swingT=.25;VIEW.userData.sw=.25;const t=targetEnt(P,3.4);if(t&&P.cd<=0){P.cd=(P.sword===4?.3:.4)*(BIG()?2.5:1);hitEnt(P,t,damageFrom(P,heldOf(P)==="axe"?[2,3,4,5][P.axe]:SWORDS[P.sword].d)*(BIG()?15:1))}}
 function flashEnt(e){if(!e.mesh)return;e.mesh.traverse(o=>{if(o.material&&o.material.emissive)o.material.emissive.setHex(0xaa0000)});clearTimeout(e.flashT);e.flashT=setTimeout(()=>{if(e.mesh)e.mesh.traverse(o=>{if(o.material&&o.material.emissive)o.material.emissive.setHex(0)})},160)}
 function hitMark(){const c=$("cross");c.style.filter="drop-shadow(0 0 3px red) sepia(1) saturate(30) hue-rotate(-50deg)";c.style.transform="scale(1.5)";clearTimeout(hitMark.t);hitMark.t=setTimeout(()=>{c.style.filter="";c.style.transform=""},150)}
-function hitEnt(att,t,dmg){flashEnt(t);if(att.local)hitMark();const dx=t.pos.x-att.pos.x,dz=t.pos.z-att.pos.z,l=Math.hypot(dx,dz)||1;const bat=att.baton&&(att.bot||heldOf(att)==="baton");const kf=bat?70:mine(att)?20:8;if(bat)dmg=1;const kx=dx/l*kf,kz=dz/l*kf;
+function hitEnt(att,t,dmg){flashEnt(t);if(att.local)hitMark();const dx=t.pos.x-att.pos.x,dz=t.pos.z-att.pos.z,l=Math.hypot(dx,dz)||1;const bat=att.baton&&(att.bot||heldOf(att)==="baton");const kf=bat?260:mine(att)?20:8;if(bat)dmg=1;const kx=dx/l*kf,kz=dz/l*kf;
  if(t.local||(t.bot&&isHost()))hurt(t,dmg,att.id,kx,kz);else{sendTo(t,{k:"hit",to2:t.id,d:dmg,kx,kz,by:att.id});t.kb.x+=kx*.2;t.kb.z+=kz*.2}
  if(att.local)sfx(300,.05,"square",.05)}
 function useItem(){if(MODE!=="match"||!P||!P.alive||panelOpen())return;const h=heldOf(P);
@@ -589,6 +589,10 @@ function airSpot(e){const o=eye(e),d=lookDir(e);const hit=ray(o,d,5);const fy=Ma
  // otherwise on top of what you aim at, or in the air where you aim if it touches a block
  if(hit){const c=[hit.x+hit.nx,hit.y+hit.ny,hit.z+hit.nz];if(freeCell(...c))return c}
  for(let t=1;t<=(hit?hit.t:4.5);t+=.2){const x=Math.floor(o.x+d.x*t),y=Math.floor(o.y+d.y*t),z=Math.floor(o.z+d.z*t);if(freeCell(x,y,z)&&touches(x,y,z))return[x,y,z]}
+ /* nothing to build against: players can place in mid-air too, like the bots (owner, 2026-10-07).
+    Looking down: right under your feet (a clutch). Otherwise: where you aim, about 3 blocks out. */
+ if(d.y<-.55){const c=[Math.floor(e.pos.x),fy,Math.floor(e.pos.z)];if(freeCell(...c))return c}
+ for(let t=3;t>=1.5;t-=.5){const x=Math.floor(o.x+d.x*t),y=Math.floor(o.y+d.y*t),z=Math.floor(o.z+d.z*t);if(freeCell(x,y,z))return[x,y,z]}
  return null}
 function placeFrom(e,kind,at){if(e.blocks[kind]<=0)return false;let x,y,z;
  if(at){[x,y,z]=at}else{const c=airSpot(e);if(!c)return false;[x,y,z]=c}
