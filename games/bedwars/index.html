@@ -81,6 +81,7 @@ canvas{display:block}
   <button class="btn" id="practice" style="background:#8e24aa">🤖 PLAY WITH BOTS</button>
   <button class="btn" id="v100" style="background:linear-gradient(#ff7043,#d84315)">💯 1 v 100</button>
   <button class="btn" id="kitbtn" style="background:linear-gradient(#ffb300,#f57c00)">🧍 CHARACTER</button>
+  <button class="btn" id="partybtn" style="background:linear-gradient(#26c6da,#00838f)">👥 PARTY</button>
   <div id="diffrow" style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;font-weight:800;color:#fff;text-shadow:0 2px 0 #0008">🤖 BOTS:
     <button class="btn diffb" data-d="easy" style="padding:6px 12px;font-size:14px">EASY</button>
     <button class="btn diffb" data-d="medium" style="padding:6px 12px;font-size:14px">MEDIUM</button>
@@ -103,7 +104,11 @@ canvas{display:block}
 <div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">🛒 ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><input id="promo" maxlength="40" placeholder="Promo code" style="padding:10px 12px;border-radius:10px;border:0;font-size:15px;width:220px"><button class="btn" id="promogo" style="background:#8e24aa;font-size:15px;padding:10px 16px">REDEEM</button></div><div id="promomsg" style="font-weight:800;margin-top:6px"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="chest"><div class="box"><h2 id="chtitle" style="margin:0;font-size:30px"></h2><p id="chsub" style="margin:6px 0 10px;font-weight:700;opacity:.85"></p><div id="chrows"></div><button class="btn close" id="chclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="upg"><div class="box"><h2 style="margin:0;font-size:30px">💎 TEAM UPGRADES</h2><div id="upgres" style="font-weight:800;margin-top:6px"></div><div class="items" id="upgitems"></div><button class="btn close" id="upgclose">✕ CLOSE (E)</button></div></div>
-<div class="ov" id="queue" style="background:rgba(0,0,0,.4)"><div class="box"><h2 id="qtitle" style="margin:0;font-size:30px"></h2><p id="qtext" style="font-size:18px;font-weight:700"></p><div id="qlist" style="font-weight:700;opacity:.9"></div><button class="btn close" id="qcancel">✕ LEAVE QUEUE</button></div></div>
+<div class="ov" id="queue" style="background:rgba(0,0,0,.4)"><div class="box"><h2 id="qtitle" style="margin:0;font-size:30px"></h2><p id="qtext" style="font-size:18px;font-weight:700"></p><div id="qlist" style="font-weight:700;opacity:.9"></div><button class="btn" id="qstart" style="display:none;background:#43a047;margin-top:10px">▶ START</button> <button class="btn close" id="qcancel">✕ LEAVE QUEUE</button></div></div>
+<div class="ov" id="party"><div class="box" style="max-width:460px;text-align:center"><h2 style="margin:0;font-size:28px">👥 PARTY</h2>
+<div id="pin" style="display:none"><p style="font-size:16px;opacity:.85;margin:8px 0">Your party code:</p><div id="pcode" style="font-size:44px;font-weight:900;letter-spacing:.15em;color:#ffe14a"></div><p style="font-size:15px;opacity:.85">Tell your friends this code. Then everyone picks the <b>same mode</b> (Solos, Duos or Squads) and one of you presses START. You'll be in one match together; teammates are filled in order, and bots fill the empty spots.</p><button class="btn" id="pleave" style="background:#e53935">LEAVE PARTY</button></div>
+<div id="pout"><p style="font-size:16px;opacity:.85;margin:8px 0">Play a private match with your friends.</p><button class="btn" id="pmake" style="background:#43a047">MAKE A PARTY</button><p style="margin:14px 0 6px;font-weight:800">or join one:</p><input id="pjoin" maxlength="5" placeholder="CODE" style="font:inherit;font-size:24px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;width:170px;text-align:center;padding:8px;border-radius:10px;border:0"> <button class="btn" id="pgo" style="background:#1e88e5">JOIN</button><p id="perr" style="color:#ff8a80;font-weight:700;min-height:1em"></p></div>
+<button class="btn close" id="pclose">✕ CLOSE</button></div></div>
 <div class="ov" id="results" style="background:radial-gradient(circle at 50% 30%,rgba(90,40,200,.75),rgba(10,0,40,.92))"><div class="box"><h1 id="rtitle" style="font-size:52px;margin:6px 0;font-style:italic"></h1><p id="rtext" style="font-size:17px;font-weight:700;line-height:1.6"></p><button class="btn" id="ragain" style="background:linear-gradient(#ffe14a,#ffb000);color:#3a2300">PLAY AGAIN</button> <button class="btn" id="rlobby" style="background:linear-gradient(#b8ff9f,#3ed14a);color:#0b3010">🏠 BACK TO LOBBY</button></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -488,11 +493,23 @@ function startRaid(){if(!BIG()||RAID||!P)return;RAID=true;RAID_T=matchT;$("raidb
 $("raidbtn").onclick=()=>startRaid();// where your second bed was placed
 const hasBed=t=>TEAM_ST[t].bed||(BIG()&&t===0&&!!SECOND);
 function bedAt(t){if(TEAM_ST[t].bed){const g=teamGeom(t);return new THREE.Vector3(g.bed[0][0]+.5,3,g.bed[0][1]+.5)}return SECOND?new THREE.Vector3(SECOND.x+.5,SECOND.y,SECOND.z+.5):null}// 1 v 100: 5x health
-function joinQueue(q){if(QWS)return;queueMode=q;unlock();$("queue").style.display="block";$("qtitle").textContent="🛏️ "+QNAME[q];$("qtext").textContent="Connecting…";$("qlist").textContent="";
+// Parties: a 5-letter code friends share to play one private match together (the server keeps
+// each party's own line; see workers/nebulux-multiplayer). Kept for this visit only.
+let PARTY="";
+function paintParty(){$("pin").style.display=PARTY?"block":"none";$("pout").style.display=PARTY?"none":"block";$("pcode").textContent=PARTY;$("partybtn").textContent=PARTY?"👥 PARTY "+PARTY:"👥 PARTY";$("perr").textContent=""}
+$("partybtn").onclick=()=>{unlock();paintParty();$("party").style.display="block"};
+$("pclose").onclick=()=>{$("party").style.display="none";lock()};
+$("pmake").onclick=()=>{const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";PARTY="";for(let i=0;i<5;i++)PARTY+=A[Math.floor(Math.random()*A.length)];paintParty()};
+$("pgo").onclick=()=>{const c=$("pjoin").value.toUpperCase().replace(/[^A-Z0-9]/g,"");if(c.length!==5){$("perr").textContent="A party code has 5 letters or numbers.";return}PARTY=c;$("pjoin").value="";paintParty()};
+$("pjoin").onkeydown=e=>{e.stopPropagation();if(e.key==="Enter")$("pgo").onclick()};
+$("pleave").onclick=()=>{PARTY="";paintParty()};
+$("qstart").onclick=()=>{if(QWS&&QWS.readyState===1)QWS.send(JSON.stringify({t:"pstart"}))};
+function joinQueue(q){if(QWS)return;queueMode=q;unlock();$("queue").style.display="block";$("qtitle").textContent="🛏️ "+QNAME[q]+(PARTY?" · PARTY "+PARTY:"");$("qtext").textContent="Connecting…";$("qlist").textContent="";$("qstart").style.display="none";
  let started=false;const fallback=setTimeout(()=>{if(!started){leaveQueue();startMatch(q,null)}},6000);
  try{QWS=new WebSocket(WS_URL)}catch(e){clearTimeout(fallback);leaveQueue();startMatch(q,null);return}
- QWS.onopen=()=>QWS.send(JSON.stringify({t:"join",name:NAME,fig:0,q}));
+ QWS.onopen=()=>QWS.send(JSON.stringify({t:"join",name:NAME,fig:0,q,party:PARTY||undefined}));
  QWS.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}
+  if(m.t==="wait"&&m.party){clearTimeout(fallback);const need={bw1:4,bw2:8,bw4:16}[q];$("qtext").textContent=`Party ${PARTY}: ${m.count} of ${need} here. Press START when everyone's in (bots fill the rest).`;$("qlist").innerHTML=(m.players||[]).map(p=>"👤 "+esc(p.name)).join(" &nbsp; ");$("qstart").style.display="inline-block";return}
   if(m.t==="wait"){clearTimeout(fallback);const need={bw1:4,bw2:8,bw4:16}[q];$("qtext").textContent=`Waiting for players… ${m.count}/${need}${m.startsIn!=null?` · starts in ${m.startsIn}s (bots fill empty spots)`:""}`;$("qlist").innerHTML=(m.players||[]).map(p=>"👤 "+esc(p.name)).join(" &nbsp; ");
    if(m.startsIn!=null){let s=m.startsIn;clearInterval(QWS.tick);QWS.tick=setInterval(()=>{s=Math.max(0,s-1);$("qtext").textContent=`Waiting for players… ${m.count}/${need} · starts in ${s}s (bots fill empty spots)`},1000)}return}
   if(m.t==="start"){started=true;clearTimeout(fallback);clearInterval(QWS.tick);const ws=QWS;QWS=null;$("queue").style.display="none";NET={ws,me:m.you,host:m.host};ws.onmessage=onNet;ws.onclose=()=>{if(MODE==="match"&&!ended){msg("Disconnected",3,"The rest of the match plays with bots.");NET=null;for(const e of ENTS)if(e.remote){e.out=true;e.alive=false;if(e.mesh)e.mesh.visible=false}}};startMatch(q,m.players)}};

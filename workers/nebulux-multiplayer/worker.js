@@ -17,6 +17,11 @@ const TIMED = { br: MAX_PLAYERS, bw1: 4, bw2: 8, bw4: 16 };
 // Quick chat only: a number for one of the game's fixed messages ("GG!", "Nice shot!"...), never
 // typed text, so nobody can send anything unkind or personal.
 const QUICK_COUNT = 12;
+// Bedwars parties: friends who share a 5-letter party code and pick the same mode wait in their
+// own line ("bw2#ABCDE") and play one private match together (bots fill the empty spots). It
+// starts when anyone in the party presses Start, or when it's full; never on the timer.
+const PARTY = /^[A-Z0-9]{5}$/;
+const baseQ = (q) => String(q || "br").split("#")[0];
 
 // Typed chat. Many players are kids, so every message is checked here before anyone sees it:
 // swear words are starred out, and anything that could share personal info or move people off
@@ -128,6 +133,15 @@ export class Arena {
       }
       a.q = DUEL[m.q] || TIMED[m.q] ? m.q : "br";
       a.waitSince = Date.now();
+      const party = String(m.party || "").toUpperCase();
+      if (PARTY.test(party) && /^bw[124]$/.test(a.q)) {
+        a.q = a.q + "#" + party;
+        ws.serializeAttachment(a);
+        const line = this.sockets().filter((s) => s.a.joined && !s.a.match && s.a.q === a.q);
+        if (line.length >= TIMED[baseQ(a.q)]) await this.startMatch(a.q);
+        else for (const s of line) this.send(s.ws, { t: "wait", party: true, count: line.length, players: line.map((x) => ({ name: x.a.name, fig: x.a.fig })) });
+        return;
+      }
       ws.serializeAttachment(a);
       if (DUEL[a.q]) {
         const need = DUEL[a.q];
@@ -149,6 +163,11 @@ export class Arena {
     }
 
     ws.serializeAttachment(a);
+    // A party's Start button: its private match begins now, with whoever is waiting.
+    if (m.t === "pstart" && a.joined && !a.match && String(a.q || "").includes("#")) {
+      await this.startMatch(a.q);
+      return;
+    }
     // Leaderboard: the best trophy counts (what the game reports; names are made up by the game).
     if (m.t === "score" && a.joined && a.name !== "Anonymous") {
       // Three boards: trophies, ranked points (only once placed), and Victory Royales.
@@ -236,7 +255,7 @@ export class Arena {
   }
 
   async startMatch(q = "br", chosen = null) {
-    const waiting = chosen || this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === q).slice(0, TIMED[q] || MAX_PLAYERS);
+    const waiting = chosen || this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === q).slice(0, TIMED[baseQ(q)] || MAX_PLAYERS);
     if (!waiting.length) return;
     const match = crypto.randomUUID().slice(0, 8);
     const players = waiting.map((s) => ({ id: s.a.id, name: s.a.name, fig: s.a.fig }));
@@ -246,7 +265,7 @@ export class Arena {
       s.a.host = host;
       s.ws.serializeAttachment(s.a);
     }
-    for (const s of waiting) this.send(s.ws, { t: "start", q, match, you: s.a.id, host, players, seed: Math.floor(Math.random() * 1e9) });
+    for (const s of waiting) this.send(s.ws, { t: "start", q: baseQ(q), match, you: s.a.id, host, players, seed: Math.floor(Math.random() * 1e9) });
     if (!TIMED[q]) return;
     // Anyone who joined while this one was being set up waits for the next match.
     const rest = this.sockets().filter((s) => s.a.joined && !s.a.match && (s.a.q || "br") === q);
