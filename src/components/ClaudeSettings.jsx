@@ -285,8 +285,8 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
   return createPortal(
     <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-0 sm:p-6" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()} className="w-full max-w-6xl h-full sm:h-[min(860px,calc(100dvh-3rem))] sm:rounded-2xl bg-[var(--cl-bg)] border border-[var(--cl-border)] shadow-2xl flex flex-col sm:flex-row overflow-hidden">
-        <nav className="sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-[var(--cl-border)] p-3 flex flex-col overflow-y-auto max-h-[40vh] sm:max-h-none">
-          <div className="flex items-center gap-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-3 py-2 mb-3">
+        <nav className="sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-[var(--cl-border)] p-2 pr-12 sm:p-3 flex flex-row sm:flex-col overflow-x-auto sm:overflow-x-visible sm:overflow-y-auto">
+          <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-3 py-2 mb-3">
             <Search className="w-4 h-4 text-[var(--cl-muted)]" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="flex-1 bg-transparent outline-none text-[14.5px] text-[var(--cl-text)] placeholder:text-[var(--cl-faint)]" />
           </div>
@@ -294,10 +294,10 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
             const shown = items.filter(([, l]) => !ql || l.toLowerCase().includes(ql));
             if (!shown.length) return null;
             return (
-              <div key={group} className="mb-3">
-                <p className="px-2.5 py-1.5 text-[13px] text-[var(--cl-faint)]">{group}</p>
+              <div key={group} className="flex sm:block shrink-0 sm:mb-3">
+                <p className="hidden sm:block px-2.5 py-1.5 text-[13px] text-[var(--cl-faint)]">{group}</p>
                 {shown.map(([k, l, Icon]) => (
-                  <button key={k} onClick={() => setTab(k)} className={`w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-[15px] text-left ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/60 hover:text-[var(--cl-text)]"}`}>
+                  <button key={k} onClick={() => setTab(k)} className={`shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 rounded-lg px-3 sm:px-2.5 py-2 text-[14px] sm:text-[15px] text-left whitespace-nowrap ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/60 hover:text-[var(--cl-text)]"}`}>
                     <Icon className="w-[18px] h-[18px]" />
                     <span className="flex-1">{l}</span>
                   </button>

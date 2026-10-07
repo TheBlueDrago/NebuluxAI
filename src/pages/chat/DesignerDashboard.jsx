@@ -117,24 +117,24 @@ function SiteCard({ site, onEdit, onToggleHidden, onDelete, inGallery, onToggleG
           )}
           {takenDown ? (
             <span
-              className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-red-600/90 text-[10px] font-medium text-white"
+              className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-red-600/90 text-xs font-medium text-white"
               title="An admin took this site down for breaking the rules. Visitors see a 'removed' page."
             >
               Taken down
             </span>
           ) : site.hidden ? (
-            <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur text-[10px] font-medium text-slate-300 border border-white/10">
+            <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur text-xs font-medium text-slate-300 border border-white/10">
               Hidden
             </span>
           ) : (
-            <span className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur text-[10px] font-medium text-emerald-300 border border-white/10">
+            <span className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur text-xs font-medium text-emerald-300 border border-white/10">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Live
             </span>
           )}
         </div>
         <p className="text-sm font-semibold text-slate-100 truncate">{site.name}</p>
-        <p className="text-[11px] text-slate-500 truncate">{site.name}.nebuluxai.com</p>
-        <p className="text-[11px] text-slate-600 mt-0.5">
+        <p className="text-xs text-slate-500 truncate">{site.name}.nebuluxai.com</p>
+        <p className="text-xs text-slate-600 mt-0.5">
           Updated {site.updated_date ? formatDistanceToNow(new Date(site.updated_date), { addSuffix: true }) : "recently"}
         </p>
       </button>
@@ -445,7 +445,7 @@ export default function DesignerDashboard() {
                     <SitePreviewThumb html={t.html} />
                   </div>
                   <p className="text-sm text-white font-medium mt-2 px-1">{t.title}</p>
-                  <p className="text-[11px] text-slate-500 px-1 pb-1">{t.blurb}</p>
+                  <p className="text-xs text-slate-500 px-1 pb-1">{t.blurb}</p>
                 </button>
               ))}
             </div>
@@ -469,7 +469,7 @@ export default function DesignerDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-300">Your websites</h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Tap <Star className="inline w-3 h-3 -mt-0.5" /> to show a site in the{" "}
                   <a href="/showcase" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-300">public gallery</a>.
                 </p>

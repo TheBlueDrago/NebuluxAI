@@ -85,7 +85,7 @@ function GameCard({ g, onPlay }) {
         </div>
       </div>
       <p className="mt-1.5 text-xs font-medium text-slate-200 truncate">{g.title || g.name}</p>
-      <p className="text-[10px] text-slate-400">{GENRE_LABEL[g.genre] || "Game"} · {g.plays || 0} plays</p>
+      <p className="text-xs text-slate-400">{GENRE_LABEL[g.genre] || "Game"} · {g.plays || 0} plays</p>
     </button>
   );
 }
@@ -98,7 +98,7 @@ function FeaturedCard({ g, onPlay }) {
         className={`relative aspect-video rounded-2xl bg-gradient-to-br ${thumb(g)} overflow-hidden ring-1 ring-white/15 transition-transform duration-200 group-hover:scale-[1.02]`}
         style={thumbStyle(g)}
       >
-        <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider bg-black/40 px-2 py-1 rounded text-white/90">#1 Featured</span>
+        <span className="absolute top-3 left-3 text-xs font-bold uppercase tracking-wider bg-black/40 px-2 py-1 rounded text-white/90">#1 Featured</span>
         <div className="absolute inset-0 flex items-center justify-center">
           <Icon className="w-16 h-16 text-white/70" />
         </div>

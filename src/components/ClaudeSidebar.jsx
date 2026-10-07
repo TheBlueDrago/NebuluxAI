@@ -241,7 +241,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                 <ChevronRight className="w-4 h-4 text-[var(--cl-faint)]" />
               </button>
               {more && (
-                <div className="absolute left-full bottom-0 ml-1 w-48 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5">
+                <div className={`${mobile ? "relative mx-3 mb-1" : "absolute left-full bottom-0 ml-1 w-48"} rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5`}>
                   {[["About Nebulux AI", "/about"], ["Guides", "/guides"], ["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Safety", "/safety"]].map(([l, h]) => (
                     <a key={h} href={h} target="_blank" rel="noopener" onClick={() => { setMenu(false); setMore(false); }} className="block px-3 py-1.5 text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">{l}</a>
                   ))}

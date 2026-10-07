@@ -259,3 +259,8 @@ html[data-chat-font="mono"] .font-serif { font-family: ui-monospace, SFMono-Regu
 /* Settings → General → Motion: Reduced */
 html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 html[data-chat-font="system"] .font-serif { font-family: ui-sans-serif, system-ui, sans-serif; }
+
+/* Phones and tablets: text boxes at 16px so iPhones don't zoom in when you tap one. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select { font-size: 16px !important; }
+}

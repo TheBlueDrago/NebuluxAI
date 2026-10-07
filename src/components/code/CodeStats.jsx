@@ -76,7 +76,7 @@ export default function CodeStats({ userId, names, kind }) {
   const shade = (n) => (!n ? "bg-[var(--cl-hover)]" : n / max > 0.66 ? "bg-violet-400" : n / max > 0.33 ? "bg-violet-500" : "bg-violet-700");
 
   const Pill = ({ on, onClick, children }) => (
-    <button onClick={onClick} className={`px-2 py-0.5 rounded-md text-[13.5px] ${on ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:text-[var(--cl-text)]"}`}>{children}</button>
+    <button onClick={onClick} className={`px-2.5 py-1.5 sm:py-0.5 rounded-md text-[13.5px] ${on ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:text-[var(--cl-text)]"}`}>{children}</button>
   );
 
   return (

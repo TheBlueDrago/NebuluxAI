@@ -167,7 +167,9 @@ export default function VisualEditor({ html, onSave, onCancel }) {
   const [future, setFuture] = useState([]);
   const current = useRef(parked.out);
   const [info, setInfo] = useState(null);
-  const [device, setDevice] = useState("desktop");
+  const [device, setDevice] = useState(() => (typeof window !== "undefined" && window.innerWidth < 640 ? "phone" : "desktop"));
+  // Phones: the two side panels slide over the page, one at a time, when asked for.
+  const [sheet, setSheet] = useState(""); // "", "add", "style"
   const [ver, setVer] = useState(0); // reloads the frame only for undo/redo
   const [dirty, setDirty] = useState(false);
   const frame = useRef(null);
@@ -207,7 +209,7 @@ export default function VisualEditor({ html, onSave, onCancel }) {
       if (e.source !== frame.current?.contentWindow) return;
       const m = e.data || {};
       if (!m.nxEditor) return;
-      if (m.type === "sel") setInfo(m.info);
+      if (m.type === "sel") { setInfo(m.info); if (m.info && window.innerWidth < 640) setSheet("style"); }
       else if (m.type === "changed") {
         const clean = m.html.replace(/<script data-nx-editor>[\s\S]*?<\/script>/g, "");
         if (clean !== current.current) { setPast((p) => [...p.slice(-60), current.current]); setFuture([]); current.current = clean; setDirty(true); }
@@ -240,6 +242,8 @@ export default function VisualEditor({ html, onSave, onCancel }) {
     <div className="w-full h-full flex flex-col bg-slate-950 text-slate-200">
       {/* top bar */}
       <div className="flex items-center gap-1 px-2 h-11 border-b border-slate-700/60 bg-slate-900">
+        <button className={`${btn} sm:hidden ${sheet === "add" ? "bg-slate-700 text-white" : ""}`} onClick={() => setSheet((v) => (v === "add" ? "" : "add"))} aria-label="Add blocks"><Square className="w-4 h-4" /></button>
+        <button className={`${btn} sm:hidden ${sheet === "style" ? "bg-slate-700 text-white" : ""}`} onClick={() => setSheet((v) => (v === "style" ? "" : "style"))} aria-label="Style"><Type className="w-4 h-4" /></button>
         <button className={btn} onClick={undo} disabled={!past.length} title="Undo (Ctrl+Z)" aria-label="Undo"><Undo2 className="w-4 h-4" /></button>
         <button className={btn} onClick={redo} disabled={!future.length} title="Redo (Ctrl+Y)" aria-label="Redo"><Redo2 className="w-4 h-4" /></button>
         <span className="w-px h-5 bg-slate-700 mx-1" />
@@ -251,9 +255,9 @@ export default function VisualEditor({ html, onSave, onCancel }) {
         <button onClick={save} className="px-3 py-1.5 rounded-lg text-[13px] bg-indigo-600 hover:bg-indigo-700 text-white font-medium flex items-center gap-1"><Check className="w-4 h-4" /> Save</button>
       </div>
 
-      <div className="flex-1 min-h-0 flex">
+      <div className="flex-1 min-h-0 flex relative">
         {/* blocks */}
-        <aside className="w-40 sm:w-48 shrink-0 border-r border-slate-700/60 bg-slate-900/80 overflow-y-auto p-2">
+        <aside className={`${sheet === "add" ? "flex" : "hidden"} sm:block absolute sm:static inset-y-0 left-0 z-20 flex-col w-48 shrink-0 border-r border-slate-700/60 bg-slate-900 sm:bg-slate-900/80 overflow-y-auto p-2 shadow-2xl sm:shadow-none`}>
           <p className={label + " px-1 pt-1"}>Add</p>
           <div className="grid gap-1.5">
             {BLOCKS.map(([name, Icon, code]) => (
@@ -261,7 +265,7 @@ export default function VisualEditor({ html, onSave, onCancel }) {
                 key={name}
                 draggable
                 onDragStart={(e) => { e.dataTransfer.setData("text/plain", "NXBLOCK:" + code); e.dataTransfer.effectAllowed = "copy"; }}
-                onClick={() => send({ cmd: "insert", html: code })}
+                onClick={() => { send({ cmd: "insert", html: code }); setSheet(""); }}
                 title={`Drag onto the page, or click to add ${name.toLowerCase()} after the selection`}
                 className="flex items-center gap-2 rounded-lg border border-slate-700/70 bg-slate-800/70 hover:border-indigo-500/60 hover:bg-slate-800 px-2.5 py-2 text-[13px] text-left cursor-grab active:cursor-grabbing"
               >
@@ -297,7 +301,7 @@ export default function VisualEditor({ html, onSave, onCancel }) {
         </div>
 
         {/* style */}
-        <aside className="w-56 sm:w-64 shrink-0 border-l border-slate-700/60 bg-slate-900/80 overflow-y-auto p-3 space-y-4">
+        <aside className={`${sheet === "style" ? "block" : "hidden"} sm:block absolute sm:static inset-y-0 right-0 z-20 w-64 max-w-[85%] shrink-0 border-l border-slate-700/60 bg-slate-900 sm:bg-slate-900/80 overflow-y-auto p-3 space-y-4 shadow-2xl sm:shadow-none`}>
           {!info ? (
             <p className="text-[13px] text-slate-400 leading-relaxed">Click anything on the page to style it. Double-click text to type right on the page.</p>
           ) : (

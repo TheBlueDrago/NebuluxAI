@@ -1004,7 +1004,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
           <div className="flex items-center gap-1 px-3 h-10 border-b border-slate-700/50 bg-slate-900/60">
             <button
               onClick={() => setPreviewMode("preview")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`px-3 py-2 sm:py-1 rounded-md text-xs font-medium transition-colors ${
                 previewMode === "preview" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -1013,7 +1013,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             <button
               onClick={openEditor}
               title="Edit the page visually (Pro and up)"
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`px-3 py-2 sm:py-1 rounded-md text-xs font-medium transition-colors ${
                 previewMode === "edit" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -1021,7 +1021,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             </button>
             <button
               onClick={() => setPreviewMode("dashboard")}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`px-3 py-2 sm:py-1 rounded-md text-xs font-medium transition-colors ${
                 previewMode === "dashboard" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -1031,7 +1031,10 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
 
           <div ref={previewBoxRef} className="flex-1 relative overflow-hidden bg-white">
             {previewMode === "edit" && previewHtml ? (
-              <VisualEditor key={lastAi?.content?.length || 0} html={previewHtml} onSave={saveEdits} onCancel={() => setPreviewMode("preview")} />
+              <div className="max-sm:fixed max-sm:inset-0 max-sm:z-[60] max-sm:pt-[env(safe-area-inset-top)] w-full h-full bg-slate-950">
+                {/* full screen on phones while editing */}
+                <VisualEditor key={lastAi?.content?.length || 0} html={previewHtml} onSave={saveEdits} onCancel={() => setPreviewMode("preview")} />
+              </div>
             ) : previewMode === "dashboard" ? (
               <SiteDashboard
                 siteName={siteName}
