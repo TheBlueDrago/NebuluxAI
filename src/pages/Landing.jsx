@@ -254,6 +254,17 @@ export default function Landing() {
         ))}
       </section>
 
+      {/* The 36-second ad: answers, websites, an app, Bedwars, Nebulux Code. Loads only when played. */}
+      <section className="mt-20 sm:mt-24" aria-labelledby="nx-demo">
+        <div className="text-center mb-6">
+          <h2 id="nx-demo" className="text-3xl sm:text-5xl font-bold text-white">See it in action</h2>
+          <p className="mt-3 text-slate-400">36 seconds: answers, websites, apps and games, all made with Nebulux AI.</p>
+        </div>
+        <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-indigo-500/10 bg-black">
+          <video src="/nebulux-ad.mp4" poster="/nebulux-ad-poster.jpg" controls playsInline preload="none" className="w-full aspect-video block" aria-label="Nebulux AI video" />
+        </div>
+      </section>
+
       {/* The AI itself */}
       <section className="mt-24 sm:mt-32">
         <Reveal className="text-center max-w-2xl mx-auto">
