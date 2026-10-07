@@ -272,6 +272,140 @@ h2{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute
 <a class="btn" href="mailto:sam@example.com">Get in touch</a></main>`
 );
 
+const store = base(
+  "Sunny Socks — Shop",
+  `:root{--bg:#fffdf7;--ink:#1f2937;--muted:#6b7280;--accent:#f59e0b;--card:#fff}
+body{background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:16px 6vw;background:rgba(255,253,247,.92);backdrop-filter:blur(8px);border-bottom:1px solid #f3e8c8}
+.logo{font-weight:800;font-size:20px}.logo span{color:var(--accent)}
+.cart-btn{border:0;background:var(--ink);color:#fff;border-radius:999px;padding:9px 16px;font:inherit;font-size:15px;cursor:pointer}
+.hero{padding:9vh 6vw 6vh;text-align:center}
+.hero h1{font-size:clamp(34px,6vw,60px);line-height:1.1}
+.hero p{color:var(--muted);margin-top:12px;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;padding:0 6vw 8vh}
+.item{background:var(--card);border:1px solid #f1e6c6;border-radius:16px;padding:14px;display:flex;flex-direction:column}
+.pic{aspect-ratio:1;border-radius:12px;margin-bottom:12px}
+.p1{background:repeating-linear-gradient(45deg,#fde68a 0 14px,#f59e0b 14px 28px)}.p2{background:repeating-linear-gradient(0deg,#bfdbfe 0 12px,#3b82f6 12px 24px)}
+.p3{background:radial-gradient(circle at 30% 30%,#f9a8d4 0 18%,#fdf2f8 19%);background-size:40px 40px}.p4{background:repeating-linear-gradient(90deg,#bbf7d0 0 16px,#22c55e 16px 32px)}
+.item h3{font-size:17px}.price{color:var(--muted);margin:4px 0 12px}
+.add{margin-top:auto;border:0;background:var(--accent);color:#1f2937;font-weight:700;border-radius:10px;padding:10px;font:inherit;cursor:pointer}
+.add:active{transform:scale(.98)}
+.panel{position:fixed;inset:0 0 0 auto;width:min(380px,100%);background:#fff;box-shadow:-10px 0 40px rgba(0,0,0,.15);padding:22px;transform:translateX(100%);transition:transform .25s;z-index:10;display:flex;flex-direction:column}
+.panel.open{transform:none}
+.panel h2{display:flex;justify-content:space-between;align-items:center}
+.close{border:0;background:none;font-size:26px;cursor:pointer}
+.lines{flex:1;overflow:auto;margin:16px 0}.line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6}
+.total{font-weight:700;font-size:18px;display:flex;justify-content:space-between}
+.checkout{margin-top:14px;border:0;background:var(--ink);color:#fff;border-radius:12px;padding:12px;font:inherit;font-weight:600;cursor:pointer}
+footer{text-align:center;color:var(--muted);padding:30px;font-size:14px}`,
+  `<header><div class="logo">Sunny<span>Socks</span></div><button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="count">0</span>)</button></header>
+<section class="hero"><h1>Happy socks for happy feet</h1><p>Soft, bright and made to last. Free shipping over $30.</p></section>
+<section class="grid">
+  <div class="item"><div class="pic p1"></div><h3>Sunshine Stripes</h3><p class="price">$9</p><button class="add" onclick="add('Sunshine Stripes',9)">Add to cart</button></div>
+  <div class="item"><div class="pic p2"></div><h3>Ocean Waves</h3><p class="price">$9</p><button class="add" onclick="add('Ocean Waves',9)">Add to cart</button></div>
+  <div class="item"><div class="pic p3"></div><h3>Pink Polka</h3><p class="price">$11</p><button class="add" onclick="add('Pink Polka',11)">Add to cart</button></div>
+  <div class="item"><div class="pic p4"></div><h3>Garden Green</h3><p class="price">$10</p><button class="add" onclick="add('Garden Green',10)">Add to cart</button></div>
+</section>
+<aside class="panel" id="panel" aria-label="Your cart"><h2>Your cart <button class="close" onclick="toggleCart(false)" aria-label="Close">×</button></h2><div class="lines" id="lines"><p style="color:#6b7280">Your cart is empty.</p></div><div class="total"><span>Total</span><span id="total">$0</span></div><button class="checkout" onclick="alert('Ask the AI to set up selling to take real payments.')">Checkout</button></aside>
+<footer>© Sunny Socks · Made with love</footer>
+<script>
+var cart = {};
+function add(name, price) { cart[name] = cart[name] || { price: price, qty: 0 }; cart[name].qty++; draw(); toggleCart(true); }
+function draw() {
+  var lines = document.getElementById("lines"), total = 0, count = 0, html = "";
+  for (var n in cart) { var c = cart[n]; total += c.price * c.qty; count += c.qty; html += '<div class="line"><span>' + n + ' × ' + c.qty + '</span><span>$' + c.price * c.qty + '</span></div>'; }
+  lines.innerHTML = html || '<p style="color:#6b7280">Your cart is empty.</p>';
+  document.getElementById("total").textContent = "$" + total;
+  document.getElementById("count").textContent = count;
+}
+function toggleCart(open) { document.getElementById("panel").classList.toggle("open", open); }
+</script>`
+);
+
+const blog = base(
+  "Notes from the Trail — Blog",
+  `:root{--bg:#fbfaf8;--ink:#222;--muted:#6f6a64;--accent:#2f6f5e}
+body{background:var(--bg);color:var(--ink)}
+header{max-width:760px;margin:0 auto;padding:40px 22px 10px}
+header h1{font-family:Georgia,serif;font-size:clamp(30px,5vw,44px)}
+header p{color:var(--muted);margin-top:6px}
+nav{margin-top:16px;display:flex;gap:16px;flex-wrap:wrap}
+nav button{border:0;background:none;color:var(--muted);font:inherit;cursor:pointer;padding:4px 0;border-bottom:2px solid transparent}
+nav button.on{color:var(--accent);border-color:var(--accent)}
+main{max-width:760px;margin:0 auto;padding:10px 22px 60px}
+article{padding:28px 0;border-bottom:1px solid #e7e3dc}
+.tag{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+article h2{font-family:Georgia,serif;font-size:26px;margin:6px 0}
+.meta{color:var(--muted);font-size:14px}
+article p{margin-top:10px}
+.more{margin-top:10px;display:inline-block;color:var(--accent);font-weight:600;cursor:pointer;border:0;background:none;font:inherit;padding:0}
+.full{display:none;margin-top:10px}
+.sub{margin-top:40px;background:#eef4f1;border-radius:16px;padding:22px}
+.sub form{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.sub input{flex:1;min-width:200px;padding:11px 12px;border-radius:10px;border:1px solid #cfdcd6;font:inherit;font-size:16px}
+.sub button{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer}`,
+  `<header><h1>Notes from the Trail</h1><p>Hiking, camping and the small joys of being outside.</p>
+<nav id="tags"><button class="on" onclick="show('all',this)">All</button><button onclick="show('hikes',this)">Hikes</button><button onclick="show('gear',this)">Gear</button><button onclick="show('tips',this)">Tips</button></nav></header>
+<main>
+  <article data-tag="hikes"><span class="tag">Hikes</span><h2>Sunrise at Eagle Peak</h2><p class="meta">October 3 · 5 min read</p><p>We started at 4 a.m. with headlamps and cold hands. By the top, the whole valley was glowing orange.</p><div class="full"><p>The trail is steep for the first mile, then opens into meadows. Bring layers: it was freezing at the summit and warm an hour later.</p></div><button class="more" onclick="more(this)">Read more →</button></article>
+  <article data-tag="gear"><span class="tag">Gear</span><h2>My 10 must-haves for a day hike</h2><p class="meta">September 21 · 4 min read</p><p>You don't need fancy gear. Here's what I actually carry every time.</p><div class="full"><p>Water, snacks, a light jacket, sunscreen, a map, a small first-aid kit, a headlamp, a phone, a whistle, and a good attitude.</p></div><button class="more" onclick="more(this)">Read more →</button></article>
+  <article data-tag="tips"><span class="tag">Tips</span><h2>How to start hiking (even if you're not sporty)</h2><p class="meta">September 9 · 6 min read</p><p>Start short, go slow, and pick trails with a view at the end. It gets easier fast.</p><div class="full"><p>Try a 2-mile loop first. Go with a friend. Check the weather. Turn back if it doesn't feel right; the mountain will be there next week.</p></div><button class="more" onclick="more(this)">Read more →</button></article>
+  <section class="sub"><h3>Get new posts by email</h3><p style="color:#6f6a64">About one a week. No spam.</p><form onsubmit="event.preventDefault();this.innerHTML='<p>Thanks! You\\'re subscribed.</p>'"><input type="email" required placeholder="you@example.com" aria-label="Your email"><button>Subscribe</button></form></section>
+</main>
+<script>
+function show(tag, btn) {
+  document.querySelectorAll("nav button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+  document.querySelectorAll("article").forEach(function (a) { a.style.display = tag === "all" || a.dataset.tag === tag ? "" : "none"; });
+}
+function more(btn) {
+  var full = btn.previousElementSibling, open = full.style.display === "block";
+  full.style.display = open ? "none" : "block";
+  btn.textContent = open ? "Read more →" : "Show less ↑";
+}
+</script>`
+);
+
+const team = base(
+  "Nova Squad — Gaming Team",
+  `:root{--bg:#0b0b14;--ink:#eef0ff;--muted:#9aa0c3;--accent:#7c5cff;--accent2:#22d3ee}
+body{background:var(--bg);color:var(--ink)}
+header{display:flex;justify-content:space-between;align-items:center;padding:20px 6vw;flex-wrap:wrap;gap:10px}
+.logo{font-weight:900;font-size:22px;letter-spacing:.04em}.logo span{color:var(--accent2)}
+nav a{margin-left:18px;text-decoration:none;color:var(--muted);font-size:15px}
+.hero{padding:10vh 6vw 8vh;text-align:center;background:radial-gradient(ellipse at top,rgba(124,92,255,.35),transparent 60%)}
+.hero h1{font-size:clamp(38px,8vw,80px);font-weight:900;line-height:1}
+.hero p{color:var(--muted);margin-top:14px;font-size:18px}
+.btn{display:inline-block;margin-top:24px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b0b14;font-weight:800;padding:12px 22px;border-radius:12px;text-decoration:none}
+section{padding:6vh 6vw}
+h2{font-size:28px;margin-bottom:18px}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.player{background:#151528;border:1px solid #26264a;border-radius:16px;padding:16px;text-align:center}
+.av{width:64px;height:64px;border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;color:#0b0b14}
+.player p{color:var(--muted);font-size:14px}
+table{width:100%;border-collapse:collapse;background:#151528;border-radius:16px;overflow:hidden}
+td,th{padding:12px 14px;text-align:left;border-bottom:1px solid #26264a}th{color:var(--muted);font-weight:600;font-size:14px}
+.win{color:#4ade80;font-weight:700}.loss{color:#f87171;font-weight:700}
+form{display:grid;gap:10px;max-width:460px}
+input,select{padding:11px 12px;border-radius:10px;border:1px solid #2b2b52;background:#151528;color:var(--ink);font:inherit;font-size:16px}
+form button{border:0;background:var(--accent);color:#fff;font-weight:700;border-radius:10px;padding:12px;font:inherit;cursor:pointer}
+footer{text-align:center;color:var(--muted);padding:30px;font-size:14px}`,
+  `<header><div class="logo">NOVA<span>SQUAD</span></div><nav><a href="#roster">Roster</a><a href="#matches">Matches</a><a href="#join">Join</a></nav></header>
+<section class="hero"><h1>WE PLAY TO WIN</h1><p>A friendly competitive team. Weekly scrims, tournaments and good vibes.</p><a class="btn" href="#join">Try out for the team</a></section>
+<section id="roster"><h2>Roster</h2><div class="roster">
+  <div class="player"><div class="av" style="background:#7c5cff">Z</div><b>Zephyr</b><p>Captain · Strategy</p></div>
+  <div class="player"><div class="av" style="background:#22d3ee">K</div><b>Kitsune</b><p>Builder · Defense</p></div>
+  <div class="player"><div class="av" style="background:#f472b6">R</div><b>Rook</b><p>Rusher · Attack</p></div>
+  <div class="player"><div class="av" style="background:#facc15">P</div><b>Pixel</b><p>Support · Scout</p></div>
+</div></section>
+<section id="matches"><h2>Recent matches</h2><table><tr><th>Opponent</th><th>Date</th><th>Result</th></tr>
+<tr><td>Iron Wolves</td><td>Oct 4</td><td class="win">Win 3–1</td></tr>
+<tr><td>Red Comets</td><td>Sep 27</td><td class="win">Win 2–0</td></tr>
+<tr><td>Shadow Byte</td><td>Sep 20</td><td class="loss">Loss 1–2</td></tr></table></section>
+<section id="join"><h2>Join the squad</h2><form onsubmit="event.preventDefault();this.innerHTML='<p>Thanks! The captain will message you soon. GG!</p>'">
+<input required placeholder="Your gamer tag" aria-label="Gamer tag"><select aria-label="Role"><option>Attack</option><option>Defense</option><option>Support</option><option>Any role</option></select><input placeholder="What games do you play?" aria-label="Games"><button>Send tryout request</button></form></section>
+<footer>© Nova Squad · GG WP</footer>`
+);
+
 export const SITE_TEMPLATES = [
   { id: "portfolio", title: "Portfolio", blurb: "Photographer or creative", html: portfolio },
   { id: "restaurant", title: "Restaurant menu", blurb: "Menu, hours and location", html: restaurant },
@@ -281,4 +415,7 @@ export const SITE_TEMPLATES = [
   { id: "event", title: "Event invite", blurb: "Countdown and RSVP", html: event },
   { id: "club", title: "School club", blurb: "Meetings, projects, join form", html: club },
   { id: "resume", title: "Resume", blurb: "Experience and skills", html: resume },
+  { id: "store", title: "Online store", blurb: "Products and a cart", html: store },
+  { id: "blog", title: "Blog", blurb: "Posts, topics and email sign-up", html: blog },
+  { id: "team", title: "Gaming team", blurb: "Roster, matches and tryouts", html: team },
 ];
