@@ -80,7 +80,15 @@ canvas{display:block}
   <button class="btn" data-q="bw4" style="background:#43a047">SQUADS</button>
   <button class="btn" id="practice" style="background:#8e24aa">🤖 PLAY WITH BOTS</button>
   <button class="btn" id="v100" style="background:linear-gradient(#ff7043,#d84315)">💯 1 v 100</button>
+  <button class="btn" id="kitbtn" style="background:linear-gradient(#ffb300,#f57c00)">🧍 CHARACTER</button>
+  <div id="diffrow" style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;font-weight:800;color:#fff;text-shadow:0 2px 0 #0008">🤖 BOTS:
+    <button class="btn diffb" data-d="easy" style="padding:6px 12px;font-size:14px">EASY</button>
+    <button class="btn diffb" data-d="medium" style="padding:6px 12px;font-size:14px">MEDIUM</button>
+    <button class="btn diffb" data-d="hard" style="padding:6px 12px;font-size:14px">HARD</button>
+  </div>
+  <div style="font-size:12px;color:#fffc;text-align:center;margin-top:4px;text-shadow:0 1px 0 #0008">With real players in the match, bots always play Hard.</div>
 </div>
+<div class="ov" id="kits"><div class="box" style="max-width:720px"><h2 style="margin:0;font-size:28px">🧍 PICK YOUR CHARACTER</h2><div style="opacity:.8;margin:4px 0 10px">Each one has a special power in every match.</div><div id="kitgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px"></div><button class="btn" id="kitclose" style="margin-top:12px;background:#455a64">✕ CLOSE</button></div></div>
 <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something nice… (Enter to send)"></div>
 <button class="btn" id="raidbtn" style="display:none;position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:9;background:linear-gradient(#ff5252,#b71c1c);font-size:22px">⚔️ LET THE RAID BEGIN (R)</button>
 <div id="lockhint">Click to play · Esc to free the mouse</div>
@@ -109,6 +117,22 @@ const TOUCH=matchMedia("(pointer:coarse)").matches;
 let SAVE={wins:0,kills:0,finals:0,beds:0,games:0};
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem("bw-save")||"{}"))}catch(e){}
 const save=()=>{try{localStorage.setItem("bw-save",JSON.stringify(SAVE))}catch(e){}};
+// Characters: pick one in the lobby; each has one power (bots get a random one).
+const KITS=[
+ {id:"none",ic:"🙂",n:"Rookie",p:"No power. Pure skill.",c:"#90a4ae"},
+ {id:"brute",ic:"🪓",n:"Brute",p:"Sword hits deal +1 damage.",c:"#e53935"},
+ {id:"hunter",ic:"🏹",n:"Hunter",p:"Arrows deal 50% more damage.",c:"#43a047"},
+ {id:"digger",ic:"⛏️",n:"Digger",p:"Breaks blocks 40% faster.",c:"#8d6e63"},
+ {id:"harvest",ic:"🌾",n:"Harvester",p:"Gets 50% more from generators.",c:"#fdd835"},
+ {id:"builder",ic:"🧱",n:"Builder",p:"Starts every life with 24 extra wool.",c:"#fb8c00"},
+ {id:"guard",ic:"🛡️",n:"Guardian",p:"Has 26 health instead of 20.",c:"#1e88e5"},
+ {id:"sprint",ic:"⚡",n:"Sprinter",p:"Moves 15% faster.",c:"#00acc1"},
+ {id:"medic",ic:"❤️",n:"Medic",p:"Heals twice as fast.",c:"#ec407a"}];
+const kitOf=e=>(e&&e.kit)||"none";
+const randomKit=()=>KITS[1+Math.floor(Math.random()*(KITS.length-1))].id;
+// Bot difficulty: chosen in the lobby for matches with no other real players; Hard otherwise.
+const DIFFS={easy:{cd:1.9,reach:2.5,dmg:.55,spd:3.3,fire:false,jump:.4},medium:{cd:1.35,reach:2.9,dmg:.8,spd:3.9,fire:true,jump:.8},hard:{cd:1,reach:3.2,dmg:1,spd:4.3,fire:true,jump:1.2}};
+let DIFF="hard";const DF=()=>DIFFS[DIFF]||DIFFS.hard;
 
 // ---------- three.js ----------
 const renderer=new THREE.WebGLRenderer({antialias:false});
@@ -228,7 +252,7 @@ function animate(e,dt){const u=e.mesh.userData;const sp=Math.hypot(e.vel.x,e.vel
 const ENTS=[],PROJ=[],GENS=[],NPCS=[],PORTALS=[];
 let MODE="lobby",P=null,NET=null,MATCH=null,teamSize=1,matchT=0,ended=false;
 const TEAM_ST=[0,1,2,3].map(()=>({bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0}));
-function newEnt(id,name,team,bot){return{id,name,team,bot,pos:new THREE.Vector3(),vel:new THREE.Vector3(),kb:new THREE.Vector3(),yaw:0,pitch:0,hp:20,alive:true,out:false,
+function newEnt(id,name,team,bot){return{id,name,team,bot,kit:bot?randomKit():null,pos:new THREE.Vector3(),vel:new THREE.Vector3(),kb:new THREE.Vector3(),yaw:0,pitch:0,hp:20,alive:true,out:false,
  sword:0,armor:0,axe:0,res:{iron:0,gold:0,diamond:0,emerald:0},blocks:{wool:0,wood:0,end:0},bow:false,arrows:0,gapple:0,fireball:0,pearl:0,sel:0,cd:0,swingT:0,lastHit:null,lastHitT:0,respawnT:0,regen:0,absorb:0}}
 
 // ---------- maps ----------
@@ -455,7 +479,7 @@ const QNAME={bw1:"SOLOS · 4 teams of 1",bw2:"DUOS · 4 teams of 2",bw4:"SQUADS 
 // 10 times stronger, but you move slower and attack slower; fireballs cost a lot more and are huge.
 const BIG=()=>!!(MATCH&&MATCH.q==="v100");
 const mine=e=>BIG()&&e&&e.local;
-const maxHp=e=>mine(e)?100:20;
+const maxHp=e=>mine(e)?100:kitOf(e)==="guard"?26:20;
 let SECOND=null,RAID=false,RAID_T=0,TURRETS=[],waveShown=0;
 // Bots wait at home until you start the raid, then come in waves of 15, 25 seconds apart.
 function startRaid(){if(!BIG()||RAID||!P)return;RAID=true;RAID_T=matchT;$("raidbtn").style.display="none";$("hint").style.display="none";msg("THE RAID BEGINS!",2.5,"Wave 1 is coming");sfx(220,.6,"sawtooth",.1);lock()}
@@ -476,25 +500,33 @@ $("qcancel").onclick=()=>{leaveQueue();lock()};
 document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>joinQueue(b.dataset.q));
 $("practice").onclick=()=>{unlock();startMatch("bw2",null)};
 $("v100").onclick=()=>{unlock();startMatch("v100",null)};
+function paintDiff(){const d=SAVE.diff||"medium";document.querySelectorAll(".diffb").forEach(b=>{const on=b.dataset.d===d;b.style.background=on?({easy:"#43a047",medium:"#fb8c00",hard:"#e53935"})[d]:"#37474f";b.style.outline=on?"3px solid #fff":"none"})}
+document.querySelectorAll(".diffb").forEach(b=>b.onclick=()=>{SAVE.diff=b.dataset.d;save();paintDiff()});paintDiff();
+function paintKitBtn(){const k=KITS.find(x=>x.id===(SAVE.kit||"none"))||KITS[0];$("kitbtn").textContent=k.ic+" "+k.n.toUpperCase()}
+function openKits(){const g=$("kitgrid");g.innerHTML="";for(const k of KITS){const on=(SAVE.kit||"none")===k.id;const d=document.createElement("button");d.className="btn";d.style.cssText="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;background:"+(on?k.c:"#263238")+";outline:"+(on?"3px solid #fff":"none")+";white-space:normal;text-align:center";
+ d.innerHTML='<span style="font-size:40px;line-height:1">'+k.ic+'</span><b style="font-size:16px">'+k.n+'</b><span style="font-size:12px;font-weight:600;opacity:.9">'+k.p+'</span>';d.onclick=()=>{SAVE.kit=k.id;save();paintKitBtn();openKits()};g.appendChild(d)}$("kits").style.display="block"}
+$("kitbtn").onclick=openKits;$("kitclose").onclick=()=>{$("kits").style.display="none"};paintKitBtn();
 
 // ---------- match ----------
 function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();closePanels();$("lobbyui").style.display="none";$("lobbytop").style.display="none";$("chat").style.display="none";$("results").style.display="none";
  teamSize={bw1:1,bw2:2,bw4:4,v100:1}[q]||2;SECOND=null;luckyWaves=0;for(const L of LUCKY)scene.remove(L.mesh);LUCKY.length=0;for(let i=DROPS.length-1;i>=0;i--)killDrop(i);RAID=false;waveShown=0;MATCH={q};ENDER={};TCHEST=[{},{},{},{}];chestAt=null;buildArena();for(const T of TEAM_ST)Object.assign(T,{bed:true,sharp:0,prot:0,forge:0,haste:0,heal:0});
  const people=players&&players.length?players:[{id:"me",name:NAME}];if(!players)NET=null;
+ // Bots use the lobby's difficulty when you're the only real player; anyone else in the match makes them Hard.
+ DIFF=people.length>1?"hard":(SAVE.diff||"medium");
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=Math.floor(i/teamSize)%4;perTeam[t]++;assign.push([p,t])});
- for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.local=true;P=e}else e.remote=true;addEnt(e)}
+ for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.kit=SAVE.kit||"none";e.local=true;P=e}else e.remote=true;addEnt(e)}
  let bi=0;const BN=["Steve","Alex","Blaze","Cobble","Pixel","Nova","Creeper","Diamond","Ender","Bolt","Rusty","Sky","Frost","Zap","Mango","Echo"];
  if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.wave=Math.floor(i/15);e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
  else for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
  for(const e of ENTS)spawn(e);
  hud();updateView();msg(q==="v100"?"1 V 100":"BEDWARS",3,q==="v100"?"100 bots are coming for you. You have 5x health, 15x damage and no knockback!":`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
 function addEnt(e){e.mesh=makeChar(TEAMS[e.team].c,e.local?null:e.name);setArmorLook(e);if(e.local)e.mesh.visible=false;ENTS.push(e);return e}
-function spawn(e){if(e.local&&typeof promoOn==="function"&&promoOn(e))fillUp(e);const g=teamGeom(e.team);e.pos.set(g.spawn[0]+(Math.random()-.5)*2,3.05,g.spawn[1]+(Math.random()-.5)*2);
+function spawn(e){if(e.local&&typeof promoOn==="function"&&promoOn(e))fillUp(e);if(kitOf(e)==="builder")e.blocks.wool+=24;const g=teamGeom(e.team);e.pos.set(g.spawn[0]+(Math.random()-.5)*2,3.05,g.spawn[1]+(Math.random()-.5)*2);
  if(e.local&&BIG()&&!TEAM_ST[e.team].bed&&SECOND)e.pos.set(SECOND.x+.5,SECOND.y+1.05,SECOND.z+.5);e.vel.set(0,0,0);e.kb.set(0,0,0);e.hp=maxHp(e);e.absorb=0;e.alive=true;e.yaw=Math.atan2(-g.ux,-g.uz);e.pitch=0;
  if(e.mesh){e.mesh.visible=!e.local;e.mesh.position.copy(e.pos)}if(e.bot){e.state="farm";e.goal=null;e.launched=false}}
 
 // damage / death
-function damageFrom(att,base){const T=TEAM_ST[att.team];return base+(T.sharp?1:0)}
+function damageFrom(att,base){const T=TEAM_ST[att.team];return base+(T.sharp?1:0)+(kitOf(att)==="brute"?1:0)}
 function hurt(e,d,by,kx,kz){if(!e.alive)return;const red=ARMORS[e.armor].red+.06*TEAM_ST[e.team].prot;d=d*(1-Math.min(.8,red))*(mine(e)?1.5:1);
  if(e.absorb>0){const a=Math.min(e.absorb,d);e.absorb-=a;d-=a}e.hp-=d;const kbm=mine(e)?0:1-.15*e.armor;e.kb.x+=(kx||0)*kbm;e.kb.z+=(kz||0)*kbm;if((kx||kz)&&kbm)e.vel.y=Math.max(e.vel.y,Math.hypot(kx,kz)>40?15:6.2*(1-.08*e.armor));
  if(by){e.lastHit=by;e.lastHitT=matchT}if(e.local){sfx(140,.12,"sawtooth",.06);hud()}if(e.hp<=0)die(e,by)}
@@ -572,7 +604,7 @@ function breakAt(e,x,y,z,blast){const t=getB(x,y,z);if(!t)return;if(t===24){setB
  if(!blast){const kind=isWool(t)?"wool":t===4?"wood":t===5?"end":null;if(kind){e.blocks[kind]++;if(e.local)hud()}}
  if(e.local)sfx(180,.06,"square",.05)}
 const AXE_SPEED=[1,1.7,2.6,3.8];
-function hardness(e,t){const ax=(e.bot||heldOf(e)==="axe")?e.axe||0:0;if(ax>=3&&isBed(t))return .01;return BDEF[t].hard*(1-.25*TEAM_ST[e.team].haste)/AXE_SPEED[ax]/(mine(e)?10:1)}
+function hardness(e,t){const ax=(e.bot||heldOf(e)==="axe")?e.axe||0:0;if(ax>=3&&isBed(t))return .01;return BDEF[t].hard*(1-.25*TEAM_ST[e.team].haste)/AXE_SPEED[ax]/(mine(e)?10:1)*(kitOf(e)==="digger"?.6:1)}
 
 // projectiles: the thrower decides what they hit
 function shoot(e,kind){const o=eye(e),d=lookDir(e);const sp=kind==="arrow"?38:kind==="fireball"?22:26;const p={kind,owner:e,pos:o.clone().addScaledVector(d,.6),vel:d.clone().multiplyScalar(sp),life:kind==="fireball"?4:5,mine:true};
@@ -580,7 +612,7 @@ function shoot(e,kind){const o=eye(e),d=lookDir(e);const sp=kind==="arrow"?38:ki
 function projMesh(kind){return kind==="arrow"?new THREE.Mesh(new THREE.BoxGeometry(.06,.06,.6),new THREE.MeshLambertMaterial({color:0xdddddd})):kind==="fireball"?new THREE.Mesh(new THREE.SphereGeometry(.35,10,8),new THREE.MeshBasicMaterial({color:0xff7a1a})):new THREE.Mesh(new THREE.SphereGeometry(.15,8,6),new THREE.MeshLambertMaterial({color:0x1b7f6f}))}
 function stepProj(dt){for(let i=PROJ.length-1;i>=0;i--){const p=PROJ[i];p.life-=dt;if(p.kind!=="fireball")p.vel.y-=18*dt;const d=p.vel.clone().normalize(),dist=p.vel.length()*dt;
  let hitB=ray(p.pos,d,dist),hitE=null,he=dist;if(p.mine)for(const x of ENTS){if(x===p.owner||!x.alive||x.team===p.owner.team)continue;const t=rayEnt(p.pos,d,x,he);if(t!=null&&t<he){he=t;hitE=x}}
- if(hitE&&(!hitB||he<hitB.t)){if(p.mine){if(p.kind==="arrow")hitEnt(p.owner,hitE,5*(mine(p.owner)?15:1));else if(p.kind==="fireball")explode(p,hitE.pos.clone());else{p.owner.pos.copy(hitE.pos);p.owner.vel.set(0,0,0);hurt(p.owner,2,null)}}kill(i);continue}
+ if(hitE&&(!hitB||he<hitB.t)){if(p.mine){if(p.kind==="arrow")hitEnt(p.owner,hitE,5*(mine(p.owner)?15:1)*(kitOf(p.owner)==="hunter"?1.5:1));else if(p.kind==="fireball")explode(p,hitE.pos.clone());else{p.owner.pos.copy(hitE.pos);p.owner.vel.set(0,0,0);hurt(p.owner,2,null)}}kill(i);continue}
  if(hitB){if(p.mine){const at=p.pos.clone().addScaledVector(d,hitB.t);if(p.kind==="fireball")explode(p,at);else if(p.kind==="pearl"){p.owner.pos.set(at.x-d.x*.6,Math.floor(at.y)+(hitB.ny===1?1:0)+.05,at.z-d.z*.6);p.owner.vel.set(0,0,0);if(p.owner.local)hurt(p.owner,2,null)}}kill(i);continue}
  p.pos.addScaledVector(p.vel,dt);p.mesh.position.copy(p.pos);p.mesh.lookAt(p.pos.clone().add(p.vel));if(p.life<=0||p.pos.y<-40)kill(i)}
  function kill(i){scene.remove(PROJ[i].mesh);PROJ.splice(i,1)}}
@@ -720,10 +752,10 @@ function botTick(b,dt){if(!b.alive)return;b.think-=dt;b.cd-=dt;
  if(!b.onGround&&b.vel.y<-4&&b.blocks.wool>0){let ground=false;for(let yy=Math.floor(b.pos.y)-1;yy>=Math.floor(b.pos.y)-3;yy--)if(getB(Math.floor(b.pos.x),yy,Math.floor(b.pos.z))){ground=true;break}
   if(!ground&&b.pos.y>-4)placeFrom(b,"wool",[Math.floor(b.pos.x),Math.floor(b.pos.y)-1,Math.floor(b.pos.z)])}
  // fireballs at enemies that are a bit away (knocks them off bridges)
- if(fight&&b.fireball>0&&b.cd<=0){const fd=b.pos.distanceTo(fight.pos);if(fd>7&&fd<26&&Math.random()<dt*.6){b.yaw=Math.atan2(-(fight.pos.x-b.pos.x),-(fight.pos.z-b.pos.z));b.pitch=Math.atan2(fight.pos.y+.8-(b.pos.y+1.62),Math.hypot(fight.pos.x-b.pos.x,fight.pos.z-b.pos.z));b.fireball--;b.cd=1;shoot(b,"fireball")}}
- if(fight&&b.cd<=0&&b.pos.distanceTo(fight.pos)<(mine(fight)?4.6:3.2)){b.cd=(b.sword===4?.4:.5)+Math.random()*.25;b.swingT=.25;hitEnt(b,fight,damageFrom(b,SWORDS[b.sword].d))}
- if(fight&&b.onGround&&Math.random()<dt*1.2)b.vel.y=8.4;
- b.vel.x=wx*4.3+b.kb.x;b.vel.z=wz*4.3+b.kb.z;b.bump=false;moveEnt(b,dt)}
+ if(DF().fire&&fight&&b.fireball>0&&b.cd<=0){const fd=b.pos.distanceTo(fight.pos);if(fd>7&&fd<26&&Math.random()<dt*.6){b.yaw=Math.atan2(-(fight.pos.x-b.pos.x),-(fight.pos.z-b.pos.z));b.pitch=Math.atan2(fight.pos.y+.8-(b.pos.y+1.62),Math.hypot(fight.pos.x-b.pos.x,fight.pos.z-b.pos.z));b.fireball--;b.cd=1;shoot(b,"fireball")}}
+ if(fight&&b.cd<=0&&b.pos.distanceTo(fight.pos)<(mine(fight)?4.6:DF().reach)){b.cd=((b.sword===4?.4:.5)+Math.random()*.25)*DF().cd;b.swingT=.25;hitEnt(b,fight,damageFrom(b,SWORDS[b.sword].d)*DF().dmg)}
+ if(fight&&b.onGround&&Math.random()<dt*DF().jump)b.vel.y=8.4;
+ const bsp=DF().spd*(kitOf(b)==="sprint"?1.15:1);b.vel.x=wx*bsp+b.kb.x;b.vel.z=wz*bsp+b.kb.z;b.bump=false;moveEnt(b,dt)}
 
 function defendBed(b){const g=teamGeom(b.team);const cells=[];for(const[bx,bz]of g.bed){for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]])cells.push([bx+dx,3,bz+dz]);cells.push([bx,4,bz])}
  for(const[bx,bz]of g.bed)for(const[dx,dz]of[[2,0],[-2,0],[0,2],[0,-2],[1,1],[-1,1],[1,-1],[-1,-1]]){cells.push([bx+dx,3,bz+dz]);cells.push([bx+dx,4,bz+dz])}for(const[bx,bz]of g.bed)for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]])cells.push([bx+dx,4,bz+dz]);
@@ -767,7 +799,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/
  renderer.render(scene,camera)}
 function stepLocal(dt){const busy=panelOpen()||chatOpen;
  if(P.alive){let f=(keys.KeyW?1:0)-(keys.KeyS?1:0)-joy.y,s=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x;if(busy){f=0;s=0}const l=Math.hypot(f,s);if(l>1){f/=l;s/=l}
-  const sprint=(keys.ShiftLeft||keys.ControlLeft||Math.hypot(joy.x,joy.y)>.9)&&f>0;const sp=(sprint?5.6:4.3)*(BIG()?.7:1);
+  const sprint=(keys.ShiftLeft||keys.ControlLeft||Math.hypot(joy.x,joy.y)>.9)&&f>0;const sp=(sprint?5.6:4.3)*(BIG()?.7:1)*(kitOf(P)==="sprint"?1.15:1);
   const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),rx=-fz,rz=fx;
   P.vel.x=(fx*f+rx*s)*sp+P.kb.x;P.vel.z=(fz*f+rz*s)*sp+P.kb.z;if(keys.Space&&P.onGround&&!busy)P.vel.y=8.4;
   moveEnt(P,dt);const dec=Math.exp(-(P.onGround?7:1.5)*dt);P.kb.multiplyScalar(dec);
@@ -796,13 +828,13 @@ function stepMatch(dt){matchT+=dt;
  // respawn
  for(const e of ENTS){if(!e.alive&&!e.out&&(e.local||(e.bot&&isHost()))){e.respawnT-=dt;if(e.local&&e.respawnT>0)$("hint").style.display="block",$("hint").textContent=`Respawning in ${Math.ceil(e.respawnT)}…`;if(e.respawnT<=0){spawn(e);if(e.local){$("hint").style.display="none";hud();lock()}}}}
  // heal at base / regen
- for(const e of ENTS){if(!e.alive||!(e.local||(e.bot&&isHost())))continue;e.regen+=dt;const g=teamGeom(e.team);const atBase=Math.hypot(e.pos.x-g.cx,e.pos.z-g.cz)<9;const every=atBase&&TEAM_ST[e.team].heal?1:3;if(e.regen>every&&e.hp<maxHp(e)){e.regen=0;e.hp=Math.min(maxHp(e),e.hp+1);if(e.local)hud()}
+ for(const e of ENTS){if(!e.alive||!(e.local||(e.bot&&isHost())))continue;e.regen+=dt;const g=teamGeom(e.team);const atBase=Math.hypot(e.pos.x-g.cx,e.pos.z-g.cz)<9;const every=(atBase&&TEAM_ST[e.team].heal?1:3)*(kitOf(e)==="medic"?.5:1);if(e.regen>every&&e.hp<maxHp(e)){e.regen=0;e.hp=Math.min(maxHp(e),e.hp+1);if(e.local)hud()}
   if(e.pos.y<-35&&e.alive)die(e,null)}
  // generators (the host makes resources; everyone picks up what's next to them)
  for(let i=0;i<GENS.length;i++){const g=GENS[i];if(isHost()){g.t+=dt;const ev=genEvery(g);if(g.t>=ev){g.t-=ev;if(g.stock<g.max)g.stock++}}
   g.mesh.rotation.y+=dt*2;g.mesh.visible=g.stock>0;g.mesh.scale.setScalar(.8+Math.min(1,g.stock/8)*.6);
   if(g.lab&&Math.random()<dt*4){const left=Math.ceil(genEvery(g)-g.t);const c=g.lab.material.map.image.getContext("2d");c.clearRect(0,0,256,64);c.fillStyle="rgba(0,0,0,.45)";c.fillRect(0,8,256,48);c.font="bold 24px Segoe UI, Arial";c.textAlign="center";c.fillStyle=g.kind==="diamond"?"#4fe3e0":"#2fd36b";c.fillText(`${g.kind==="diamond"?"💎 Diamonds":"🟩 Emeralds"} ${g.stock}${isHost()?` · ${left}s`:""}`,128,43);g.lab.material.map.needsUpdate=true}
-  if(g.stock>0)for(const e of ENTS){if(!e.alive||!(e.local||(e.bot&&isHost())))continue;if(Math.hypot(e.pos.x-g.x,e.pos.z-g.z)<1.7&&Math.abs(e.pos.y-g.y)<2){e.res[g.kind]+=g.stock;if(e.local){sfx(1200,.04,"triangle",.04);hud()}g.stock=0;g.takenUntil=matchT+.8;send({k:"take",g:i});break}}}
+  if(g.stock>0)for(const e of ENTS){if(!e.alive||!(e.local||(e.bot&&isHost())))continue;if(Math.hypot(e.pos.x-g.x,e.pos.z-g.z)<1.7&&Math.abs(e.pos.y-g.y)<2){e.res[g.kind]+=kitOf(e)==="harvest"?Math.ceil(g.stock*1.5):g.stock;if(e.local){sfx(1200,.04,"triangle",.04);hud()}g.stock=0;g.takenUntil=matchT+.8;send({k:"take",g:i});break}}}
  // bots
  if(isHost())for(const b of ENTS)if(b.bot)botTick(b,dt);
  // remote players & bots on clients: smooth toward the latest position
