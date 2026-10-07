@@ -37,6 +37,7 @@ const Guides = lazy(() => import('@/pages/Guides'));
 const WhatsNew = lazy(() => import('@/pages/WhatsNew'));
 const Ideas = lazy(() => import('@/pages/Ideas'));
 const Guide = lazy(() => import('@/pages/Guide'));
+const SharedChat = lazy(() => import('@/pages/SharedChat'));
 const Enterprise = lazy(() => import('@/pages/Enterprise'));
 import { captureReferral } from '@/lib/referral';
 
@@ -120,6 +121,7 @@ const AuthenticatedApp = () => {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/about" element={<About />} />
       <Route path="/api" element={<ApiPlatform />} />
+      <Route path="/share/:id" element={<SharedChat />} />
       <Route path="/guides" element={<Guides />} />
       <Route path="/whats-new" element={<WhatsNew />} />
       <Route path="/ideas" element={<Ideas />} />

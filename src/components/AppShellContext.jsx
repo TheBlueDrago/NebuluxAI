@@ -120,6 +120,14 @@ export function AppShellProvider({ children }) {
   const goGames = useCallback(() => { navigate("/chat/games"); setSidebarOpen(false); }, [navigate]);
   const goGameDesigner = useCallback(() => { navigate("/chat/game-designer", { state: { fresh: Date.now() } }); setSidebarOpen(false); }, [navigate]);
   const goPlans = useCallback(() => { navigate("/chat/shop"); setSidebarOpen(false); }, [navigate]);
+  // A shared Code chat that was locked (pages/SharedChat.jsx): once the plan is Pro or higher,
+  // it pops up by itself wherever they are in the app.
+  useEffect(() => {
+    if (!CODE_PLANS.includes(credits.plan)) return;
+    let id = null;
+    try { id = localStorage.getItem("nx-pending-share"); } catch { /* fine */ }
+    if (id && /^[0-9a-f]{24}$/.test(id)) navigate(`/share/${id}`);
+  }, [credits.plan, navigate]);
   const goMonitor = useCallback(() => { navigate("/chat/monitor"); setSidebarOpen(false); }, [navigate]);
   const goPromos = useCallback(() => { navigate("/chat/promos"); setSidebarOpen(false); }, [navigate]);
   const newChat = useCallback(() => { conv.createConversation("New Chat"); navigate("/chat"); setSidebarOpen(false); }, [navigate, conv]);

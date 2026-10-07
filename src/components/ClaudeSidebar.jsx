@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Gift, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink } from "lucide-react";
+import { shareChat } from "@/lib/shareChat";
+import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Gift, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -176,10 +177,13 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                   <>
                     <StatusMark status={activity[`chat:${c.id}`]?.status} />
                     {pins.includes(c.id) && <Pin className="w-3 h-3 mr-1 shrink-0 text-[var(--cl-accent)]" />}
-                    <span className="truncate flex-1 pr-1 group-hover:pr-20">{c.title}</span>
+                    <span className="truncate flex-1 pr-1 group-hover:pr-24">{c.title}</span>
                     <span className="absolute right-1 hidden group-hover:flex items-center gap-0.5 bg-[var(--cl-hover)] rounded-md">
                       <button onClick={(e) => (e.stopPropagation(), togglePin(c.id))} className="p-1 rounded hover:text-[var(--cl-accent)]" title={pins.includes(c.id) ? "Unpin" : "Pin"} aria-label="Pin chat">
                         {pins.includes(c.id) ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                      </button>
+                      <button onClick={(e) => (e.stopPropagation(), shareChat({ kind: "chat", title: c.title, messages: c.messages }))} className="p-1 rounded hover:text-[var(--cl-text)]" title="Share" aria-label="Share chat">
+                        <Share2 className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={(e) => (e.stopPropagation(), setEditingId(c.id), setEditValue(c.title))} className="p-1 rounded hover:text-[var(--cl-text)]" title="Rename" aria-label="Rename chat">
                         <Pen className="w-3.5 h-3.5" />
