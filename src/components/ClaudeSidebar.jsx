@@ -125,6 +125,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
         <NavRow icon={Globe} label="Website Designer" onClick={go(shell.goDesigner)} collapsed={collapsed && !mobile} />
         <NavRow icon={Gamepad2} label="Nebulux Games" onClick={go(shell.goGames)} collapsed={collapsed && !mobile} />
         <NavRow icon={ShoppingBag} label="Shop" onClick={go(shell.goPlans)} collapsed={collapsed && !mobile} />
+        <NavRow icon={Gift} label="Invite friends, get credits" onClick={() => { openProfile("refer"); if (mobile) onClose?.(); }} collapsed={collapsed && !mobile} />
         {isAdmin && <NavRow icon={Activity} label="Monitor" onClick={go(shell.goMonitor)} collapsed={collapsed && !mobile} />}
       </nav>
 

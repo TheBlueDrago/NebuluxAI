@@ -2,7 +2,7 @@
 // (src/pages/Guide.jsx) and the Cloudflare function that serves each guide with its text
 // already in the page for search engines (functions/guides/[slug].js) use the same words.
 // Keep every claim true to the product: limits and prices here must match the app.
-export const GUIDES_UPDATED = "2026-09-25";
+export const GUIDES_UPDATED = "2026-10-06";
 
 export const GUIDES = [
   {
@@ -773,6 +773,69 @@ export const GUIDES = [
     cta: { label: "Make your club website free", to: "/register?returnTo=%2Fchat%2Fdesigner%3Ftemplate%3Dclub" },
     more: { label: "Preview the School club template", to: "/templates?preview=club" },
     related: ["event-invite-website", "learn-to-code-with-ai"],
+  },
+  {
+    slug: "add-google-sign-in-to-your-website",
+    title: "How to add \"Sign in with Google\" to your website",
+    description:
+      "Let visitors sign in to your website with their Google account, with no code, no API keys and no setup. See everyone who signed in from your dashboard.",
+    minutes: 3,
+    intro:
+      "Members-only pages, a personal greeting, saving things for each visitor: they all start with sign-in. Every website you publish with Nebulux AI has Google sign-in built in, so you only have to ask for it.",
+    sections: [
+      {
+        heading: "Ask the AI for it",
+        paragraphs: ["Open your website in the Website Designer and tell the AI what you want. It adds a real Sign in with Google button and the parts that change when someone is signed in."],
+        list: ["\"Add Google sign-in to the top of the page.\"", "\"Show a members-only section after people sign in, and greet them by name.\"", "\"Add a sign-out button next to their profile picture.\""],
+      },
+      {
+        heading: "Try it on your published site",
+        paragraphs: ["In the designer's preview, the button signs in a pretend visitor so you can see how it looks. Publish your site, open its address, and the button opens Google's real sign-in."],
+      },
+      {
+        heading: "See who signed in",
+        paragraphs: ["Open Dashboard, then Sign in. You'll see each person's name, email and picture, when they last signed in and how many times. You can download the list or remove someone from it."],
+      },
+      {
+        heading: "Use your own sign-in screen (Pro)",
+        paragraphs: ["On free plans, Google's screen says Nebulux AI. With Pro or higher you can show your own app's name and logo: create an OAuth client in Google Cloud, add the redirect address shown in Dashboard, then Sign in, and paste the client ID and secret there."],
+      },
+      {
+        heading: "Be fair with people's information",
+        list: ["Only ask people to sign in when your site really needs it.", "Say on your site what you use their name and email for.", "Never ask visitors for passwords: Google handles that."],
+      },
+    ],
+    cta: { label: "Make a website free", to: "/register?returnTo=%2Fchat%2Fdesigner" },
+    related: ["make-a-website-with-ai", "small-business-website"],
+  },
+  {
+    slug: "edit-your-website-with-drag-and-drop",
+    title: "Edit your AI website with drag and drop",
+    description:
+      "Change your website yourself: drag in blocks, type right on the page, change colors and pictures, and see it on a phone, tablet and computer.",
+    minutes: 3,
+    intro:
+      "Sometimes it's quicker to fix a word or move a section yourself than to ask the AI. The Website Designer's Edit tab lets you change your site like a page builder.",
+    sections: [
+      {
+        heading: "Open the editor",
+        paragraphs: ["In the Website Designer, build a site first, then press Edit above the preview. The visual editor is included with Pro and higher plans."],
+      },
+      {
+        heading: "Add and move things",
+        list: ["Drag a block (heading, text, button, image, gallery, reviews, contact form and more) from the left onto the page.", "Click anything to select it, and drag it to move it.", "Double-click any text to type right on the page."],
+      },
+      {
+        heading: "Style it",
+        paragraphs: ["The panel on the right changes the selected part: text and background colors, text size, bold, alignment, spacing and rounded corners. For pictures, upload your own and set the width."],
+      },
+      {
+        heading: "Check every screen size",
+        paragraphs: ["Switch between computer, tablet and phone at the top to see your site at each real size. Undo and redo work as you go, and Save makes it a new version you can always go back from in Dashboard, then Versions."],
+      },
+    ],
+    cta: { label: "Make a website free", to: "/register?returnTo=%2Fchat%2Fdesigner" },
+    related: ["make-a-website-with-ai", "make-a-website-on-your-phone"],
   },
 ];
 
