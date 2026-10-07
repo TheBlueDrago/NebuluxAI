@@ -195,6 +195,9 @@ export function Privacy() {
         <li><strong>Enterprise applications:</strong> your organization's legal name, type, where it's registered, registration number or EIN, website, and your name, role, work email and phone. Only the Nebulux AI team sees them, to check the organization is real and send a quote.</li>
         <li><strong>Admin actions:</strong> when the Nebulux AI team changes an account's plan, credits, access or a promo code, or takes a page down, we record what changed, on which account, which team member did it and roughly where they were (city and country), to catch mistakes and misuse.</li>
         <li><strong>Sign-in safety:</strong> to stop people guessing passwords or sign-up codes, we briefly count sign-in tries for each email address and network. The counts are kept for at most an hour and aren't used for anything else.</li>
+        <li><strong>Robot check:</strong> when you sign up or ask for a password reset, Cloudflare Turnstile checks that you're a person and not a bot. To do that, Cloudflare looks at your browser and connection (for example your IP address); it isn't used for ads and doesn't track you across websites.</li>
+        <li><strong>AI on websites people make:</strong> if a website made with Nebulux AI has an AI chat and you use it, your messages pass through our servers to Google to get an answer. We don't keep what you wrote. The website's owner pays for each answer, so we record the cost and time (not the text), and we briefly count messages from each network so one visitor can't use it up.</li>
+        <li><strong>API and Playground:</strong> requests made with an API key or in the Playground pass through our servers to Google to get an answer. We keep which key was used, when, which AI and what it cost, not the text of the request or the answer.</li>
         <li><strong>Reports:</strong> when you report a site we keep your reason and note, plus a scrambled (hashed) form of your IP address so the same person can't report one page many times.</li>
         <li><strong>Game progress:</strong> if you're signed in, what a game saves (levels, scores, unlocks) is kept with your account so you can carry on later, until you delete it on the game's page or delete your account.</li>
         <li><strong>Usage analytics:</strong> Cloudflare Web Analytics counts page visits (which pages are opened, how long they take to load, and which website sent you here) to help us see what's working. It uses no cookies, doesn't track you across other websites, and isn't used for ads.</li>
@@ -216,7 +219,7 @@ export function Privacy() {
         <li><strong>Resend</strong> — sends our emails (sign-up codes, password resets, two-step codes, support replies).</li>
         <li><strong>GitHub</strong> — only if you connect your GitHub account in Nebulux Code. Your GitHub token stays in your browser and is only sent to GitHub; the files you add to a chat are sent to the AI with your question.</li>
         <li><strong>DuckDuckGo and the websites you open</strong> — when you use the Nebulux Browser in Nebulux Code, your searches go to DuckDuckGo and the pages you open are fetched by our server. The AI can see, read and act on whatever you open there, including pages you are signed in to.</li>
-        <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress. Cloud sessions in Nebulux Code run there and their replies are deleted after about a day.</li>
+        <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress. Cloudflare Turnstile runs the robot check on sign-up and password reset. Cloud sessions in Nebulux Code run there and their replies are deleted after about a day.</li>
         <li><strong>API keys and API billing</strong> — we keep your API keys only in scrambled form (we can't read them back), plus each key's name and when and how often it's used, your API balances, and a history of what was added and what each request cost.</li>
         <li><strong>Google sign-in on published websites</strong> — when you sign in to a website someone made with Nebulux AI, Google gives us your name, email address and profile picture. We keep them so <strong>that website's owner can see who signed in</strong> (and how often), and we sign you in to that site. The owner can remove you from their list, and you can ask us to delete it. If the owner uses their own Google sign-in app, Google's screen shows their app instead of ours.</li>
         <li>
@@ -226,6 +229,23 @@ export function Privacy() {
           <strong>Don't put passwords, health information or other secrets into the AI.</strong>
         </li>
       </ul>
+
+      <h2>Google user data</h2>
+      <p>
+        You can sign in with Google on Nebulux AI, and on websites made with Nebulux AI that turn it on. Here's exactly
+        what happens with the information Google gives us:
+      </p>
+      <ul>
+        <li><strong>What we get:</strong> your name, email address and profile picture (Google's "openid", "email" and "profile" permissions). We don't ask for your Gmail, Drive, contacts, calendar or anything else in your Google account.</li>
+        <li><strong>How we use it:</strong> only to create your account and sign you in, show your name and picture in the app, and, when you sign in to a website made with Nebulux AI, sign you in to that website and show its owner who signed in.</li>
+        <li><strong>Who we share it with:</strong> for website sign-ins, only that website's owner. Otherwise nobody, apart from Cloudflare, which stores our database for us. We never sell it, use it for ads, or use it to train AI models.</li>
+        <li><strong>How it's kept safe:</strong> it's stored in our database on Cloudflare and only sent over secure (https) connections. Only the Nebulux AI team can look at accounts, and only to run the service, keep it safe or follow the law.</li>
+        <li><strong>Keeping and deleting:</strong> we keep it while your account is open. Deleting your account deletes it. For a website sign-in, it's kept until the website's owner removes you, the website is deleted, or you ask us to delete it through <Contact />. You can also remove Nebulux AI's access at any time at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">myaccount.google.com/permissions</a>.</li>
+      </ul>
+      <p>
+        Nebulux AI's use and transfer of information received from Google APIs adheres to the{" "}
+        <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements.
+      </p>
 
       <h2>What's public</h2>
       <p>
