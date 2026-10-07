@@ -1,6 +1,6 @@
 // Refer-a-friend. Every user gets a short code (link: /register?ref=CODE). When a brand
 // new account signs up through it, BOTH people get one reward of their choice — 25
-// Nebulux AI, 15 Nebulux Code, 10 Galaxy or 5 Space credits — added to their
+// Nebulux AI, 15 Galaxy, 10 Space or 5 Nebula credits — added to their
 // server-side bonus balance (see credits.js). Admins can take a referral back, which
 // removes both rewards again.
 //

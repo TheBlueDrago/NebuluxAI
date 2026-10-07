@@ -2,7 +2,7 @@
 // (credits.js) and the app (src/lib/creditRefresh.js) can import them.
 export const TIERS = ["ai", "aiCode", "galaxy5", "space5"];
 export const TIER_OF_MODEL = { automatic: "ai", claude_sonnet_4_6: "aiCode", claude_opus_4_8: "galaxy5", "claude-sonnet-5": "space5" };
-export const TIER_NAMES = { ai: "Nebulux AI", aiCode: "Nebulux Code", galaxy5: "Galaxy", space5: "Space" };
+export const TIER_NAMES = { ai: "Nebulux AI", aiCode: "Galaxy", galaxy5: "Space", space5: "Nebula" };
 
 // Monthly allowance per plan (same numbers the app has always shown). Enterprise is per
 // seat: each seat adds these to one pool the whole organization shares, and the org pays

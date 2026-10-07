@@ -50,7 +50,7 @@ const STORE_KEY = DESIGNER_STORE_KEY;
 const TAKEN_KEY = "infinity-ai-taken-sites";
 const MODEL = "claude_sonnet_4_6";
 const MODELS = { ai: "automatic", code: MODEL, opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
-const AI_NAMES = { ai: "Nebulux AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
+const AI_NAMES = { ai: "Nebulux AI", code: "Galaxy", opus5: "Space", fable: "Nebula" };
 
 const RESERVED = ["home", "www", "admin", "api", "mail", "infinity", "ai", "app", "login", "register", "support", "blog"];
 

@@ -13,8 +13,8 @@
 // account, so tiers use confirmed-working 3.x models, ordered by coding strength:
 //   automatic         (Nebulux AI)   -> gemini-3.5-flash (mid tier, general use)
 //   claude_sonnet_4_6 (Nebulux Code) -> gemini-3.6-flash (3rd-best coding)
-//   claude_opus_4_8   (Galaxy)         -> gemini-3.7-flash (2nd-best coding)
-//   claude-sonnet-5   (Space)          -> gemini-3.8-flash (best coding)
+//   claude_opus_4_8   (Space)         -> gemini-3.7-flash (2nd-best coding)
+//   claude-sonnet-5   (Nebula)          -> gemini-3.8-flash (best coding)
 // On the free tier any of these can answer 503 "experiencing high demand" (or 429
 // when rate-limited) at any moment; the request then falls back to the next-strongest
 // model so the user still gets a reply instead of an error.

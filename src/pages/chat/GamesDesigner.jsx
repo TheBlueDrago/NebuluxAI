@@ -48,7 +48,7 @@ const TAKEN_KEY = "infinity-ai-taken-games";
 const MODEL = "claude_sonnet_4_6";
 const SPACE5_MODEL = "claude-sonnet-5";
 const MODELS = { ai: "automatic", code: MODEL, opus5: "claude_opus_4_8", fable: SPACE5_MODEL };
-const AI_NAMES = { ai: "Nebulux AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
+const AI_NAMES = { ai: "Nebulux AI", code: "Galaxy", opus5: "Space", fable: "Nebula" };
 
 const RESERVED = ["home", "www", "admin", "api", "mail", "infinity", "ai", "app", "login", "register", "support", "blog", "game", "games"];
 

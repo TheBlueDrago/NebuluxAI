@@ -4,7 +4,7 @@
 // PACK_PRICES in step with its copy.
 //
 // Priced by the owner (2026-09-27; Pro $15, Team $20): Pro's credits (100 AI + 50 each of Code,
-// Galaxy and Space) as packs cost about $12 and Team's about $20; plans add their features and
+// Space and Nebula) as packs cost about $12 and Team's about $20; plans add their features and
 // refill every month. Bigger packs cost less per credit. The smallest pack is 25 credits ($0.99+),
 // so every sale is above what card payments take in fees (about 30¢ each).
 export const PACK_SIZES = [25, 50, 100];

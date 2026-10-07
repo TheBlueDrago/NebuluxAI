@@ -3,7 +3,7 @@
 const PRO_UP = ["pro", "team", "secret", "enterprise", "admin"];
 const TEAM_UP = ["team", "secret", "enterprise", "admin"];
 
-// Galaxy, ZIP download and GitHub push.
+// Space, ZIP download and GitHub push.
 export const hasProFeatures = (plan) => PRO_UP.includes(plan);
-// Space (the premium creative model) in the designers.
+// Nebula (the premium creative model) in the designers.
 export const hasSpace = (plan) => TEAM_UP.includes(plan);

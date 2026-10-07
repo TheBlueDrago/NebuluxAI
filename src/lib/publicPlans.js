@@ -9,7 +9,7 @@ export const PUBLIC_PLANS = [
     price: "$0",
     period: "",
     blurb: "Try everything and publish your first site and game.",
-    features: ["100 Nebulux AI, 75 Code, 50 Galaxy and 25 Space credits every month", "3 published websites", "Unlimited games", "ZIP download, two-way GitHub sync and custom domains", "Free web address"],
+    features: ["100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits every month", "3 published websites", "Unlimited games", "ZIP download, two-way GitHub sync and custom domains", "Free web address"],
   },
   {
     id: "pro",
@@ -19,7 +19,7 @@ export const PUBLIC_PLANS = [
     blurb: "More credits, all 4 AI models and your code to keep. Coming soon in a later update.",
     features: [
       "100 Nebulux AI credits a month",
-      "50 each of Code, Galaxy and Space credits",
+      "50 each of Galaxy, Space and Nebula credits",
       "3 published websites",
       "3 new games a month",
       "Download a ZIP, two-way GitHub sync allowed",
@@ -35,7 +35,7 @@ export const PUBLIC_PLANS = [
     features: [
       "Up to 3 people, one shared pool of credits",
       "150 Nebulux AI credits a month",
-      "100 each of Code, Galaxy and Space credits",
+      "100 each of Galaxy, Space and Nebula credits",
       "3 published websites, 5 new games a month",
       "Download a ZIP, two-way GitHub sync allowed",
     ],
@@ -48,7 +48,7 @@ export const PUBLIC_PLANS = [
     blurb: "For registered businesses and organizations of any size.",
     features: [
       "As many seats as you need",
-      "One shared pool: each seat adds 100 AI, 75 Code, 50 Galaxy and 25 Space credits a month",
+      "One shared pool: each seat adds 100 AI, 75 Galaxy, 50 Space and 25 Nebula credits a month",
       "Add and remove people yourself",
       "10 published websites, 10 new games a month",
       "Price based on your number of seats",

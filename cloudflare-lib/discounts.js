@@ -11,8 +11,8 @@ export const DISCOUNT_TARGETS = [
   { id: "credits", label: "All credit packs" },
   { id: "credits-ai", label: "Nebulux AI credit packs" },
   { id: "credits-code", label: "Nebulux Code credit packs" },
-  { id: "credits-galaxy", label: "Galaxy credit packs" },
-  { id: "credits-space", label: "Space credit packs" },
+  { id: "credits-galaxy", label: "Space credit packs" },
+  { id: "credits-space", label: "Nebula credit packs" },
 ];
 const PLAN_IDS = ["pro", "team"];
 

@@ -227,9 +227,9 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
           <>
             <p className="text-[14px] text-[var(--cl-muted)]">{plan} plan · credits for chatting, refilled every month.</p>
             <Bar label="Nebulux AI" used={credits.aiUsed || 0} total={credits.aiTotal || 0} />
-            <Bar label="Ultra / Nebulux Code" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
-            <Bar label="Galaxy" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
-            <Bar label="Space" used={credits.space5Used || 0} total={credits.space5Total || 0} />
+            <Bar label="Galaxy" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
+            <Bar label="Space" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
+            <Bar label="Nebula" used={credits.space5Used || 0} total={credits.space5Total || 0} />
           </>
         ) : !api ? (
           <p className="text-[14px] text-[var(--cl-muted)]">Loading…</p>

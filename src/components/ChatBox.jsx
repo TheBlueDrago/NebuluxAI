@@ -59,8 +59,8 @@ const writeContinue = (v) => {
 
 
 const CODE_SYS = "You are Nebulux Code Assistant. Help with programming. Give clear, correct code with brief explanations.";
-const FABLE_SYS = "You are Space, Nebulux AI's premium creative model. Be imaginative and high-quality.";
-const AI_NAMES = { ai: "Nebulux AI", code: "Ultra", opus5: "Galaxy", fable: "Space" };
+const FABLE_SYS = "You are Nebula, Nebulux AI's premium creative model. Be imaginative and high-quality.";
+const AI_NAMES = { ai: "Nebulux AI", code: "Galaxy", opus5: "Space", fable: "Nebula" };
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
 // Shown in an empty chat so new people see what they can make right away.
 // Sent when an answer stopped at the length limit (the server marks it "more").
@@ -93,7 +93,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [selectedAi, setSelectedAi] = useState("ai");
-  // Ultra (the coding AI) is Pro and up: anyone below that is moved back to the normal AI.
+  // Galaxy (the coding AI) is Pro and up: anyone below that is moved back to the normal AI.
   const codeAllowedHere = useAppShell()?.codeAllowed;
   useEffect(() => {
     if (codeAllowedHere === false && selectedAi === "code") setSelectedAi("ai");
@@ -613,7 +613,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t));
               }}
             />
-            <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} labels={{ code: "Ultra" }} />
+            <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} labels={{ code: "Galaxy" }} />
             <EffortPicker value={effort} onChange={setEffort} />
             <AboutMeButton userId={shell?.currentUser?.id} />
             {selectedAi === "ai" && <StudyModeButton />}

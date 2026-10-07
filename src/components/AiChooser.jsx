@@ -7,11 +7,11 @@ import { hasProFeatures } from "@/lib/plans";
 const OPTIONS = [
   { id: "ai", label: "AI", icon: Sparkles, color: "text-indigo-400" },
   { id: "code", label: "Nebulux Code", icon: Code, color: "text-emerald-300" },
-  { id: "opus5", label: "Galaxy", icon: Gem, color: "text-sky-300" },
-  { id: "fable", label: "Space", icon: Star, color: "text-fuchsia-300" },
+  { id: "opus5", label: "Space", icon: Gem, color: "text-sky-300" },
+  { id: "fable", label: "Nebula", icon: Star, color: "text-fuchsia-300" },
 ];
 
-// labels: other names for the options in one place (the home chat calls Nebulux Code "Ultra").
+// labels: other names for the options in one place (the home chat calls Nebulux Code "Galaxy").
 export default function AiChooser({ value, onChange, plan, allowFable, labels = {} }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -101,7 +101,7 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
               );
             })}
             {!allowFable && (
-              <p className="px-2.5 py-1 text-[10px] text-slate-500">Galaxy & Space: Website Designer only</p>
+              <p className="px-2.5 py-1 text-[10px] text-slate-500">Space & Nebula: Website Designer only</p>
             )}
             {OPTIONS.some((o) => !canUse(o.id)) && (
               <p className="px-2.5 py-1 text-[10px] text-slate-500">No credits for an AI? Pick it to buy its credits, whatever your plan, or upgrade.</p>

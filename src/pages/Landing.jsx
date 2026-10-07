@@ -28,7 +28,7 @@ const AI_SKILLS = [
   { icon: Image, title: "Pictures", text: "Send up to 3 photos or screenshots and ask about them." },
   { icon: Mic, title: "Talk to it", text: "Tap the microphone and ask out loud, and it answers out loud too." },
   { icon: UserRoundPen, title: "Knows you", text: "Tell it about yourself once and every answer fits you, from your grade to how short you like replies." },
-  { icon: Layers, title: "Four AI models", text: "Nebulux AI for everyday help, plus Code, Galaxy and Space on Pro." },
+  { icon: Layers, title: "Four AI models", text: "Nebulux AI for everyday help, plus Galaxy, Space and Nebula on Pro." },
 ];
 
 const FEATURES = [
@@ -76,7 +76,7 @@ const FEATURES = [
     eyebrow: "Enterprise",
     title: "Bring your whole organization.",
     text: "For registered businesses and organizations: a seat for everyone and one shared pool of credits that grows with every seat. The price depends on how many people you have.",
-    bullets: ["Verified organizations only (LLC, corporation, nonprofit…)", "Each seat adds 100 AI, 75 Code, 50 Galaxy and 25 Space credits a month to the shared pool", "Add and remove people yourself"],
+    bullets: ["Verified organizations only (LLC, corporation, nonprofit…)", "Each seat adds 100 AI, 75 Galaxy, 50 Space and 25 Nebula credits a month to the shared pool", "Add and remove people yourself"],
     cta: { to: "/enterprise", label: "Apply for Enterprise" },
     Picture: EnterpriseShot,
   },
@@ -108,7 +108,7 @@ const FAQ = [
   ["Why use Nebulux AI instead of another site?", "Because it does everything in one place: the same AI helps with questions, homework, writing and code, and builds real websites and games for you, with no coding and no hosting bills. It's made for learning (Study mode, quizzes, math that looks like a textbook), everything published is safety-checked, and it's free to start."],
   ["What can the AI help me with?", "Almost anything you'd ask a smart friend: homework explained step by step, practice quizzes, essays, emails and stories, code, questions about a photo you send, and building websites and games. You can type or just talk to it.", ["/guides", "See the guides"]],
   ["Can I use it for school?", "Yes. It's built to help you understand, not just hand you answers: ask it to explain step by step or quiz you. Always follow your teacher's rules about AI.", ["/guides/ai-homework-help", "Using AI for homework the right way"]],
-  ["Is Nebulux AI free?", "Yes. The Free plan gives you 100 Nebulux AI, 75 Code, 50 Galaxy and 25 Space credits every month, 3 websites and unlimited games. Paid plans (Pro $15 a month and Team $20 a month) are coming soon in a later update."],
+  ["Is Nebulux AI free?", "Yes. The Free plan gives you 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits every month, 3 websites and unlimited games. Paid plans (Pro $15 a month and Team $20 a month) are coming soon in a later update."],
   ["Do I need to know how to code?", "No. You describe what you want in your own words. If you do know code, you can edit it by hand, and on Pro you can download it or push it to GitHub."],
   ["Does it work on my phone?", "Yes. Everything works on phones, tablets and computers, and you can install it like an app from your profile."],
   ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs use more. Your plan gives you a fresh allowance every month."],

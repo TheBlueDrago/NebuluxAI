@@ -4,8 +4,8 @@ import { PACK_SIZES, PACK_PRICES } from "../../../cloudflare-lib/creditPacks.js"
 const TIERS = [
   ["ai", "Nebulux AI"],
   ["aiCode", "Nebulux Code"],
-  ["galaxy5", "Galaxy"],
-  ["space5", "Space"],
+  ["galaxy5", "Space"],
+  ["space5", "Nebula"],
 ];
 const money = (p) => `$${Number(p) % 1 ? Number(p).toFixed(2) : Number(p)}`;
 

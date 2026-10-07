@@ -3,7 +3,7 @@ import { askConfirm } from "@/lib/dialogs";
 import { Loader2, Plus, Minus, Undo2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const LABELS = { ai: "Nebulux AI", aiCode: "Nebulux Code", galaxy5: "Galaxy", space5: "Space" };
+const LABELS = { ai: "Nebulux AI", aiCode: "Galaxy", galaxy5: "Space", space5: "Nebula" };
 
 // Monitor → user detail: the user's live (server-side) credits for every AI, buttons to
 // add or remove credits, and the people they referred (with a way to take one back).

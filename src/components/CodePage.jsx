@@ -39,7 +39,7 @@ import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, l
 // - GitHub (only here, not in the designers): connect your account with a token, pick a repo, add
 //   files to the chat, and save the AI's code back to the repo.
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
-const AI_NAMES = { ai: "AI", code: "Nebulux Code", opus5: "Galaxy", fable: "Space" };
+const AI_NAMES = { ai: "AI", code: "Galaxy", opus5: "Space", fable: "Nebula" };
 // A full web page in a reply (an html code block), to run in the Nebulux Browser.
 const htmlOf = (text) => {
   const m = String(text || "").match(/```html?\s*\n([\s\S]*?)```/i);

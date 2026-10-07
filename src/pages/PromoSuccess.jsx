@@ -4,7 +4,7 @@ import { Gift } from "lucide-react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import MotionPrefs from "@/components/MotionPrefs";
 
-const AI_LABELS = { ai: "Nebulux AI", aiCode: "Nebulux Code", galaxy5: "Galaxy", space5: "Space" };
+const AI_LABELS = { ai: "Nebulux AI", aiCode: "Galaxy", galaxy5: "Space", space5: "Nebula" };
 
 export default function PromoSuccessPage() {
   return (

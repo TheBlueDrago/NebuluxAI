@@ -9,8 +9,8 @@ import { promoWarning } from "@/lib/promoRisk";
 const MODELS = [
   { id: "ai", label: "Nebulux AI" },
   { id: "aiCode", label: "Nebulux Code" },
-  { id: "galaxy5", label: "Galaxy" },
-  { id: "space5", label: "Space" },
+  { id: "galaxy5", label: "Space" },
+  { id: "space5", label: "Nebula" },
 ];
 
 const inputCls =

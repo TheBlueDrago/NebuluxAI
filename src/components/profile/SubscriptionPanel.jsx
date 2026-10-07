@@ -15,8 +15,8 @@ const PLAN = {
 const TIER_NAMES = [
   ["ai", "Nebulux AI"],
   ["aiCode", "Nebulux Code"],
-  ["galaxy5", "Galaxy"],
-  ["space5", "Space"],
+  ["galaxy5", "Space"],
+  ["space5", "Nebula"],
 ];
 
 // Accounts with a practically endless bonus (e.g. the owner's) show "Unlimited", not 1e+91.
