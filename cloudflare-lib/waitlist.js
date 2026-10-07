@@ -27,7 +27,7 @@ export async function joinWaitlist(db, email) {
 
 export async function listWaitlist(db) {
   await ensure(db);
-  const r = await db.prepare("SELECT email, joined_at FROM waitlist ORDER BY joined_at DESC LIMIT 5000").all();
+  const r = await db.prepare("SELECT email, joined_at FROM waitlist ORDER BY joined_at DESC LIMIT 20000").all();
   return r.results || [];
 }
 

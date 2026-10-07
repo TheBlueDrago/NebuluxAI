@@ -219,7 +219,7 @@ export function Privacy() {
       <h2>Who helps us run it</h2>
       <ul>
         <li><strong>Payment providers</strong> — run the checkout and handle your card when paid plans open. We never see or store your card number.</li>
-        <li><strong>Resend</strong> — sends our emails (sign-up codes, password resets, two-step codes, support replies).</li>
+        <li><strong>Resend</strong> — sends our emails (sign-up codes, a welcome email, password resets, two-step codes, low API balance alerts, support replies).</li>
         <li><strong>GitHub</strong> — only if you connect your GitHub account in Nebulux Code. Your GitHub token stays in your browser and is only sent to GitHub; the files you add to a chat are sent to the AI with your question.</li>
         <li><strong>DuckDuckGo and the websites you open</strong> — when you use the Nebulux Browser in Nebulux Code, your searches go to DuckDuckGo and the pages you open are fetched by our server. The AI can see, read and act on whatever you open there, including pages you are signed in to.</li>
         <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress. Cloudflare Turnstile runs the robot check on sign-up and password reset. Cloud sessions in Nebulux Code run there and their replies are deleted after about a day.</li>

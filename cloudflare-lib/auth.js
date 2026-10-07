@@ -173,7 +173,20 @@ async function register(db, env, body) {
   return { success: true, email };
 }
 
-async function verifyOtp(db, body) {
+// The first time someone confirms their email: a short welcome with three things to try.
+// Never blocks signing in if it can't be sent.
+async function sendWelcome(env, email) {
+  const tries = [
+    ["Ask anything", "Homework help, ideas, explanations: just type a question.", "https://nebuluxai.com/chat"],
+    ["Make a website", "Describe it and the Website Designer builds it. Publish it in one click.", "https://nebuluxai.com/chat/designer"],
+    ["Play and make games", "Try Bedwars, or ask the AI to build your own game.", "https://nebuluxai.com/chat/games"],
+  ];
+  const text = `Welcome to Nebulux AI!\n\nThree things to try:\n\n${tries.map(([t, d, u], i) => `${i + 1}. ${t}: ${d}\n   ${u}`).join("\n\n")}\n\nHave fun!`;
+  const html = box(`<h2 style="margin:0 0 12px">Welcome to Nebulux AI!</h2><p>Three things to try:</p>${tries.map(([t, d, u]) => `<p style="margin:14px 0"><a href="${u}" style="color:#6d28d9;font-weight:600">${t}</a><br><span style="color:#475569">${d}</span></p>`).join("")}<p>Have fun!</p>`);
+  await sendMail(env, email, "Welcome to Nebulux AI", text, html).catch(() => {});
+}
+
+async function verifyOtp(db, env, body) {
   const email = cleanEmail(body.email);
   const c = await db.prepare("SELECT * FROM codes WHERE email = ? AND purpose = 'signup'").bind(email).first();
   if (!c || c.expires < Date.now() || c.tries >= 5) throw new AuthError(400, "That code has expired. Send a new one.");
@@ -185,6 +198,7 @@ async function verifyOtp(db, body) {
   const row = await db.prepare("SELECT * FROM logins WHERE email = ?").bind(email).first();
   if (!row) throw new AuthError(400, "Please sign up again.");
   await db.prepare("UPDATE logins SET verified = 1 WHERE email = ?").bind(email).run();
+  if (!row.verified && env) await sendWelcome(env, email);
   return { access_token: await newSession(db, row.user_id), user: await getRow(db, "User", row.user_id) };
 }
 
@@ -231,7 +245,7 @@ export async function handleAuth(db, env, request, path, body) {
     let out;
     if (action === "login") out = await login(db, env, body, origin);
     else if (action === "register") out = await register(db, env, body);
-    else if (action === "verify-otp") out = await verifyOtp(db, body);
+    else if (action === "verify-otp") out = await verifyOtp(db, env, body);
     else if (action === "resend-otp") {
       const email = cleanEmail(body.email);
       const row = await db.prepare("SELECT verified FROM logins WHERE email = ?").bind(email).first();
