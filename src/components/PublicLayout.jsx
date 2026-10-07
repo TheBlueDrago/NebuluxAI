@@ -48,6 +48,7 @@ const FOOTER = [
       ["/report", "Report a page"],
       ["/terms", "Terms"],
       ["/privacy", "Privacy"],
+      ["/status", "Status"],
     ],
   },
 ];
