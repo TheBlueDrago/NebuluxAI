@@ -68,6 +68,10 @@ export async function onRequest(context) {
   const { request, params } = context;
   const path = Array.isArray(params.path) ? params.path.join("/") : (params.path || "");
   const url = new URL(request.url);
+  // nebuluxai.com/api itself (and /api/) is the Nebulux Platform page in the app, not an API call.
+  if (!path && (request.method === "GET" || request.method === "HEAD") && context.env && context.env.ASSETS) {
+    return context.env.ASSETS.fetch(new Request(new URL("/", url), request));
+  }
   const target = `${BACKEND}/api/${path}${url.search}`;
   // Only Base44's API is reachable through here: a path that climbs out of /api/ (../), or
   // has a part that would once decoded (..%2f), is refused instead of fetching some other

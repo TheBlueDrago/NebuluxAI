@@ -32,6 +32,7 @@ const Templates = lazy(() => import('@/pages/Templates'));
 const Business = lazy(() => import('@/pages/Business'));
 const Pricing = lazy(() => import('@/pages/Pricing'));
 const About = lazy(() => import('@/pages/About'));
+const ApiPlatform = lazy(() => import('@/pages/ApiPlatform'));
 const Guides = lazy(() => import('@/pages/Guides'));
 const WhatsNew = lazy(() => import('@/pages/WhatsNew'));
 const Ideas = lazy(() => import('@/pages/Ideas'));
@@ -118,6 +119,7 @@ const AuthenticatedApp = () => {
       <Route path="/business" element={<Business />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/about" element={<About />} />
+      <Route path="/api" element={<ApiPlatform />} />
       <Route path="/guides" element={<Guides />} />
       <Route path="/whats-new" element={<WhatsNew />} />
       <Route path="/ideas" element={<Ideas />} />

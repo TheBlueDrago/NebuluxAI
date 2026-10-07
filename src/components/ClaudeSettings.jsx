@@ -276,7 +276,8 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
     api: (
       <>
         <H first>API keys</H>
-        <p className="text-[14px] text-[var(--cl-muted)]">Use Nebulux AI from your own apps and code with an API key. Coming soon: keys will show here.</p>
+        <p className="text-[14px] text-[var(--cl-muted)]">Use Nebulux AI from your own apps and code. Make and manage keys, try the API and read the docs on the Nebulux Platform.</p>
+        <div className="mt-4"><button onClick={() => window.open("/api", "_blank", "noopener")} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[13.5px] font-medium">Open Nebulux Platform <ArrowUpRight className="inline w-4 h-4" /></button></div>
       </>
     ),
   }[tab];

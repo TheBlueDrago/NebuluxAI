@@ -265,7 +265,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               <span className="flex-1">Refer friends</span>
             </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
-            <button onClick={() => { setMenu(false); openProfile("api"); if (mobile) onClose?.(); }} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); window.open("/api", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <KeyRound className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />
               <span className="flex-1">Get API keys<span className="block text-[12.5px] text-[var(--cl-faint)]">on Nebulux Platform</span></span>
               <ExternalLink className="w-4 h-4 text-[var(--cl-muted)]" />
