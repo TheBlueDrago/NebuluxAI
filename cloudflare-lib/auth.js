@@ -109,6 +109,44 @@ async function newSession(db, userId) {
   return token;
 }
 
+// ---- New-device sign-in alerts. A "device" is the browser + system + country (not the exact
+// version or address, so updates and moving around town don't count). The first device an account
+// ever signs in on is just remembered; after that, a new one gets an email so the owner notices
+// if someone else got in. Never blocks signing in.
+export function deviceOf(request) {
+  const ua = String((request && request.headers.get("user-agent")) || "");
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\/|Opera/.test(ua) ? "Opera" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "a browser";
+  const system = /iPhone|iPad|iPod/.test(ua) ? "iPhone/iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /CrOS/.test(ua) ? "Chromebook" : /Linux/.test(ua) ? "Linux" : "an unknown system";
+  const cf = (request && request.cf) || {};
+  const country = String(cf.country || request?.headers.get("cf-ipcountry") || "");
+  const place = [cf.city, cf.region, country].filter(Boolean).join(", ");
+  return { key: `${browser}|${system}|${country}`, label: `${browser} on ${system}`, place };
+}
+
+export async function noteDevice(db, env, request, userId, email) {
+  try {
+    await db.prepare("CREATE TABLE IF NOT EXISTS known_devices (user_id TEXT NOT NULL, dev TEXT NOT NULL, first_at TEXT, last_at TEXT, PRIMARY KEY (user_id, dev))").run();
+    const d = deviceOf(request);
+    const dev = await sha(d.key);
+    const now = new Date().toISOString();
+    const known = await db.prepare("SELECT 1 FROM known_devices WHERE user_id = ? AND dev = ?").bind(userId, dev).first();
+    if (known) {
+      await db.prepare("UPDATE known_devices SET last_at = ? WHERE user_id = ? AND dev = ?").bind(now, userId, dev).run();
+      return false;
+    }
+    const any = await db.prepare("SELECT 1 FROM known_devices WHERE user_id = ? LIMIT 1").bind(userId).first();
+    await db.prepare("INSERT INTO known_devices (user_id, dev, first_at, last_at) VALUES (?, ?, ?, ?)").bind(userId, dev, now, now).run();
+    if (!any || !email || !env || !env.RESEND_API_KEY) return false;
+    const when = new Date().toUTCString();
+    const text = `Someone just signed in to your Nebulux AI account from a new device:\n\n${d.label}${d.place ? `, near ${d.place}` : ""}\n${when}\n\nIf this was you, you can ignore this email.\n\nIf it wasn't you: change your password right away (https://nebuluxai.com/forgot-password), then go to Settings → Security → Sign out on all devices.`;
+    const html = box(`<h2 style="margin:0 0 12px">New sign-in to your account</h2><p>Someone just signed in to your Nebulux AI account from a new device:</p><p style="background:#f1f5f9;border-radius:8px;padding:12px"><b>${d.label}</b>${d.place ? `<br>near ${d.place}` : ""}<br><span style="color:#475569">${when}</span></p><p>If this was you, you can ignore this email.</p><p><b>If it wasn't you:</b> <a href="https://nebuluxai.com/forgot-password" style="color:#6d28d9">change your password</a> right away, then go to Settings → Security → Sign out on all devices.</p>`);
+    await sendMail(env, email, "New sign-in to your Nebulux AI account", text, html);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function userByEmail(db, email) {
   return (await all(db, "User")).find((u) => cleanEmail(u.email) === email) || null;
 }
@@ -125,7 +163,7 @@ export async function sessionUser(db, request) {
   return u;
 }
 
-async function login(db, env, body, origin) {
+async function login(db, env, body, origin, request) {
   const email = cleanEmail(body.email);
   const password = String(body.password || "");
   const row = await db.prepare("SELECT * FROM logins WHERE email = ?").bind(email).first();
@@ -146,6 +184,7 @@ async function login(db, env, body, origin) {
   }
   const user = await getRow(db, "User", row.user_id);
   if (!user) throw new AuthError(401, "Invalid email or password");
+  await noteDevice(db, env, request, row.user_id, email);
   return { access_token: await newSession(db, row.user_id), user };
 }
 
@@ -186,7 +225,7 @@ async function sendWelcome(env, email) {
   await sendMail(env, email, "Welcome to Nebulux AI", text, html).catch(() => {});
 }
 
-async function verifyOtp(db, env, body) {
+async function verifyOtp(db, env, body, request) {
   const email = cleanEmail(body.email);
   const c = await db.prepare("SELECT * FROM codes WHERE email = ? AND purpose = 'signup'").bind(email).first();
   if (!c || c.expires < Date.now() || c.tries >= 5) throw new AuthError(400, "That code has expired. Send a new one.");
@@ -199,6 +238,7 @@ async function verifyOtp(db, env, body) {
   if (!row) throw new AuthError(400, "Please sign up again.");
   await db.prepare("UPDATE logins SET verified = 1 WHERE email = ?").bind(email).run();
   if (!row.verified && env) await sendWelcome(env, email);
+  if (env) await noteDevice(db, env, request, row.user_id, email);
   return { access_token: await newSession(db, row.user_id), user: await getRow(db, "User", row.user_id) };
 }
 
@@ -243,9 +283,9 @@ export async function handleAuth(db, env, request, path, body) {
       return { status: 400, body: { message: TURNSTILE_FAILED, code: "turnstile" } };
     }
     let out;
-    if (action === "login") out = await login(db, env, body, origin);
+    if (action === "login") out = await login(db, env, body, origin, request);
     else if (action === "register") out = await register(db, env, body);
-    else if (action === "verify-otp") out = await verifyOtp(db, env, body);
+    else if (action === "verify-otp") out = await verifyOtp(db, env, body, request);
     else if (action === "resend-otp") {
       const email = cleanEmail(body.email);
       const row = await db.prepare("SELECT verified FROM logins WHERE email = ?").bind(email).first();
@@ -372,6 +412,7 @@ export async function googleCallback(db, env, request) {
       headers: { location: `${url.origin}/login?google=check`, "set-cookie": `${GOOGLE_COOKIE}=; Path=/api/apps/auth/google; Max-Age=0`, "cache-control": "no-store" },
     });
   }
+  await noteDevice(db, env, request, userId, email);
   const session = await newSession(db, userId);
   const to = new URL(samePath(decodeURIComponent(m[2] || "/")), url.origin);
   to.searchParams.set("access_token", session);
