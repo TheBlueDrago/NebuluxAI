@@ -1,4 +1,6 @@
 import { logError } from "../../cloudflare-lib/errorlog.js";
+import { joinWaitlist } from "../../cloudflare-lib/waitlist.js";
+import { allow } from "../../cloudflare-lib/ratelimit.js";
 // nebulux-site-router — the Cloudflare Worker that serves every published site on
 // its own subdomain (nova.nebuluxai.com). Bound to the route
 // *.nebuluxai.com/* (wildcard DNS). This is a copy of the code deployed in the
@@ -214,6 +216,25 @@ function ownerNet(request, env) {
 }
 
 // -> a Response to send instead (down page, or the owner's unlock), or null to carry on.
+// The main address's down page also asks for an email for the launch waitlist (cloudflare-lib/waitlist.js).
+// A plain form (no script), with a hidden "website" field that only bots fill in.
+var WAIT_STYLE = "<style>form{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}input{font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;min-width:220px}button{font:inherit;font-size:16px;padding:10px 16px;border-radius:10px;border:0;background:#e2e8f0;color:#05060f;font-weight:600;cursor:pointer}p{color:#94a3b8;max-width:420px;margin:12px auto 0}.hp{position:absolute;left:-9999px}</style>";
+function waitPage(note) {
+  var body = note
+    ? "<p>" + note + "</p>"
+    : "<p>Want to know when it's back? Leave your email and we'll tell you.</p><form method='post' action='/__waitlist'><input class='hp' name='website' tabindex='-1' autocomplete='off' aria-hidden='true'><input type='email' name='email' required placeholder='you@example.com' aria-label='Your email'><button type='submit'>Notify me</button></form>";
+  return DOWN_PAGE.replace("</style>", "</style>" + WAIT_STYLE).replace(/<\/h1>/, "</h1>" + body).replace("<body>", "<body><div>").replace("</body>", "</div></body>");
+}
+async function waitlistPost(request, env) {
+  var ip = request.headers.get("cf-connecting-ip") || "unknown";
+  var form = await request.formData().catch(function () { return null; });
+  if (!form) return waitPage("Something went wrong. Please try again.");
+  if (String(form.get("website") || "").trim()) return waitPage("Thanks! We'll email you when Nebulux AI is back."); // a bot: nothing saved
+  if (!(await allow("waitlist:" + ip, 5, 3600))) return waitPage("You've already signed up. We'll email you when Nebulux AI is back.");
+  var ok = await joinWaitlist(env && env.DB, form.get("email")).catch(function () { return false; });
+  return waitPage(ok ? "Thanks! We'll email you when Nebulux AI is back." : "That email doesn't look right. Go back and try again.");
+}
+
 async function maintenance(request, env, url) {
   if (!env || env.MAINTENANCE !== "on") return null;
   var key = (env && env.OWNER_KEY) || "";
@@ -259,7 +280,11 @@ async function maintenance(request, env, url) {
   // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
   // (domainconnect/nebuluxai.com.website.json logoUrl). Only on the main address.
   if (path === "/logo-small.jpg" && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
-  return new Response(DOWN_PAGE, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "retry-after": "86400", "x-robots-tag": "noindex" } });
+  var main = url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com";
+  var page = DOWN_PAGE;
+  if (main && path === "/__waitlist" && request.method === "POST") page = await waitlistPost(request, env);
+  else if (main) page = waitPage("");
+  return new Response(page, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "retry-after": "86400", "x-robots-tag": "noindex" } });
 }
 
 // A crash here is recorded for Monitor → Errors (cloudflare-lib/errorlog.js, the DB binding) and
