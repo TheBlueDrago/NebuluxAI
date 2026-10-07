@@ -4,7 +4,7 @@
 //   -> { id, object: "chat.completion", model, content, cost_usd, balance_usd }
 // Paid from the key owner's prepaid API balance (the Playground too), only while their
 // "Use API key credits" switch is on (Settings → Usage). See cloudflare-lib/apirun.js.
-import { keyOwner, noteUse } from "../../cloudflare-lib/apikeys.js";
+import { keyOwner, noteUse, noteSpend, spentThisMonth } from "../../cloudflare-lib/apikeys.js";
 import { allow, hits, bump } from "../../cloudflare-lib/ratelimit.js";
 import { dollars } from "../../cloudflare-lib/apibilling.js";
 import { MODELS, toPrompt, billedAI } from "../../cloudflare-lib/apirun.js";
@@ -35,8 +35,12 @@ export async function onRequestPost(context) {
   if (p.prompt.length > 200000) return fail("That request is too long (200,000 characters at most).", 413);
   const effort = ["low", "medium", "high"].includes(body.effort) ? body.effort : "medium";
 
-  const r = await billedAI(context, { userId: owner.user_id, model, prompt: p.prompt, question: p.question, effort, note: `API key ${owner.id} · ${model}` });
+  // The key's monthly spending limit (API keys → Limit), if it has one.
+  const cap = owner.limit_mc == null ? null : Math.max(0, owner.limit_mc - spentThisMonth(owner));
+  if (cap === 0) return fail("This key has reached its monthly spending limit. Raise it on the Nebulux Platform (nebuluxai.com/api) → API keys.", 429, "spend_limit");
+  const r = await billedAI(context, { userId: owner.user_id, model, prompt: p.prompt, question: p.question, effort, note: `API key ${owner.id} · ${model}`, cap });
   context.waitUntil(noteUse(env.DB, owner.id).catch(() => {}));
+  if (r.cost) context.waitUntil(noteSpend(env.DB, owner.id, r.cost).catch(() => {}));
   if (r.error) return fail(r.error, r.status, r.type);
   return out({ id: "nx-" + crypto.randomUUID(), object: "chat.completion", model, content: r.content, ...(r.cut ? { cut_off: true } : {}), cost_usd: Number(dollars(r.cost)), balance_usd: Number(dollars(r.balance)) });
 }

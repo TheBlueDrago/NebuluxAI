@@ -4,7 +4,7 @@
 // (chatCompletion: the same models and safety rules) as the paying account, with plan credits
 // untouched, and the reply can never cost more than the balance holds.
 import { oneCallSession } from "./apikeys.js";
-import { account, charge, costOf, maxReplyChars } from "./apibilling.js";
+import { account, charge, costOf, maxReplyChars, lowBalanceEmail } from "./apibilling.js";
 import { onRequestPost as chatCompletion } from "../functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 
 export const MODELS = { "nebulux-ai": "automatic", galaxy: "claude_sonnet_4_6", space: "claude_opus_4_8", nebula: "claude-sonnet-5" };
@@ -31,13 +31,16 @@ export function toPrompt(messages, fallback) {
 }
 
 // -> { status, content?, cost?, balance?, error?, type? }
-export async function billedAI(context, { userId, model, prompt, question, effort = "medium", note }) {
+// cap: the most this request may cost (what's left of a key's monthly limit), in millicents.
+export async function billedAI(context, { userId, model, prompt, question, effort = "medium", note, cap }) {
   const { request, env } = context;
   const acct = await account(env.DB, userId);
   if (!acct.agreedAt || !acct.useApi) return { status: 403, type: "billing_off", error: SETTINGS_HINT };
   const bal = acct.balances[model] || 0;
   if (bal <= 0) return { status: 402, type: "out_of_credit", error: `Your ${model} balance is empty. Add funds for it on the Nebulux Platform (nebuluxai.com/api) → Billing.` };
-  const maxChars = maxReplyChars(model, effort, prompt.length, bal);
+  const usable = cap == null ? bal : Math.min(bal, cap);
+  const maxChars = maxReplyChars(model, effort, prompt.length, usable);
+  if (maxChars <= 0 && usable < bal) return { status: 429, type: "spend_limit", error: "This key has reached its monthly spending limit. Raise it on the Nebulux Platform (nebuluxai.com/api) → API keys." };
   if (maxChars <= 0) return { status: 402, type: "out_of_credit", error: `Your ${model} balance is too low for this request. Add funds for it on the Nebulux Platform (nebuluxai.com/api) → Billing.` };
   if (!env.SITE_AUTH_KEY) return { status: 503, type: "api_error", error: "The API isn't set up yet." };
 
@@ -54,6 +57,7 @@ export async function billedAI(context, { userId, model, prompt, question, effor
     const content = data.content || "";
     const cost = costOf(model, effort, prompt.length, content.length);
     await charge(env.DB, userId, model, cost, note || `${model} request`);
+    context.waitUntil(lowBalanceEmail(env, userId, model, bal, bal - cost).catch(() => {}));
     return { status: 200, content, cost, cut: !!data.cut, balance: Math.max(0, bal - cost) };
   } finally {
     context.waitUntil(session.done());

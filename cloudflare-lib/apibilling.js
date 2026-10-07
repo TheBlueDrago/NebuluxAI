@@ -83,3 +83,21 @@ export function maxReplyChars(model, effort, promptChars, balance) {
   return credits >= perCredit ? Math.floor(credits / perCredit) * CHARS_PER_CREDIT : 0;
 }
 export const dollars = (millicents) => (millicents / 100000).toFixed(2);
+
+// When a balance drops under $1 (only on the request that crosses it), its owner gets one email.
+export const LOW_BALANCE = 100000; // $1 in millicents
+const NAMES = { "nebulux-ai": "Nebulux AI", galaxy: "Galaxy", space: "Space", nebula: "Nebula" };
+export async function lowBalanceEmail(env, userId, model, before, after) {
+  if (!(before >= LOW_BALANCE && after < LOW_BALANCE) || !env.RESEND_API_KEY) return false;
+  const row = await env.DB.prepare("SELECT data FROM rows WHERE entity = 'User' AND id = ?").bind(userId).first();
+  const email = row && JSON.parse(row.data || "{}").email;
+  if (!email) return false;
+  const name = NAMES[model] || model;
+  const text = `Your ${name} API balance is down to ${dollars(Math.max(0, after))}.\n\nWhen it runs out, your API keys and website AI that use ${name} stop working. Add funds on the Nebulux Platform: https://nebuluxai.com/api (Billing).`;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ from: "Nebulux AI <support@nebuluxai.com>", to: [email], subject: `Your ${name} API balance is low`, text }),
+  });
+  return true;
+}

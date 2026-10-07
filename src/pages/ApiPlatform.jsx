@@ -4,7 +4,7 @@ import { KeyRound, Home, FlaskConical, BookOpen, Gauge, Plus, Copy, Check, Trash
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import BlackholeIcon from "@/components/BlackholeIcon";
-import { askConfirm } from "@/lib/dialogs";
+import { askConfirm, askText } from "@/lib/dialogs";
 
 // The Nebulux Platform (nebuluxai.com/api): make API keys and use Nebulux AI from your own code.
 // Keys: functions/.../api-keys.js; the API itself: functions/v1/chat.js (paid from prepaid per-AI balances, Billing).
@@ -138,6 +138,16 @@ export default function ApiPlatform() {
     const d = await call({ action: "revoke", id: k.id }, k.id);
     if (d) setKeys(d.keys);
   };
+  // A monthly spending limit for one key, so a leaked key can't spend more than that.
+  const setLimit = async (k) => {
+    const cur = k.limit_mc == null ? "" : String(k.limit_mc / 100000);
+    const v = await askText(`Monthly spending limit for "${k.name}" in dollars. Leave empty for no limit.`, { defaultValue: cur, placeholder: "e.g. 10", maxLength: 8, confirmLabel: "Save" });
+    if (v === null || v === undefined) return;
+    const t = String(v).trim().replace(/^\$/, "");
+    if (t && !(Number(t) >= 0)) { setErr("Type a number of dollars, like 10."); return; }
+    const d = await call({ action: "limit", id: k.id, dollars: t === "" ? null : Number(t) }, k.id);
+    if (d) setKeys(d.keys);
+  };
   const run = async () => {
     setPgOut({ loading: true });
     const t0 = Date.now();
@@ -210,13 +220,13 @@ export default function ApiPlatform() {
         <div className="rounded-xl border border-[var(--cl-border)] overflow-x-auto">
           <table className="w-full text-left text-[13.5px] min-w-[640px]">
             <thead className="text-[12.5px] text-[var(--cl-muted)] bg-[var(--cl-card)]">
-              <tr>{["Name", "Key", "Created by", "Created", "Last used", "Calls", ""].map((h) => <th key={h} className="font-medium px-4 py-2.5 border-b border-[var(--cl-border)]">{h}</th>)}</tr>
+              <tr>{["Name", "Key", "Created by", "Created", "Last used", "Calls", "This month", ""].map((h) => <th key={h} className="font-medium px-4 py-2.5 border-b border-[var(--cl-border)]">{h}</th>)}</tr>
             </thead>
             <tbody>
               {keys === null ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center"><Loader2 className="w-5 h-5 animate-spin inline text-[var(--cl-muted)]" /></td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center"><Loader2 className="w-5 h-5 animate-spin inline text-[var(--cl-muted)]" /></td></tr>
               ) : keys.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-[var(--cl-muted)]">No API keys yet. Press Create Key to make one.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--cl-muted)]">No API keys yet. Press Create Key to make one.</td></tr>
               ) : (
                 keys.map((k) => (
                   <tr key={k.id} className="border-b last:border-0 border-[var(--cl-border)] hover:bg-[var(--cl-hover)]/40">
@@ -226,10 +236,16 @@ export default function ApiPlatform() {
                     <td className="px-4 py-3 text-[var(--cl-muted)] whitespace-nowrap">{k.created_at ? new Date(k.created_at).toLocaleDateString(undefined, { dateStyle: "medium" }) : ""}</td>
                     <td className="px-4 py-3 text-[var(--cl-muted)] whitespace-nowrap">{k.last_used ? new Date(k.last_used).toLocaleDateString(undefined, { dateStyle: "medium" }) : "Never"}</td>
                     <td className="px-4 py-3 text-[var(--cl-muted)]">{k.uses || 0}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button onClick={() => setLimit(k)} title="Set a monthly spending limit" className={`hover:underline ${k.limit_mc != null && (k.spent_mc || 0) >= k.limit_mc ? "text-red-400" : "text-[var(--cl-muted)]"}`}>
+                        ${((k.spent_mc || 0) / 100000).toFixed(2)}{k.limit_mc != null ? ` / ${(k.limit_mc / 100000).toFixed(2)}` : " · no limit"}
+                      </button>
+                    </td>
                     <td className="px-2 py-3 text-right relative">
                       <button onClick={() => setMenuFor((m) => (m === k.id ? "" : k.id))} aria-label={`Options for ${k.name}`} className="p-1.5 rounded-md text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]"><MoreHorizontal className="w-4 h-4" /></button>
                       {menuFor === k.id && (
                         <div className="absolute right-2 top-11 z-10 w-40 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-xl py-1 text-left">
+                          <button onClick={() => { setMenuFor(""); setLimit(k); }} className="w-full flex items-center gap-2 px-3 py-2 text-[13.5px] hover:bg-[var(--cl-hover)]">Spending limit</button>
                           <button onClick={() => { setMenuFor(""); revoke(k); }} disabled={busy === k.id} className="w-full flex items-center gap-2 px-3 py-2 text-[13.5px] text-red-400 hover:bg-[var(--cl-hover)]"><Trash2 className="w-4 h-4" /> Delete key</button>
                         </div>
                       )}
@@ -240,7 +256,7 @@ export default function ApiPlatform() {
             </tbody>
           </table>
         </div>
-        <p className="text-[12.5px] text-[var(--cl-faint)] mt-3">Keep keys secret: never put one in a public web page or on GitHub. Up to 10 keys, 20 requests a minute each.</p>
+        <p className="text-[12.5px] text-[var(--cl-faint)] mt-3">Keep keys secret: never put one in a public web page or on GitHub. Up to 10 keys, 20 requests a minute each. Give each key a monthly spending limit (click "This month") so a leaked key can't spend more than that. We email you when a balance drops under $1.</p>
 
         {creating && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setCreating(false)}>

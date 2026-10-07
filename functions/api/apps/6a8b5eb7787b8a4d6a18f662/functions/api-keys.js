@@ -4,7 +4,7 @@
 //   { action: "revoke", id }         -> { keys }
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
-import { listKeys, createKey, revokeKey } from "../../../../../cloudflare-lib/apikeys.js";
+import { listKeys, createKey, revokeKey, setLimit } from "../../../../../cloudflare-lib/apikeys.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 import { account } from "../../../../../cloudflare-lib/apibilling.js";
 
@@ -23,6 +23,11 @@ export async function onRequestPost({ request, env }) {
     const r = await createKey(env.DB, user.id, body.name);
     if (r.error) return json(r, 400);
     return json({ key: r.key, keys: await listKeys(env.DB, user.id) });
+  }
+  // { action: "limit", id, dollars }: a monthly spending limit for the key (dollars null = none).
+  if (action === "limit") {
+    await setLimit(env.DB, user.id, body.id, body.dollars);
+    return json({ keys: await listKeys(env.DB, user.id) });
   }
   if (action === "revoke") {
     await revokeKey(env.DB, user.id, body.id);
