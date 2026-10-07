@@ -26,7 +26,7 @@ import { useAppShell } from "@/components/AppShellContext";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
-import { Cloud, Monitor, ChevronDown, Check } from "lucide-react";
+import { Cloud, Monitor, ChevronDown, Check, Plus } from "lucide-react";
 import { notifyDone } from "@/lib/prefs";
 import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
 import { GitBranch, FolderGit2 } from "lucide-react";
@@ -145,7 +145,10 @@ export default function CodePage({ userInitial }) {
   const spend = (c) => credits.sync?.(c) ?? credits.spendAICode?.(c);
   const [live, setLive] = useState("");
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
+  // The session is kept in this browser (per account), so a refresh or closing the tab loses nothing.
+  const codeKey = `nx-code-chat:${shell?.currentUser?.id || "anon"}`;
+  const [messages, setMessages] = useState(() => { try { return JSON.parse(localStorage.getItem(codeKey) || "[]"); } catch { return []; } });
+  useEffect(() => { try { if (messages.length) localStorage.setItem(codeKey, JSON.stringify(messages.slice(-80))); else localStorage.removeItem(codeKey); } catch { /* full or blocked */ } }, [messages, codeKey]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [panel, setPanel] = useState(""); // "", "browser", "github"
@@ -399,6 +402,7 @@ export default function CodePage({ userInitial }) {
         <p className="sr-only" role="status" aria-live="polite">{announce}</p>
         {/* top bar: the two panels */}
         <div className="h-12 shrink-0 flex items-center justify-end gap-1 px-3 pl-14 sm:pl-3">
+          {messages.length > 0 && <PanelButton icon={Plus} label="New session" on={false} onClick={() => { if (loading) stop(); setMessages([]); setAttached([]); }} />}
           <PanelButton icon={Globe} label="Browser" on={panel === "browser"} onClick={() => setPanel((p) => (p === "browser" ? "" : "browser"))} />
           <PanelButton icon={Github} label={ghToken ? (repo ? repo.split("/")[1] : "GitHub") : "Connect GitHub"} on={panel === "github"} onClick={() => setPanel((p) => (p === "github" ? "" : "github"))} />
         </div>

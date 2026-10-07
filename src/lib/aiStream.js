@@ -44,6 +44,8 @@ export async function streamChat(body, onDelta, { signal, waits = BUSY_RETRY_WAI
         return res;
       } catch (e) {
         if (wrote || !e?.response?.data?.busy || attempt >= waits.length || signal?.aborted) throw e;
+        // Tell the person why it's taking longer (components/BusyNotice.jsx).
+        try { window.dispatchEvent(new CustomEvent("nx-ai-busy", { detail: { waitMs: waits[attempt], attempt: attempt + 1, of: waits.length } })); } catch { /* fine */ }
         await wait(waits[attempt], signal);
       }
     }
