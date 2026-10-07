@@ -27,6 +27,7 @@ import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
 import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
+import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
 
 const MODEL_MAP = {
   automatic: "gemini-3.5-flash",
@@ -330,6 +331,12 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
 // Extra free keys (from other Google accounts or projects) can be added as Cloudflare secrets.
 export const geminiKeys = (env) => [env.GEMINI_API_KEY, env.GEMINI_API_KEY_2, env.GEMINI_API_KEY_3, env.GEMINI_API_KEY_4].filter(Boolean);
 
+const failKind = (err) => (err instanceof GeminiError && err.retryable ? "busy" : "fail");
+const counted = (context, kind, model) => {
+  context.waitUntil(countAi(context.env.DB, kind));
+  if (model) context.waitUntil(countAi(context.env.DB, "model:" + model));
+};
+
 function failure(err) {
   const busy = err instanceof GeminiError && err.retryable;
   return {
@@ -444,10 +451,12 @@ export async function onRequestPost(context) {
     if (!body.stream) {
       try {
         const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
+        counted(context, "ok", r.model);
         return json({ content: r.text, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut)) });
       } catch (err) {
         // 503 rather than 502: Cloudflare replaces 502 bodies on the custom domain with a
         // bare "error code: 502", which hid this message from users.
+        counted(context, failKind(err));
         return json(failure(err), 503);
       }
     }
@@ -472,8 +481,10 @@ export async function onRequestPost(context) {
         if (!internal) await send({ meta: { perChars: CHARS_PER_CREDIT, mult } });
         try {
           const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
+          counted(context, "ok", r.model);
           await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });
         } catch (err) {
+          counted(context, failKind(err));
           await send({ ...failure(err), status: 503 });
         } finally {
           await writer.close().catch(() => {});

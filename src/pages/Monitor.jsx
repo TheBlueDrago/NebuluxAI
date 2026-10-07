@@ -14,6 +14,7 @@ import PublishedContent from "@/components/monitor/PublishedContent";
 import AdminLog from "@/components/monitor/AdminLog";
 import SecurityGlance from "@/components/monitor/SecurityGlance";
 import TermsOverdue from "@/components/monitor/TermsOverdue";
+import AiHealth from "@/components/monitor/AiHealth";
 
 export default function Monitor({ onBack }) {
   const [users, setUsers] = useState([]);
@@ -163,6 +164,7 @@ export default function Monitor({ onBack }) {
       />
 
       {!loading && <GrowthCard users={users} complete={allLoaded} />}
+      <AiHealth />
 
       {/* Published sites & games with safety flags, red first. */}
       <PublishedContent />
