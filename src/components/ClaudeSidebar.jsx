@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Sparkles, Gift, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink } from "lucide-react";
+import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Gift, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";

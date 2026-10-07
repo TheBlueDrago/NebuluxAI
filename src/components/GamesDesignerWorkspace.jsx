@@ -1,5 +1,4 @@
 import React from "react";
-import { AnimatePresence } from "framer-motion";
 import { useAppShell } from "@/components/AppShellContext";
 import Sidebar from "@/components/Sidebar";
 import GamesDesigner from "@/pages/chat/GamesDesigner";

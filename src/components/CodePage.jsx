@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { askConfirm, askText, showNotice } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReportReply from "@/components/chat/ReportReply";
-import { RotateCcw, Globe, Github, X, Search, ArrowLeft, ExternalLink, Loader2, FileCode, Upload, LogOut, Code, Maximize2, Minimize2 } from "lucide-react";
+import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximize2, Minimize2 } from "lucide-react";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
@@ -24,12 +24,11 @@ import VoiceInput from "@/components/chat/VoiceInput";
 import AiChooser from "@/components/AiChooser";
 import { useAppShell } from "@/components/AppShellContext";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
-import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 import { Cloud, Monitor, ChevronDown, Check, Plus } from "lucide-react";
 import { notifyDone } from "@/lib/prefs";
 import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
-import { GitBranch, FolderGit2 } from "lucide-react";
+import { GitBranch } from "lucide-react";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, listFiles, readFile, pushFile } from "@/lib/githubClient";
 
@@ -300,7 +299,7 @@ export default function CodePage({ userInitial }) {
   };
   useEffect(() => {
     if (ghToken && repo && files.length) addAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [files]);
   const saveToRepo = async (code) => {
     if (!ghToken || !repo) {
@@ -405,7 +404,7 @@ export default function CodePage({ userInitial }) {
       if (j.credits) spend(j.credits);
       setMessages((m) => [...m, { role: "ai", content: j.status === "done" ? j.content || "" : `⚠ ${j.error || "The cloud session lost this reply. Please try again."}` }]);
     }).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const q = useMessageQueue({ run: (t) => runPrompt(t), remaining: { [ai]: remaining[ai] ?? (exhausted ? 0 : Infinity) }, names: AI_NAMES, selectedAi: ai });

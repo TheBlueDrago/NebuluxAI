@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppShell } from "@/components/AppShellContext";
@@ -86,7 +85,7 @@ export function CodeWorkspace() {
       shell.setUpgradeOpen(true);
       shell.navigate("/chat", { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [shell.codeAllowed, shell.credits?.plan]);
   if (shell.codeAllowed === false) return null;
   const { credits, avatarInitial } = shell;

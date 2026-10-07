@@ -53,7 +53,7 @@ await C.applyGrant(kv, "u1", { plan: "secret", planExpiresAt: "2000-01-01T00:00:
 s = await status({ id: "u1" });
 assert(s.plan === "pro", "expired grant ignored (falls back to the paid plan)");
 s = await status({ id: "a1", role: "admin" });
-assert(s.plan === "admin", "admins get the admin allowance");
+assert(s.plan === "free", "admins are on Free like everyone else unless given a plan (owner, 2026-10-07)");
 
 // Bans
 fresh();

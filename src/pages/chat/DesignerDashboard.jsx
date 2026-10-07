@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { askConfirm, askText } from "@/lib/dialogs";
-import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import {
   Menu, Globe, Plus, Sparkles, Loader2, Pencil, Trash2, Eye, EyeOff, Crown, ExternalLink, QrCode, Star, Inbox as InboxIcon,
@@ -245,7 +244,7 @@ export default function DesignerDashboard() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [currentUser?.id]);
 
   // Which sites are in the public gallery (/showcase); see functions/showcase.js.
@@ -326,7 +325,7 @@ export default function DesignerDashboard() {
     if (!t) return;
     loadDesignerHtmlIntoProject(`my-${t.id}`, t.html);
     navigate("/chat/designer/build", { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const toggleHidden = async (s) => {
