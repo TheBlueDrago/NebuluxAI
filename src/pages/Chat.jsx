@@ -84,6 +84,11 @@ function ChatLayout() {
         open={profileOpen}
         initialView={profileView || "main"}
         onClose={closeProfile}
+        onBack={() => {
+          const from = loc.state?.profileFrom;
+          if (from && (from === "main" || from === "settings" || SETTINGS_TABS.includes(from))) openProfile(from);
+          else closeProfile();
+        }}
         onMonitor={() => navigate("/chat/monitor", { replace: true })}
         onPromos={() => navigate("/chat/promos", { replace: true })}
       />

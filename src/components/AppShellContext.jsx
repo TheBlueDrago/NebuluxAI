@@ -128,16 +128,17 @@ export function AppShellProvider({ children }) {
   const goBack = useCallback(() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/chat", { replace: true })), [navigate]);
   // The profile opens over the current page as a history entry of its own, so the page stays
   // behind it and the phone's back button (or a tap outside) closes it.
-  const openProfile = useCallback((initialView = "main") => {
+  const openProfile = useCallback((initialView = "main", from) => {
     const state = location.state || {};
     const alreadyOpen = !!state.profile;
     navigate(location.pathname + location.search, {
       replace: alreadyOpen,
-      state: { ...state, profile: initialView, profileEntry: alreadyOpen ? !!state.profileEntry : true },
+      // profileFrom: the window it was opened from (e.g. Settings), so Back can return there.
+      state: { ...state, profile: initialView, profileFrom: from ?? (alreadyOpen ? state.profile : undefined), profileEntry: alreadyOpen ? !!state.profileEntry : true },
     });
   }, [navigate, location]);
   const closeProfile = useCallback(() => {
-    const { profile, profileEntry, ...rest } = location.state || {};
+    const { profile, profileEntry, profileFrom, ...rest } = location.state || {};
     if (!profile) return;
     if (profileEntry && window.history.state?.idx > 0) navigate(-1);
     else navigate(location.pathname + location.search, { replace: true, state: rest });

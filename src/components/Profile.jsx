@@ -21,7 +21,10 @@ import { stashChats } from "@/lib/chatStash";
 import { useAppShell } from "@/components/AppShellContext";
 import { useAuth } from "@/lib/AuthContext";
 
-export default function Profile({ open, onClose, initialView = "main", onMonitor, onPromos }) {
+export default function Profile({ open, onClose, onBack, initialView = "main", onMonitor, onPromos }) {
+  // Back from a page opened on its own (Refer friends, Password, Delete account...) returns to
+  // where it was opened from (the Settings window or the page itself), not the old menu.
+  const backOut = () => (onBack ? onBack() : onClose());
   const [user, setUser] = useState(null);
   const shell = useAppShell();
   const auth = useAuth();
@@ -273,7 +276,7 @@ export default function Profile({ open, onClose, initialView = "main", onMonitor
             ) : view === "delete" ? (
               <div className="p-6">
                 <button
-                  onClick={() => setView("settings")}
+                  onClick={() => backOut()}
                   className="flex items-center gap-1.5 text-slate-400 text-sm hover:text-slate-200 transition-colors mb-4"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -320,19 +323,19 @@ export default function Profile({ open, onClose, initialView = "main", onMonitor
                 </button>
               </div>
             ) : view === "twostep" ? (
-              <TwoStepPanel onBack={() => setView("settings")} />
+              <TwoStepPanel onBack={() => backOut()} />
             ) : view === "security" ? (
-              <SecurityPanel user={user} email={user?.email} onBack={() => setView("settings")} onChangePassword={startReset} busy={pwBusy} />
+              <SecurityPanel user={user} email={user?.email} onBack={() => backOut()} onChangePassword={startReset} busy={pwBusy} />
             ) : view === "subscription" ? (
-              <SubscriptionPanel onBack={() => setView("settings")} onManagePeople={() => setView("membership")} />
+              <SubscriptionPanel onBack={() => backOut()} onManagePeople={() => setView("membership")} />
             ) : view === "refer" ? (
-              <ReferFriends onBack={() => setView("main")} />
+              <ReferFriends onBack={() => backOut()} />
             ) : view === "sites" ? (
-              <PublishedSites user={user} plan={effPlan} onBack={() => setView("settings")} />
+              <PublishedSites user={user} plan={effPlan} onBack={() => backOut()} />
             ) : view === "games" ? (
               <div className="p-6">
                 <button
-                  onClick={() => setView("settings")}
+                  onClick={() => backOut()}
                   className="flex items-center gap-1.5 text-slate-400 text-sm hover:text-slate-200 transition-colors mb-4"
                 >
                   <ArrowLeft className="w-4 h-4" /> Back
@@ -386,7 +389,7 @@ export default function Profile({ open, onClose, initialView = "main", onMonitor
             ) : view === "settings" ? (
               <div className="p-6">
                 <button
-                  onClick={() => setView("main")}
+                  onClick={() => backOut()}
                   className="flex items-center gap-1.5 text-slate-400 text-sm hover:text-slate-200 transition-colors mb-4"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -605,7 +608,7 @@ export default function Profile({ open, onClose, initialView = "main", onMonitor
                     Forgot password
                   </button>
                   <button
-                    onClick={() => setView("settings")}
+                    onClick={() => backOut()}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-slate-200 font-medium hover:bg-slate-700 transition-colors"
                   >
                     <Settings className="w-4 h-4" />

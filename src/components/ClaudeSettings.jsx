@@ -175,18 +175,18 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
           <button onClick={saveProfile} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 text-[13.5px] font-medium">Save</button>
         </div>
         <Row title="Email" sub={currentUser?.email} />
-        <Row title="Password" sub="Get a link to set a new one."><Btn onClick={() => openProfile("security")}>Change</Btn></Row>
-        <Row title="Two-step sign-in" sub="A code by email when you sign in."><Btn onClick={() => openProfile("twostep")}>Manage</Btn></Row>
-        <Row title="Refer friends" sub="Get credits when friends join."><Btn onClick={() => openProfile("refer")}>Open</Btn></Row>
-        <Row title="Delete account" sub="Removes your account and everything you published."><Btn danger onClick={() => openProfile("delete")}>Delete account</Btn></Row>
+        <Row title="Password" sub="Get a link to set a new one."><Btn onClick={() => openProfile("security", tab)}>Change</Btn></Row>
+        <Row title="Two-step sign-in" sub="A code by email when you sign in."><Btn onClick={() => openProfile("twostep", tab)}>Manage</Btn></Row>
+        <Row title="Refer friends" sub="Get credits when friends join."><Btn onClick={() => openProfile("refer", tab)}>Open</Btn></Row>
+        <Row title="Delete account" sub="Removes your account and everything you published."><Btn danger onClick={() => openProfile("delete", tab)}>Delete account</Btn></Row>
       </>
     ),
     privacy: (
       <>
         <H first>Privacy</H>
         <p className="text-[14px] text-[var(--cl-muted)]">Nebulux never sells your data. Your chats are used to answer you, not to train models.</p>
-        <Row title="Published websites" sub="Take sites down or delete them."><Btn onClick={() => openProfile("sites")}>Manage <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
-        <Row title="Published games"><Btn onClick={() => openProfile("games")}>Manage <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
+        <Row title="Published websites" sub="Take sites down or delete them."><Btn onClick={() => openProfile("sites", tab)}>Manage <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
+        <Row title="Published games"><Btn onClick={() => openProfile("games", tab)}>Manage <ChevronRight className="inline w-3.5 h-3.5" /></Btn></Row>
         <Row title="Privacy Policy"><Btn onClick={() => window.open("/privacy", "_blank", "noopener")}>Read <ArrowUpRight className="inline w-3.5 h-3.5" /></Btn></Row>
         <Row title="Terms of Service"><Btn onClick={() => window.open("/terms", "_blank", "noopener")}>Read <ArrowUpRight className="inline w-3.5 h-3.5" /></Btn></Row>
       </>
@@ -201,7 +201,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
           </div>
           <button onClick={go(goPlans)} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2 text-[13.5px] font-medium">{effPlan && effPlan !== "free" ? "Change plan" : "Upgrade"}</button>
         </div>
-        <Row title="Subscription and team" sub="Seats, team members and your plan's details."><Btn onClick={() => openProfile("subscription")}>Manage</Btn></Row>
+        <Row title="Subscription and team" sub="Seats, team members and your plan's details."><Btn onClick={() => openProfile("subscription", tab)}>Manage</Btn></Row>
         <Row title="Invoices and cancelling" sub="Questions about a payment, or cancel."><Btn onClick={() => window.open("/contact?topic=billing", "_blank", "noopener")}>Contact us</Btn></Row>
       </>
     ),
