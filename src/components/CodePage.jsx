@@ -45,6 +45,8 @@ const htmlOf = (text) => {
   const m = String(text || "").match(/```html?\s*\n([\s\S]*?)```/i);
   return m && /<(html|body|canvas|div|script)\b/i.test(m[1]) ? m[1] : "";
 };
+// Phones (small touch screens) don't get the Nebulux Browser (owner, 2026-10-06).
+const isPhone = () => typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px) and (pointer: coarse)").matches;
 const PREVIEW_NOTE = "Websites, games and apps you write as one HTML file open and run in the Nebulux Browser next to this chat automatically, so never tell the person to copy the code into a file or explain how to open it in a browser.";
 const lastCodeBlock = (text) => {
   const all = [...String(text || "").matchAll(/```[^\n]*\n([\s\S]*?)```/g)];
@@ -170,6 +172,7 @@ export default function CodePage({ userInitial }) {
   const browserRef = useRef(null);
   const pendingPreview = useRef(null);
   const openPreview = (html, title) => {
+    if (isPhone()) return;
     setPanel("browser");
     if (browserRef.current) browserRef.current.preview(html, title);
     else pendingPreview.current = [html, title];
@@ -273,7 +276,7 @@ export default function CodePage({ userInitial }) {
     setLive("");
     const myId = ++reqIdRef.current;
     // The browser is open: look it up first, so the answer can use what's on the web.
-    if (!browserRef.current) {
+    if (!browserRef.current && !isPhone()) {
       setPanel("browser");
       await new Promise((r) => setTimeout(r, 80));
     }
@@ -289,7 +292,7 @@ export default function CodePage({ userInitial }) {
     if (reqIdRef.current !== myId) return;
     const intent = resolveIntent(text, "discuss"); // code only when asked for
     try {
-      const modeNote = (intent.build ? BUILD_NOTE : DISCUSS_NOTE) + "\n" + PREVIEW_NOTE;
+      const modeNote = (intent.build ? BUILD_NOTE : DISCUSS_NOTE) + (isPhone() ? "" : "\n" + PREVIEW_NOTE);
       const eff = effortFor(effort, text, { build: intent.build });
       abortRef.current?.abort();
       const abort = new AbortController();
@@ -403,7 +406,7 @@ export default function CodePage({ userInitial }) {
         {/* top bar: the two panels */}
         <div className="h-12 shrink-0 flex items-center justify-end gap-1 px-3 pl-14 sm:pl-3">
           {messages.length > 0 && <PanelButton icon={Plus} label="New session" on={false} onClick={() => { if (loading) stop(); setMessages([]); setAttached([]); }} />}
-          <PanelButton icon={Globe} label="Browser" on={panel === "browser"} onClick={() => setPanel((p) => (p === "browser" ? "" : "browser"))} />
+          {!isPhone() && <PanelButton icon={Globe} label="Browser" on={panel === "browser"} onClick={() => setPanel((p) => (p === "browser" ? "" : "browser"))} />}
           <PanelButton icon={Github} label={ghToken ? (repo ? repo.split("/")[1] : "GitHub") : "Connect GitHub"} on={panel === "github"} onClick={() => setPanel((p) => (p === "github" ? "" : "github"))} />
         </div>
 
@@ -596,7 +599,7 @@ export default function CodePage({ userInitial }) {
             </button>
           </div>
 
-          {panel === "browser" ? (
+          {panel === "browser" && !isPhone() ? (
             <NebuluxBrowser ref={browserRef} />
           ) : (
             <div className="flex-1 min-h-0 flex flex-col p-3 gap-3">
