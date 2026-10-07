@@ -1,3 +1,4 @@
+import { logError } from "../../cloudflare-lib/errorlog.js";
 // nebulux-site-router — the Cloudflare Worker that serves every published site on
 // its own subdomain (nova.nebuluxai.com). Bound to the route
 // *.nebuluxai.com/* (wildcard DNS). This is a copy of the code deployed in the
@@ -261,8 +262,32 @@ async function maintenance(request, env, url) {
   return new Response(DOWN_PAGE, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "retry-after": "86400", "x-robots-tag": "noindex" } });
 }
 
+// A crash here is recorded for Monitor → Errors (cloudflare-lib/errorlog.js, the DB binding) and
+// visitors get the maintenance or error page, never Cloudflare's "Error 1101 Worker threw exception".
+async function crashed(request, env, ctx, err) {
+  try {
+    if (env && env.DB) {
+      var job = logError(env.DB, { kind: "router", message: (err && err.message) || String(err), stack: err && err.stack, path: new URL(request.url).pathname }).catch(function () {});
+      if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+    }
+  } catch (e) {}
+  var down = env && env.MAINTENANCE === "on";
+  return new Response(down ? DOWN_PAGE : ERROR_PAGE, { status: down ? 503 : 500, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
+}
+var ERROR_PAGE = DOWN_PAGE.replace(/<h1>[^<]*<\/h1>/, "<h1>Sorry, something went wrong. Please try again in a minute.</h1>");
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    try {
+      return await route(request, env);
+    } catch (err) {
+      return crashed(request, env, ctx, err);
+    }
+  },
+};
+
+async function route(request, env) {
+  {
     DOMAINS = (env && env.KV) || null;
     var url = new URL(request.url);
     var host = url.hostname.toLowerCase();
@@ -315,5 +340,5 @@ export default {
       return new Response(notFoundPage(name), { status: 404, headers: PAGE_HEADERS });
     }
     return new Response(isGame ? withGameKick(data.html) : data.html, { status: 200, headers: PAGE_HEADERS });
-  },
-};
+  }
+}

@@ -18,6 +18,12 @@ binding = "KV"
 id = "3ae4e5a66e7f459296bf6c6b99951436"
 
 
+# Crashes are recorded in the site's database for Monitor → Errors (cloudflare-lib/errorlog.js).
+[[d1_databases]]
+binding = "DB"
+database_name = "nebulux-db"
+database_id = "98651468-6280-498a-8641-b24d1725e6f9"
+
 # Maintenance: "on" shows "temporarily down" to everyone but the owner (see worker.js).
 [vars]
 MAINTENANCE = "on"

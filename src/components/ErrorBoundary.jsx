@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/errorReport";
 import React from "react";
 import { isUpdateError, mayAutoReload, freshReload } from "@/lib/updateReload";
 
@@ -17,6 +18,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error("App crashed:", error, info?.componentStack);
+    if (!isUpdateError(error)) reportError(error, String(info?.componentStack || "").slice(0, 600));
     if (isUpdateError(error) && mayAutoReload()) {
       this.timer = setTimeout(freshReload, 2500);
       this.setState({ auto: true });
