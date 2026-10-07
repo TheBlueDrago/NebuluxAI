@@ -98,6 +98,7 @@ canvas{display:block}
   <div class="tb" id="tHit" style="right:110px;bottom:150px">⚔️</div>
   <div class="tb" id="tUse" style="right:30px;bottom:200px">🧱</div>
   <div class="tb" id="tShop" style="right:110px;bottom:230px;font-size:20px">🛒</div>
+  <div class="tb" id="tKill" style="right:30px;bottom:280px;font-size:20px" title="Respawn if you're stuck">↻</div>
 </div>
 <div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">🛒 ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><input id="promo" maxlength="40" placeholder="Promo code" style="padding:10px 12px;border-radius:10px;border:0;font-size:15px;width:220px"><button class="btn" id="promogo" style="background:#8e24aa;font-size:15px;padding:10px 16px">REDEEM</button></div><div id="promomsg" style="font-weight:800;margin-top:6px"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="chest"><div class="box"><h2 id="chtitle" style="margin:0;font-size:30px"></h2><p id="chsub" style="margin:6px 0 10px;font-weight:700;opacity:.85"></p><div id="chrows"></div><button class="btn close" id="chclose">✕ CLOSE (E)</button></div></div>
@@ -429,6 +430,7 @@ addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("wheel",e=>{if(!P||MODE!=="match")return;const n=hotbar(P).length;P.sel=(P.sel+(e.deltaY>0?1:-1)+n)%n;hud()});
 addEventListener("keydown",e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;keys[e.code]=true;
   if(e.code==="KeyY"&&MODE==="match"&&P&&P.alive&&!panelOpen()){dropHeld();return}
+  if(e.code==="KeyK"&&MODE==="match"&&P&&P.alive&&!panelOpen()){selfRespawn();return}
  if(e.code==="KeyR"&&MODE==="match"&&BIG()&&!RAID){startRaid();return}
  if(e.code==="KeyE"){if(panelOpen()){closePanels();lock()}else openNear(nearNPC());return}
  if(e.code==="Escape"&&panelOpen()){closePanels();return}
@@ -444,7 +446,7 @@ if(TOUCH){$("touch").style.display="block";const jb=$("joy"),jk=$("joyk");let ji
  renderer.domElement.addEventListener("touchstart",e=>{const t=e.changedTouches[0];if(t.clientX>innerWidth*.35){lid=t.identifier;lx=t.clientX;ly=t.clientY}},{passive:true});
  const hold=(id,on,off)=>{$(id).addEventListener("touchstart",e=>{e.preventDefault();on()},{passive:false});$(id).addEventListener("touchend",e=>{e.preventDefault();off&&off()},{passive:false})};
  hold("tJump",()=>keys.Space=true,()=>keys.Space=false);hold("tHit",()=>{tHit=true;attack()},()=>tHit=false);hold("tUse",()=>{tUse=true;useItem()},()=>tUse=false);
- hold("tShop",()=>openNear(nearNPC()))}
+ hold("tShop",()=>openNear(nearNPC()));hold("tKill",()=>selfRespawn())}
 
 // ---------- chat (lobby) ----------
 let chatOpen=false;
@@ -519,7 +521,9 @@ function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();
  if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.wave=Math.floor(i/15);e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
  else for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
  for(const e of ENTS)spawn(e);
- hud();updateView();msg(q==="v100"?"1 V 100":"BEDWARS",3,q==="v100"?"100 bots are coming for you. You have 5x health, 15x damage and no knockback!":`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
+ hud();updateView();msg(q==="v100"?"1 V 100":"BEDWARS",3,q==="v100"?"100 bots are coming for you. You have 5x health, 15x damage and no knockback!":`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it · K: respawn if you're stuck");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
+// K (or the ↻ button on phones): give up and respawn, for when you're stuck somewhere.
+function selfRespawn(){if(!P||!P.alive)return;feed("You chose to respawn.");die(P,null)}
 function addEnt(e){e.mesh=makeChar(TEAMS[e.team].c,e.local?null:e.name);setArmorLook(e);if(e.local)e.mesh.visible=false;ENTS.push(e);return e}
 function spawn(e){if(e.local&&typeof promoOn==="function"&&promoOn(e))fillUp(e);if(kitOf(e)==="builder")e.blocks.wool+=24;const g=teamGeom(e.team);e.pos.set(g.spawn[0]+(Math.random()-.5)*2,3.05,g.spawn[1]+(Math.random()-.5)*2);
  if(e.local&&BIG()&&!TEAM_ST[e.team].bed&&SECOND)e.pos.set(SECOND.x+.5,SECOND.y+1.05,SECOND.z+.5);e.vel.set(0,0,0);e.kb.set(0,0,0);e.hp=maxHp(e);e.absorb=0;e.alive=true;e.yaw=Math.atan2(-g.ux,-g.uz);e.pitch=0;
