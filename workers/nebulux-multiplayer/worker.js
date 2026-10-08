@@ -10,10 +10,11 @@ const WAIT_MS = 12000; // a match starts this long after the first player starts
 const MAX_MSG = 24000; // bytes (a 100-player snapshot)
 const MAX_RATE = 60; // messages per second per player
 const ALLOWED_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*nebuluxai\.com$|^https:\/\/([a-z0-9-]+\.)*nebuluxai\.pages\.dev$|^null$/;
-const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat", "vote", "map", "build", "hitBuild", "bw"]);
+const RELAY = new Set(["state", "snap", "hitBot", "hitP", "dead", "fx", "botShot", "won", "qchat", "vote", "map", "build", "hitBuild", "bw", "bs"]);
 // Bedwars (its own room, ?game=bedwars): 4 teams of 1, 2 or 4. Real people are put in the match;
 // bots fill the empty spots. A match starts when it's full, or WAIT_MS after the first person waits.
-const TIMED = { br: MAX_PLAYERS, bw1: 4, bw2: 8, bw4: 16 };
+const TIMED = { br: MAX_PLAYERS, bw1: 4, bw2: 8, bw4: 16, co: 4 };
+// Balloon Siege (?game=balloon-siege): co-op only, with a party code ("co#ABCDE", up to 4 friends).
 // Quick chat only: a number for one of the game's fixed messages ("GG!", "Nice shot!"...), never
 // typed text, so nobody can send anything unkind or personal.
 const QUICK_COUNT = 12;
@@ -67,7 +68,8 @@ export default {
     if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
     const origin = request.headers.get("Origin") || "null";
     if (!ALLOWED_ORIGIN.test(origin)) return new Response("Forbidden", { status: 403 });
-    const id = env.ARENA.idFromName(url.searchParams.get("game") === "bedwars" ? "bedwars" : "storm-strike");
+    const g = url.searchParams.get("game");
+    const id = env.ARENA.idFromName(g === "bedwars" || g === "balloon-siege" ? g : "storm-strike");
     return env.ARENA.get(id).fetch(request);
   },
 };
@@ -134,7 +136,7 @@ export class Arena {
       a.q = DUEL[m.q] || TIMED[m.q] ? m.q : "br";
       a.waitSince = Date.now();
       const party = String(m.party || "").toUpperCase();
-      if (PARTY.test(party) && /^bw[124]$/.test(a.q)) {
+      if (PARTY.test(party) && /^(bw[124]|co)$/.test(a.q)) {
         a.q = a.q + "#" + party;
         ws.serializeAttachment(a);
         const line = this.sockets().filter((s) => s.a.joined && !s.a.match && s.a.q === a.q);
