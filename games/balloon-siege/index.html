@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Balloon Siege · Tower Defense</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#7ec8ff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas{display:block}
+.hud{position:fixed;top:10px;left:10px;display:flex;gap:8px;z-index:5;flex-wrap:wrap}
+.chip{background:rgba(10,14,30,.72);color:#fff;border-radius:12px;padding:7px 12px;font-weight:800;font-size:17px;text-shadow:0 1px 0 #0008;display:flex;align-items:center;gap:6px}
+.right{position:fixed;top:10px;right:10px;display:flex;gap:8px;z-index:5}
+.btn{border:0;border-radius:12px;padding:10px 16px;font:inherit;font-weight:800;font-size:16px;color:#fff;cursor:pointer;background:#455a64;box-shadow:0 3px 0 #0005;text-shadow:0 1px 0 #0006}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #0005}
+.go{background:linear-gradient(#66bb6a,#2e7d32)}
+.bar{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5}
+.slot{width:78px;height:86px;border-radius:12px;background:rgba(10,14,30,.75);border:3px solid transparent;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:12px;position:relative}
+.slot .ic{font-size:30px;line-height:1}
+.slot .k{position:absolute;top:3px;left:6px;font-size:11px;opacity:.7}
+.slot .c{color:#ffe082}
+.slot.on{border-color:#ffe082;background:rgba(40,40,10,.85)}
+.slot.no{opacity:.45}
+.panel{position:fixed;right:10px;top:64px;width:250px;background:rgba(10,14,30,.88);color:#fff;border-radius:14px;padding:14px;z-index:6;display:none}
+.panel h3{font-size:19px;margin-bottom:4px}
+.panel p{font-size:13px;opacity:.85;margin:2px 0}
+.panel .row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.panel .btn{font-size:14px;padding:8px 10px;flex:1}
+.ov{position:fixed;inset:0;background:rgba(5,10,30,.55);display:flex;align-items:center;justify-content:center;z-index:10}
+.box{background:rgba(15,20,45,.95);color:#fff;border-radius:20px;padding:26px;text-align:center;max-width:560px;width:calc(100% - 32px);box-shadow:0 10px 40px #0008}
+.box h1{font-size:44px;font-weight:900;letter-spacing:1px;background:linear-gradient(#fff59d,#ff8a65);-webkit-background-clip:text;background-clip:text;color:transparent}
+.box p{opacity:.85;margin:8px 0 16px}
+.diffs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);color:#fff;font-size:34px;font-weight:900;text-shadow:0 3px 0 #000a;z-index:7;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center}
+.tip{position:fixed;bottom:104px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(10,14,30,.6);padding:6px 12px;border-radius:10px;font-size:13px;font-weight:700;z-index:5;white-space:nowrap}
+#joy{position:fixed;left:24px;bottom:120px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.35);z-index:6;display:none}
+#joyk{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.6)}
+.rot{position:fixed;bottom:250px;z-index:6;display:none;width:52px;height:52px;border-radius:50%;font-size:24px;padding:0}
+@media (max-width:700px){.slot{width:52px;height:66px}.slot .ic{font-size:22px}.slot .n{display:none}.chip{font-size:14px;padding:5px 9px}.box h1{font-size:34px}.tip{display:none}.panel{width:200px}}
+</style>
+</head>
+<body>
+<div class="hud">
+  <div class="chip">❤️ <span id="lives">100</span></div>
+  <div class="chip">💰 <span id="cash">650</span></div>
+  <div class="chip">🌊 Wave <span id="wave">0</span>/40</div>
+</div>
+<div class="right">
+  <button class="btn" id="speed">⏩ 1x</button>
+  <button class="btn go" id="start">▶ START WAVE</button>
+</div>
+<div class="bar" id="bar"></div>
+<div class="tip" id="tip">WASD to walk · drag to look around · pick a tower (1-6) and click the ground to place it</div>
+<div class="panel" id="panel">
+  <h3 id="pn"></h3>
+  <p id="pd"></p>
+  <p id="ps"></p>
+  <div class="row"><button class="btn go" id="pup"></button></div>
+  <div class="row"><button class="btn" id="ptarget"></button><button class="btn" id="psell" style="background:#c62828"></button></div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="joy"><div id="joyk"></div></div>
+<button class="btn rot" id="rotL" style="left:24px">⟲</button>
+<button class="btn rot" id="rotR" style="left:88px">⟳</button>
+<div class="ov" id="menu"><div class="box">
+  <h1>🎈 BALLOON SIEGE</h1>
+  <p>Balloons are floating toward your castle! Walk around, build towers along the path and pop every last one. Survive 40 waves to win.</p>
+  <div class="diffs">
+    <button class="btn go" data-d="easy">EASY</button>
+    <button class="btn" style="background:linear-gradient(#ffa726,#ef6c00)" data-d="medium">MEDIUM</button>
+    <button class="btn" style="background:linear-gradient(#ef5350,#b71c1c)" data-d="hard">HARD</button>
+  </div>
+  <p id="best" style="margin-top:14px;font-size:13px"></p>
+</div></div>
+<div class="ov" id="end" style="display:none"><div class="box">
+  <h1 id="et"></h1><p id="ed"></p>
+  <button class="btn go" id="again">PLAY AGAIN</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const TOUCH = matchMedia("(pointer:coarse)").matches;
+
+// ---------- save ----------
+let SAVE = { best: { easy: 0, medium: 0, hard: 0 }, wins: 0 };
+try { Object.assign(SAVE, JSON.parse(localStorage.getItem("bs-save") || "{}")); } catch (e) {}
+const save = () => { try { localStorage.setItem("bs-save", JSON.stringify(SAVE)); } catch (e) {} };
+
+// ---------- sound ----------
+let AC = null;
+function sfx(f, d = .08, type = "square", v = .05, slide = 0) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+let popT = 0;
+const popSound = () => { const n = performance.now(); if (n - popT < 35) return; popT = n; sfx(700 + Math.random() * 500, .06, "triangle", .05, .4); };
+
+// ---------- scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fd3ff);
+scene.fog = new THREE.Fog(0x8fd3ff, 90, 190);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 400);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x5a8f3c, .75));
+const sun = new THREE.DirectionalLight(0xffffff, .85);
+sun.position.set(40, 70, 25); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80, far: 200 });
+scene.add(sun);
+addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+const M = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o });
+const at = (m, x, y, z) => (m.position.set(x, y, z), m);
+const box = (w, h, d, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.castShadow = true; m.receiveShadow = true; return m; };
+
+// ground
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 160, 1, 1), M(0x6cc24a));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const edge = new THREE.Mesh(new THREE.BoxGeometry(160, 6, 160), M(0x7a5230));
+edge.position.y = -3.01; scene.add(edge);
+
+// the path the balloons follow
+const PATH = [[-62, -40], [-20, -40], [-20, -10], [-45, -10], [-45, 22], [0, 22], [0, -26], [32, -26], [32, 38], [62, 38]].map(([x, z]) => new THREE.Vector3(x, 0, z));
+const SEG = [];
+let PLEN = 0;
+for (let i = 0; i < PATH.length - 1; i++) { const a = PATH[i], b = PATH[i + 1], l = a.distanceTo(b); SEG.push({ a, b, l, s: PLEN }); PLEN += l; }
+function pathAt(s) {
+  s = Math.max(0, Math.min(PLEN, s));
+  for (const g of SEG) if (s <= g.s + g.l) return g.a.clone().lerp(g.b, (s - g.s) / g.l);
+  return PATH[PATH.length - 1].clone();
+}
+function distToPath(p) {
+  let best = 1e9;
+  for (const g of SEG) {
+    const ab = g.b.clone().sub(g.a), t = Math.max(0, Math.min(1, p.clone().sub(g.a).dot(ab) / ab.lengthSq()));
+    best = Math.min(best, p.distanceTo(g.a.clone().addScaledVector(ab, t)));
+  }
+  return best;
+}
+const pathMat = M(0xd9b77a), pathEdge = M(0xb89458);
+for (const g of SEG) {
+  const mid = g.a.clone().add(g.b).multiplyScalar(.5), ang = Math.atan2(g.b.x - g.a.x, g.b.z - g.a.z);
+  const p = new THREE.Mesh(new THREE.BoxGeometry(5, .12, g.l + 5), pathMat); p.position.set(mid.x, .06, mid.z); p.rotation.y = ang; p.receiveShadow = true; scene.add(p);
+  const e = new THREE.Mesh(new THREE.BoxGeometry(6, .08, g.l + 6), pathEdge); e.position.set(mid.x, .04, mid.z); e.rotation.y = ang; scene.add(e);
+}
+// the portal they come from and the castle they're after
+{
+  const st = PATH[0], ring = new THREE.Mesh(new THREE.TorusGeometry(4, .6, 10, 30), M(0x8e24aa, { emissive: 0x4a148c }));
+  ring.position.set(st.x, 4.5, st.z); ring.rotation.y = Math.PI / 2; scene.add(ring);
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(3.5, 24), new THREE.MeshBasicMaterial({ color: 0xce93d8, transparent: true, opacity: .55, side: THREE.DoubleSide }));
+  glow.position.copy(ring.position); glow.rotation.y = Math.PI / 2; scene.add(glow);
+  const en = PATH[PATH.length - 1], castle = new THREE.Group();
+  castle.add(at(box(10, 7, 10, 0xb0bec5), 0, 3.5, 0));
+  for (const [x, z] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) {
+    castle.add(at(box(3, 11, 3, 0x90a4ae), x, 5.5, z));
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.4, 3, 4), M(0xc62828)); roof.position.set(x, 12.5, z); roof.rotation.y = Math.PI / 4; castle.add(roof);
+  }
+  castle.add(at(box(.4, 4, 3, 0x5d4037), -5.1, 2, 0));
+  castle.position.set(en.x + 6, 0, en.z); scene.add(castle);
+}
+// trees and rocks (never on the path)
+const OBST = [];
+const rnd = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
+for (let i = 0; i < 70; i++) {
+  const p = new THREE.Vector3(rnd() * 150 - 75, 0, rnd() * 150 - 75);
+  if (distToPath(p) < 7 || p.length() < 8) continue;
+  if (rnd() < .7) {
+    const t = new THREE.Group();
+    t.add(at(box(.9, 3, .9, 0x6d4c41), 0, 1.5, 0));
+    const top = new THREE.Mesh(new THREE.ConeGeometry(2.4 + rnd(), 5, 7), M(rnd() < .5 ? 0x2e7d32 : 0x388e3c)); top.position.y = 5; top.castShadow = true; t.add(top);
+    t.position.copy(p); t.userData.block = 1.8; scene.add(t); OBST.push(t);
+  } else {
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(1 + rnd() * 1.2), M(0x9e9e9e)); r.position.set(p.x, .6, p.z); r.castShadow = true; r.userData.block = 1.6; scene.add(r); OBST.push(r);
+  }
+}
+
+// ---------- the player (a blocky character, third person) ----------
+function makeChar(shirt) {
+  const g = new THREE.Group();
+  const skin = 0xffcc99;
+  const legL = box(.55, 1.4, .55, 0x1e3a8a), legR = box(.55, 1.4, .55, 0x1e3a8a);
+  legL.geometry.translate(0, -.7, 0); legR.geometry.translate(0, -.7, 0);
+  legL.position.set(-.3, 1.4, 0); legR.position.set(.3, 1.4, 0);
+  const body = box(1.2, 1.4, .7, shirt); body.position.y = 2.1;
+  const armL = box(.45, 1.3, .45, shirt), armR = box(.45, 1.3, .45, shirt);
+  armL.geometry.translate(0, -.6, 0); armR.geometry.translate(0, -.6, 0);
+  armL.position.set(-.85, 2.75, 0); armR.position.set(.85, 2.75, 0);
+  const head = box(.9, .9, .9, skin); head.position.y = 3.3;
+  const eyes = box(.5, .12, .05, 0x111111); eyes.position.set(0, 3.4, .46);
+  g.add(legL, legR, body, armL, armR, head, eyes);
+  g.userData = { legL, legR, armL, armR };
+  return g;
+}
+const player = makeChar(0xff7043);
+player.position.set(-10, 0, 5);
+scene.add(player);
+let camYaw = Math.PI * .75, camPitch = .55, camDist = 22;
+const keys = {};
+addEventListener("keydown", (e) => { keys[e.code] = true; onKey(e); });
+addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+// ---------- balloons ----------
+// Each layer pops into the next: pop a pink and a yellow comes out, and so on down to red.
+const TIERS = [
+  { n: "Red", col: 0xe53935, spd: 7, kids: [] },
+  { n: "Blue", col: 0x1e88e5, spd: 8.5, kids: [0] },
+  { n: "Green", col: 0x43a047, spd: 10, kids: [1] },
+  { n: "Yellow", col: 0xfdd835, spd: 13, kids: [2] },
+  { n: "Pink", col: 0xec407a, spd: 15, kids: [3] },
+  { n: "Dark", col: 0x263238, spd: 9, kids: [4, 4], size: .8 },
+  { n: "Steel", col: 0xb0bec5, spd: 7, kids: [5, 5], armor: true, metal: true },
+  { n: "Clay", col: 0x8d6e63, spd: 8, kids: [5, 5], hp: 10 },
+  { n: "Blimp", col: 0x7e57c2, spd: 3.2, kids: [7, 7, 7, 7], hp: 200, boss: true },
+];
+const RBE = TIERS.map(() => 0);
+TIERS.forEach((t, i) => { RBE[i] = (t.hp || 1) + t.kids.reduce((a, k) => a + RBE[k], 0); });
+const BGEO = new THREE.SphereGeometry(1, 18, 14);
+const BMAT = TIERS.map((t) => new THREE.MeshPhongMaterial({ color: t.col, shininess: t.metal ? 120 : 60, specular: t.metal ? 0xffffff : 0x444444 }));
+const KNOT = new THREE.ConeGeometry(.22, .35, 8);
+const STR = new THREE.CylinderGeometry(.03, .03, 1.6, 4);
+const STRM = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
+let BAL = [];
+function spawnBalloon(tier, s = 0) {
+  const t = TIERS[tier], g = new THREE.Group(), sc = t.boss ? 4.2 : (t.size || 1) * .95;
+  const b = new THREE.Mesh(BGEO, BMAT[tier]); b.scale.set(sc * .9, sc * 1.1, sc * .9); b.castShadow = true; g.add(b);
+  if (t.boss) { b.scale.set(sc * 1.8, sc * .9, sc * .9); }
+  else {
+    const k = new THREE.Mesh(KNOT, BMAT[tier]); k.position.y = -sc * 1.12; k.rotation.x = Math.PI; g.add(k);
+    const st = new THREE.Mesh(STR, STRM); st.position.y = -sc * 1.12 - .9; g.add(st);
+  }
+  if (t.armor) { const bands = new THREE.Mesh(new THREE.TorusGeometry(sc * .92, .09, 6, 20), M(0x546e7a)); bands.rotation.x = Math.PI / 2; g.add(bands); }
+  scene.add(g);
+  const o = { tier, hp: t.hp || 1, s, g, slow: 0, bob: Math.random() * 6, id: Math.random() };
+  BAL.push(o);
+  return o;
+}
+function removeBalloon(o) { scene.remove(o.g); o.dead = true; }
+
+// Damage pops layers; what's left of the hit goes on to the layers inside.
+function damage(o, dmg, src) {
+  if (o.dead || dmg <= 0) return;
+  const t = TIERS[o.tier];
+  if (t.armor && !(src && src.popsSteel)) { sfx(1400, .03, "square", .02); return; }
+  o.hp -= dmg;
+  if (o.hp > 0) { if (t.boss || t.hp) flash(o); return; }
+  const over = -o.hp;
+  cash += 1; popped++;
+  popFx(o.g.position, TIERS[o.tier].col, t.boss ? 3 : 1);
+  popSound();
+  removeBalloon(o);
+  t.kids.forEach((k, i) => {
+    const c = spawnBalloon(k, o.s - i * 1.2);
+    c.slow = o.slow;
+    if (over > 0) damage(c, over, src);
+  });
+}
+function flash(o) { o.g.children[0].material = o.g.children[0].material.clone(); o.g.children[0].material.emissive = new THREE.Color(0x662222); setTimeout(() => { if (o.g.children[0]) o.g.children[0].material = BMAT[o.tier]; }, 90); }
+
+// pop bits
+const FX = [];
+const BIT = new THREE.BoxGeometry(.25, .25, .25);
+function popFx(pos, col, n) {
+  for (let i = 0; i < 6 * n; i++) {
+    const m = new THREE.Mesh(BIT, new THREE.MeshBasicMaterial({ color: col }));
+    m.position.copy(pos); scene.add(m);
+    FX.push({ m, v: new THREE.Vector3((Math.random() - .5) * 10, Math.random() * 8, (Math.random() - .5) * 10), life: .5 });
+  }
+}
+
+// ---------- towers ----------
+// Every tower has 3 upgrades. Prices are for Medium; Easy and Hard scale them.
+const TOWERS = [
+  { id: "dart", n: "Dart Tower", ic: "🎯", cost: 200, col: 0x8d6e63, d: "Fast darts. Good all-rounder.",
+    lv: [{ range: 14, rate: 1.1, dmg: 1, pierce: 2 }, { up: 150, n: "Longer reach", range: 18 }, { up: 260, n: "Quick throws", rate: 2 }, { up: 420, n: "Razor darts: pops Steel", pierce: 4, popsSteel: true }] },
+  { id: "cannon", n: "Cannon", ic: "💣", cost: 450, col: 0x37474f, d: "Splash damage. Pops Steel.", popsSteel: true,
+    lv: [{ range: 13, rate: .75, dmg: 1, splash: 3.5 }, { up: 250, n: "Bigger blast", splash: 5 }, { up: 400, n: "Double powder", dmg: 2 }, { up: 900, n: "Cluster bombs", rate: 1.2, splash: 6.5 }] },
+  { id: "frost", n: "Frost Tower", ic: "❄️", cost: 350, col: 0x4fc3f7, d: "Slows everything nearby.",
+    lv: [{ range: 9, rate: .7, dmg: 0, slow: .5 }, { up: 200, n: "Wider chill", range: 12 }, { up: 300, n: "Deep freeze", slow: .3 }, { up: 650, n: "Ice shards: pops too", dmg: 1 }] },
+  { id: "sniper", n: "Sniper", ic: "🔭", cost: 400, col: 0x558b2f, d: "Hits anywhere on the map. Pops Steel.", popsSteel: true,
+    lv: [{ range: 999, rate: .55, dmg: 2 }, { up: 300, n: "Faster bolt", rate: .9 }, { up: 550, n: "Heavy rounds", dmg: 5 }, { up: 1300, n: "Elite marksman", rate: 1.8, dmg: 8 }] },
+  { id: "tesla", n: "Tesla Coil", ic: "⚡", cost: 650, col: 0x5e35b1, d: "Lightning jumps between balloons. Pops Steel.", popsSteel: true,
+    lv: [{ range: 11, rate: 1.1, dmg: 1, chain: 3 }, { up: 350, n: "Longer arcs", chain: 5 }, { up: 600, n: "Overcharge", dmg: 2 }, { up: 1500, n: "Storm core", chain: 9, rate: 1.8 }] },
+  { id: "farm", n: "Balloon Farm", ic: "🌾", cost: 900, col: 0xf9a825, d: "Makes cash after every wave.",
+    lv: [{ range: 0, income: 90 }, { up: 500, n: "Bigger fields", income: 160 }, { up: 900, n: "Market stall", income: 260 }, { up: 1800, n: "Gold mine", income: 450 }] },
+];
+let TW = [];
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .25, depthWrite: false });
+function towerStats(t) { const s = {}; for (let i = 0; i <= t.level; i++) Object.assign(s, t.def.lv[i]); s.popsSteel = !!(s.popsSteel || t.def.popsSteel); return s; }
+function makeTowerMesh(def) {
+  const g = new THREE.Group();
+  g.add(at(box(3.2, 1, 3.2, 0x9e9e9e), 0, .5, 0));
+  if (def.id === "farm") {
+    g.add(at(box(3, 2.5, 3, 0xc62828), 0, 2.2, 0));
+    const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.8, 4), M(0x5d4037)); r.position.y = 4.3; r.rotation.y = Math.PI / 4; g.add(r);
+  } else {
+    const body = box(2, 2.6, 2, def.col); body.position.y = 2.3; g.add(body);
+    const head = new THREE.Group(); head.position.y = 3.9; g.add(head);
+    if (def.id === "dart") head.add(at(box(.4, .4, 2.2, 0xffd54f), 0, .2, .8), box(1.4, 1, 1.4, 0x6d4c41));
+    if (def.id === "cannon") { const c = new THREE.Mesh(new THREE.CylinderGeometry(.5, .6, 2.6, 12), M(0x212121)); c.rotation.x = Math.PI / 2; c.position.z = .9; head.add(c, box(1.6, 1, 1.6, 0x455a64)); }
+    if (def.id === "frost") { const c = new THREE.Mesh(new THREE.OctahedronGeometry(1.1), M(0xb3e5fc, { emissive: 0x0277bd })); c.position.y = .5; head.add(c); }
+    if (def.id === "sniper") { const c = new THREE.Mesh(new THREE.CylinderGeometry(.18, .18, 3.4, 8), M(0x212121)); c.rotation.x = Math.PI / 2; c.position.z = 1.4; head.add(c, box(1, .8, 1.2, 0x33691e)); }
+    if (def.id === "tesla") { const c = new THREE.Mesh(new THREE.SphereGeometry(.9, 14, 10), M(0xb39ddb, { emissive: 0x4527a0 })); c.position.y = .6; head.add(c); for (const r of [.5, .9]) { const ri = new THREE.Mesh(new THREE.TorusGeometry(r + .4, .12, 6, 16), M(0x9e9e9e)); ri.rotation.x = Math.PI / 2; ri.position.y = -.3 - r * .3; head.add(ri); } }
+    g.userData.head = head;
+  }
+  g.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+  return g;
+}
+// little stars show the level
+const STAR = new THREE.OctahedronGeometry(.3);
+function showLevel(t) {
+  if (t.stars) t.g.remove(t.stars);
+  t.stars = new THREE.Group();
+  for (let i = 0; i < t.level; i++) { const s = new THREE.Mesh(STAR, M(0xffd600, { emissive: 0x806000 })); s.position.set((i - (t.level - 1) / 2) * .8, 5.6, 0); t.stars.add(s); }
+  t.g.add(t.stars);
+}
+function placeTower(def, p) {
+  const g = makeTowerMesh(def); g.position.copy(p); scene.add(g);
+  const t = { def, g, level: 0, cd: 0, target: "first", spent: price(def.cost) };
+  TW.push(t); showLevel(t);
+  sfx(330, .12, "square", .06, 1.5);
+  return t;
+}
+
+// ---------- projectiles & effects ----------
+const SHOTS = [];
+const DART = new THREE.ConeGeometry(.15, .9, 6); DART.rotateX(Math.PI / 2);
+const BALL = new THREE.SphereGeometry(.45, 10, 8);
+function lineFx(a, b, col, life = .12) {
+  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: col })); scene.add(l);
+  FX.push({ m: l, life, line: true });
+}
+function ringFx(p, r, col) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(r * .2, r * .25, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .7, side: THREE.DoubleSide }));
+  m.rotation.x = -Math.PI / 2; m.position.set(p.x, .4, p.z); scene.add(m);
+  FX.push({ m, life: .45, grow: r });
+}
+
+// ---------- game state ----------
+const DIFF = { easy: { cash: 700, lives: 150, spd: .85, cost: .85 }, medium: { cash: 650, lives: 100, spd: 1, cost: 1 }, hard: { cash: 600, lives: 50, spd: 1.12, cost: 1.08 } };
+let diff = "medium", cash = 650, lives = 100, wave = 0, popped = 0, running = false, playing = false, speed = 1, queue = [], qT = 0, selected = null, building = null;
+const price = (n) => Math.round((n * DIFF[diff].cost) / 5) * 5;
+
+// Waves: groups of [tier, count, gap seconds]. Waves 1-12 are written out, then they grow.
+const WAVES = [
+  [[0, 20, .9]], [[0, 30, .7]], [[0, 20, .6], [1, 8, .8]], [[1, 25, .6]], [[1, 20, .5], [2, 6, .9]],
+  [[2, 18, .6], [0, 30, .3]], [[2, 25, .5], [1, 20, .4]], [[3, 10, .8], [2, 20, .5]], [[3, 20, .6]], [[4, 12, .7], [3, 15, .5]],
+  [[5, 6, 1.2], [3, 25, .4]], [[4, 25, .4], [5, 10, .8]],
+];
+function waveGroups(n) {
+  if (n <= WAVES.length) return WAVES[n - 1];
+  const g = [];
+  const k = n - 12;
+  g.push([4, 20 + k * 2, Math.max(.15, .4 - k * .01)]);
+  g.push([5, 8 + k, Math.max(.25, .7 - k * .015)]);
+  if (n >= 15) g.push([6, 3 + Math.floor(k / 2), Math.max(.4, 1.2 - k * .02)]);
+  if (n >= 18) g.push([7, 2 + Math.floor(k / 3), Math.max(.5, 1.5 - k * .03)]);
+  if (n % 10 === 0) g.push([8, n / 10 - 1, 6]);
+  return g;
+}
+function startWave() {
+  if (running || !playing) return;
+  wave++; running = true; queue = [];
+  let t = 0;
+  for (const [tier, count, gap] of waveGroups(wave)) for (let i = 0; i < count; i++) queue.push({ tier, at: t + i * gap }), (i === count - 1) && (t += count * gap * .5);
+  queue.sort((a, b) => a.at - b.at);
+  qT = 0;
+  toast(waveGroups(wave).some((g) => g[0] === 8) ? `WAVE ${wave}<br><span style="font-size:20px">A BLIMP IS COMING!</span>` : `WAVE ${wave}`);
+  sfx(440, .2, "sawtooth", .05, 1.5);
+  hud();
+}
+function endWave() {
+  running = false;
+  let inc = 100 + wave * 5;
+  for (const t of TW) if (t.def.id === "farm") inc += towerStats(t).income;
+  cash += inc;
+  if (wave > SAVE.best[diff]) { SAVE.best[diff] = wave; save(); }
+  if (wave >= 40) return finish(true);
+  toast(`+$${inc}`, 1.2);
+  hud();
+  if (auto) setTimeout(() => { if (!running && playing) startWave(); }, 1200);
+}
+let auto = false;
+function finish(won) {
+  playing = false; running = false;
+  if (won) { SAVE.wins++; save(); }
+  $("et").textContent = won ? "🏆 VICTORY!" : "💥 THE CASTLE FELL";
+  $("ed").textContent = won ? `You held off all 40 waves on ${diff}! Balloons popped: ${popped}.` : `You reached wave ${wave} on ${diff}. Balloons popped: ${popped}. Best: wave ${SAVE.best[diff]}.`;
+  $("end").style.display = "flex";
+  sfx(won ? 660 : 160, .8, "triangle", .08, won ? 1.5 : .5);
+}
+function newGame(d) {
+  diff = d;
+  for (const b of BAL) removeBalloon(b); BAL = [];
+  for (const t of TW) scene.remove(t.g); TW = [];
+  cash = DIFF[d].cash; lives = DIFF[d].lives; wave = 0; popped = 0; running = false; playing = true; queue = [];
+  select(null); build(null);
+  $("menu").style.display = "none"; $("end").style.display = "none";
+  drawBar(); hud();
+}
+
+// ---------- UI ----------
+function hud() {
+  $("lives").textContent = Math.max(0, Math.ceil(lives)); $("cash").textContent = Math.floor(cash); $("wave").textContent = wave;
+  $("start").style.opacity = running ? .5 : 1;
+  $("start").textContent = running ? (auto ? "⏭ AUTO: ON" : "🌊 WAVE IN PROGRESS") : "▶ START WAVE";
+  document.querySelectorAll(".slot").forEach((el, i) => el.classList.toggle("no", cash < price(TOWERS[i].cost)));
+  if (selected) panel();
+}
+let toastT = 0;
+function toast(html, sec = 2) { const el = $("toast"); el.innerHTML = html; el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => (el.style.opacity = 0), sec * 1000); }
+function drawBar() {
+  const bar = $("bar"); bar.innerHTML = "";
+  TOWERS.forEach((t, i) => {
+    const s = document.createElement("div"); s.className = "slot";
+    s.innerHTML = `<span class="k">${i + 1}</span><span class="ic">${t.ic}</span><span class="n">${t.n}</span><span class="c">$${price(t.cost)}</span>`;
+    s.onclick = (e) => { e.stopPropagation(); build(building === t ? null : t); };
+    bar.appendChild(s);
+  });
+}
+function build(def) {
+  building = def;
+  document.querySelectorAll(".slot").forEach((el, i) => el.classList.toggle("on", TOWERS[i] === def));
+  ghost.visible = !!def; reachRing.visible = !!def;
+  if (def) { select(null); setGhost(def); }
+}
+function select(t) {
+  if (selected) selected.ring.visible = false;
+  selected = t;
+  $("panel").style.display = t ? "block" : "none";
+  if (t) { t.ring = t.ring || makeRangeRing(t); t.ring.visible = true; panel(); }
+}
+function makeRangeRing(t) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), ringMat); m.rotation.x = -Math.PI / 2; m.position.set(t.g.position.x, .2, t.g.position.z); scene.add(m); return m;
+}
+const TARGETS = ["first", "last", "strong", "close"];
+function panel() {
+  const t = selected, s = towerStats(t), next = t.def.lv[t.level + 1];
+  $("pn").textContent = `${t.def.ic} ${t.def.n}  ${"★".repeat(t.level)}`;
+  $("pd").textContent = t.def.d;
+  $("ps").textContent = t.def.id === "farm" ? `Makes $${s.income} each wave` : `Range ${s.range > 900 ? "∞" : s.range} · ${s.rate}/s${s.dmg != null ? ` · damage ${s.dmg}` : ""}${s.popsSteel ? " · pops Steel" : ""}`;
+  const up = $("pup");
+  if (next) { up.textContent = `⬆ ${next.n} ($${price(next.up)})`; up.disabled = cash < price(next.up); up.style.opacity = up.disabled ? .5 : 1; }
+  else { up.textContent = "MAX LEVEL"; up.disabled = true; up.style.opacity = .5; }
+  $("ptarget").textContent = `🎯 ${t.target}`; $("ptarget").style.display = t.def.id === "farm" || t.def.id === "frost" ? "none" : "";
+  $("psell").textContent = `Sell $${Math.floor(t.spent * .7)}`;
+  const r = s.range > 900 ? 0 : s.range; t.ring.scale.set(r || .01, r || .01, 1);
+}
+$("pup").onclick = () => { const t = selected, next = t && t.def.lv[t.level + 1]; if (!next || cash < price(next.up)) return; cash -= price(next.up); t.spent += price(next.up); t.level++; showLevel(t); sfx(523, .15, "square", .06, 2); hud(); };
+$("ptarget").onclick = () => { const t = selected; t.target = TARGETS[(TARGETS.indexOf(t.target) + 1) % 4]; panel(); };
+$("psell").onclick = () => { const t = selected; cash += Math.floor(t.spent * .7); scene.remove(t.g); if (t.ring) scene.remove(t.ring); TW = TW.filter((x) => x !== t); select(null); sfx(220, .15, "square", .05, .6); hud(); };
+$("start").onclick = () => { if (!running) startWave(); else { auto = !auto; hud(); } };
+$("speed").onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 3 : 1; $("speed").textContent = `⏩ ${speed}x`; };
+document.querySelectorAll("[data-d]").forEach((b) => (b.onclick = () => newGame(b.dataset.d)));
+$("again").onclick = () => { $("end").style.display = "none"; $("menu").style.display = "flex"; showBest(); };
+function showBest() { $("best").textContent = `Best wave · Easy ${SAVE.best.easy} · Medium ${SAVE.best.medium} · Hard ${SAVE.best.hard}${SAVE.wins ? ` · Wins: ${SAVE.wins}` : ""}`; }
+showBest();
+function onKey(e) {
+  if (e.code.startsWith("Digit")) { const i = +e.code.slice(5) - 1; if (TOWERS[i]) build(building === TOWERS[i] ? null : TOWERS[i]); }
+  if (e.code === "Escape") { build(null); select(null); }
+  if (e.code === "Space" && playing) { e.preventDefault(); if (!running) startWave(); }
+  if (e.code === "KeyU" && selected) $("pup").onclick();
+}
+
+// ---------- placing (a ghost where you point, within reach of your character) ----------
+const REACH = 26;
+const ghost = new THREE.Group(); scene.add(ghost); ghost.visible = false;
+const ghostRange = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .2, depthWrite: false }));
+ghostRange.rotation.x = -Math.PI / 2; ghostRange.position.y = .2;
+const reachRing = new THREE.Mesh(new THREE.RingGeometry(REACH - .3, REACH, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .35, side: THREE.DoubleSide }));
+reachRing.rotation.x = -Math.PI / 2; reachRing.visible = false; scene.add(reachRing);
+function setGhost(def) {
+  while (ghost.children.length) ghost.remove(ghost.children[0]);
+  const m = makeTowerMesh(def); m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .55; o.castShadow = false; } });
+  ghost.add(m, ghostRange);
+  const r = def.lv[0].range > 900 ? 0 : def.lv[0].range; ghostRange.scale.set(r || .01, r || .01, 1);
+}
+function canPlace(p) {
+  if (Math.abs(p.x) > 76 || Math.abs(p.z) > 76) return "Too close to the edge";
+  if (distToPath(p) < 4.6) return "Not on the path";
+  if (p.distanceTo(player.position) > REACH) return "Walk closer to build there";
+  for (const t of TW) if (t.g.position.distanceTo(p) < 3.6) return "Too close to another tower";
+  for (const o of OBST) if (o.position.distanceTo(new THREE.Vector3(p.x, o.position.y, p.z)) < o.userData.block + 1.6) return "Something's in the way";
+  return "";
+}
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let pointer = null;
+function groundAt(cx, cy) {
+  mouse.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const p = new THREE.Vector3(); return ray.ray.intersectPlane(plane, p) ? p : null;
+}
+function updateGhost() {
+  if (!building || !pointer) return;
+  const p = groundAt(pointer.x, pointer.y); if (!p) return;
+  ghost.position.set(p.x, 0, p.z);
+  const bad = canPlace(p) || (cash < price(building.cost) ? "Not enough cash" : "");
+  ghost.userData.bad = bad;
+  ghostRange.material.color.set(bad ? 0xff5252 : 0xffffff);
+  ghost.children[0].traverse((o) => { if (o.isMesh) o.material.emissive && o.material.emissive.set(bad ? 0x550000 : 0x000000); });
+}
+function clickAt(cx, cy) {
+  const p = groundAt(cx, cy); if (!p) return;
+  if (building) {
+    pointer = { x: cx, y: cy }; updateGhost();
+    if (ghost.userData.bad) { toast(`<span style="font-size:20px">${ghost.userData.bad}</span>`, 1.2); sfx(140, .12, "square", .05); return; }
+    cash -= price(building.cost);
+    placeTower(building, new THREE.Vector3(p.x, 0, p.z));
+    if (!keys.ShiftLeft) build(null);
+    hud(); return;
+  }
+  // pick a tower
+  let best = null, bd = 3.5;
+  for (const t of TW) { const d = Math.hypot(t.g.position.x - p.x, t.g.position.z - p.z); if (d < bd) { bd = d; best = t; } }
+  select(best);
+}
+
+// mouse: drag to look, click to place / pick
+let drag = null;
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (TOUCH && e.pointerType === "touch") { touchDown(e); return; }
+  drag = { x: e.clientX, y: e.clientY, moved: 0, yaw: camYaw, pitch: camPitch };
+});
+addEventListener("pointermove", (e) => {
+  if (e.pointerType === "touch") { touchMove(e); return; }
+  pointer = { x: e.clientX, y: e.clientY };
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
+    if (drag.moved > 6) { camYaw = drag.yaw - dx * .006; camPitch = Math.max(.15, Math.min(1.25, drag.pitch + dy * .004)); }
+  }
+});
+addEventListener("pointerup", (e) => {
+  if (e.pointerType === "touch") { touchUp(e); return; }
+  if (drag && drag.moved <= 6 && e.target === renderer.domElement) clickAt(e.clientX, e.clientY);
+  drag = null;
+});
+renderer.domElement.addEventListener("wheel", (e) => { camDist = Math.max(10, Math.min(48, camDist + e.deltaY * .02)); }, { passive: true });
+addEventListener("contextmenu", (e) => e.preventDefault());
+
+// phones: a joystick to walk, drag elsewhere to look, tap to place or pick
+const joy = { x: 0, y: 0, id: null };
+const touches = {};
+if (TOUCH) { $("joy").style.display = "block"; $("tip").textContent = "Joystick to walk · drag to look · pick a tower and tap to place"; }
+function touchDown(e) { touches[e.pointerId] = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, yaw: camYaw, pitch: camPitch, moved: 0 }; }
+function touchMove(e) {
+  const t = touches[e.pointerId]; if (!t) return;
+  const dx = e.clientX - t.sx, dy = e.clientY - t.sy; t.moved = Math.max(t.moved, Math.hypot(dx, dy));
+  if (t.moved > 10) { camYaw = t.yaw - dx * .007; camPitch = Math.max(.15, Math.min(1.25, t.pitch + dy * .005)); }
+  if (building) { pointer = { x: e.clientX, y: e.clientY }; }
+}
+function touchUp(e) { const t = touches[e.pointerId]; delete touches[e.pointerId]; if (t && t.moved <= 10) clickAt(e.clientX, e.clientY); }
+const jEl = $("joy");
+jEl.addEventListener("pointerdown", (e) => { e.stopPropagation(); joy.id = e.pointerId; jEl.setPointerCapture(e.pointerId); moveJoy(e); });
+jEl.addEventListener("pointermove", (e) => { if (e.pointerId === joy.id) { e.stopPropagation(); moveJoy(e); } });
+jEl.addEventListener("pointerup", () => { joy.id = null; joy.x = joy.y = 0; $("joyk").style.transform = ""; });
+function moveJoy(e) {
+  const r = jEl.getBoundingClientRect(), dx = e.clientX - r.left - 60, dy = e.clientY - r.top - 60, l = Math.min(45, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
+  joy.x = Math.cos(a) * l / 45; joy.y = Math.sin(a) * l / 45;
+  $("joyk").style.transform = `translate(${Math.cos(a) * l}px,${Math.sin(a) * l}px)`;
+}
+
+// ---------- main loop ----------
+let last = performance.now(), walkT = 0;
+const tmp = new THREE.Vector3();
+function step(now) {
+  requestAnimationFrame(step);
+  const rdt = Math.min(.05, (now - last) / 1000); last = now;
+  const dt = rdt * speed;
+
+  // walking (real time, not game speed)
+  let f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
+  let s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
+  if (keys.KeyQ) camYaw += rdt * 2; if (keys.KeyE) camYaw -= rdt * 2;
+  const l = Math.hypot(f, s);
+  const ud = player.userData;
+  if (l > .05) {
+    f /= Math.max(1, l); s /= Math.max(1, l);
+    const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
+    const mx = fx * f - fz * s, mz = fz * f + fx * s;
+    const sp = keys.ShiftLeft ? 18 : 12;
+    const nx = player.position.x + mx * sp * rdt, nz = player.position.z + mz * sp * rdt;
+    let blocked = false;
+    for (const o of OBST) if (Math.hypot(o.position.x - nx, o.position.z - nz) < o.userData.block) blocked = true;
+    for (const t of TW) if (Math.hypot(t.g.position.x - nx, t.g.position.z - nz) < 2.4) blocked = true;
+    if (!blocked) { player.position.x = Math.max(-78, Math.min(78, nx)); player.position.z = Math.max(-78, Math.min(78, nz)); }
+    player.rotation.y = Math.atan2(mx, mz);
+    walkT += rdt * 10;
+  } else walkT *= .85;
+  const sw = Math.sin(walkT) * .7 * Math.min(1, l + .0001);
+  ud.legL.rotation.x = sw; ud.legR.rotation.x = -sw; ud.armL.rotation.x = -sw; ud.armR.rotation.x = sw;
+  reachRing.position.set(player.position.x, .15, player.position.z);
+
+  // camera behind the character
+  const cp = Math.cos(camPitch);
+  camera.position.set(player.position.x + Math.sin(camYaw) * camDist * cp, 2 + Math.sin(camPitch) * camDist, player.position.z + Math.cos(camYaw) * camDist * cp);
+  camera.lookAt(player.position.x, 3, player.position.z);
+  updateGhost();
+
+  if (playing) game(dt, rdt);
+
+  // effects
+  for (let i = FX.length - 1; i >= 0; i--) {
+    const fx = FX[i]; fx.life -= rdt;
+    if (fx.v) { fx.v.y -= 25 * rdt; fx.m.position.addScaledVector(fx.v, rdt); }
+    if (fx.grow) { const k = 1 + (1 - fx.life / .45) * 4; fx.m.scale.set(k * fx.grow / 2, k * fx.grow / 2, 1); fx.m.material.opacity = Math.max(0, fx.life / .45) * .7; }
+    if (fx.life <= 0) { scene.remove(fx.m); FX.splice(i, 1); }
+  }
+  renderer.render(scene, camera);
+}
+
+function game(dt, rdt) {
+  // spawn this wave's balloons
+  if (running) {
+    qT += dt;
+    while (queue.length && queue[0].at <= qT) spawnBalloon(queue.shift().tier);
+  }
+  // move them
+  const spdMul = DIFF[diff].spd * (1 + Math.max(0, wave - 30) * .02);
+  for (const b of BAL) {
+    if (b.dead) continue;
+    const t = TIERS[b.tier];
+    b.slow = Math.max(0, b.slow - dt);
+    b.s += t.spd * spdMul * (b.slow > 0 ? b.slowK : 1) * dt;
+    const p = pathAt(b.s);
+    b.bob += rdt * 3;
+    b.g.position.set(p.x, (t.boss ? 5 : 3) + Math.sin(b.bob) * .25, p.z);
+    if (t.boss) { const q = pathAt(b.s + 1); b.g.rotation.y = Math.atan2(q.x - p.x, q.z - p.z) + Math.PI / 2; }
+    if (b.s >= PLEN) { lives -= RBE[b.tier]; removeBalloon(b); sfx(120, .25, "sawtooth", .07, .5); if (lives <= 0) { lives = 0; hud(); return finish(false); } }
+  }
+  BAL = BAL.filter((b) => !b.dead);
+
+  // towers
+  for (const tw of TW) {
+    const s = towerStats(tw);
+    if (tw.def.id === "farm") continue;
+    tw.cd -= dt;
+    const pos = tw.g.position;
+    const inRange = BAL.filter((b) => Math.hypot(b.g.position.x - pos.x, b.g.position.z - pos.z) <= s.range);
+    if (tw.def.id === "frost") {
+      if (tw.cd <= 0 && inRange.length) {
+        tw.cd = 1 / s.rate;
+        ringFx(pos, s.range, 0x81d4fa);
+        for (const b of inRange) { if (TIERS[b.tier].boss) continue; b.slow = 2; b.slowK = s.slow; if (s.dmg) damage(b, s.dmg, s); }
+        sfx(900, .1, "sine", .03, .5);
+      }
+      continue;
+    }
+    if (!inRange.length) continue;
+    let target;
+    if (tw.target === "first") target = inRange.reduce((a, b) => (b.s > a.s ? b : a));
+    else if (tw.target === "last") target = inRange.reduce((a, b) => (b.s < a.s ? b : a));
+    else if (tw.target === "strong") target = inRange.reduce((a, b) => (RBE[b.tier] > RBE[a.tier] ? b : a));
+    else target = inRange.reduce((a, b) => (b.g.position.distanceTo(pos) < a.g.position.distanceTo(pos) ? b : a));
+    const head = tw.g.userData.head;
+    if (head) head.rotation.y = Math.atan2(target.g.position.x - pos.x, target.g.position.z - pos.z);
+    if (tw.cd > 0) continue;
+    tw.cd = 1 / s.rate;
+    const from = tmp.set(pos.x, 4.2, pos.z).clone();
+    if (tw.def.id === "dart") {
+      const m = new THREE.Mesh(DART, M(0xffd54f)); m.position.copy(from); scene.add(m);
+      SHOTS.push({ m, kind: "dart", target, speed: 60, s, hits: s.pierce, hit: new Set() });
+      sfx(1200, .03, "square", .02, .7);
+    } else if (tw.def.id === "cannon") {
+      const m = new THREE.Mesh(BALL, M(0x212121)); m.position.copy(from); scene.add(m);
+      const to = target.g.position.clone(), t0 = from.distanceTo(to) / 32;
+      SHOTS.push({ m, kind: "ball", from, to, t: 0, t0, s });
+      sfx(160, .15, "sawtooth", .05, .6);
+    } else if (tw.def.id === "sniper") {
+      lineFx(from, target.g.position.clone(), 0xffff8d, .08);
+      damage(target, s.dmg, s);
+      sfx(1800, .05, "square", .04, .3);
+    } else if (tw.def.id === "tesla") {
+      let cur = target, prev = from;
+      const hit = new Set();
+      for (let i = 0; i < s.chain && cur; i++) {
+        hit.add(cur);
+        const at = cur.g.position.clone();
+        lineFx(prev, at, 0xb388ff, .12);
+        damage(cur, s.dmg, s);
+        prev = at;
+        cur = BAL.filter((b) => !b.dead && !hit.has(b) && b.g.position.distanceTo(at) < 7).sort((a, b) => a.g.position.distanceTo(at) - b.g.position.distanceTo(at))[0];
+      }
+      sfx(300 + Math.random() * 200, .08, "sawtooth", .03, 2);
+    }
+  }
+
+  // projectiles
+  for (let i = SHOTS.length - 1; i >= 0; i--) {
+    const sh = SHOTS[i];
+    if (sh.kind === "dart") {
+      if (sh.target.dead) { const n = BAL.find((b) => !b.dead && !sh.hit.has(b) && b.g.position.distanceTo(sh.m.position) < 8); if (n) sh.target = n; else { scene.remove(sh.m); SHOTS.splice(i, 1); continue; } }
+      const to = sh.target.g.position, d = to.clone().sub(sh.m.position), dl = d.length();
+      sh.m.lookAt(to);
+      if (dl < 1.2) {
+        damage(sh.target, sh.s.dmg, sh.s); sh.hit.add(sh.target); sh.hits--;
+        const n = sh.hits > 0 && BAL.find((b) => !b.dead && !sh.hit.has(b) && b.g.position.distanceTo(sh.m.position) < 6);
+        if (n) sh.target = n; else { scene.remove(sh.m); SHOTS.splice(i, 1); }
+      } else sh.m.position.addScaledVector(d.normalize(), Math.min(dl, sh.speed * dt));
+    } else {
+      sh.t += dt / sh.t0;
+      const k = Math.min(1, sh.t);
+      sh.m.position.lerpVectors(sh.from, sh.to, k); sh.m.position.y += Math.sin(k * Math.PI) * 6;
+      if (k >= 1) {
+        scene.remove(sh.m); SHOTS.splice(i, 1);
+        ringFx(sh.to, sh.s.splash, 0xff7043);
+        for (const b of BAL) if (!b.dead && b.g.position.distanceTo(sh.to) <= sh.s.splash + (TIERS[b.tier].boss ? 3 : 0)) damage(b, sh.s.dmg, sh.s);
+        sfx(90, .25, "sawtooth", .07, .4);
+      }
+    }
+  }
+  if (running && !queue.length && !BAL.length) endWave();
+  hudSoon();
+}
+let hudT = 0;
+function hudSoon() { const n = performance.now(); if (n - hudT > 150) { hudT = n; hud(); } }
+
+drawBar(); hud();
+requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
