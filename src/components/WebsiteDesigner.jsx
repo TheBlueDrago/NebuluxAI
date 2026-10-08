@@ -1230,14 +1230,6 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             )}
             {publishUrl && <ShareLink url={publishUrl} title={publishUrl.replace(/^https:\/\//, "")} />}
             {publishUrl && <QrButton onClick={() => setQrUrl(publishUrl)} />}
-            {/* Right after publishing is when people most want to share: invite friends too. */}
-            <button
-              type="button"
-              onClick={() => shell?.openProfile("refer")}
-              className="inline-flex items-center gap-1 rounded-lg bg-white/20 hover:bg-white/30 px-2 py-1 text-xs font-semibold"
-            >
-              🎁 Invite friends
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

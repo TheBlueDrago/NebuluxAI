@@ -15,6 +15,8 @@ const dir = new URL("../functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/",
 
 // Public on purpose, and why.
 const PUBLIC = {
+  status: "the public status page: AI answer totals only",
+  "client-error": "crash reports from browsers (rate limited; listing is admin-only)",
   "check-email": "sign-up asks whether an email is free before an account exists (rate-limited per network)",
   "game-plays": "play counts and taken-down games for the public game lists",
   "get-site-html": "serves published sites to anyone",

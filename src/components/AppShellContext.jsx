@@ -3,8 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useConversations } from "@/hooks/useConversations";
 import { useCredits } from "@/hooks/useCredits";
-import { claimPendingReferral, hasWelcomePending } from "@/lib/referral";
-import WelcomeReward from "@/components/WelcomeReward";
 import WelcomeTour from "@/components/WelcomeTour";
 import TermsGate from "@/components/TermsGate";
 import NamePrompt from "@/components/NamePrompt";
@@ -51,9 +49,6 @@ export function AppShellProvider({ children }) {
       .finally(() => setAuthChecked(true));
   }, []);
 
-  // A new user who arrived through a friend's invite link: count the referral once,
-  // then let them pick their own welcome bonus (until they do, it's offered on each visit).
-  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [twoStepOk, setTwoStepOk] = useState(false);
   const twoStepDone = useCallback(() => setTwoStepOk(true), []);
   const [termsOk, setTermsOk] = useState(false);
@@ -63,13 +58,6 @@ export function AppShellProvider({ children }) {
     setNameOk(true);
     if (newName) setCurrentUser((u) => (u ? { ...u, full_name: newName, name_set: true } : u));
   }, []);
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    claimPendingReferral().then(() => {
-      if (hasWelcomePending()) setWelcomeOpen(true);
-    });
-  }, [currentUser?.id]);
-
   // The theme index.html already applied (this device's last one, else the OS preference), then
   // refined per-user once we know who's logged in. Starting from what's on screen avoids a flip.
   useEffect(() => {
@@ -173,7 +161,6 @@ export function AppShellProvider({ children }) {
       <TermsGate user={twoStepOk ? currentUser : null} onDone={termsDone} />
       {/* Then, once per account: what should Nebulux AI call you (their username). */}
       <NamePrompt user={currentUser} ready={termsOk} onDone={nameDone} />
-      <WelcomeReward open={welcomeOpen && termsOk && nameOk} onClose={() => setWelcomeOpen(false)} onClaimed={credits.sync} />
       {/* A new account's first visit: a short guided tour, or explore alone (after any invite reward). */}
       {upgradeOpen && (
         <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center p-4" onClick={() => setUpgradeOpen(false)}>
@@ -188,7 +175,7 @@ export function AppShellProvider({ children }) {
           </div>
         </div>
       )}
-      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || welcomeOpen || isBanned || isBlocked || isUnverified} />
+      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || isBanned || isBlocked || isUnverified} />
     </AppShellContext.Provider>
   );
 }

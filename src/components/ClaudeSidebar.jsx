@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { shareChat } from "@/lib/shareChat";
-import { Plus, Code, Globe, Gamepad2, ShoppingBag, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, Gift, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
+import { Plus, Code, Globe, Gamepad2, CreditCard, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -125,8 +125,6 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
         <NavRow icon={MessageSquare} label="Chats" onClick={() => { if (collapsed && !mobile) onToggle(); setSearching(true); }} collapsed={collapsed && !mobile} active={searching} />
         <NavRow icon={Globe} label="Website Designer" onClick={go(shell.goDesigner)} collapsed={collapsed && !mobile} />
         <NavRow icon={Gamepad2} label="Nebulux Games" onClick={go(shell.goGames)} collapsed={collapsed && !mobile} />
-        <NavRow icon={ShoppingBag} label="Shop" onClick={go(shell.goPlans)} collapsed={collapsed && !mobile} />
-        <NavRow icon={Gift} label="Invite friends, get credits" onClick={() => { openProfile("refer"); if (mobile) onClose?.(); }} collapsed={collapsed && !mobile} />
         {isAdmin && <NavRow icon={Activity} label="Monitor" onClick={go(shell.goMonitor)} collapsed={collapsed && !mobile} />}
       </nav>
 
@@ -226,9 +224,13 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               <span className="flex-1">Get help</span>
             </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("subscription"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <CreditCard className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Subscriptions</span>
+            </button>
             <button onClick={() => { setMenu(false); setMore(false); shell.goPlans(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <ArrowUpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
-              <span className="flex-1">Upgrade plan</span>
+              <span className="flex-1">Upgrade</span>
             </button>
             <button onClick={() => { setMenu(false); setMore(false); getApps(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <LayoutGrid className="w-4 h-4 text-[var(--cl-muted)]" />
@@ -264,10 +266,6 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                 </button>
               </>
             )}
-            <button onClick={() => { setMenu(false); setMore(false); openProfile("refer"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
-              <Gift className="w-4 h-4 text-[var(--cl-muted)]" />
-              <span className="flex-1">Refer friends</span>
-            </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
             <button onClick={() => { setMenu(false); window.open("/api", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <KeyRound className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />

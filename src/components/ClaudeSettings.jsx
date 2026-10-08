@@ -191,7 +191,6 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
         <Row title="Email" sub={currentUser?.email} />
         <Row title="Password" sub="Get a link to set a new one."><Btn onClick={() => openProfile("security", tab)}>Change</Btn></Row>
         <Row title="Two-step sign-in" sub="A code by email when you sign in."><Btn onClick={() => openProfile("twostep", tab)}>Manage</Btn></Row>
-        <Row title="Refer friends" sub="Get credits when friends join."><Btn onClick={() => openProfile("refer", tab)}>Open</Btn></Row>
         <Row title="Delete account" sub="Removes your account and everything you published."><Btn danger onClick={() => openProfile("delete", tab)}>Delete account</Btn></Row>
       </>
     ),

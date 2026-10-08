@@ -49,17 +49,17 @@ export function Terms() {
       <ul>
         <li>You must be at least 13 years old. If you're under 18, you need a parent or guardian's permission, especially before buying anything.</li>
         <li>Keep your login to yourself. You're responsible for what happens on your account.</li>
-        <li>One account per person. Creating extra accounts to collect free credits, free trials, discounts or referral rewards isn't allowed.</li>
+        <li>One account per person. Creating extra accounts to collect free credits, free trials or discounts isn't allowed.</li>
       </ul>
 
       <h2>Plans and credits</h2>
       <ul>
-        <li>Using the AIs costs credits. Your plan gives you a monthly allowance, and you can also get credits from referrals, promo codes or the Nebulux AI team.</li>
+        <li>Using the AIs costs credits. Your plan gives you a monthly allowance, and you can also buy credit packs. Promo codes give a percentage off at checkout.</li>
         <li>Credits have no cash value, can't be sold or transferred, and may expire as described in the app.</li>
         <li>Paid plans are charged through our payment providers at the price shown before you pay. They save your card and charge it each month while your plan renews; we never see or store your card number. Your password is stored by us, scrambled (hashed) so it can't be read, not even by us; keep it secret, and you're responsible for what's done with your account.</li>
         <li>Instead of a plan you can buy a one-time pack of credits for one AI. Bought credits are used before your monthly allowance and don't reset at the end of the month. The new-member discount doesn't apply to credit packs.</li>
         <li>Some promo codes give a discount instead of credits. Each person can use a discount code once, it only works on what it says it's for, and it may have an end date or a limited number of uses. It doesn't combine with the new-member discount: the bigger of the two is used.</li>
-        <li>Credits or rewards gained by cheating — fake sign-ups, abusing referrals, exploiting bugs — can be removed, and the account can be suspended.</li>
+        <li>Credits or rewards gained by cheating — fake sign-ups, exploiting bugs — can be removed, and the account can be suspended.</li>
       </ul>
 
       <h2>New-member offer</h2>
@@ -187,7 +187,7 @@ export function Privacy() {
         <li><strong>What you make:</strong> the sites and games you publish, and the website and game you are working on.</li>
         <li><strong>Your chats:</strong> if you're signed in, your chats (the messages you send and the AI's answers) are saved with your account so they appear on every device you sign in on. They're private to your account: we don't read them, except when needed to look into a report, keep someone safe or follow the law. Pictures you attach aren't kept with your account. Deleting a chat deletes it from your account too. If you're not signed in, chats stay only in your browser.</li>
         <li><strong>Prompts:</strong> what you send the AI, including any images you attach in the chat, passes through our servers to Google to get an answer. We count the credits it uses, and keep the start (up to 300 characters) of your five most recent questions each month so our team can spot misuse and help if something goes wrong. Apart from the chats saved with your account (above), we don't keep the rest of the text, or any images.</li>
-        <li><strong>Usage:</strong> how many credits you use on each AI, your plan, promo codes you redeem, and who invited you or whom you invited. When you join through an invite link we keep a scrambled (hashed) form of your IP address with it, to spot one person creating many accounts.</li>
+        <li><strong>Usage:</strong> how many credits you use on each AI, your plan, and any promo code you use for a discount at checkout.</li>
         <li><strong>Payments:</strong> what you bought, when, and whether it renewed. Your card is entered on our payment provider's checkout page and saved by them, not by us; if your plan renews every month, they charge the saved card and only tell us that it was paid. We never see or store your card number.</li>
         <li><strong>Sign-in:</strong> your email address, and your password stored scrambled (hashed with a random salt) so it can't be read back, not even by us. We also keep which devices are signed in (as a scrambled token that expires after 60 days), and short-lived codes we email you to confirm your address or reset your password (they expire within an hour). To warn you if someone else signs in, we remember which kinds of devices you use (the browser, system and country, scrambled) and email you when a new one signs in. For two-step verification we keep the secret key for your authenticator app and the devices you chose to remember.</li>
         <li><strong>Messages:</strong> what you send through the contact form, with your email address so we can reply. If you report an AI reply, that reply and the question you asked just before it are sent to us too.</li>
@@ -268,7 +268,7 @@ export function Privacy() {
         We keep your data while your account is open. You can download a copy of it at any time (Settings → Security →
         Download my data). You can delete your account at any time from your profile;
         that also deletes your published sites and games, your drafts, your game progress, the chats saved with your
-        account, and the chats and projects saved in that browser. We keep records we need for payments, fraud prevention (such as who invited whom) or the law, and a
+        account, and the chats and projects saved in that browser. We keep records we need for payments, fraud prevention or the law, and a
         copy of any page we took down for breaking the rules.
       </p>
 

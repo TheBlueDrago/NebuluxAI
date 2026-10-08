@@ -2,14 +2,13 @@ import React, { useState, useEffect } from "react";
 import { askConfirm } from "@/lib/dialogs";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Upload, LogOut, Mail, Shield, KeyRound, ArrowLeft, Loader2, Crown, Settings, Users, Lock, ShieldCheck, Ticket, Trash2, Gamepad2, Pencil, Eye, EyeOff, Globe, Gift, Smartphone, Building2, CreditCard } from "lucide-react";
+import { Download, Upload, LogOut, Mail, Shield, KeyRound, ArrowLeft, Loader2, Crown, Settings, Users, Lock, ShieldCheck, Ticket, Trash2, Gamepad2, Pencil, Eye, EyeOff, Globe, Smartphone, Building2, CreditCard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { signOut } from "@/lib/signOut";
 import TeamMembership from "@/components/TeamMembership";
 import SecurityPanel from "@/components/profile/SecurityPanel";
 import TwoStepPanel from "@/components/profile/TwoStepPanel";
 import PublishedSites from "@/components/profile/PublishedSites";
-import ReferFriends from "@/components/profile/ReferFriends";
 import SubscriptionPanel from "@/components/profile/SubscriptionPanel";
 import { notifyGamesChanged } from "@/lib/gameEvents";
 import { downloadChats, importChats } from "@/lib/chatBackup";
@@ -328,8 +327,6 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
               <SecurityPanel user={user} email={user?.email} onBack={() => backOut()} onChangePassword={startReset} busy={pwBusy} />
             ) : view === "subscription" ? (
               <SubscriptionPanel onBack={() => backOut()} onManagePeople={() => setView("membership")} />
-            ) : view === "refer" ? (
-              <ReferFriends onBack={() => backOut()} />
             ) : view === "sites" ? (
               <PublishedSites user={user} plan={effPlan} onBack={() => backOut()} />
             ) : view === "games" ? (
@@ -576,14 +573,6 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
                       Promo Code
                     </button>
                   )}
-                  <button
-                    onClick={() => setView("refer")}
-                    disabled={!user}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/25 to-fuchsia-500/25 border border-amber-400/40 text-amber-100 font-medium hover:from-amber-500/35 hover:to-fuchsia-500/35 transition-colors disabled:opacity-60"
-                  >
-                    <Gift className="w-4 h-4" />
-                    Refer friends · get free credits
-                  </button>
                   {/* The installed app was removed (owner, 2026-09-27): no Install button. */}
                   {false && (installApp.canPrompt || installApp.ios) && (
                     <button

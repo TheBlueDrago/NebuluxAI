@@ -2,9 +2,7 @@
 // Only signed-in people can open one. A Nebulux Code chat only opens for Pro and up (the same
 // plans as Nebulux Code itself): anyone else gets the upgrade popup and never receives the chat.
 //
-// Reward (owner, 2026-10-07): when a friend opens a shared Code chat on a plan below Pro, a
-// 5-minute timer starts at that first open (it never restarts). If they upgrade to Pro or higher
-// before it runs out, whoever shared the chat gets 30 Nebula credits, once per friend per chat.
+// (The 30 Nebula credit reward for sharing was removed on 2026-10-08 with referrals.)
 export const CODE_PLANS = ["pro", "team", "enterprise", "max", "secret"];
 export const REWARD_WINDOW_MS = 5 * 60 * 1000;
 export const REWARD = { space5: 30 }; // space5 = Nebula credits (planTotals.js TIER_NAMES)
@@ -66,16 +64,8 @@ export async function viewShare(db, viewer, plan, id, giveReward, now = Date.now
   if (s.kind === "code" && !own && !pro) {
     return { locked: true, ...head, reward_ends_at: view ? Number(view.first_at) + REWARD_WINDOW_MS : null };
   }
-  let rewarded = false;
-  if (s.kind === "code" && view && !view.rewarded && pro && !CODE_PLANS.includes(view.first_plan) && now - Number(view.first_at) <= REWARD_WINDOW_MS) {
-    // Marked first, so two requests at once can't both pay out.
-    const r = await db.prepare("UPDATE share_views SET rewarded = 1 WHERE share_id = ? AND viewer_id = ? AND rewarded = 0").bind(s.id, viewer.id).run();
-    const changed = r && (r.meta ? r.meta.changes : r.changes);
-    if (changed) {
-      await giveReward(s.owner_id, REWARD, `share:${s.id}:${viewer.id}`);
-      rewarded = true;
-    }
-  }
+  // No sharer reward any more (owner, 2026-10-08: no referral-style free credits).
+  const rewarded = false;
   return { share: { ...head, messages: JSON.parse(s.messages || "[]") }, own, rewarded };
 }
 

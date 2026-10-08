@@ -11,7 +11,6 @@ import GoogleIcon from "@/components/GoogleIcon";
 import { googleLogin } from "@/lib/googleLogin";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
-import { hasPendingReferral } from "@/lib/referral";
 import { passwordProblem } from "@/lib/passwordCheck";
 import PasswordHint from "@/components/PasswordHint";
 import ShowPasswordButton from "@/components/ShowPasswordButton";
@@ -33,7 +32,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(!!verifyOnly);
   const [otpCode, setOtpCode] = useState("");
-  const [invited] = useState(() => hasPendingReferral());
   const typo = useEmailTypo(email);
   // The "I'm not a robot" check (components/Turnstile.jsx), once the owner switches it on.
   const robotCheck = useRef(null);
@@ -180,7 +178,7 @@ export default function Register() {
     <AuthLayout
       icon={UserPlus}
       title="Create your account"
-      subtitle={invited ? "🎁 A friend invited you — sign up and you both get free credits" : "Free: all 4 AIs, 3 websites and unlimited games · No credit card needed"}
+      subtitle="Free: all 4 AIs, 3 websites and unlimited games · No credit card needed"
       footer={
         <>
           Already have an account?{" "}

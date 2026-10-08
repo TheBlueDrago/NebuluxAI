@@ -198,7 +198,6 @@ export async function entitlement(kv, request, user, { other = false } = {}) {
   // Enterprise: everyone in the organization draws every kind of credit from one pool.
   const orgId = team && plan === "enterprise" ? team.teamId : null;
   const seats = orgId ? await seatsOf(kv, orgId) : null;
-  if (details.source === "paid" && UPGRADE_REWARD[base]) await rewardReferrers(kv, user, base, base === "enterprise" ? seats : 0).catch(() => {});
   return {
     user,
     plan,

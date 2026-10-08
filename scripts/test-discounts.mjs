@@ -43,7 +43,7 @@ assert(D.discountApplies("credits-galaxy", "credits-galaxy-25") && !D.discountAp
 // Admin creates codes
 store.set("promos", "[]");
 await P.createPromo(kv, req, { code: "save20", kind: "discount", pct: 20, target: "plans", maxUses: 2 });
-await P.createPromo(kv, req, { code: "FREE10", aiModel: "ai", credits: 10 });
+assert(await fails(P.createPromo(kv, req, { code: "FREE10", aiModel: "ai", credits: 10 }), "percentage off"), "free-credit codes can't be made any more");
 assert(await fails(P.createPromo(kv, req, { code: "BAD", kind: "discount", pct: 0 }), "between 1% and 100%"), "a 0% discount is refused");
 assert(await fails(P.createPromo(kv, req, { code: "BAD2", kind: "discount", pct: 10, target: "nope" })), "an unknown target is refused");
 
@@ -71,8 +71,7 @@ await P.updatePromo(kv, req, { id: list.find((p) => p.code === "SAVE20").id, act
 assert(await fails(P.checkDiscount(kv, req, c, "SAVE20", "pro"), "not valid"), "an inactive code is refused");
 assert((await P.readPromos(kv)).find((p) => p.code === "SAVE20").pct === 30, "admins can change the %");
 assert(await fails(P.checkDiscount(kv, req, c, "FREE10", "pro"), "not valid"), "a free-credit code isn't a discount");
-const free = await P.redeemPromo(kv, req, c, "FREE10");
-assert(free.credits === 10 && free.aiModel === "ai", "free-credit codes still redeem as before");
+assert(await fails(P.redeemPromo(kv, req, c, "FREE10"), "not valid"), "free-credit codes don't give credits any more");
 
 // Guessing codes with many accounts from one network: only wrong codes count, per network.
 {

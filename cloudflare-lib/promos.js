@@ -89,6 +89,8 @@ export async function createPromo(kv, request, body) {
   const code = String(body.code || "").trim().toUpperCase();
   if (!code) throw new Error("Code is required.");
   if (list.some((p) => p.code === code)) throw new Error("That code already exists.");
+  // Promo codes only give a percentage off now (owner, 2026-10-08): no free-credit codes.
+  if (body.kind !== "discount") throw new Error("Promo codes can only give a percentage off.");
   if (body.kind === "discount") {
     const rec = {
       id: crypto.randomUUID(),
@@ -163,7 +165,9 @@ export async function redeemPromo(kv, request, user, rawCode) {
     const d = await checkDiscount(kv, request, user, code);
     return { kind: "discount", ...d };
   }
-  if (!rec || !rec.active || rec.credits <= 0) {
+  // Old free-credit codes no longer work (owner, 2026-10-08: promo codes are % off only).
+  if (!rec || rec.kind !== "discount") throw new Error("That promo code is not valid.");
+  if (!rec.active || rec.credits <= 0) {
     if (rec && rec.redeemedBy) throw new Error("This promo code has already been used.");
     throw new Error("That promo code is not valid.");
   }

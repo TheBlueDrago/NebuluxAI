@@ -1,12 +1,10 @@
-// Admin-only credit controls for the Monitor page (see cloudflare-lib/credits.js and
-// referrals.js). Body: { userId, action }
-//   "get"    -> { credits, referrals, referredBy }
+// Admin-only credit controls for the Monitor page (see cloudflare-lib/credits.js).
+// Body: { userId, action }
+//   "get"    -> { credits }
 //   "adjust" -> { tier, delta }       add (or remove, if negative) credits for one AI
-//   "revoke" -> { referredId }        take a referral back, removing its reward credits
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser, entitlement, creditStatus, adjustBonus } from "../../../../../cloudflare-lib/credits.js";
 import { logAdmin } from "../../../../../cloudflare-lib/audit.js";
-import { listReferrals, revokeReferral } from "../../../../../cloudflare-lib/referrals.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -27,16 +25,11 @@ export async function onRequestPost(context) {
       if (!delta) return json({ error: "Enter a number of credits." }, 400);
       await adjustBonus(kv, request, target, String(body.tier || ""), delta);
       await logAdmin(kv, admin, "credits", { userId: target.id, email: target.email || "", tier: String(body.tier || ""), delta }, request);
-    } else if (body.action === "revoke") {
-      await revokeReferral(kv, request, target, String(body.referredId || ""));
-      await logAdmin(kv, admin, "referral-revoke", { userId: target.id, email: target.email || "", referredId: String(body.referredId || "") }, request);
     }
 
     const ent = await entitlement(kv, request, target, { other: true });
     return json({
       credits: await creditStatus(kv, ent),
-      referrals: await listReferrals(kv, target.id),
-      referredBy: await kv.get(`referredby:${target.id}`),
     });
   } catch (err) {
     return json({ error: (err && err.message) || "Could not update credits." }, 400);

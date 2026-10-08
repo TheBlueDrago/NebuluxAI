@@ -40,10 +40,8 @@ const Ideas = lazy(() => import('@/pages/Ideas'));
 const Guide = lazy(() => import('@/pages/Guide'));
 const SharedChat = lazy(() => import('@/pages/SharedChat'));
 const Enterprise = lazy(() => import('@/pages/Enterprise'));
-import { captureReferral } from '@/lib/referral';
 
 // Remember an invite code (?ref=) from whatever page the link opened.
-captureReferral();
 // Sign-in pages load on demand too: signed-in people (most visits) never need them.
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));

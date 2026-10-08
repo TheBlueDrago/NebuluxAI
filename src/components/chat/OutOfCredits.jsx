@@ -85,8 +85,8 @@ export default function OutOfCredits({ tier, canSwitch = true }) {
         )}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        <button onClick={() => shell?.openProfile("refer")} className="font-medium text-amber-300 hover:text-amber-200">
-          🎁 Invite a friend and you both get free credits
+        <button onClick={() => shell?.goPlans?.()} className="font-medium text-amber-300 hover:text-amber-200">
+          Upgrade for more credits
         </button>
         {otherAi && <span className="text-slate-500">or switch to an AI that still has credits</span>}
       </div>

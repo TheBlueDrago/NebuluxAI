@@ -49,14 +49,14 @@ for (const id of ["pro", "team"]) {
   const desc = (checkout.match(new RegExp(`${id}: \\{[\\s\\S]*?description: "([^"]+)"`)) || [])[1] || "";
   assert(desc.includes(`${t.ai} Nebulux AI`) && desc.includes(`${t.aiCode} Code`) && desc.includes(`${t.galaxy5} Galaxy`) && desc.includes(`${t.space5} Space`), `checkout's ${id} description matches its monthly credits`);
   const pub = PUBLIC_PLANS.find((x) => x.id === id).features.join(" | ");
-  assert(pub.includes(`${t.ai} Nebulux AI credits`) && pub.includes(`${t.aiCode} each of Code, Galaxy and Space`) && t.aiCode === t.galaxy5 && t.galaxy5 === t.space5, `public pricing lists ${id}'s credits`);
+  assert(pub.includes(`${t.ai} Nebulux AI credits`) && pub.includes(`${t.aiCode} each of Galaxy, Space and Nebula`) && t.aiCode === t.galaxy5 && t.galaxy5 === t.space5, `public pricing lists ${id}'s credits`);
 }
 const pro = card("Plan2Card");
 const team = card("TeamCard");
-const has = (src, t) => src.includes(`${t.ai} Nebulux AI credits`) && src.includes(`${t.aiCode} Nebulux Code credits`) && src.includes(`${t.galaxy5} Galaxy credits`) && src.includes(`${t.space5} Space credits`);
+const has = (src, t) => src.includes(`${t.ai} Nebulux AI credits`) && src.includes(`${t.aiCode} Galaxy credits`) && src.includes(`${t.galaxy5} Space credits`) && src.includes(`${t.space5} Nebula credits`);
 assert(has(pro, PLAN_TOTALS.pro), "the Shop's Pro card lists the credits Pro gives");
 assert(has(team, PLAN_TOTALS.team), "the Shop's Team card lists the credits Team gives");
-assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWith(`${PLAN_TOTALS.free.ai} Nebulux AI, ${PLAN_TOTALS.free.aiCode} Code`)), "public pricing lists Free's credits");
+assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWith(`${PLAN_TOTALS.free.ai} Nebulux AI, ${PLAN_TOTALS.free.aiCode} Galaxy`)), "public pricing lists Free's credits");
 
 // Credit packs: checkout's price table matches the app's.
 const { PACK_PRICES } = await load("cloudflare-lib/creditPacks.js");

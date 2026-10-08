@@ -38,7 +38,6 @@ function KindSwitch({ value, onChange }) {
   return (
     <div className="flex gap-1.5 mb-3">
       {[
-        { id: "credits", label: "Free credits" },
         { id: "discount", label: "Discount on plans / credits" },
       ].map((k) => (
         <button
@@ -164,7 +163,7 @@ function CodeCard({ code, onSave, onDelete, busy }) {
 }
 
 function NewCard({ onCreate, busy }) {
-  const [f, setF] = useState({ code: "", kind: "credits", aiModel: "ai", credits: 10, pct: 20, target: "all", maxUses: 0, expiresAt: "", active: true, label: "" });
+  const [f, setF] = useState({ code: "", kind: "discount", aiModel: "ai", credits: 10, pct: 20, target: "all", maxUses: 0, expiresAt: "", active: true, label: "" });
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const discount = f.kind === "discount";
   return (
@@ -301,7 +300,7 @@ export default function PromoManager({ onBack }) {
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-center">
         <span className="bh-wordmark bg-gradient-to-r from-white via-emerald-200 to-sky-200 bg-clip-text text-transparent">Promo Codes</span>
       </h1>
-      <p className="text-slate-400 mt-2 text-center text-sm">Codes that give free credits, or money off plans and credit packs</p>
+      <p className="text-slate-400 mt-2 text-center text-sm">Codes that take a percentage off plans and credit packs, entered on the Billing page</p>
 
       <div className="mt-8 w-full max-w-2xl space-y-4">
         {loading ? (

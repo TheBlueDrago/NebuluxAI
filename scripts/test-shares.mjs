@@ -36,16 +36,16 @@ assert(r.locked && !r.share && !r.messages && r.reward_ends_at === 1000 + REWARD
 r = await viewShare(db, { id: "f1" }, "free", code, give, 1000 + 60000);
 assert(r.locked && r.reward_ends_at === 1000 + REWARD_WINDOW_MS, "opening again doesn't restart the timer");
 r = await viewShare(db, { id: "f1" }, "pro", code, give, 1000 + 4 * 60000);
-assert(r.share && r.rewarded && paid.length === 1 && paid[0].owner === "sharer" && paid[0].amounts.space5 === 30, "upgrading within 5 minutes opens it and pays the sharer 30 Nebula credits");
+assert(r.share && !r.rewarded && paid.length === 0, "upgrading opens it (no sharer reward since 2026-10-08)");
 r = await viewShare(db, { id: "f1" }, "pro", code, give, 1000 + 4.5 * 60000);
-assert(r.share && !r.rewarded && paid.length === 1, "only once per friend");
+assert(r.share && !r.rewarded && paid.length === 0, "still no reward");
 
 await viewShare(db, { id: "f2" }, "free", code, give, 0);
 r = await viewShare(db, { id: "f2" }, "pro", code, give, REWARD_WINDOW_MS + 1);
-assert(r.share && !r.rewarded && paid.length === 1, "upgrading after 5 minutes opens the chat but pays nothing");
+assert(r.share && !r.rewarded && paid.length === 0, "upgrading later opens the chat too");
 
 r = await viewShare(db, { id: "f3" }, "pro", code, give, 0);
-assert(r.share && !r.rewarded && paid.length === 1, "someone already on Pro opens it, no reward");
+assert(r.share && !r.rewarded && paid.length === 0, "someone already on Pro opens it");
 r = await viewShare(db, { id: "sharer" }, "free", code, give, 0);
 assert(r.share && r.own, "the sharer can always open their own chat");
 assert((await viewShare(db, { id: "f1" }, "pro", "nope", give)).missing, "a wrong link says it doesn't exist");

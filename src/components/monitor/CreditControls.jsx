@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { askConfirm } from "@/lib/dialogs";
-import { Loader2, Plus, Minus, Undo2 } from "lucide-react";
+import { Loader2, Plus, Minus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const LABELS = { ai: "Nebulux AI", aiCode: "Galaxy", galaxy5: "Space", space5: "Nebula" };
@@ -28,7 +28,7 @@ export default function CreditControls({ userId }) {
 
   useEffect(() => {
     call({ action: "get" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [userId]);
 
   // Big changes are confirmed first, so an extra zero typed by mistake doesn't go through.
@@ -36,9 +36,6 @@ export default function CreditControls({ userId }) {
     const n = Number(amounts[tier]) || 0;
     if (n >= 100 && !await askConfirm(`${sign > 0 ? "Add" : "Remove"} ${n} ${LABELS[tier]} credits ${sign > 0 ? "to" : "from"} this account?`)) return;
     call({ action: "adjust", tier, delta: sign * n }, `${tier}${sign}`);
-  };
-  const revoke = async (referredId) => {
-    if (await askConfirm("Take this referral back? Both rewards — this user's and their friend's welcome bonus — will be removed.")) call({ action: "revoke", referredId }, referredId);
   };
 
   if (!data) {
@@ -50,11 +47,6 @@ export default function CreditControls({ userId }) {
   }
 
   const fmt = (n) => (n > 1e9 ? "∞" : n);
-  // Referrals that signed up from the same network (IP) as another of this user's
-  // referrals — a sign of one person making several "friends".
-  const netCount = {};
-  for (const r of data.referrals) if (r.net) netCount[r.net] = (netCount[r.net] || 0) + 1;
-  const suspicious = data.referrals.filter((r) => r.net && netCount[r.net] > 1).length;
 
   return (
     <>
@@ -103,44 +95,6 @@ export default function CreditControls({ userId }) {
         Added credits work for that AI even without a plan. Removing only takes away extra (bonus) credits, not the plan's monthly allowance.
       </p>
 
-      <p className="text-slate-300 text-sm font-medium mt-5 mb-2">
-        Referrals {data.referrals.length ? `(${data.referrals.filter((r) => !r.revoked).length})` : ""}
-      </p>
-      {suspicious > 0 && (
-        <p className="text-[11px] text-amber-300 mb-2">
-          {suspicious} of these signed up from a network shared with another referral. That can mean one person made several accounts — check before leaving the rewards.
-        </p>
-      )}
-      {data.referrals.length ? (
-        <div className="space-y-2">
-          {data.referrals.map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-slate-100 text-sm truncate">{r.name}</p>
-                {r.net && netCount[r.net] > 1 && (
-                  <p className="text-[11px] text-amber-300">Same network as {netCount[r.net] - 1} other referral{netCount[r.net] > 2 ? "s" : ""}</p>
-                )}
-                <p className="text-[11px] text-slate-500">
-                  {new Date(r.at).toLocaleDateString()} ·{" "}
-                  {r.revoked ? "taken back" : r.reward ? `+${r.reward.amount} ${LABELS[r.reward.tier]}` : "reward not claimed yet"}
-                </p>
-              </div>
-              {!r.revoked && (
-                <button
-                  onClick={() => revoke(r.id)}
-                  disabled={!!busy}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-700 text-red-300 text-xs hover:bg-slate-600 disabled:opacity-50 shrink-0"
-                >
-                  {busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />} Take back
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-slate-500 text-sm">No referrals yet.</p>
-      )}
-      {data.referredBy && <p className="text-[11px] text-slate-500 mt-2">This user joined through someone else's invite link.</p>}
       {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
     </>
   );

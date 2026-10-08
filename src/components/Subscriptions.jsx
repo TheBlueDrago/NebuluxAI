@@ -2,13 +2,12 @@ import React, { Suspense, lazy, useState } from "react";
 import PaymentsNotice from "@/components/PaymentsNotice";
 import { SALES_OPEN, COMING_SOON } from "@/lib/salesOpen";
 import { motion } from "framer-motion";
-import { Check, ArrowRight, Loader2, Gift, Lock, X } from "lucide-react";
+import { Check, ArrowRight, Loader2, Lock, X } from "lucide-react";
 
 // The Enterprise application, opened right here (not the public page with its own menu).
 const EnterpriseApply = lazy(() => import("@/pages/Enterprise"));
 import { useNavigate, Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
-import { savedDiscount, saveDiscount, promoPctFor } from "@/lib/promoDiscount";
+import { savedDiscount, promoPctFor } from "@/lib/promoDiscount";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
 
 function FreeCard({ onFree }) {
@@ -205,39 +204,9 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
   const pct = offer?.discountAvailable ? offer.discountPct : 0;
   const navigate = useNavigate();
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
-  const [promoInput, setPromoInput] = useState("");
-  const [promoBusy, setPromoBusy] = useState(false);
-  const [promoError, setPromoError] = useState("");
-  // A discount code entered here: prices below show it, and Billing applies it at checkout.
-  const [discount, setDiscount] = useState(savedDiscount);
+  // A discount code entered on Billing: prices below show it too.
+  const [discount] = useState(savedDiscount);
   const planPct = (id) => Math.max(pct, promoPctFor(discount, id));
-
-  const doRedeem = async () => {
-    const code = promoInput.trim();
-    if (!code || promoBusy) return;
-    setPromoError("");
-    setPromoBusy(true);
-    try {
-      const res = await base44.functions.invoke("redeem-promo", { code });
-      if (res.data?.kind === "discount") {
-        const d = { code: res.data.code, pct: res.data.pct, target: res.data.target, label: res.data.label };
-        saveDiscount(d);
-        setDiscount(d);
-        setPromoInput("");
-        return;
-      }
-      navigate("/promo-success", { state: { aiModel: res.data?.aiModel, credits: res.data?.credits } });
-    } catch (e) {
-      setPromoError(e?.response?.data?.error || e?.message || "Could not redeem code.");
-    } finally {
-      setPromoBusy(false);
-    }
-  };
-
-  const redeem = () => {
-    if (!promoInput.trim() || promoBusy) return;
-    doRedeem();
-  };
 
   return (
     <motion.div
@@ -249,7 +218,7 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
       <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center">
         <span className="bh-wordmark bg-gradient-to-r from-white via-indigo-200 to-fuchsia-200 bg-clip-text text-transparent">Shop</span>
       </h1>
-      <p className="text-slate-400 mt-3 text-center">Plans, credits and promo codes</p>
+      <p className="text-slate-400 mt-3 text-center">Plans and credits</p>
       <PaymentsNotice className="mt-4" />
       <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
         <span className="inline-flex items-center gap-1.5">
@@ -308,51 +277,6 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
         </button>
       </div>
 
-
-      {/* Promo codes */}
-      <div className="mt-16 mb-6 w-full max-w-md mx-auto">
-        <SectionTitle title="Promo codes" sub="Have a promo code? Redeem it for free credits or money off." />
-        <div className="mt-6" />
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={promoInput}
-            onChange={(e) => setPromoInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") redeem();
-            }}
-            placeholder="Enter promo code"
-            className="flex-1 min-w-0 bg-slate-800/70 border border-slate-700/50 focus:border-emerald-500/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition-colors uppercase tracking-wide"
-          />
-          <button
-            onClick={redeem}
-            disabled={promoBusy || !promoInput.trim()}
-            className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-br from-emerald-700 to-teal-700 text-[#fff] text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-          >
-            {promoBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
-            Redeem
-          </button>
-        </div>
-        {promoError && <p className="text-center text-sm text-red-400 mt-2">{promoError}</p>}
-        {discount && (
-          <div className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-100">
-            <Gift className="w-4 h-4 mt-0.5 shrink-0 text-emerald-300" />
-            <p className="flex-1">
-              <span className="font-semibold">{discount.code}</span>: {discount.pct}% off {discount.label.toLowerCase()}. The prices above
-              show it, and it's taken off at checkout.
-            </p>
-            <button
-              onClick={() => {
-                saveDiscount(null);
-                setDiscount(null);
-              }}
-              className="text-xs text-emerald-300 hover:text-white"
-            >
-              Remove
-            </button>
-          </div>
-        )}
-      </div>
 
     </motion.div>
   );
