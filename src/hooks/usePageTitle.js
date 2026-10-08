@@ -19,7 +19,7 @@ const APP_TITLES = [
   [/^\/chat\/game-designer/, "Game Designer"],
   [/^\/chat\/games/, "Games"],
   [/^\/chat\/game\//, "Game"],
-  [/^\/chat\/(shop|plans)/, "Shop"],
+  [/^\/chat\/(shop|plans)/, "Plans"],
   [/^\/chat\/monitor/, "Monitor"],
   [/^\/chat\/promos/, "Promo codes"],
   [/^\/chat\/settings/, "Settings"],

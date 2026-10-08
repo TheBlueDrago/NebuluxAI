@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { shareChat } from "@/lib/shareChat";
-import { Plus, Code, Globe, Gamepad2, CreditCard, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
+import { Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -224,13 +224,9 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               <span className="flex-1">Get help</span>
             </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
-            <button onClick={() => { setMenu(false); setMore(false); openProfile("subscription"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
-              <CreditCard className="w-4 h-4 text-[var(--cl-muted)]" />
-              <span className="flex-1">Subscriptions</span>
-            </button>
             <button onClick={() => { setMenu(false); setMore(false); shell.goPlans(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <ArrowUpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
-              <span className="flex-1">Upgrade</span>
+              <span className="flex-1">Upgrade plan</span>
             </button>
             <button onClick={() => { setMenu(false); setMore(false); getApps(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <LayoutGrid className="w-4 h-4 text-[var(--cl-muted)]" />

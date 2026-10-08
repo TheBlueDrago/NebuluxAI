@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useConversations } from "@/hooks/useConversations";
 import { useCredits } from "@/hooks/useCredits";
 import WelcomeTour from "@/components/WelcomeTour";
+import PlansDialog from "@/components/PlansDialog";
 import TermsGate from "@/components/TermsGate";
 import NamePrompt from "@/components/NamePrompt";
 import TwoStepGate from "@/components/TwoStepGate";
@@ -107,7 +108,9 @@ export function AppShellProvider({ children }) {
   const goDesigner = useCallback(() => { navigate("/chat/designer"); setSidebarOpen(false); }, [navigate]);
   const goGames = useCallback(() => { navigate("/chat/games"); setSidebarOpen(false); }, [navigate]);
   const goGameDesigner = useCallback(() => { navigate("/chat/game-designer", { state: { fresh: Date.now() } }); setSidebarOpen(false); }, [navigate]);
-  const goPlans = useCallback(() => { navigate("/chat/shop"); setSidebarOpen(false); }, [navigate]);
+  // "Upgrade plan": the four plans in a popup (components/PlansDialog.jsx).
+  const [plansOpen, setPlansOpen] = useState(false);
+  const goPlans = useCallback(() => { setPlansOpen(true); setSidebarOpen(false); }, []);
   // A shared Code chat that was locked (pages/SharedChat.jsx): once the plan is Pro or higher,
   // it pops up by itself wherever they are in the app.
   useEffect(() => {
@@ -175,6 +178,7 @@ export function AppShellProvider({ children }) {
           </div>
         </div>
       )}
+      <PlansDialog open={plansOpen} onClose={() => setPlansOpen(false)} plan={credits.plan} onEnterprise={() => navigate("/enterprise")} />
       <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || isBanned || isBlocked || isUnverified} />
     </AppShellContext.Provider>
   );

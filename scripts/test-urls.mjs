@@ -175,6 +175,6 @@ for (const ok of ["https://en.wikipedia.org/wiki/Essex", "https://www.sussex.ac.
 // Signed-in pages get their own tab titles.
 {
   const { appTitleFor } = await import(R + "src/hooks/usePageTitle.js");
-  const want = { "/chat": "Chat", "/chat/": "Chat", "/chat/code": "Nebulux Code", "/chat/designer/build": "Website Designer", "/chat/game-designer": "Game Designer", "/chat/games": "Games", "/chat/game/zap": "Game", "/chat/shop": "Shop", "/chat/monitor": "Monitor", "/somewhere": "" };
+  const want = { "/chat": "Chat", "/chat/": "Chat", "/chat/code": "Nebulux Code", "/chat/designer/build": "Website Designer", "/chat/game-designer": "Game Designer", "/chat/games": "Games", "/chat/game/zap": "Game", "/chat/shop": "Plans", "/chat/monitor": "Monitor", "/somewhere": "" };
   assert(Object.entries(want).every(([p, t]) => appTitleFor(p) === t), "each signed-in page has its own title");
 }

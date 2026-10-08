@@ -216,7 +216,7 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
       animate={{ opacity: 1, transition: { duration: 0.6, ease: "easeInOut" } }}
     >
       <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center">
-        <span className="bh-wordmark bg-gradient-to-r from-white via-indigo-200 to-fuchsia-200 bg-clip-text text-transparent">Shop</span>
+        <span className="bh-wordmark bg-gradient-to-r from-white via-indigo-200 to-fuchsia-200 bg-clip-text text-transparent">Plans</span>
       </h1>
       <p className="text-slate-400 mt-3 text-center">Plans and credits</p>
       <PaymentsNotice className="mt-4" />
