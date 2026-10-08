@@ -5,6 +5,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useCredits } from "@/hooks/useCredits";
 import WelcomeTour from "@/components/WelcomeTour";
 import PlansDialog from "@/components/PlansDialog";
+import HelpChat from "@/components/HelpChat";
 import TermsGate from "@/components/TermsGate";
 import NamePrompt from "@/components/NamePrompt";
 import TwoStepGate from "@/components/TwoStepGate";
@@ -110,6 +111,8 @@ export function AppShellProvider({ children }) {
   const goGameDesigner = useCallback(() => { navigate("/chat/game-designer", { state: { fresh: Date.now() } }); setSidebarOpen(false); }, [navigate]);
   // "Upgrade plan": the four plans in a popup (components/PlansDialog.jsx).
   const [plansOpen, setPlansOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const openHelp = useCallback(() => { setHelpOpen(true); setSidebarOpen(false); }, []);
   const goPlans = useCallback(() => { setPlansOpen(true); setSidebarOpen(false); }, []);
   // A shared Code chat that was locked (pages/SharedChat.jsx): once the plan is Pro or higher,
   // it pops up by itself wherever they are in the app.
@@ -147,7 +150,7 @@ export function AppShellProvider({ children }) {
     currentUser, conv, credits, lightMode, toggleLight,
     isAdmin, isBanned, isBlocked, isUnverified, blockedUntil, effPlan, avatarInitial,
     sidebarOpen, setSidebarOpen, codeAllowed, setUpgradeOpen,
-    navigate, goHome, goCode, goDesigner, goGames, goGameDesigner, goPlans, goMonitor, goPromos, newChat, goBilling, openProfile, closeProfile, goBack,
+    navigate, openHelp, goHome, goCode, goDesigner, goGames, goGameDesigner, goPlans, goMonitor, goPromos, newChat, goBilling, openProfile, closeProfile, goBack,
   };
 
   return (
@@ -178,6 +181,7 @@ export function AppShellProvider({ children }) {
           </div>
         </div>
       )}
+      <HelpChat open={helpOpen} onClose={() => setHelpOpen(false)} />
       <PlansDialog open={plansOpen} onClose={() => setPlansOpen(false)} plan={credits.plan} onEnterprise={() => navigate("/enterprise")} />
       <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || isBanned || isBlocked || isUnverified} />
     </AppShellContext.Provider>

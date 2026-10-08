@@ -23,6 +23,7 @@
 // credits (see cloudflare-lib/credits.js): 1 per started 10,000 characters of reply,
 // times the effort level. A reply that costs more than the user has left is cut off
 // at what their credits cover.
+import { HELP_RULES } from "../../../../../cloudflare-lib/helpguide.js";
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
 import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
@@ -366,6 +367,15 @@ export async function onRequestPost(context) {
       return json({ error: "Invalid request body" }, 400);
     }
 
+    // The Help assistant (src/components/HelpChat.jsx): free like other internal calls, but its
+    // guide to Nebulux AI is added here on the server, after the short question and history.
+    const help = !!body.help;
+    if (help) {
+      const q = String(body.prompt || "").slice(0, 600);
+      const hist = (Array.isArray(body.history) ? body.history : []).slice(-6).map((m) => `${m && m.role === "user" ? "User" : "Assistant"}: ${String((m && m.content) || "").slice(0, 600)}`).join("\n");
+      body = { ...body, internal: true, stream: false, prompt: `${HELP_RULES}\n\n${hist ? `Conversation so far:\n${hist}\n\n` : ""}User: ${q}\nAssistant:` };
+      if (!q.trim()) return json({ error: "Type a question." }, 400);
+    }
     const prompt = (body.prompt || "").toString();
     if (!prompt) return json({ error: "prompt required" }, 400);
 
@@ -390,8 +400,8 @@ export async function onRequestPost(context) {
     // page's code, so the cap is far above any real website.
     if (prompt.length > MAX_PROMPT_CHARS) return json({ error: "That message is too long. Try a smaller change, or a shorter message." }, 413);
     if (internal) {
-      if (prompt.length > 1500) return json({ error: "Internal prompt too long." }, 400);
-      if (!(await allow(`internal:${user.id}`, 30, 3600))) return json({ error: "Too many requests." }, 429);
+      if (!help && prompt.length > 1500) return json({ error: "Internal prompt too long." }, 400);
+      if (help ? !(await allow(`help:${user.id}`, 30, 3600)) : !(await allow(`internal:${user.id}`, 30, 3600))) return json({ error: help ? "You've asked a lot of questions this hour. Try again a bit later, or use the contact form." : "Too many requests." }, 429);
     }
     const requested = internal ? DEFAULT_MODEL : MODEL_MAP[body.model] || DEFAULT_MODEL;
     const tier = TIER_OF_MODEL[body.model] || "ai";

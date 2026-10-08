@@ -43,6 +43,18 @@ assert(s === 400, "long internal prompt refused");
 let last;
 for (let i = 0; i < 30; i++) [last] = await call({ prompt: "t", internal: true });
 assert(last === 429, "31st internal call in an hour throttled");
+// the Help assistant: free, basic model, its guide added on the server, history kept short
+bodies.length = 0; models.length = 0;
+const helpUsage = [...store.keys()].filter((k) => k.startsWith("usage:")).length;
+[s, b] = await call({ help: true, prompt: "How do I publish a website?", history: [{ role: "user", content: "hi" }, { role: "assistant", content: "Hello!" }], model: "claude-sonnet-5" });
+{
+  const text = JSON.stringify(bodies[bodies.length - 1].contents);
+  assert(s === 200 && b.content === "My Title" && models.join(",") === "gemini-3.5-flash", "help answers with the basic model");
+  assert(/WEBSITE DESIGNER/.test(text) && /How do I publish a website/.test(text) && /User: hi/.test(text), "help sends its guide, the history and the question");
+  assert([...store.keys()].filter((k) => k.startsWith("usage:")).length === helpUsage && !b.charged, "help is free");
+}
+[s, b] = await call({ help: true, prompt: "   " });
+assert(s === 400, "an empty help question is refused");
 models.length = 0;
 [s, b] = await call({ prompt: "hello", model: "automatic" });
 assert(s === 200 && b.charged === 1 && [...store.keys()].some((k) => k.startsWith("usage:")), "normal call is charged");

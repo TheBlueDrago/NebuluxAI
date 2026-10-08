@@ -219,7 +219,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               <Languages className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Language</span>
             </button>
-            <button onClick={() => { setMenu(false); setMore(false); window.open("/contact", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); shell.openHelp(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <HelpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Get help</span>
             </button>
