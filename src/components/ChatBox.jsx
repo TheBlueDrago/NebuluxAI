@@ -606,7 +606,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             />
             <SendOrStopButton loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} {...(claude ? { gradient: "from-[var(--cl-accent)] to-[var(--cl-accent2)]" } : {})} />
           </div>
-          <div className={claude ? "flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pb-1" : "flex flex-wrap items-center gap-x-2 gap-y-1 mt-2"}>
+          <div className={claude ? "nx-tools flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pb-1" : "nx-tools flex flex-wrap items-center gap-x-2 gap-y-1 mt-2"}>
             {/* Like Claude's: files, microphone, AI, strength, then credits and context on the right. */}
             <button
               onClick={() => fileInputRef.current?.click()}
