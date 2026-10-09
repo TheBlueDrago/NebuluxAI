@@ -19,7 +19,7 @@ FACTS:
 - Nebulux Sites is a done-for-you website service by the team behind Nebulux AI. People describe the website they want, we build it.
 - How it works: 1) Make an account (email + password with a 6-digit email code, or Continue with Google) and send a request describing the site. Sending a request is free. 2) We accept or decline it. If accepted, they get an email and pay a $5 starting fee on the Billing page (it comes off the price). 3) We build it. They watch a live preview of their website, a progress bar and our updates on their account page. 4) When it's finished they get an email, pay the rest on the Billing page, then download the website.
 - Plans: One time $199 (top priority, about 1-2 weeks). $75 a month for 3 months ($225 total, faster priority, about 2-3 weeks). $49 a month for 5 months ($245 total, standard priority, about 1 month). Times are estimates, not guarantees.
-- Payments are made on the Billing page with PayPal (card or PayPal account). We never see card details.
+- Payments are made on the Billing page with a card (debit or credit), or Apple Pay / Google Pay where available, plus a billing address. Card details go straight to the secure payment processor; we never see them.
 - What they get: a ZIP file with the whole website (pages, pictures, code), plus step-by-step instructions to put it online.
 - Domain and hosting are NOT included. They buy their own domain (like mybakery.com) and hosting, for example from Cloudflare, Netlify, GoDaddy or Hostinger, then upload the ZIP. We give the steps for the host they pick.
 - Changes: we make reasonable changes until they're happy with the design they described. Big new features may cost extra and we say so first.
