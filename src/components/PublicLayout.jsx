@@ -157,7 +157,7 @@ export default function PublicLayout({ title, children }) {
         )}
       </header>
 
-      <main id="main" tabIndex={-1} className="relative z-10 max-w-6xl mx-auto px-4 pb-16 outline-none">{children}</main>
+      <main id="main" tabIndex={-1} className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 outline-none">{children}</main>
 
       <footer className="relative z-10 border-t border-slate-800/80 bg-black/30">
         <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
