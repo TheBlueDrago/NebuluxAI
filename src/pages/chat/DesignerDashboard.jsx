@@ -496,7 +496,7 @@ export default function DesignerDashboard() {
               </div>
               <button
                 onClick={() => { setZipErr(""); setNewOpen(true); }}
-                className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-800/60 px-3 py-2 text-sm font-medium text-slate-200 hover:border-sky-500/60 hover:text-white transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> New website
               </button>
