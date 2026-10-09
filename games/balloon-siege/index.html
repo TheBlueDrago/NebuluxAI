@@ -27,6 +27,15 @@ canvas{display:block}
 .path .btn.mastery{background:linear-gradient(#ffd54f,#ff8f00);color:#3e2723;text-shadow:none}
 .panel .row{display:flex;gap:6px;margin-top:10px}.panel .row .btn{flex:1;font-size:14px;padding:8px 10px}
 .panel .keys{font-size:11px;opacity:.6;margin-top:8px}
+#lobby.pad{background:rgba(5,8,25,.55)}#lobby .box{position:relative}#padx{position:absolute;right:12px;top:12px;padding:6px 12px}
+#hubhud{position:fixed;left:12px;top:12px;z-index:5;display:none;flex-direction:column;gap:2px;color:#fff;background:rgba(0,0,0,.45);padding:10px 14px;border-radius:14px;font-weight:800;text-shadow:0 1px 2px #000;max-width:min(440px,80vw)}
+#hubhud small{font-weight:500;opacity:.9}
+#chat{position:fixed;left:12px;bottom:12px;z-index:5;width:min(380px,72vw);display:none;flex-direction:column;gap:6px}
+#clog{max-height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;font-size:14px;color:#fff;text-shadow:0 1px 2px #000}
+#clog div{background:rgba(0,0,0,.42);padding:3px 9px;border-radius:9px;align-self:flex-start;word-break:break-word}#clog .me{background:rgba(30,136,229,.55)}#clog .sys{background:none;opacity:.8;font-style:italic}
+#cin{display:none;width:100%;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:2px solid #fff;background:rgba(0,0,0,.6);color:#fff;outline:none}
+#chatb{position:fixed;right:12px;top:12px;z-index:5;display:none}
+@media (pointer:coarse){#chat{top:96px;bottom:auto}#clog{max-height:110px}}
 .ov{position:fixed;inset:0;background:radial-gradient(ellipse at top,#3b2a7a,#0d1030 70%);display:flex;align-items:center;justify-content:center;z-index:10;overflow-y:auto;padding:16px}
 .ov.dim{background:rgba(5,10,30,.6)}
 .box{background:rgba(15,20,45,.95);color:#fff;border-radius:20px;padding:24px;text-align:center;max-width:860px;width:100%;box-shadow:0 10px 40px #0008;margin:auto}
@@ -80,7 +89,11 @@ input.cin{font:inherit;font-size:22px;font-weight:900;letter-spacing:.15em;text-
 <div id="joy"><div id="joyk"></div></div>
 <button class="btn blue" id="jumpb">⤴</button>
 
+<div id="hubhud"><span>🎈 BALLOON SIEGE LOBBY</span><span>🪙 <span id="hcoins">0</span> coins · 👥 <span id="hcount">1</span> online</span><small>Walk onto a pad: ▶ Play · 👥 Party · 🛒 Towers. Space jumps, Enter chats.</small></div>
+<div id="chat"><div id="clog"></div><input id="cin" maxlength="120" placeholder="Say something nice… (Enter to send)" autocomplete="off"></div>
+<button class="btn" id="chatb">💬</button>
 <div class="ov" id="lobby"><div class="box">
+  <button class="btn" id="padx" title="Back to the lobby">✕</button>
   <h1>🎈 BALLOON SIEGE</h1>
   <p>Balloons are floating toward your castle! Build towers along the path and pop every last one. Survive 40 waves to win.</p>
   <div class="coins">🪙 <span id="coins">0</span> coins</div>
@@ -835,6 +848,12 @@ $("start").onclick = () => act({ a: running ? "auto" : "start" });
 $("speed").onclick = () => act({ a: "speed" });
 $("quit").onclick = () => { unlock(); if (confirm("Leave this game? You keep the coins for the waves you've survived.")) finish(false, true); };
 function onKey(e) {
+  if (inHub) {
+    if (padOpen) return;
+    if (e.code === "Space") { e.preventDefault(); jump(); }
+    if (e.code === "Enter" || e.code === "Slash") { e.preventDefault(); openChat(); }
+    return;
+  }
   if (!playing) return;
   if (e.code.startsWith("Digit")) { const id = SAVE.loadout[+e.code.slice(5) - 1]; if (id) build(building && building.id === id ? null : DEF[id]); }
   if (e.code === "Escape") { build(null); select(null); }
@@ -903,18 +922,19 @@ function clickAt(cx, cy) {
 // ---------- mouse lock ----------
 let locked = false;
 const canvas = renderer.domElement;
-function lock() { if (!TOUCH && playing && canvas.requestPointerLock) try { canvas.requestPointerLock(); } catch (e) {} }
+function lock() { if (!TOUCH && (playing || (inHub && !padOpen && !chatOpen)) && canvas.requestPointerLock) try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
 function unlock() { if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); }
 document.addEventListener("pointerlockchange", () => {
   locked = document.pointerLockElement === canvas;
   $("cross").style.display = locked ? "block" : "none";
+  if (inHub) return;
   $("tip").textContent = locked ? "WASD walk · Space jump · mouse to look · click to build or pick a tower · G start wave · Esc frees the mouse" : "Click the game to lock the mouse · WASD walk · Space jump · 1-5 pick a tower";
 });
 let drag = null;
 canvas.addEventListener("pointerdown", (e) => {
   if (e.pointerType === "touch") { touchDown(e); return; }
-  if (!playing) return;
-  if (locked) { clickAt(innerWidth / 2, innerHeight / 2); return; }
+  if (!playing && !inHub) return;
+  if (locked) { if (playing) clickAt(innerWidth / 2, innerHeight / 2); return; }
   drag = { x: e.clientX, y: e.clientY, moved: 0, yaw: camYaw, pitch: camPitch };
 });
 addEventListener("pointermove", (e) => {
@@ -925,6 +945,7 @@ addEventListener("pointermove", (e) => {
 });
 addEventListener("pointerup", (e) => {
   if (e.pointerType === "touch") { touchUp(e); return; }
+  if (drag && drag.moved <= 6 && e.target === canvas && inHub && !locked) lock();
   if (drag && drag.moved <= 6 && e.target === canvas && playing && !locked) {
     const p = groundAt(e.clientX, e.clientY);
     // clicking a tower or placing one works right away; any other click locks the mouse
@@ -964,6 +985,7 @@ function clearWorld() {
   for (const p of PILES) scene.remove(p.m); PILES = [];
 }
 function begin(d, net) {
+  leaveHub();
   clearWorld();
   diff = d; party = !!net; NET = net || null;
   cash = DIFF[d].cash; lives = DIFF[d].lives; wave = 0; popped = 0; running = false; ended = false; playing = true; queue = []; speed = 1; auto = false; lastSnap = null; outFx = [];
@@ -1006,7 +1028,7 @@ $("tolobby").onclick = () => {
 
 // ---------- lobby ----------
 function showLobby() {
-  $("lobby").style.display = "flex";
+  enterHub();
   $("coins").textContent = SAVE.coins;
   $("best").textContent = `Best: Easy ${SAVE.best.easy} · Medium ${SAVE.best.medium} · Hard ${SAVE.best.hard} · Party ${SAVE.best.party || 0} waves${SAVE.wins ? ` · Wins ${SAVE.wins}` : ""}`;
   drawShop();
@@ -1076,6 +1098,164 @@ function onNet(ev) {
   if (m.k === "snap" && !isHost()) applySnap(m);
 }
 
+// ---------- the lobby: a plaza to walk, jump and chat with everyone online ----------
+// Everyone in it shares the server's "lobby" room: moves go out as { t: "bs", k: "lp" } and
+// typed chat is checked by the server (kids play this) before anyone sees it.
+// Walk onto a pad to open Play, Party or the Tower Shop.
+const HX = 400, HR = 31;
+let inHub = false, hubWS = null, padOn = null, padOpen = false, chatOpen = false, hubSend = 0;
+const HUBP = new Map();
+const hubG = new THREE.Group(); hubG.position.set(HX, 0, 0); scene.add(hubG);
+(() => {
+  const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const cyl = (rt, rb, h, c, seg = 40) => new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat(c));
+  hubG.add(at(cyl(HR + 3, HR + 1, 3, 0x6fbf5a), 0, -1.5, 0));
+  hubG.add(at(cyl(HR + 1, 8, 10, 0x8d6e4a, 24), 0, -8, 0));
+  hubG.add(at(cyl(13, 13, .12, 0xe8d9a8), 0, .06, 0));
+  // fountain with a balloon bunch
+  hubG.add(at(cyl(4, 4.4, 1.2, 0xb0bec5), 0, .6, 0), at(cyl(3.3, 3.3, .2, 0x4fc3f7), 0, 1.25, 0), at(cyl(.4, .4, 4, 0xb0bec5, 12), 0, 2.5, 0));
+  const COLS = [0xef5350, 0x42a5f5, 0x66bb6a, 0xffca28, 0xab47bc, 0xff7043];
+  hubG.userData.floaters = [];
+  for (let i = 0; i < 6; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), mat(COLS[i])); b.scale.set(1, 1.2, 1);
+    const a = i / 6 * Math.PI * 2; b.position.set(Math.cos(a) * 1.3, 6.5 + (i % 2) * .8, Math.sin(a) * 1.3);
+    hubG.add(b); hubG.userData.floaters.push({ m: b, y: b.position.y, p: i });
+  }
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2 + .2, r = HR - 1 + (i % 2);
+    if (Math.sin(a) < -.55) continue; // keep the pads clear
+    const t = new THREE.Group(); t.add(at(box(.8, 2.4, .8, 0x6d4c41), 0, 1.2, 0));
+    const top = new THREE.Mesh(new THREE.ConeGeometry(2.2, 4.5, 8), mat(0x2e7d32)); top.position.y = 4.4; t.add(top);
+    t.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); hubG.add(t);
+  }
+  for (let i = 0; i < 18; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(.9, 12, 10), mat(COLS[i % 6])); b.scale.set(1, 1.2, 1);
+    b.position.set((Math.random() - .5) * 70, 10 + Math.random() * 14, (Math.random() - .5) * 70);
+    hubG.add(b); hubG.userData.floaters.push({ m: b, y: b.position.y, p: i * 1.7 });
+  }
+})();
+function roundBox(x, w, h, r) { x.beginPath(); if (x.roundRect) x.roundRect(4, 4, w - 8, h - 8, r); else x.rect(4, 4, w - 8, h - 8); x.fill(); }
+function bigTag(text, color) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+  const x = c.getContext("2d"); x.fillStyle = color; roundBox(x, 512, 128, 30);
+  x.font = "900 60px system-ui"; x.fillStyle = "#fff"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, 256, 66);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) })); s.scale.set(9, 2.25, 1); return s;
+}
+const PADS = [
+  { tab: "play", label: "▶ PLAY", css: "#2e7d32", color: 0x43a047, x: -17, z: -14 },
+  { tab: "party", label: "👥 PARTY", css: "#1565c0", color: 0x1e88e5, x: 0, z: -21 },
+  { tab: "shop", label: "🛒 TOWERS", css: "#ef6c00", color: 0xffa000, x: 17, z: -14 },
+];
+for (const p of PADS) {
+  const g = new THREE.Group(); g.position.set(p.x, 0, p.z);
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.8, .35, 32), new THREE.MeshBasicMaterial({ color: p.color })); pad.position.y = .18;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.7, .18, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff })); ring.rotation.x = Math.PI / 2; ring.position.y = .4;
+  g.add(pad, ring, at(box(.6, 7, .6, p.color), -4.2, 3.5, 0), at(box(.6, 7, .6, p.color), 4.2, 3.5, 0), at(box(9, .8, .8, p.color), 0, 7.2, 0));
+  const tag = bigTag(p.label, p.css); tag.position.y = 9.4; g.add(tag);
+  p.ring = ring; hubG.add(g);
+}
+
+function chatLine(name, text, mine) {
+  const d = document.createElement("div");
+  d.textContent = name ? `${name}: ${text}` : text;
+  if (!name) d.className = "sys"; else if (mine) d.className = "me";
+  const log = $("clog"); log.appendChild(d); while (log.children.length > 40) log.firstChild.remove();
+  log.scrollTop = log.scrollHeight;
+}
+function bubble(c, text) {
+  if (!c) return;
+  if (c.userData.bubble) c.remove(c.userData.bubble.s);
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 96;
+  const x = cv.getContext("2d"); x.fillStyle = "rgba(255,255,255,.95)"; roundBox(x, 512, 96, 26);
+  x.font = "bold 34px system-ui"; x.fillStyle = "#111"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text.length > 26 ? text.slice(0, 25) + "…" : text, 256, 50);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false })); s.scale.set(7, 1.3, 1); s.position.y = 6;
+  c.add(s); c.userData.bubble = { s, t: 5 };
+}
+function hubAdd(id, name) {
+  if (HUBP.has(id)) return;
+  const c = makeChar(SHIRTS[HUBP.size % 4], name); c.position.set(HX, 0, 12); scene.add(c);
+  HUBP.set(id, { c, to: c.position.clone(), yaw: 0, mv: 0, name }); hubCount();
+}
+function hubDel(id) { const x = HUBP.get(id); if (x) { scene.remove(x.c); HUBP.delete(id); hubCount(); } }
+function hubCount() { $("hcount").textContent = HUBP.size + 1; }
+function hubConnect() {
+  if (hubWS || !inHub) return;
+  try { hubWS = new WebSocket(WS_URL); } catch (e) { return; }
+  const ws = hubWS;
+  ws.onopen = () => ws.send(JSON.stringify({ t: "join", name: NAME, fig: 0, q: "lobby" }));
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.t === "lobby") { for (const p of m.players || []) hubAdd(p.id, p.name); const n = HUBP.size; chatLine("", `Welcome to the lobby! ${n ? n + " other player" + (n > 1 ? "s" : "") + " here." : "Nobody else is here yet."} Press Enter to chat.`); }
+    else if (m.t === "ljoin") { hubAdd(m.id, m.name); chatLine("", `${m.name} joined the lobby`); }
+    else if (m.t === "left") { const x = HUBP.get(m.id); if (x) chatLine("", `${x.name} left`); hubDel(m.id); }
+    else if (m.t === "chat") { chatLine(m.name, m.text, m.mine); bubble(m.mine ? player : (HUBP.get(m.from) || {}).c, m.text); }
+    else if (m.t === "chatno") chatLine("", "⚠ " + m.why);
+    else if (m.t === "bs" && m.k === "lp") { const x = HUBP.get(m.from); if (x) { x.to.set(m.x, m.y, m.z); x.yaw = m.yaw; x.mv = m.mv; } }
+  };
+  ws.onclose = () => { if (hubWS === ws) hubWS = null; for (const id of [...HUBP.keys()]) hubDel(id); if (inHub) setTimeout(hubConnect, 3000); };
+}
+function openChat() {
+  if (!inHub || padOpen) return;
+  chatOpen = true; for (const k in keys) keys[k] = false; unlock();
+  const i = $("cin"); i.style.display = "block"; i.focus();
+}
+function closeChat() { chatOpen = false; const i = $("cin"); i.value = ""; i.style.display = "none"; i.blur(); }
+$("cin").onkeydown = (e) => {
+  e.stopPropagation();
+  if (e.key === "Escape") return closeChat();
+  if (e.key !== "Enter") return;
+  const t = e.target.value.trim();
+  if (t && hubWS && hubWS.readyState === 1) hubWS.send(JSON.stringify({ t: "chat", text: t }));
+  else if (t) chatLine("", "⚠ Not connected yet. Try again in a moment.");
+  closeChat();
+};
+$("chatb").onclick = () => (chatOpen ? closeChat() : openChat());
+function openPad(tab) {
+  padOpen = true; for (const k in keys) keys[k] = false; unlock(); if (chatOpen) closeChat();
+  $("lobby").style.display = "flex";
+  document.querySelector(`[data-tab="${tab}"]`).onclick();
+  sfx(620, .12, "triangle", .06, 1.3);
+}
+// Closing steps you off the pad so it doesn't open again right away.
+function closePad() { if (padOn) player.position.z += 6; padOpen = false; $("lobby").style.display = "none"; }
+$("padx").onclick = closePad;
+function enterHub() {
+  inHub = true; playing = false; padOn = null; padOpen = false;
+  player.position.set(HX, 0, 12); player.rotation.y = Math.PI; vy = 0; camYaw = 0; camPitch = .42; camDist = 17;
+  $("lobby").classList.add("pad"); $("lobby").style.display = "none";
+  $("hubhud").style.display = "flex"; $("chat").style.display = "flex";
+  $("hcoins").textContent = SAVE.coins; hubCount();
+  if (TOUCH) { $("joy").style.display = "block"; $("jumpb").style.display = "block"; $("chatb").style.display = "block"; }
+  hubConnect();
+}
+function leaveHub() {
+  inHub = false; padOpen = false; if (chatOpen) closeChat();
+  $("hubhud").style.display = "none"; $("chat").style.display = "none"; $("chatb").style.display = "none";
+  $("lobby").classList.remove("pad");
+  if (hubWS) { const ws = hubWS; hubWS = null; ws.onclose = null; try { ws.close(); } catch (e) {} }
+  for (const id of [...HUBP.keys()]) hubDel(id);
+}
+function hubStep(rdt, now, moving) {
+  if (!inHub) return;
+  for (const f of hubG.userData.floaters) f.m.position.y = f.y + Math.sin(now / 900 + f.p) * .5;
+  let on = null;
+  for (const p of PADS) {
+    p.ring.position.y = .4 + Math.sin(now / 300) * .12;
+    if (Math.hypot(player.position.x - HX - p.x, player.position.z - p.z) < 3.8 && player.position.y < 1) on = p;
+  }
+  if (on !== padOn) { padOn = on; if (on) openPad(on.tab); }
+  for (const x of HUBP.values()) {
+    x.c.position.lerp(x.to, Math.min(1, rdt * 10)); x.c.rotation.y = x.yaw; animChar(x.c, x.mv, rdt);
+    const b = x.c.userData.bubble; if (b && (b.t -= rdt) <= 0) { x.c.remove(b.s); x.c.userData.bubble = null; }
+  }
+  const pb = player.userData.bubble; if (pb && (pb.t -= rdt) <= 0) { player.remove(pb.s); player.userData.bubble = null; }
+  hubSend += rdt;
+  if (hubSend > .1 && hubWS && hubWS.readyState === 1) {
+    hubSend = 0;
+    hubWS.send(JSON.stringify({ t: "bs", k: "lp", x: r1(player.position.x), y: r1(player.position.y), z: r1(player.position.z), yaw: Math.round(player.rotation.y * 100) / 100, mv: moving ? 1 : 0 }));
+  }
+}
+
 // ---------- main loop ----------
 let last = performance.now(), meT = 0, hudT = 0;
 function step(now) {
@@ -1085,7 +1265,7 @@ function step(now) {
   let f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
   let s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
   if (!locked) { if (keys.KeyQ) camYaw += rdt * 2; if (keys.KeyE) camYaw -= rdt * 2; }
-  const l = playing ? Math.hypot(f, s) : 0;
+  const l = playing || (inHub && !padOpen && !chatOpen) ? Math.hypot(f, s) : 0;
   if (l > .05) {
     f /= Math.max(1, l); s /= Math.max(1, l);
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
@@ -1093,18 +1273,19 @@ function step(now) {
     const sp = keys.ShiftLeft ? 18 : 12;
     const nx = player.position.x + mx * sp * rdt, nz = player.position.z + mz * sp * rdt;
     let blocked = false;
-    for (const o of OBST) if (Math.hypot(o.position.x - nx, o.position.z - nz) < o.userData.block && player.position.y < 3) blocked = true;
-    for (const t of TW) if (Math.hypot(t.g.position.x - nx, t.g.position.z - nz) < 2.4 && player.position.y < 4) blocked = true;
-    if (!blocked) { player.position.x = Math.max(-78, Math.min(78, nx)); player.position.z = Math.max(-78, Math.min(78, nz)); }
+    if (inHub) { const dx = nx - HX; if (Math.hypot(dx, nz) > HR || Math.hypot(dx, nz) < 4.6) blocked = true; }
+    else for (const o of OBST) if (Math.hypot(o.position.x - nx, o.position.z - nz) < o.userData.block && player.position.y < 3) blocked = true;
+    if (!inHub) for (const t of TW) if (Math.hypot(t.g.position.x - nx, t.g.position.z - nz) < 2.4 && player.position.y < 4) blocked = true;
+    if (!blocked) { player.position.x = inHub ? nx : Math.max(-78, Math.min(78, nx)); player.position.z = inHub ? nz : Math.max(-78, Math.min(78, nz)); }
     player.rotation.y = Math.atan2(mx, mz);
   }
-  if (keys.Space && playing) jump();
+  if (keys.Space && (playing || (inHub && !padOpen && !chatOpen))) jump();
   vy -= 28 * rdt; player.position.y += vy * rdt;
   if (player.position.y <= 0) { player.position.y = 0; vy = 0; grounded = true; }
   animChar(player, grounded ? l : 0, rdt);
   reachRing.position.set(player.position.x, .15, player.position.z);
   const cp = Math.cos(camPitch);
-  if (playing) {
+  if (playing || inHub) {
     camera.position.set(player.position.x + Math.sin(camYaw) * camDist * cp, player.position.y + 2 + Math.sin(camPitch) * camDist, player.position.z + Math.cos(camYaw) * camDist * cp);
     camera.lookAt(player.position.x, player.position.y + 3, player.position.z);
   } else {
@@ -1112,6 +1293,7 @@ function step(now) {
     const a = now / 9000;
     camera.position.set(Math.sin(a) * 70, 45, Math.cos(a) * 70); camera.lookAt(0, 0, 0);
   }
+  hubStep(rdt, now, l > .05);
   updateGhost();
   for (const t of TW) if (t.air) { if (t.air.userData.rotor) t.air.userData.rotor.rotation.y += rdt * 25; if (t.airTo) t.air.position.lerp(t.airTo, Math.min(1, rdt * 8)); }
   for (const x of MATES.values()) { x.c.position.lerp(x.to, Math.min(1, rdt * 10)); x.c.rotation.y = x.yaw; animChar(x.c, x.mv, rdt); }
