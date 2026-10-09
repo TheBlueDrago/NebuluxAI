@@ -298,6 +298,8 @@ async function maintenance(request, env, url) {
   var path = url.pathname;
   // Devices with the old installed app fetch this to remove it (public/sw.js).
   if (path === "/sw.js") return null;
+  // Google Search Console reads these two while the site is down (they list pages, nothing private).
+  if ((path === "/sitemap.xml" || path === "/robots.txt") && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
   // (domainconnect/nebuluxai.com.website.json logoUrl). Only on the main address.
   if (path === "/logo-small.jpg" && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
