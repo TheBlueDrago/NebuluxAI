@@ -8,6 +8,6 @@ export async function onRequestPost({ request, env }) {
   if (!user) return json({ error: "Please sign in." }, 401);
   if (user.role !== "admin") return json({ error: "Admins only." }, 403);
   if (!env.DB) return json({ orders: [] });
-  const r = await env.DB.prepare("SELECT * FROM site_orders ORDER BY created_at DESC LIMIT 50").all().catch(() => ({ results: [] }));
+  const r = await env.DB.prepare("SELECT * FROM site_orders WHERE status IS NULL OR status != 'cancelled' ORDER BY created_at DESC LIMIT 50").all().catch(() => ({ results: [] }));
   return json({ orders: r.results || [] });
 }
