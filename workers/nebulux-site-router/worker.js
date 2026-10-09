@@ -255,6 +255,15 @@ async function maintenance(request, env, url) {
   if (!env || env.MAINTENANCE !== "on") return null;
   var key = (env && env.OWNER_KEY) || "";
   var path = url.pathname;
+  // One-day guest link (2026-10-09/10): anyone who opens /hinebuluxai can see the site while it is
+  // down, until GUEST_UNTIL. It only skips the maintenance page, it gives no owner powers.
+  var GUEST_UNTIL = 1791668609000;
+  if (Date.now() < GUEST_UNTIL) {
+    if (path === "/hinebuluxai" || path === "/hinebuluxai/") {
+      return new Response(null, { status: 302, headers: { location: "/", "cache-control": "no-store", "set-cookie": "nx_guest=1; Path=/; Max-Age=" + Math.floor((GUEST_UNTIL - Date.now()) / 1000) + "; Secure; HttpOnly; SameSite=Lax" } });
+    }
+    if (cookiesOf(request, "nx_guest").length) return null;
+  }
   if (key && path.indexOf("/__owner/") === 0) {
     // Extra owner links (OWNER_LINKS secret, comma-separated) work exactly like the main one.
     var links = [key].concat(String(env.OWNER_LINKS || "").split(",").map(function (s) {
