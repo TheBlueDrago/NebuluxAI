@@ -298,7 +298,8 @@ export default function DesignerDashboard() {
   };
 
   // "New website": start from a ZIP of an existing site, or from scratch with the AI.
-  const [newOpen, setNewOpen] = useState(false);
+  // ?new=1 (linked from Nebulux Sites: "upload your ZIP here") opens the New website chooser.
+  const [newOpen, setNewOpen] = useState(() => new URLSearchParams(window.location.search).has("new"));
   const [zipErr, setZipErr] = useState("");
   const zipRef = useRef(null);
   const fromZip = async (f) => {
