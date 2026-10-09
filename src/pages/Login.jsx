@@ -1,3 +1,4 @@
+import { playSplashAfterLogin } from "@/components/Splash";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -53,6 +54,7 @@ export default function Login() {
     try {
       await base44.auth.loginViaEmailPassword(email, password);
       markSessionOnly(!remember);
+      playSplashAfterLogin();
       window.location.href = returnTo;
     } catch (err) {
       setError(err.message || "Invalid email or password");

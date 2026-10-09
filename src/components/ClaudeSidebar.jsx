@@ -201,10 +201,12 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
       )}
 
       {/* account */}
-      <div className="relative p-2 border-t border-[var(--cl-border)]/60" data-acct>
+      <div className={`relative p-2 border-t border-[var(--cl-border)]/60 ${collapsed && !mobile ? "z-[60]" : ""}`} data-acct>
         {/* Claude-style account menu: opens upward from your name */}
         {menu && (
-          <div className="absolute bottom-full left-2 right-2 mb-1 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5 text-[14px] z-10">
+          // When the sidebar is closed it's only 56px wide: the menu keeps its normal width and
+          // opens out beside it, above the page, instead of being squeezed.
+          <div className={`absolute bottom-full mb-1 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5 text-[14px] ${collapsed && !mobile ? "left-2 w-[272px] z-[60]" : "left-2 right-2 z-10"}`}>
             <p className="px-3 pt-1 pb-2 text-[13px] text-[var(--cl-faint)] truncate">{currentUser?.email}</p>
             <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
               <Settings className="w-4 h-4 text-[var(--cl-muted)]" />

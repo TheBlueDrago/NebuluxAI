@@ -1,3 +1,4 @@
+import { playSplashAfterLogin } from "@/components/Splash";
 import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -95,6 +96,7 @@ export default function Register() {
         base44.auth.setToken(result.access_token);
         markSessionOnly(false); // a new account stays signed in, like "Remember me"
       }
+      playSplashAfterLogin();
       window.location.href = safeReturnTo();
     } catch (err) {
       setError(err.message || "Invalid verification code");
