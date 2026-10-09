@@ -269,3 +269,8 @@ html[data-chat-font="system"] .font-serif { font-family: ui-sans-serif, system-u
 @media (pointer: coarse) {
   .nx-tools button { min-width: 38px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; }
 }
+
+/* Phones and tablets: side menu rows are easier to tap. */
+@media (pointer: coarse) {
+  aside nav > button, aside nav > a { min-height: 42px; }
+}
