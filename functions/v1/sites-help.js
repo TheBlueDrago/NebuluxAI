@@ -43,7 +43,7 @@ export async function onRequestPost({ request, env }) {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: SITES_RULES }] }, contents: msgs, generationConfig: { maxOutputTokens: 400 } }),
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: SITES_RULES }] }, contents: msgs, generationConfig: { maxOutputTokens: 2000 } }),
       });
       if (!res.ok) continue;
       const j = await res.json();
