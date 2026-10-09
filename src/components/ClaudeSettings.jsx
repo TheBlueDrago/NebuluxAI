@@ -53,7 +53,7 @@ const Toggle = ({ on, onChange, label }) => (
 const Segmented = ({ value, onChange, options }) => (
   <div className="flex rounded-lg bg-[var(--cl-hover)]/60 p-0.5">
     {options.map(([k, l]) => (
-      <button key={k} onClick={() => onChange(k)} aria-label={typeof l === "string" ? l : k} className={`px-3 py-1 rounded-md text-[14px] ${value === k ? "bg-[var(--cl-card)] text-[var(--cl-text)] shadow" : "text-[var(--cl-muted)]"}`}>{l}</button>
+      <button key={k} onClick={() => onChange(k)} aria-label={typeof l === "string" ? l : k} className={`px-3 py-1 [@media(pointer:coarse)]:py-2 rounded-md text-[14px] ${value === k ? "bg-[var(--cl-card)] text-[var(--cl-text)] shadow" : "text-[var(--cl-muted)]"}`}>{l}</button>
     ))}
   </div>
 );
