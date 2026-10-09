@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Bot, LogIn, LayoutDashboard, Users, Database, Globe, Plug, ShieldCheck, Code2, History, Settings, ExternalLink, Copy, Check, Rocket, Inbox, Trash2, RotateCcw, EyeOff, Eye, Plus, AlertTriangle } from "lucide-react";
+import { Bot, LogIn, LayoutDashboard, Users, Database, Globe, Plug, ShieldCheck, KeyRound, History, Settings, ExternalLink, Check, Rocket, Inbox, Trash2, RotateCcw, EyeOff, Eye, Plus, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { askConfirm, showNotice } from "@/lib/dialogs";
 import { siteUrl } from "@/lib/blackholeDomain";
@@ -11,6 +11,7 @@ import BadgeToggle from "@/components/designer/BadgeToggle";
 import SiteMessages from "@/components/designer/SiteMessages";
 import SiteSignIns from "@/components/designer/SiteSignIns";
 import SiteAI from "@/components/designer/SiteAI";
+import SiteVariables from "@/components/designer/SiteVariables";
 import ShareLink from "@/components/designer/ShareLink";
 import { QrButton } from "@/components/designer/QrDialog";
 
@@ -26,7 +27,7 @@ const SECTIONS = [
   ["domains", "Domains", Globe],
   ["integrations", "Integrations", Plug],
   ["security", "Security", ShieldCheck],
-  ["code", "Code", Code2],
+  ["variables", "Variables", KeyRound],
   ["versions", "Versions", History],
   ["settings", "Settings", Settings],
 ];
@@ -62,7 +63,6 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
   const [site, setSite] = useState(undefined); // the published record, null when not published
   const [inbox, setInbox] = useState(null);
   const [showInbox, setShowInbox] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [newName, setNewName] = useState(siteName);
   const url = site && !site.hidden ? siteUrl(siteName) : "";
 
@@ -80,12 +80,8 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
   }, [siteName]);
 
   const secret = useMemo(() => (tab === "security" ? privateInfoOnPage(html) : ""), [tab, html]);
-  const lines = (html || "").split("\n").length;
   const kb = Math.round(new Blob([html || ""]).size / 1024);
 
-  const copyCode = async () => {
-    try { await navigator.clipboard.writeText(html || ""); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { showNotice("Couldn't copy. Select the code and copy it instead."); }
-  };
   const toggleHidden = async () => {
     if (!site) return;
     try { await base44.entities.PublishedSite.update(site.id, { hidden: !site.hidden }); setSite({ ...site, hidden: !site.hidden }); }
@@ -144,6 +140,7 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
     ),
     signin: <SiteSignIns site={siteName} />,
     ai: <SiteAI site={siteName} />,
+    variables: <SiteVariables site={siteName} />,
     data: (
       <>
         <H sub="What visitors send through the forms on your published site.">Data</H>
@@ -182,18 +179,6 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
           <Card title="Visibility" sub={site ? (site.hidden ? "Hidden: only you can see it in your list." : "Public: anyone with the link can visit.") : "Not published yet."} right={site ? <Btn onClick={toggleHidden}>{site.hidden ? <><Eye className="w-4 h-4" /> Show it</> : <><EyeOff className="w-4 h-4" /> Hide it</>}</Btn> : null} />
         </div>
         <p className="text-[12px] text-slate-500 mt-3">Every site is served over HTTPS, and forms are checked for spam.</p>
-      </>
-    ),
-    code: (
-      <>
-        <H sub={`${lines} lines · ${kb} KB`}>Code</H>
-        <div className="rounded-xl border border-slate-700/60 bg-slate-950 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">
-            <span className="text-[12px] text-slate-400">index.html</span>
-            <Btn onClick={copyCode} disabled={!html}>{copied ? <><Check className="w-4 h-4" /> Copied</> : <><Copy className="w-4 h-4" /> Copy</>}</Btn>
-          </div>
-          <pre className="max-h-[55vh] overflow-auto p-3 text-[12px] leading-relaxed text-slate-300 font-mono whitespace-pre">{html || "Nothing built yet."}</pre>
-        </div>
       </>
     ),
     versions: (

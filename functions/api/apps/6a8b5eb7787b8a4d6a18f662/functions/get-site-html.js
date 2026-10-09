@@ -11,6 +11,7 @@ import { json } from "../../../../../cloudflare-lib/published.js";
 import { isBlocked } from "../../../../../cloudflare-lib/reports.js";
 import { pageFor } from "../../../../../cloudflare-lib/pagesource.js";
 import { removedPage, preparePage } from "../../../../../cloudflare-lib/pageserve.js";
+import { readVars, withSiteVars } from "../../../../../cloudflare-lib/sitevars.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -27,7 +28,14 @@ export async function onRequestPost(context) {
 
     if (kv && (await isBlocked(kv, "site", name))) return reply(removedPage("site"));
     if (page.removed) return reply(removedPage("site", page.removed));
-    return reply(preparePage(page.html, "site", name, { badge: site.showBadge === true }));
+    let out = preparePage(page.html, "site", name, { badge: site.showBadge === true });
+    // Served to visitors (the site router asks with serve: true): fill in the site's text
+    // variables and add NebuluxFetch (Dashboard → Variables). The editor gets the page as written.
+    if (body.serve && kv) {
+      const vars = await readVars(kv, name);
+      if (vars.length) out = withSiteVars(out, name, vars, "https://nebuluxai.com");
+    }
+    return reply(out);
   } catch (err) {
     return json({ error: (err && err.message) || "Could not load the site." }, 500);
   }

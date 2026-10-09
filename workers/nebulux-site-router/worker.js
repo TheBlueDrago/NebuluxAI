@@ -71,7 +71,7 @@ async function lookup(kind, name) {
       var res = await fetch(API_BASE + kind, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name }),
+        body: JSON.stringify({ name: name, serve: true }),
       });
       if (res.status < 500) return res;
     } catch (err) {

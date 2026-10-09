@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { askConfirm, askText } from "@/lib/dialogs";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Menu, Globe, Plus, Sparkles, Loader2, Pencil, Trash2, Eye, EyeOff, Crown, ExternalLink, QrCode, Star, Inbox as InboxIcon,
+  Menu, Globe, Plus, Sparkles, Loader2, Pencil, Trash2, Eye, EyeOff, Crown, ExternalLink, QrCode, Star, Inbox as InboxIcon, X, FileArchive,
 } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
 import SiteMessages from "@/components/designer/SiteMessages";
@@ -15,6 +15,7 @@ import { siteLimit } from "@/lib/publishLimits";
 import { siteUrl } from "@/lib/blackholeDomain";
 import { resetDesignerProject, loadDesignerHtmlIntoProject } from "@/lib/designerStore";
 import { SITE_TEMPLATES } from "@/lib/siteTemplates";
+import { zipToSite } from "@/lib/zipSite";
 import { hasProFeatures, hasSpace } from "@/lib/plans";
 
 const SUGGESTIONS = [
@@ -295,6 +296,21 @@ export default function DesignerDashboard() {
     navigate("/chat/designer/build", { state: text ? { initialPrompt: text } : {} });
   };
 
+  // "New website": start from a ZIP of an existing site, or from scratch with the AI.
+  const [newOpen, setNewOpen] = useState(false);
+  const [zipErr, setZipErr] = useState("");
+  const zipRef = useRef(null);
+  const fromZip = async (f) => {
+    setZipErr("");
+    try {
+      const site = await zipToSite(f);
+      loadDesignerHtmlIntoProject(site.name, site.html);
+      navigate("/chat/designer/build");
+    } catch (e) {
+      setZipErr(e?.message || "Couldn't open that ZIP.");
+    }
+  };
+
   const handleCreate = () => {
     const text = prompt.trim();
     createSite(text || undefined);
@@ -474,11 +490,36 @@ export default function DesignerDashboard() {
                 </p>
               </div>
               <button
-                onClick={() => createSite()}
+                onClick={() => { setZipErr(""); setNewOpen(true); }}
                 className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> New website
               </button>
+              {newOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setNewOpen(false)}>
+                  <div className="w-full max-w-xl rounded-2xl border border-slate-700/60 bg-slate-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-lg font-semibold text-white">Create a new website</h3>
+                      <button onClick={() => setNewOpen(false)} className="p-1 text-slate-400 hover:text-white" title="Close"><X className="w-4 h-4" /></button>
+                    </div>
+                    <p className="text-sm text-slate-400 mb-5">How do you want to start?</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <button onClick={() => zipRef.current?.click()} className="text-left rounded-xl border border-slate-700/60 bg-slate-800/60 hover:border-sky-500/60 hover:bg-slate-800 p-4 transition-colors">
+                        <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-sky-500/15 text-sky-300 mb-3"><FileArchive className="w-5 h-5" /></span>
+                        <p className="font-semibold text-white">Upload a ZIP</p>
+                        <p className="text-xs text-slate-400 mt-1">Bring a website you already have (index.html with its CSS, scripts and pictures).</p>
+                      </button>
+                      <button onClick={() => { setNewOpen(false); createSite(); }} className="text-left rounded-xl border border-slate-700/60 bg-slate-800/60 hover:border-violet-500/60 hover:bg-slate-800 p-4 transition-colors">
+                        <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-violet-500/15 text-violet-300 mb-3"><Sparkles className="w-5 h-5" /></span>
+                        <p className="font-semibold text-white">Create from scratch with AI</p>
+                        <p className="text-xs text-slate-400 mt-1">Describe it and the AI builds it. You can still upload a ZIP later.</p>
+                      </button>
+                    </div>
+                    {zipErr && <p className="text-sm text-red-300 mt-3">{zipErr}</p>}
+                    <input ref={zipRef} type="file" accept=".zip,application/zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) fromZip(f); }} />
+                  </div>
+                </div>
+              )}
             </div>
 
             {loading ? (

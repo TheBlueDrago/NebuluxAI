@@ -4,7 +4,8 @@ import PageSize from "@/components/designer/PageSize";
 import Markdown from "@/components/chat/Markdown";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Globe, Search, RefreshCw, Plus, X, Crown, Rocket, Paperclip, RotateCcw } from "lucide-react";
+import { Loader2, Globe, Search, RefreshCw, Plus, X, Crown, Rocket, Paperclip, RotateCcw, FileArchive } from "lucide-react";
+import { zipToSite } from "@/lib/zipSite";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
@@ -228,6 +229,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const [effort, setEffort] = useEffort();
   const [live, setLive] = useState("");
   const fileInputRef = useRef(null);
+  const zipInputRef = useRef(null);
   const scrollRef = useRef(null);
   const reqIdRef = useRef(0);
   const abortRef = useRef(null);
@@ -990,10 +992,34 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
               >
                 <Plus className="w-4 h-4" />
               </button>
+              <button
+                onClick={() => zipInputRef.current?.click()}
+                title="Upload your website as a ZIP (index.html and its files)"
+                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+              >
+                <FileArchive className="w-4 h-4" /> ZIP
+              </button>
               <VoiceInput onText={(t) => setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t))} />
               <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} />
               <EffortPicker value={effort} onChange={setEffort} />
             </div>
+            <input
+              ref={zipInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                try {
+                  const site = await zipToSite(f);
+                  pushMsg({ role: "ai", content: site.html, note: `Uploaded ${f.name}.${site.otherPages ? ` It has ${site.otherPages} more page${site.otherPages > 1 ? "s" : ""}; only the main page (index.html) is used here.` : ""} You can keep changing it with the AI.` });
+                } catch (err) {
+                  pushMsg({ role: "ai", text: true, content: err?.message || "Couldn't open that ZIP." });
+                }
+              }}
+            />
             <input
               ref={fileInputRef}
               type="file"
