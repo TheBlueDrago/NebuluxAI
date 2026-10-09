@@ -9,6 +9,8 @@ import { HeroCollage, ChatShot, SiteShot, GameShot, ShopShot, TeamShot, SafetySh
 import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company";
 import { siteUrl } from "@/lib/blackholeDomain";
 import { SITE_TEMPLATES } from "@/lib/siteTemplates";
+import Starfield from "@/components/landing/Starfield";
+import "./landing-lux.css";
 
 const HOME_TEMPLATES = ["business", "event", "restaurant", "resume"].map((id) => SITE_TEMPLATES.find((t) => t.id === id)).filter(Boolean);
 
@@ -201,6 +203,8 @@ export default function Landing() {
 
   return (
     <PublicLayout title="Your AI for answers, writing, code and more">
+      <Starfield />
+      <div className="nx-lux" onPointerMove={(e) => { const c = e.target.closest?.("[class*='rounded-2xl'][class*='border'],[class*='rounded-3xl'][class*='border']"); if (c) { const r = c.getBoundingClientRect(); c.style.setProperty("--mx", e.clientX - r.left + "px"); c.style.setProperty("--my", e.clientY - r.top + "px"); } }}>
       {/* Hero */}
       <section className="grid lg:grid-cols-2 gap-12 items-center pt-10 sm:pt-16 pb-12">
         <div
@@ -493,6 +497,7 @@ export default function Landing() {
           </Link>
         </Reveal>
       </section>
+      </div>
     </PublicLayout>
   );
 }

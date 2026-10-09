@@ -1,0 +1,25 @@
+/* The premium layer on the home page (src/pages/Landing.jsx). Scoped to .nx-lux. */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap");
+
+.nx-aurora{position:fixed;inset:-20vh -10vw auto;height:90vh;z-index:0;pointer-events:none;background:radial-gradient(50% 60% at 25% 25%,rgba(108,84,255,.32),transparent 70%),radial-gradient(40% 50% at 78% 15%,rgba(214,92,245,.22),transparent 70%),radial-gradient(40% 40% at 55% 60%,rgba(56,189,248,.10),transparent 70%);filter:blur(30px);animation:nx-drift 18s ease-in-out infinite alternate}
+@keyframes nx-drift{to{transform:translate3d(3vw,4vh,0) scale(1.08)}}
+
+.nx-lux h1,.nx-lux h2,.nx-lux h3{font-family:"Sora",ui-sans-serif,system-ui,sans-serif;letter-spacing:-.035em}
+.nx-lux h1{font-weight:800;line-height:1}
+@media (min-width:640px){.nx-lux h1{font-size:4rem}}
+.nx-lux h2{font-weight:700}
+
+/* glass cards with a soft glow, a lift and a light that follows the mouse */
+.nx-lux [class*="rounded-2xl"][class*="border"],.nx-lux [class*="rounded-3xl"][class*="border"]{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))!important;
+  border-color:rgba(255,255,255,.09)!important;backdrop-filter:blur(12px);
+  transition:transform .3s cubic-bezier(.2,.7,.2,1),border-color .3s,box-shadow .3s;position:relative}
+.nx-lux [class*="rounded-2xl"][class*="border"]:hover,.nx-lux [class*="rounded-3xl"][class*="border"]:hover{
+  transform:translateY(-4px);border-color:rgba(209,108,245,.35)!important;box-shadow:0 30px 70px -30px rgba(130,80,255,.55)}
+.nx-lux [class*="rounded-2xl"][class*="border"]::after,.nx-lux [class*="rounded-3xl"][class*="border"]::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(380px circle at var(--mx,50%) var(--my,0%),rgba(190,130,255,.12),transparent 50%)}
+.nx-lux [class*="rounded-2xl"][class*="border"]:hover::after,.nx-lux [class*="rounded-3xl"][class*="border"]:hover::after{opacity:1}
+
+/* section headings get a glowing line above them */
+.nx-lux section > div > h2:first-child::before,.nx-lux section > h2:first-child::before{content:"";display:block;width:1px;height:56px;margin:0 auto 22px;background:linear-gradient(transparent,rgba(209,108,245,.6))}
