@@ -17,6 +17,7 @@ import TermsOverdue from "@/components/monitor/TermsOverdue";
 import AiHealth from "@/components/monitor/AiHealth";
 import ErrorReports from "@/components/monitor/ErrorReports";
 import Waitlist from "@/components/monitor/Waitlist";
+import SiteOrders from "@/components/monitor/SiteOrders";
 
 export default function Monitor({ onBack }) {
   const [users, setUsers] = useState([]);
@@ -168,6 +169,7 @@ export default function Monitor({ onBack }) {
       {!loading && <GrowthCard users={users} complete={allLoaded} />}
       <AiHealth />
       <ErrorReports />
+      <SiteOrders />
       <Waitlist />
 
       {/* Published sites & games with safety flags, red first. */}
