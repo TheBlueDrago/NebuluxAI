@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Globe, Search, RefreshCw, Plus, X, Crown, Rocket, Paperclip, RotateCcw, FileArchive } from "lucide-react";
 import { zipToSite } from "@/lib/zipSite";
+import { checkUpload } from "@/lib/fileCheck";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
@@ -230,6 +231,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const [live, setLive] = useState("");
   const fileInputRef = useRef(null);
   const zipInputRef = useRef(null);
+  const [checking, setChecking] = useState(false);
   const scrollRef = useRef(null);
   const reqIdRef = useRef(0);
   const abortRef = useRef(null);
@@ -957,6 +959,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
 
           <div className="p-3 border-t border-slate-700/50">
             <QueueList q={q} loading={loading} />
+            {checking && <p className="flex items-center gap-1.5 text-xs text-slate-400 mb-2"><Loader2 className="w-3 h-3 animate-spin" /> Checking your file to make sure it's safe…</p>}
             {files.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {files.map((f, i) => (
@@ -1012,6 +1015,10 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 const f = e.target.files?.[0];
                 e.target.value = "";
                 if (!f) return;
+                setChecking(true);
+                const chk = await checkUpload(f);
+                setChecking(false);
+                if (!chk.ok) { pushMsg({ role: "ai", text: true, content: "⚠ " + chk.reason }); return; }
                 try {
                   const site = await zipToSite(f);
                   pushMsg({ role: "ai", content: site.html, note: `Uploaded ${f.name}.${site.otherPages ? ` It has ${site.otherPages} more page${site.otherPages > 1 ? "s" : ""}; only the main page (index.html) is used here.` : ""} You can keep changing it with the AI.` });
@@ -1025,10 +1032,20 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
               type="file"
               multiple
               className="hidden"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const fs = Array.from(e.target.files || []);
-                if (fs.length) setFiles((prev) => [...prev, ...fs]);
                 e.target.value = "";
+                if (!fs.length) return;
+                // Every file is checked before it's used; harmful ones are refused.
+                setChecking(true);
+                const good = [];
+                for (const f of fs) {
+                  const chk = await checkUpload(f);
+                  if (chk.ok) good.push(f);
+                  else pushMsg({ role: "ai", text: true, content: "⚠ " + chk.reason });
+                }
+                setChecking(false);
+                if (good.length) setFiles((prev) => [...prev, ...good]);
               }}
             />
           </div>

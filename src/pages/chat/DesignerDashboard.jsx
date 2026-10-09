@@ -16,6 +16,7 @@ import { siteUrl } from "@/lib/blackholeDomain";
 import { resetDesignerProject, loadDesignerHtmlIntoProject } from "@/lib/designerStore";
 import { SITE_TEMPLATES } from "@/lib/siteTemplates";
 import { zipToSite } from "@/lib/zipSite";
+import { checkUpload } from "@/lib/fileCheck";
 import { hasProFeatures, hasSpace } from "@/lib/plans";
 
 const SUGGESTIONS = [
@@ -301,6 +302,9 @@ export default function DesignerDashboard() {
   const [zipErr, setZipErr] = useState("");
   const zipRef = useRef(null);
   const fromZip = async (f) => {
+    setZipErr("Checking your ZIP to make sure it's safe…");
+    const chk = await checkUpload(f);
+    if (!chk.ok) { setZipErr(chk.reason); return; }
     setZipErr("");
     try {
       const site = await zipToSite(f);
