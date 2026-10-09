@@ -190,6 +190,24 @@ function FeatureRow({ eyebrow, title, text, bullets, cta, Picture, flip }) {
 
 // What visitors see first: a long page explaining what Nebulux AI does, with pictures,
 // prices, answers and "Get started for free" all the way down.
+function PhoneCta() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const on = () => setShow(window.scrollY > window.innerHeight * 0.8);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return (
+    <Link
+      to={START_FREE}
+      className={`sm:hidden fixed left-4 right-4 bottom-4 z-40 rounded-2xl bg-white py-4 text-center font-bold text-slate-900 shadow-[0_14px_40px_-10px_rgba(190,140,255,.9)] transition-transform duration-300 ${show ? "translate-y-0" : "translate-y-[140%]"}`}
+    >
+      Get started for free →
+    </Link>
+  );
+}
+
 export default function Landing() {
   const [from] = useState(cameFrom);
   const [sites, setSites] = useState([]);
@@ -498,6 +516,8 @@ export default function Landing() {
         </Reveal>
       </section>
       </div>
+      {/* Phones: once past the top, a "Get started" button stays at the bottom of the screen. */}
+      <PhoneCta />
     </PublicLayout>
   );
 }
