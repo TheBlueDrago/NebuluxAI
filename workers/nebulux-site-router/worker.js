@@ -235,6 +235,22 @@ async function waitlistPost(request, env) {
   return waitPage(ok ? "Thanks! We'll email you when Nebulux AI is back." : "That email doesn't look right. Go back and try again.");
 }
 
+// After the owner link, the owner also types their password: the same one as Nebulux Sites
+// (its ADMIN_KEY), checked by asking the Nebulux Sites Worker, so there's only one password.
+var SITES_CHECK = "https://nebuluxsites.thebluedragonstriker.workers.dev/api/admin/check";
+function ownerPwPage(err) {
+  var body = "<p>Type your owner password to open Nebulux AI.</p><form method='post'><input type='password' name='pw' required autofocus placeholder='Owner password' aria-label='Owner password'><button type='submit'>Enter</button></form>" + (err ? "<p style='color:#fca5a5'>" + err + "</p>" : "");
+  return new Response(DOWN_PAGE.replace("</style>", "</style>" + WAIT_STYLE).replace(/<h1>[\s\S]*?<\/h1>/, "<h1>Owner sign-in</h1>" + body).replace("<body>", "<body><div>").replace("</body>", "</div></body>"),
+    { status: err ? 403 : 200, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
+}
+async function ownerPasswordOk(request) {
+  var form = await request.formData().catch(function () { return null; });
+  var pw = form ? String(form.get("pw") || "") : "";
+  if (!pw) return false;
+  var r = await fetch(SITES_CHECK, { headers: { "x-admin-key": pw } }).catch(function () { return null; });
+  return !!(r && r.ok);
+}
+
 async function maintenance(request, env, url) {
   if (!env || env.MAINTENANCE !== "on") return null;
   var key = (env && env.OWNER_KEY) || "";
@@ -247,6 +263,11 @@ async function maintenance(request, env, url) {
     var isOwnerLink = false;
     for (var n = 0; n < links.length; n++) if (await sameText(path.slice(9), links[n])) isOwnerLink = true;
     if (isOwnerLink && ownerNet(request, env)) {
+      // Then the owner password (a few tries per address per 15 minutes).
+      if (request.method !== "POST") return ownerPwPage("");
+      var tip = request.headers.get("cf-connecting-ip") || "unknown";
+      if (!(await allow("ownerpw:" + tip, 8, 900))) return ownerPwPage("Too many tries. Wait 15 minutes.");
+      if (!(await ownerPasswordOk(request))) return ownerPwPage("That password isn't right.");
       // The real owner: lift any block on this browser and this internet address.
       var ip = request.headers.get("cf-connecting-ip") || "";
       if (ip && env.KV) {
