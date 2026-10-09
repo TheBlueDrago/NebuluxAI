@@ -15,7 +15,7 @@ const SKIP = /^\/(buy|report|site\/|play\/|terms|privacy|contact|ThankYou|promo-
 // new tab (once per tab, not on every reload). Not for visitors who aren't signed in.
 function shouldShow() {
   // Not on the sign-in pages themselves (like coming back from a cancelled Google sign-in).
-  if (/^/(login|register|forgot-password|reset-password)/.test(window.location.pathname)) return false;
+  if (/^\/(login|register|forgot-password|reset-password)/.test(window.location.pathname)) return false;
   let justLoggedIn = false;
   try { justLoggedIn = !!sessionStorage.getItem(SPLASH_AFTER_LOGIN); sessionStorage.removeItem(SPLASH_AFTER_LOGIN); } catch { /* storage blocked */ }
   if (!justLoggedIn && !signedIn()) return false;
