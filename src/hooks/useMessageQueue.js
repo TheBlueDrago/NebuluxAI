@@ -1,10 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 
+// "After you finish…" messages wait here; any other message sent while the AI is writing
+// interrupts it (Claude-style): the AI stops, reads the new message along with what it had
+// written so far (steerBlock), and does what it says.
+export const isAfterMsg = (t) => /\b((after|when|once) (you('?re| are) )?(you )?(done|finish(ed)?)|after (that|this)|then (also )?add|next,? (add|do|make))\b/i.test(t);
+
 // Shared message queue for every AI chat. `run(text, ai)` sends one prompt; call `runNext()` when it finishes.
 // If the selected AI is out of credits, the queue switches to the AI with the most credits left and sets a notice.
 export default function useMessageQueue({ run, remaining, names, selectedAi, onChangeAi }) {
   const [queue, setQueue] = useState([]);
   const [paused, setPaused] = useState(false);
+  const steerRef = useRef("");
   const [notice, setNotice] = useState("");
   const qRef = useRef([]);
   const pausedRef = useRef(false);
@@ -62,8 +68,23 @@ export default function useMessageQueue({ run, remaining, names, selectedAi, onC
     if (!next && !loading) runNext();
   };
 
-  // Decide whether a new message should be queued (true) or sent right away (false).
-  const shouldQueue = (loading) => loading || pausedRef.current || qRef.current.length > 0;
+  // While the AI is writing: "after you finish…" waits (queue); anything else interrupts.
+  const shouldQueue = (loading, text = "") => pausedRef.current || (loading ? isAfterMsg(text) : qRef.current.length > 0);
+  const shouldInterrupt = (loading, text = "") => loading && !pausedRef.current && !isAfterMsg(text);
+  const setSteer = (partial) => {
+    steerRef.current = String(partial || "").trim() || "(nothing yet)";
+  };
+  // Added to the next prompt once, after an interruption.
+  const steerBlock = () => {
+    const p = steerRef.current;
+    steerRef.current = "";
+    if (!p) return "";
+    return (
+      `[You were answering the previous message and had written this so far:\n"""\n${p.slice(-4000)}\n"""\n` +
+      `The user interrupted you with the message below. Read it first: if it changes what they want ("do this instead", a correction, a new detail), do what it says now. ` +
+      `If it's just a comment or question, answer it and then carry on with what you were doing.]\n\n`
+    );
+  };
 
-  return { queue, paused, notice, dismissNotice: () => setNotice(""), push, update, remove, move, togglePause, runNext, shouldQueue };
+  return { queue, paused, notice, dismissNotice: () => setNotice(""), push, update, remove, move, togglePause, runNext, shouldQueue, shouldInterrupt, setSteer, steerBlock };
 }

@@ -138,7 +138,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   // `before`: how many of the chat's messages come before this question (Try again leaves out
   // the answer it replaces); by default all of them.
   const runPrompt = async (text, ai, before = messages.length) => {
-    const history = (ai === "ai" ? studyBlock(studyModeOn()) : "") + aboutMeBlock(readAboutMe(shell?.currentUser?.id)) + historyBlock(messages.slice(0, before));
+    const history = (ai === "ai" ? studyBlock(studyModeOn()) : "") + aboutMeBlock(readAboutMe(shell?.currentUser?.id)) + historyBlock(messages.slice(0, before)) + q.steerBlock();
     let convId = conversation?.id || convIdRef.current;
     const isFirst = !convId || messages.length === 0;
     if (!convId) convId = createConversation();
@@ -252,7 +252,9 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     convIdRef.current = conversation?.id || null;
   }, [conversation?.id]);
 
-  const stop = () => {
+  // stop(true): stopped by a new message (keep the question, mark the reply as interrupted).
+  const stop = (steerArg) => {
+    const steer = steerArg === true;
     reqIdRef.current++;
     abortRef.current?.abort();
     // The server settles the charge for what was written once it notices; re-read credits then.
@@ -261,9 +263,9 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     const convId = conversation?.id;
     // Keep what was already written (it's charged); with nothing written, drop the question.
     if (convId && live.trim()) {
-      addMessage(convId, { role: "ai", content: `${live.trimEnd()}\n\n_(stopped)_` });
+      addMessage(convId, { role: "ai", content: `${live.trimEnd()}\n\n_(${steer ? "interrupted" : "stopped"})_` });
       setLive("");
-    } else if (convId && messages.length && messages[messages.length - 1].role === "user") {
+    } else if (!steer && convId && messages.length && messages[messages.length - 1].role === "user") {
       removeMessage?.(convId, messages.length - 1);
     }
     setInput("");
@@ -276,7 +278,14 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // stays in the box if not).
     const risky = privateInfoIn(text);
     if (risky && !await askConfirm(`This looks like it has ${risky} in it. It's safer not to share that with the AI (or anyone online). Send it anyway?`)) return;
-    if (q.shouldQueue(loading)) {
+    if (q.shouldInterrupt(loading, text)) {
+      // Claude-style: stop, then answer the new message with what was written so far in mind.
+      q.setSteer(live);
+      stop(true);
+      runPrompt(text, selectedAi);
+      return;
+    }
+    if (q.shouldQueue(loading, text)) {
       q.push(text);
       setInput("");
       if (!loading) q.runNext();
@@ -521,7 +530,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               <div className="bg-slate-800 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2.5">
                 <BlackholeIcon className="w-5 h-5 animate-spin" />
                 <span className="text-slate-300 text-sm animate-pulse">
-                  Thinking...{q.queue.length > 0 ? ` (${q.queue.length} queued)` : ""}
+                  Thinking...{q.queue.length > 0 ? ` (${q.queue.length} up next)` : ""}
                 </span>
                 <LiveCost activityKey={conversation?.id ? `chat:${conversation.id}` : null} />
               </div>
@@ -591,7 +600,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               }}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={queued ? "Type to queue your next message…" : claude ? "How can I help you today?" : "Message Nebulux AI..."}
+              placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : claude ? "How can I help you today?" : "Message Nebulux AI..."}
               rows={claude && empty ? 2 : 1}
               className={claude ? "flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]" : "flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"}
             />

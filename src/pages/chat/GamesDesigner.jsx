@@ -405,6 +405,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
         (discuss ? `${DISCUSS_NOTE}\n\n` : `${EXPLAIN_NOTE}\n\n`) +
         (lastHtml ? `Current game HTML:\n${lastHtml}\n\n` : "") +
         `Requests so far:\n${userTurns.length ? userTurns.map((u, i) => `${i + 1}. ${u}`).join("\n") : "(none)"}\n\n` +
+        q.steerBlock() +
         `Latest request: ${text}${fileNote}\n\n` +
         (discuss
           ? "Reply in plain text only — do not output HTML."
@@ -507,7 +508,14 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
   const send = () => {
     const text = input.trim();
     if (!text) return;
-    if (q.shouldQueue(loading)) {
+    if (q.shouldInterrupt(loading, text)) {
+      // Claude-style: stop, then answer the new message with what was written so far in mind.
+      q.setSteer("(it was still working on the page)");
+      stop(true);
+      runPrompt(text, selectedAi);
+      return;
+    }
+    if (q.shouldQueue(loading, text)) {
       q.push(text);
       setInput("");
       if (!loading) q.runNext();
@@ -767,7 +775,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
                 onKeyDown={handleKeyDown}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                placeholder={queued ? "Type to queue your next message…" : "Describe the game you want..."}
+                placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : "Describe the game you want..."}
                 rows={1}
                 className="flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"
               />

@@ -323,7 +323,7 @@ export default function CodePage({ userInitial }) {
 
   // ---- asking ----
   const runPrompt = async (text, before = messages.length, whichAi = ai) => {
-    let context = aboutMeBlock(readAboutMe(userId)) + historyBlock(messages.slice(0, before));
+    let context = aboutMeBlock(readAboutMe(userId)) + historyBlock(messages.slice(0, before)) + q.steerBlock();
     if (attached.length) context += `Files from the GitHub repo ${repo}:\n\n` + attached.map((f) => `${f.path}:\n\`\`\`\n${f.text}\n\`\`\``).join("\n\n") + "\n\n";
     if (before === 0) recordSession(userId);
     setMessages((m) => [...m, { role: "user", content: text }]);
@@ -411,14 +411,15 @@ export default function CodePage({ userInitial }) {
   const q = useMessageQueue({ run: (t) => runPrompt(t), remaining: { [ai]: remaining[ai] ?? (exhausted ? 0 : Infinity) }, names: AI_NAMES, selectedAi: ai });
   useStickToBottom(scrollRef, [messages, loading, live, q.queue.length], messages.filter((m) => m.role === "user").length);
 
-  const stop = () => {
+  const stop = (steerArg) => {
+    const steer = steerArg === true;
     reqIdRef.current++;
     abortRef.current?.abort();
     setTimeout(() => spend(), 2500);
     setLoading(false);
     setInput("");
     if (live.trim()) {
-      setMessages((m) => [...m, { role: "ai", content: `${live.trimEnd()}\n\n_(stopped)_` }]);
+      setMessages((m) => [...m, { role: "ai", content: `${live.trimEnd()}\n\n_(${steer ? "interrupted" : "stopped"})_` }]);
       setLive("");
     }
   };
@@ -432,7 +433,14 @@ export default function CodePage({ userInitial }) {
     const text = input.trim();
     if (!text) return;
     if (secretKeyIn(text) && !(await askConfirm("This looks like it has a secret key (like an API key or access token) in it. Anyone who gets it can use that account, so replace it with something like YOUR_API_KEY first. Send it anyway?"))) return;
-    if (q.shouldQueue(loading)) {
+    if (q.shouldInterrupt(loading, text)) {
+      // Claude-style: stop, then answer the new message with what was written so far in mind.
+      q.setSteer(live);
+      stop(true);
+      runPrompt(text);
+      return;
+    }
+    if (q.shouldQueue(loading, text)) {
       q.push(text);
       setInput("");
       if (!loading) q.runNext();
@@ -555,7 +563,7 @@ export default function CodePage({ userInitial }) {
             {loading && !live && (
               <div className="flex items-center gap-2.5 text-[var(--cl-muted)]">
                 <BlackholeIcon className="w-5 h-5 animate-spin" />
-                <span className="text-sm animate-pulse">{browsing ? "Searching the web…" : "Thinking…"}{q.queue.length > 0 ? ` (${q.queue.length} queued)` : ""}</span>
+                <span className="text-sm animate-pulse">{browsing ? "Searching the web…" : "Thinking…"}{q.queue.length > 0 ? ` (${q.queue.length} up next)` : ""}</span>
               </div>
             )}
           </div>
@@ -644,7 +652,7 @@ export default function CodePage({ userInitial }) {
                   }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  placeholder={queued ? "Type to queue your next message…" : panel === "browser" ? "Ask anything: Nebulux looks it up on the web first…" : "Describe a task or ask a question"}
+                  placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : panel === "browser" ? "Ask anything: Nebulux looks it up on the web first…" : "Describe a task or ask a question"}
                   rows={empty ? 2 : 1}
                   className="flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]"
                 />

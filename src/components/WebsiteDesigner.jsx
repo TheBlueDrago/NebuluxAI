@@ -509,6 +509,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
         (editMode ? `${EDIT_NOTE}\n\n` : "") +
         (lastHtml ? `Current website HTML:\n${lastHtml}\n\n` : "") +
         `Recent requests:\n${userTurns.length ? userTurns.map((u, i) => `${i + 1}. ${u}`).join("\n") : "(none)"}\n\n` +
+        q.steerBlock() +
         `Latest request: ${text}${fileNote}\n\n` +
         (discuss
           ? "Reply in plain text only — do not output HTML."
@@ -609,7 +610,14 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const send = () => {
     const text = input.trim();
     if (!text) return;
-    if (q.shouldQueue(loading)) {
+    if (q.shouldInterrupt(loading, text)) {
+      // Claude-style: stop, then answer the new message with what was written so far in mind.
+      q.setSteer("(it was still working on the page)");
+      stop(true);
+      runPrompt(text, selectedAi);
+      return;
+    }
+    if (q.shouldQueue(loading, text)) {
       q.push(text);
       setInput("");
       if (!loading) q.runNext();
@@ -968,7 +976,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 onKeyDown={handleKeyDown}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                placeholder={queued ? "Type to queue your next message…" : "Describe the website you want..."}
+                placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : "Describe the website you want..."}
                 rows={1}
                 className="flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"
               />

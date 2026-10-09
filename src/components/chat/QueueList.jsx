@@ -1,9 +1,11 @@
 import React from "react";
-import { X, ChevronUp, ChevronDown, ListOrdered, Pause, Play } from "lucide-react";
+import { X, Clock } from "lucide-react";
 
-// Renders the queue notice + pending queued messages. Pass the object returned by useMessageQueue as `q`.
-export default function QueueList({ q, loading }) {
-  const { queue, paused, notice, dismissNotice, update, remove, move, togglePause } = q;
+// Messages that wait for the AI to finish ("after you finish…", see useMessageQueue). Anything
+// else sent while the AI is writing interrupts it instead, so this list is usually empty.
+// Pass the object returned by useMessageQueue as `q`.
+export default function QueueList({ q }) {
+  const { queue, notice, dismissNotice, remove } = q;
   return (
     <>
       {notice && (
@@ -14,35 +16,18 @@ export default function QueueList({ q, loading }) {
           </button>
         </div>
       )}
-      {(queue.length > 0 || paused) && (
-        <div className="mb-2 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-semibold">
-            <ListOrdered className="w-3.5 h-3.5" />
-            Queue ({queue.length}){paused ? " — paused" : " — edit, reorder, or remove before they send"}
-            <button
-              onClick={() => togglePause(loading)}
-              className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-900/30 border border-amber-600/40 text-amber-200 hover:bg-amber-800/40 transition-colors"
-              title={paused ? "Resume queue" : "Pause queue"}
-            >
-              {paused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-              {paused ? "Resume" : "Pause"}
-            </button>
-          </div>
-          {queue.map((it, idx) => (
-            <div key={it.id} className="flex items-center gap-1 bg-amber-900/20 border border-amber-600/40 rounded-lg pl-2 pr-1 py-0.5">
-              <span className="text-[10px] text-amber-400 font-bold shrink-0 w-4 text-center">{idx + 1}</span>
-              <input value={it.text} onChange={(e) => update(it.id, e.target.value)} className="flex-1 min-w-0 bg-transparent outline-none text-xs text-slate-100 py-1" />
-              <button onClick={() => move(it.id, -1)} disabled={idx === 0} className="p-1 rounded text-amber-300 hover:bg-amber-700/40 disabled:opacity-30 transition-colors" title="Move up">
-                <ChevronUp className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => move(it.id, 1)} disabled={idx === queue.length - 1} className="p-1 rounded text-amber-300 hover:bg-amber-700/40 disabled:opacity-30 transition-colors" title="Move down">
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => remove(it.id)} className="p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-900/40 transition-colors" title="Remove from queue">
-                <X className="w-3.5 h-3.5" />
+      {queue.length > 0 && (
+        <div className="mb-2 flex flex-col items-end gap-1.5">
+          {queue.map((it) => (
+            <div key={it.id} className="group flex max-w-[85%] items-start gap-2 rounded-2xl border border-dashed border-slate-500/50 bg-slate-800/40 px-3 py-2 text-sm text-slate-200">
+              <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{it.text}</span>
+              <button onClick={() => remove(it.id)} className="shrink-0 rounded p-0.5 text-slate-400 hover:text-red-300" title="Don't send">
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
+          <span className="text-[11px] text-slate-400">Sends when Nebulux finishes</span>
         </div>
       )}
     </>
