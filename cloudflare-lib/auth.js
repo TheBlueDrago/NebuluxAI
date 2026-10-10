@@ -229,8 +229,10 @@ async function verifyOtp(db, env, body, request) {
   const email = cleanEmail(body.email);
   const c = await db.prepare("SELECT * FROM codes WHERE email = ? AND purpose = 'signup'").bind(email).first();
   if (!c || c.expires < Date.now() || c.tries >= 5) throw new AuthError(400, "That code has expired. Send a new one.");
+  // Each guess uses one of the 5 tries before it's checked, so guesses sent all at once can't get extra tries.
+  const tried = await db.prepare("UPDATE codes SET tries = tries + 1 WHERE email = ? AND purpose = 'signup' AND tries < 5").bind(email).run();
+  if (tried && tried.meta && tried.meta.changes === 0) throw new AuthError(400, "That code has expired. Send a new one.");
   if (!sameHex(await sha(String(body.otp_code || "").trim()), c.code_hash)) {
-    await db.prepare("UPDATE codes SET tries = tries + 1 WHERE email = ? AND purpose = 'signup'").bind(email).run();
     throw new AuthError(400, "That code isn't right. Check it and try again.");
   }
   await db.prepare("DELETE FROM codes WHERE email = ? AND purpose = 'signup'").bind(email).run();
