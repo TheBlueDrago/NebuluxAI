@@ -309,6 +309,8 @@ export default function DesignerDashboard() {
     setZipErr("");
     try {
       const site = await zipToSite(f);
+      // Only the main page is used: say so before anything is lost, so a multi-page site can go to another host instead.
+      if (site.otherPages && !window.confirm(`This ZIP has ${site.otherPages} more page${site.otherPages > 1 ? "s" : ""} besides the main one. Nebulux AI uses only the main page (index.html). Continue with just that page?`)) return;
       loadDesignerHtmlIntoProject(site.name, site.html);
       navigate("/chat/designer/build");
     } catch (e) {
