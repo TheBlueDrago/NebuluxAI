@@ -79,11 +79,20 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   // so nothing is charged until the person presses send. Taken out of the address after.
   const [input, setInput] = useState(() => {
     try {
-      return (new URLSearchParams(window.location.search).get("ask") || "").slice(0, 500);
+      // Otherwise whatever they were typing before a reload (this tab only, never sent anywhere).
+      return (new URLSearchParams(window.location.search).get("ask") || sessionStorage.getItem("bh-chat-draft") || "").slice(0, 20000);
     } catch {
       return "";
     }
   });
+  useEffect(() => {
+    try {
+      if (input) sessionStorage.setItem("bh-chat-draft", input);
+      else sessionStorage.removeItem("bh-chat-draft");
+    } catch {
+      // storage blocked: nothing kept
+    }
+  }, [input]);
   useEffect(() => {
     const url = new URL(window.location.href);
     if (!url.searchParams.has("ask")) return;
