@@ -31,7 +31,7 @@ const call = async (body) => {
   return [r.status, await r.json().catch(() => ({}))];
 };
 let [s, b] = await call({ prompt: "Name this chat", internal: true, model: "claude-sonnet-5" });
-assert(s === 200 && b.content === "My Title" && models.join(",") === "gemini-3.5-flash", "internal call uses the basic model only");
+assert(s === 200 && b.content === "My Title" && models.join(",") === "gemini-3.6-flash", "internal call uses the basic model only");
 {
   const sent = bodies[bodies.length - 1];
   const rules = sent.systemInstruction && sent.systemInstruction.parts && sent.systemInstruction.parts[0].text;
@@ -49,7 +49,7 @@ const helpUsage = [...store.keys()].filter((k) => k.startsWith("usage:")).length
 [s, b] = await call({ help: true, prompt: "How do I publish a website?", history: [{ role: "user", content: "hi" }, { role: "assistant", content: "Hello!" }], model: "claude-sonnet-5" });
 {
   const text = JSON.stringify(bodies[bodies.length - 1].contents);
-  assert(s === 200 && b.content === "My Title" && models.join(",") === "gemini-3.5-flash", "help answers with the basic model");
+  assert(s === 200 && b.content === "My Title" && models.join(",") === "gemini-3.6-flash", "help answers with the basic model");
   assert(/WEBSITE DESIGNER/.test(text) && /How do I publish a website/.test(text) && /User: hi/.test(text), "help sends its guide, the history and the question");
   assert([...store.keys()].filter((k) => k.startsWith("usage:")).length === helpUsage && !b.charged, "help is free");
 }

@@ -50,7 +50,7 @@ async function aiVerdict(apiKey, name, c) {
     c.text.join("\n\n").slice(0, 80000) || "(no text files; pictures are attached)",
   ].join("\n");
   const parts = [{ text: prompt }, ...c.images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } }))];
-  for (const model of ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"]) {
+  for (const model of ["gemini-3.6-flash", "gemini-3.8-flash"]) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",

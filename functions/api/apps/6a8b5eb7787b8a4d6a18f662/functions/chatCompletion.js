@@ -11,10 +11,12 @@
 // Backed by Google's Gemini API on the FREE tier (no billing) instead of a paid
 // provider. The 2.5-series returned "no longer available to new users" for this
 // account, so tiers use confirmed-working 3.x models, ordered by coding strength:
-//   automatic         (Nebulux AI)   -> gemini-3.5-flash (mid tier, general use)
-//   claude_sonnet_4_6 (Nebulux Code) -> gemini-3.6-flash (3rd-best coding)
-//   claude_opus_4_8   (Space)         -> gemini-3.7-flash (2nd-best coding)
+//   automatic         (Nebulux AI)   -> gemini-3.6-flash
+//   claude_sonnet_4_6 (Nebulux Code) -> gemini-3.6-flash
+//   claude_opus_4_8   (Space)         -> gemini-3.8-flash
 //   claude-sonnet-5   (Nebula)          -> gemini-3.8-flash (best coding)
+// Google retired gemini-3.5-flash (now 3.6) and gemini-3.7-flash (now 3.8) on 2026-10-09,
+// so only two separate models are left; the AIs still differ by effort and credits.
 // On the free tier any of these can answer 503 "experiencing high demand" (or 429
 // when rate-limited) at any moment; the request then falls back to the next-strongest
 // model so the user still gets a reply instead of an error.
@@ -31,15 +33,15 @@ import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
 
 const MODEL_MAP = {
-  automatic: "gemini-3.5-flash",
+  automatic: "gemini-3.6-flash",
   claude_sonnet_4_6: "gemini-3.6-flash",
-  claude_opus_4_8: "gemini-3.7-flash",
+  claude_opus_4_8: "gemini-3.8-flash",
   "claude-sonnet-5": "gemini-3.8-flash",
 };
-const DEFAULT_MODEL = "gemini-3.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 // Strongest first; fallbacks are tried in this order after the requested model.
-const MODELS_BY_STRENGTH = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
-// All four: on the free tier it's common for three of them to be overloaded at once.
+const MODELS_BY_STRENGTH = ["gemini-3.8-flash", "gemini-3.6-flash"];
+// Both left: on the free tier one of them is often overloaded, so the other is tried next.
 const MAX_ATTEMPTS = 4;
 
 // Effort levels (the Low…UltraCode bar in the UI): more thinking and a bigger output

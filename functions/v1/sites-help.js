@@ -40,7 +40,7 @@ export async function onRequestPost({ request, env }) {
     .slice(-8)
     .map((m) => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: String(m.content).slice(0, 600) }] }));
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") return out(request, { error: "Type a question." }, 400);
-  for (const model of ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"]) {
+  for (const model of ["gemini-3.6-flash", "gemini-3.8-flash"]) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",

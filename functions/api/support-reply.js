@@ -46,7 +46,7 @@ export async function onRequestPost({ request, env }) {
   if (!(await allowSender(from))) return json({ reply: "", limited: true });
 
   const prompt = `Email from: ${from}\nSubject: ${subject}\n\n${text}\n\nWrite the reply.`;
-  for (const model of ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"]) {
+  for (const model of ["gemini-3.6-flash", "gemini-3.8-flash"]) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
