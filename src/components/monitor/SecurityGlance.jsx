@@ -74,7 +74,7 @@ export default function SecurityGlance({ unconfirmed, removed, held }) {
           <button
             onClick={togglePaused}
             disabled={pauseBusy}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+            className="px-2.5 py-1 [@media(pointer:coarse)]:py-2 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-200 hover:bg-slate-700 disabled:opacity-50"
           >
             {paused ? "Turn off" : "Turn on"}
           </button>

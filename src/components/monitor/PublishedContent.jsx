@@ -237,7 +237,7 @@ export default function PublishedContent() {
       <div className="fixed inset-0 z-40 bg-slate-950 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur border-b border-slate-800">
           <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3">
-            <button onClick={closeList} className="inline-flex items-center gap-1.5 text-slate-300 hover:text-white text-sm">
+            <button onClick={closeList} className="inline-flex items-center gap-1.5 -ml-2 px-2 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 text-sm">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
             <h2 className="flex-1 text-white font-semibold flex items-center gap-2">
