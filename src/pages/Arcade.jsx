@@ -9,6 +9,8 @@ import PublicLayout from "@/components/PublicLayout";
 const GENRES = ["io", "shooting", "horror", "action", "arcade", "puzzle", "racing", "sports", "adventure", "strategy"];
 const GENRE_LABEL = { io: ".io" };
 const label = (g) => GENRE_LABEL[g] || g.charAt(0).toUpperCase() + g.slice(1);
+// A picture for each kind of game on its card.
+const ICON = { io: "🟣", shooting: "🎯", horror: "👻", action: "⚔️", arcade: "🕹️", puzzle: "🧩", racing: "🏎️", sports: "⚽", adventure: "🗺️", strategy: "♟️" };
 const THUMB = {
   io: "from-fuchsia-500 to-indigo-500",
   shooting: "from-red-500 to-orange-500",
@@ -100,10 +102,10 @@ export default function Arcade() {
             <Link
               key={g.id || g.name}
               to={`/play/${g.name}`}
-              className="group rounded-2xl bg-slate-900/60 border border-slate-700/50 p-3 hover:border-fuchsia-500/50 transition-colors"
+              className="group rounded-2xl bg-slate-900/60 border border-slate-700/50 p-3 hover:border-fuchsia-500/50 hover:-translate-y-1 hover:shadow-[0_20px_40px_-20px_rgba(217,70,239,.6)] transition-all"
             >
-              <div className={`relative aspect-[4/3] rounded-xl bg-gradient-to-br ${THUMB[g.genre] || "from-indigo-500 to-fuchsia-500"} flex items-center justify-center`}>
-                <Gamepad2 className="w-9 h-9 text-white/90" />
+              <div className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br ${THUMB[g.genre] || "from-indigo-500 to-fuchsia-500"} flex items-center justify-center`}>
+                {ICON[g.genre] ? <span className="text-5xl drop-shadow-lg transition-transform group-hover:scale-110" aria-hidden="true">{ICON[g.genre]}</span> : <Gamepad2 className="w-9 h-9 text-white/90" />}
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
                   <Play className="w-8 h-8 text-white" />
                 </span>
