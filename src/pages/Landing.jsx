@@ -177,7 +177,7 @@ function FeatureRow({ eyebrow, title, text, bullets, cta, Picture, flip }) {
             </li>
           ))}
         </ul>
-        <Link to={cta.to} className="mt-6 inline-flex items-center gap-2 text-indigo-300 font-semibold hover:text-indigo-200">
+        <Link to={cta.to} className="mt-6 inline-flex items-center gap-2 py-2 -my-2 text-indigo-300 font-semibold hover:text-indigo-200">
           {cta.label} <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
