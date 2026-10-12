@@ -388,7 +388,10 @@ export default function CodePage({ userInitial }) {
     setLoading(true);
     setLive("");
     const myId = ++reqIdRef.current;
-    const t0 = Date.now();
+    // The credits and time keep counting while it works through messages one after another;
+    // they reset only once it has stopped and you ask again (owner, 2026-10-12).
+    if (!runRef.current.active) runRef.current = { active: true, start: Date.now(), credits: 0 };
+    const t0 = runRef.current.start;
     // Only when the person (or the AI, for a preview) has the browser open: use what's on it.
     // It never opens by itself for a question (owner, 2026-10-12).
     if (browserRef.current) {
@@ -429,7 +432,8 @@ export default function CodePage({ userInitial }) {
       const content = res.content ?? "";
       recordMessage(userId, whichAi, text.length + content.length);
       notifyDone(content);
-      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}) };
+      if (Number.isFinite(res.charged)) runRef.current.credits += res.charged;
+      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: runRef.current.credits } : {}) };
       setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, used, ...(res.more ? { more: true } : {}) }]);
       // Built a page: run it in the Nebulux Browser right away.
       const page = htmlOf(content);
@@ -443,7 +447,7 @@ export default function CodePage({ userInitial }) {
     } finally {
       if (reqIdRef.current === myId) {
         setLoading(false);
-        q.runNext();
+        if (!q.runNext()) runRef.current = { active: false, start: 0, credits: 0 };
       }
     }
   };
@@ -466,8 +470,10 @@ export default function CodePage({ userInitial }) {
   const q = useMessageQueue({ run: (t) => runPrompt(t), remaining: { [ai]: remaining[ai] ?? (exhausted ? 0 : Infinity) }, names: AI_NAMES, selectedAi: ai });
   useStickToBottom(scrollRef, [messages, loading, live, q.queue.length], messages.filter((m) => m.role === "user").length);
 
+  const runRef = useRef({ active: false, start: 0, credits: 0 });
   const stop = (steerArg) => {
     const steer = steerArg === true;
+    runRef.current = { active: false, start: 0, credits: 0 };
     reqIdRef.current++;
     abortRef.current?.abort();
     setTimeout(() => spend(), 2500);
@@ -488,14 +494,7 @@ export default function CodePage({ userInitial }) {
     const text = input.trim();
     if (!text) return;
     if (secretKeyIn(text) && !(await askConfirm("This looks like it has a secret key (like an API key or access token) in it. Anyone who gets it can use that account, so replace it with something like YOUR_API_KEY first. Send it anyway?"))) return;
-    if (q.shouldInterrupt(loading, text)) {
-      // Claude-style: stop, then answer the new message with what was written so far in mind.
-      q.setSteer(live);
-      stop(true);
-      runPrompt(text);
-      return;
-    }
-    if (q.shouldQueue(loading, text)) {
+    if (loading || q.shouldQueue(loading, text)) {
       q.push(text);
       setInput("");
       if (!loading) q.runNext();
@@ -638,14 +637,14 @@ export default function CodePage({ userInitial }) {
               <div className="w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif">
                 <Markdown text={live.replace(/```(ask|switch-repo)[\s\S]*$/i, "")} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-[var(--cl-accent)] animate-pulse" />
-                <LiveCost activityKey="code:live" className="mt-1 font-sans" />
+                <LiveCost activityKey="code:live" className="mt-1 font-sans" since={runRef.current.start} extra={runRef.current.credits} />
               </div>
             )}
             {loading && !live && (
               <div className="flex items-center gap-2.5 text-[var(--cl-muted)]">
                 <BlackholeIcon className="w-5 h-5 animate-spin" />
                 <span className="text-sm animate-pulse">{browsing ? "Searching the web…" : "Thinking…"}{q.queue.length > 0 ? ` (${q.queue.length} up next)` : ""}</span>
-                <LiveCost activityKey="code:live" />
+                <LiveCost activityKey="code:live" since={runRef.current.start} extra={runRef.current.credits} />
               </div>
             )}
           </div>
@@ -734,7 +733,7 @@ export default function CodePage({ userInitial }) {
                   }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : panel === "browser" ? "Ask anything (it can see the page you have open)…" : "Describe a task or ask a question"}
+                  placeholder={panel === "browser" ? "Ask anything (it can see the page you have open)…" : "Describe a task or ask a question"}
                   rows={empty ? 2 : 1}
                   className="flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]"
                 />
