@@ -1,6 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { notifyDone } from "@/lib/prefs";
-import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
+import CodeStats, { recordSession, recordMessage, readStats } from "@/components/code/CodeStats";
+
+// Ideas for someone who hasn't asked anything yet: tapping one puts it in the box to edit or send.
+const STARTERS = [
+  ["📚", "Help with homework", "Explain how photosynthesis works, simply, then quiz me on it"],
+  ["✍️", "Write something", "Help me write a short, friendly email asking my teacher for an extension"],
+  ["🌐", "Make a website", "Make a website for my bakery with a menu, opening hours and an order button"],
+  ["🎮", "Make a game", "Make a simple game where you dodge falling stars and get points"],
+];
 import { askConfirm } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
@@ -431,7 +439,27 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
           )}
           {empty && (
             <div className="w-full max-w-2xl mx-auto mt-6">
-              <CodeStats userId={shell?.currentUser?.id} names={AI_NAMES} kind="chat" />
+              {/* Before the first message there's nothing to count, so show things to try instead of zeros. */}
+              {readStats(shell?.currentUser?.id, "chat").msgs.length ? (
+                <CodeStats userId={shell?.currentUser?.id} names={AI_NAMES} kind="chat" />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {STARTERS.map(([icon, title, prompt]) => (
+                    <button
+                      key={title}
+                      type="button"
+                      onClick={() => {
+                        setInput(prompt);
+                        requestAnimationFrame(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(prompt.length, prompt.length); } });
+                      }}
+                      className="text-left rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] px-4 py-3 hover:bg-[var(--cl-hover)] transition-colors"
+                    >
+                      <span className="text-[15px] font-medium text-[var(--cl-text)]">{icon} {title}</span>
+                      <span className="block text-[13px] text-[var(--cl-faint)] mt-0.5 truncate">{prompt}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {!claude && messages.length === 0 && !loading && (
