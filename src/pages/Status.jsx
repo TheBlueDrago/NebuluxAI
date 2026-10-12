@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import usePageTitle from "@/hooks/usePageTitle";
+import PublicLayout from "@/components/PublicLayout";
 
 // nebuluxai.com/status: whether Nebulux AI is working, for anyone to check (functions/.../status.js).
 const STATES = {
@@ -19,7 +19,6 @@ const dayColor = (d) => {
 };
 
 export default function Status() {
-  usePageTitle("Status");
   const [data, setData] = useState(null);
   const [err, setErr] = useState(false);
   useEffect(() => {
@@ -36,10 +35,9 @@ export default function Status() {
     days.push((data?.days || []).find((d) => d.day === day) || { day, ok: 0, problems: 0 });
   }
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 px-4 py-10">
-      <div className="max-w-2xl mx-auto">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white"><ArrowLeft className="w-4 h-4" /> Nebulux AI</Link>
-        <h1 className="text-3xl font-bold text-white mt-6">Status</h1>
+    <PublicLayout title="Status">
+      <div className="max-w-2xl mx-auto pt-10 sm:pt-16 text-slate-200">
+        <h1 className="text-4xl font-bold text-white">Status</h1>
         {!data && !err && <div className="py-16 text-center"><Loader2 className="inline w-6 h-6 animate-spin text-slate-500" /></div>}
         {err && !data && <p className="mt-6 text-slate-400">Couldn't check right now. If this page loads, the website itself is up.</p>}
         {data && (
@@ -68,6 +66,6 @@ export default function Status() {
           </>
         )}
       </div>
-    </div>
+    </PublicLayout>
   );
 }
