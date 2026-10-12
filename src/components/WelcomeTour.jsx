@@ -84,8 +84,10 @@ export default function WelcomeTour({ user, shell, blocked }) {
 
   // First: a small card in the corner (nothing blocked). The tour itself opens only if they want it.
   if (!s) {
+    // On phones the Code screen keeps its message box at the bottom, so the card sits just above it there.
+    const phoneLow = window.location.pathname.startsWith("/chat/code");
     return createPortal(
-      <div role="dialog" aria-labelledby="bh-tour-title" className="fixed z-[80] right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl p-4 text-[var(--cl-text)]">
+      <div role="dialog" aria-labelledby="bh-tour-title" className={`fixed z-[80] right-4 ${phoneLow ? "bottom-[calc(11.5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(1rem+env(safe-area-inset-bottom))]"} sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl p-4 text-[var(--cl-text)]`}>
         <button onClick={finish} aria-label="Close" className="absolute top-2 right-2 p-1.5 rounded-lg text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]">
           <X className="w-4 h-4" />
         </button>

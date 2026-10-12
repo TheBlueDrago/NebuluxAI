@@ -28,7 +28,15 @@ import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import { appParams } from "@/lib/app-params";
 import { Cloud, Monitor, ChevronDown, Check, Plus } from "lucide-react";
 import { notifyDone } from "@/lib/prefs";
-import CodeStats, { recordSession, recordMessage } from "@/components/code/CodeStats";
+import CodeStats, { recordSession, recordMessage, readStats } from "@/components/code/CodeStats";
+
+// Ideas for someone who hasn't asked Nebulux Code anything yet: tapping one puts it in the box.
+const CODE_STARTERS = [
+  ["🐛", "Fix a bug", "My code throws an error. Here it is, explain what's wrong and fix it:"],
+  ["🧮", "Write a function", "Write a JavaScript function that checks if a password is strong, with comments"],
+  ["📖", "Explain code", "Explain what this code does, line by line, in simple words:"],
+  ["🐍", "Learn Python", "Teach me Python loops with 3 short examples and a small exercise"],
+];
 import { GitBranch } from "lucide-react";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, listFiles, readFile, pushFile } from "@/lib/githubClient";
@@ -483,7 +491,27 @@ export default function CodePage({ userInitial }) {
                   <BlackholeIcon className="w-8 h-8" />
                   <h1 className="text-[24px] sm:text-[28px] text-[var(--cl-text)] tracking-tight">What's up next, {firstName}?</h1>
                 </div>
-                <CodeStats userId={userId} names={AI_NAMES} />
+                {/* Before the first message there's nothing to count, so show things to try instead of zeros. */}
+                {readStats(userId).msgs.length ? (
+                  <CodeStats userId={userId} names={AI_NAMES} />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {CODE_STARTERS.map(([icon, title, prompt]) => (
+                      <button
+                        key={title}
+                        type="button"
+                        onClick={() => {
+                          setInput(prompt);
+                          requestAnimationFrame(() => { const el = document.querySelector("textarea"); if (el) { el.focus(); el.setSelectionRange(prompt.length, prompt.length); } });
+                        }}
+                        className="text-left rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] px-4 py-3 hover:bg-[var(--cl-hover)] transition-colors"
+                      >
+                        <span className="text-[15px] font-medium text-[var(--cl-text)]">{icon} {title}</span>
+                        <span className="block text-[13px] text-[var(--cl-faint)] mt-0.5 truncate">{prompt}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {messages.map((m, i) => (
