@@ -85,7 +85,7 @@ function GameCard({ g, onPlay }) {
         </div>
       </div>
       <p className="mt-1.5 text-xs font-medium text-slate-200 truncate">{g.title || g.name}</p>
-      <p className="text-xs text-slate-400">{GENRE_LABEL[g.genre] || "Game"} · {g.plays || 0} plays</p>
+      <p className="text-xs text-slate-400">{GENRE_LABEL[g.genre] || "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}</p>
     </button>
   );
 }
@@ -109,7 +109,7 @@ function FeaturedCard({ g, onPlay }) {
         </div>
         <div className="absolute bottom-3 left-3 right-3">
           <p className="text-2xl font-extrabold text-white drop-shadow truncate">{g.title || g.name}</p>
-          <p className="text-xs text-white/80">{GENRE_LABEL[g.genre] || "Game"} · {g.plays || 0} plays</p>
+          <p className="text-xs text-white/80">{GENRE_LABEL[g.genre] || "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}</p>
         </div>
       </div>
     </button>

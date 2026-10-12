@@ -112,7 +112,8 @@ export default function Arcade() {
               </div>
               <p className="mt-2 text-sm font-medium text-white truncate">{g.title || g.name}</p>
               <p className="text-[11px] text-slate-500 truncate">
-                {g.genre ? label(g.genre) : "Game"} · {g.plays || 0} plays
+                {/* a brand-new game says "New" instead of "0 plays" */}
+                {g.genre ? label(g.genre) : "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}
               </p>
             </Link>
           ))}
