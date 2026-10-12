@@ -4,6 +4,7 @@ import { Menu, X, Mail, Phone } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company";
+import "./public-type.css";
 
 export const START_FREE = "/register?returnTo=" + encodeURIComponent("/chat");
 const LOGIN = "/login?returnTo=" + encodeURIComponent("/chat");
@@ -157,7 +158,7 @@ export default function PublicLayout({ title, children }) {
         )}
       </header>
 
-      <main id="main" tabIndex={-1} className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 outline-none">{children}</main>
+      <main id="main" tabIndex={-1} className="nx-pub relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 outline-none">{children}</main>
 
       <footer className="relative z-10 border-t border-slate-800/80 bg-black/30">
         <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">

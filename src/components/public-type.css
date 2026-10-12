@@ -1,0 +1,5 @@
+/* Every public page (PublicLayout) uses the home page's heading font, so the site looks like one brand. */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap");
+
+.nx-pub h1, .nx-pub h2 { font-family: "Sora", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.03em; }
+.nx-pub h1 { font-weight: 800; }
