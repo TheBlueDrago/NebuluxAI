@@ -39,13 +39,23 @@ function CodeBlock({ children, noPreview }) {
   const ref = useRef(null);
   const { lang, text } = codeInfo(children);
   const canPreview = !noPreview && previewable(lang, text);
+  // Long code starts as a short box with Show more / Show less (Copy always copies all of it).
+  const [open, setOpen] = useState(false);
+  const long = String(text || "").split("\n").length > 14;
   if (lang === "flashcards") return <Flashcards text={text} />;
   if (lang === "quiz") return <Quiz text={text} />;
   return (
     <div className="relative group my-2">
-      <pre ref={ref} className={`bg-black/40 border border-slate-700/60 rounded-lg p-3 pr-9 ${canPreview ? "pt-10" : ""} overflow-x-auto text-[12.5px] leading-snug`}>
+      <pre ref={ref} style={long && !open ? { maxHeight: "16rem", overflowY: "hidden" } : undefined} className={`bg-black/40 border border-slate-700/60 rounded-lg p-3 pr-9 ${canPreview ? "pt-10" : ""} ${long ? "pb-11" : ""} overflow-x-auto text-[12.5px] leading-snug`}>
         {children}
       </pre>
+      {long && (
+        <div className={`absolute inset-x-px bottom-px flex justify-center rounded-b-lg pt-8 pb-2 ${open ? "" : "bg-gradient-to-t from-[#0b0a18] via-[#0b0a18]/85 to-transparent"}`}>
+          <button type="button" onClick={() => setOpen((o) => !o)} className="keep-color font-sans rounded-full border border-slate-600/70 bg-slate-800/95 px-3.5 py-1 text-[12.5px] font-medium text-slate-100 hover:bg-slate-700">
+            {open ? "Show less ▴" : `Show more ▾ (${String(text).split("\n").length} lines)`}
+          </button>
+        </div>
+      )}
       <div className="absolute top-2 right-2 flex items-center gap-1">
         {canPreview && <CodePreview getCode={() => ref.current?.innerText || text} />}
         <CopyButton getText={() => ref.current?.innerText || ""} label="Copy code" className="p-1 rounded-md bg-slate-800/90 text-slate-300 hover:text-white" />

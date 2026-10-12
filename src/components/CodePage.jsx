@@ -8,6 +8,8 @@ import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
 import { streamChat } from "@/lib/aiStream";
+import LiveCost from "@/components/chat/LiveCost";
+import { elapsedText, setViewing, startActivity, finishActivity } from "@/lib/aiActivity";
 import EffortPicker from "@/components/chat/EffortPicker";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import QueueList from "@/components/chat/QueueList";
@@ -209,6 +211,12 @@ export default function CodePage({ userInitial }) {
   const reqIdRef = useRef(0);
   const abortRef = useRef(null);
 
+  // This screen shows its own answer as it's written, so a finished one isn't left "unread" in the sidebar.
+  useEffect(() => {
+    setViewing("code:live");
+    return () => setViewing(null);
+  }, []);
+
   // ---- browser ----
   const browserRef = useRef(null);
   const pendingPreview = useRef(null);
@@ -339,11 +347,9 @@ export default function CodePage({ userInitial }) {
     setLoading(true);
     setLive("");
     const myId = ++reqIdRef.current;
-    // The browser is open: look it up first, so the answer can use what's on the web.
-    if (!browserRef.current && !isPhone()) {
-      setPanel("browser");
-      await new Promise((r) => setTimeout(r, 80));
-    }
+    const t0 = Date.now();
+    // Only when the person (or the AI, for a preview) has the browser open: use what's on it.
+    // It never opens by itself for a question (owner, 2026-10-12).
     if (browserRef.current) {
       const cur = browserRef.current.current();
       if (cur?.type === "page" && cur.text) context += `The person has this web page open in the Nebulux Browser (${cur.url}):\n${cur.text.slice(0, 8000)}\n\n`;
@@ -366,16 +372,18 @@ export default function CodePage({ userInitial }) {
       let res;
       if (session === "cloud") {
         const id = (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/[^a-zA-Z0-9-]/g, "");
-        await callJob({ action: "start", id, body: req });
+        // the live time under the answer (cloud answers arrive all at once, so it counts time)
+        startActivity("code:live", { where: "code", label: "Nebulux Code", question: text, ai: whichAi });
+        await callJob({ action: "start", id, body: req }).catch((e) => { finishActivity("code:live", "error"); throw e; });
         try { localStorage.setItem(PENDING_KEY, JSON.stringify({ id, text })); } catch { /* fine */ }
-        const j = await waitForJob(id, abort.signal);
+        const j = await waitForJob(id, abort.signal).finally(() => finishActivity("code:live", "done"));
         try { localStorage.removeItem(PENDING_KEY); } catch { /* fine */ }
         if (j.status !== "done") throw Object.assign(new Error(j.error || "Cloud session failed"), { response: { data: { error: j.error || "The cloud session lost this reply. Please try again.", credits: j.credits } } });
         res = j;
       } else {
         res = await streamChat(req, (soFar) => {
           if (reqIdRef.current === myId) setLive(soFar);
-        }, { signal: abort.signal });
+        }, { signal: abort.signal, activity: { key: "code:live", where: "code", label: "Nebulux Code", question: text, ai: whichAi } });
       }
       if (reqIdRef.current !== myId) return;
       setLive("");
@@ -383,7 +391,8 @@ export default function CodePage({ userInitial }) {
       const content = res.content ?? "";
       recordMessage(userId, whichAi, text.length + content.length);
       notifyDone(content);
-      setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) }]);
+      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}) };
+      setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, used, ...(res.more ? { more: true } : {}) }]);
       // Built a page: run it in the Nebulux Browser right away.
       const page = htmlOf(content);
       if (page) openPreview(page, text.slice(0, 40));
@@ -566,6 +575,11 @@ export default function CodePage({ userInitial }) {
                           </button>
                         )}
                         <CopyButton getText={() => m.content} label="Copy reply" className="p-1 rounded-md text-[var(--cl-faint)] hover:text-[var(--cl-text)]" />
+                        {m.used && (
+                          <span className="text-[11.5px] text-[var(--cl-faint)] px-1" title="What this answer used">
+                            {m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
+                          </span>
+                        )}
                         <ReportReply question={messages[i - 1]?.role === "user" ? messages[i - 1].content : ""} reply={m.content} />
                       </div>
                       {i === messages.length - 1 && !loading && !exhausted && (
@@ -586,12 +600,14 @@ export default function CodePage({ userInitial }) {
               <div className="w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif">
                 <Markdown text={live.replace(/```(ask|switch-repo)[\s\S]*$/i, "")} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-[var(--cl-accent)] animate-pulse" />
+                <LiveCost activityKey="code:live" className="mt-1 font-sans" />
               </div>
             )}
             {loading && !live && (
               <div className="flex items-center gap-2.5 text-[var(--cl-muted)]">
                 <BlackholeIcon className="w-5 h-5 animate-spin" />
                 <span className="text-sm animate-pulse">{browsing ? "Searching the web…" : "Thinking…"}{q.queue.length > 0 ? ` (${q.queue.length} up next)` : ""}</span>
+                <LiveCost activityKey="code:live" />
               </div>
             )}
           </div>

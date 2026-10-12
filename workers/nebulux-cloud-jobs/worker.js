@@ -45,7 +45,7 @@ export class CloudJob {
         body: JSON.stringify({ ...r.body, stream: false }),
       });
       const d = await res.json().catch(() => ({}));
-      job = res.ok ? { status: "done", content: d.content ?? "", credits: d.credits, more: !!d.more, cut: !!d.cut } : { status: "error", error: d.error || "Something went wrong.", credits: d.credits };
+      job = res.ok ? { status: "done", content: d.content ?? "", credits: d.credits, charged: d.charged, more: !!d.more, cut: !!d.cut } : { status: "error", error: d.error || "Something went wrong.", credits: d.credits };
     } catch {
       job = { status: "error", error: "The cloud session couldn't reach the AI." };
     }
