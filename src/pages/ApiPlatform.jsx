@@ -478,6 +478,49 @@ export default function ApiPlatform() {
     ),
   }[tab];
 
+  // Signed in: nothing on the Platform shows until they've agreed to API billing (owner, 2026-10-12).
+  if (!bill) {
+    return (
+      <div className="min-h-screen bg-[var(--cl-bg)] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--cl-muted)]" />
+      </div>
+    );
+  }
+  if (!bill.agreed) {
+    return (
+      <div className="min-h-screen bg-[var(--cl-bg)] text-[var(--cl-text)] flex items-center justify-center p-4">
+        <div className="w-full max-w-xl rounded-2xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-4">
+            <BlackholeIcon className="w-10 h-10" />
+            <div>
+              <p className="text-[12px] uppercase tracking-widest text-[var(--cl-faint)]">Nebulux Platform</p>
+              <h1 className="text-[22px] font-semibold">API billing agreement</h1>
+            </div>
+          </div>
+          <p className="text-[14px] text-[var(--cl-muted)]">Before you can use the Nebulux API, please read and agree to how it's billed.</p>
+          <ul className="mt-3 text-[13.5px] text-[var(--cl-muted)] space-y-1.5 list-disc pl-5">
+            <li><b className="text-[var(--cl-text)]">You are charged every time</b> an API request is made with one of your keys, <b className="text-[var(--cl-text)]">including every message you send in the Playground</b>, and every answer the AI gives on your websites if you turned on AI for visitors.</li>
+            <li>The price depends on the AI (Nebulux AI $0.10 per request plus $0.10 per credit of reply; Galaxy 2x, Space 3x, Nebula 5x) and is taken right away from <b className="text-[var(--cl-text)]">that AI's own prepaid balance</b>. Each AI's balance only pays for that AI.</li>
+            <li>Money added to your API balance is not refundable and can't be turned into plan credits. Requests stop when the balance runs out.</li>
+            <li>You are responsible for everything done with your keys: keep them secret. If one leaks, delete it; requests already made stay charged.</li>
+            <li>You need to be 18 or older, or have a parent or guardian's permission, to add money.</li>
+          </ul>
+          <label className="mt-5 flex items-start gap-2.5 text-[14px] cursor-pointer">
+            <input type="checkbox" className="mt-1" checked={agreeTick} onChange={(e) => setAgreeTick(e.target.checked)} />
+            <span>I agree to be charged for every API request and Playground message, and to the <Link to="/terms" className="underline">Terms</Link>.</span>
+          </label>
+          {err && <p className="mt-3 text-[13px] text-red-400">{err}</p>}
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button onClick={() => billCall({ action: "agree" }, "agree")} disabled={!agreeTick || busy === "agree"} className="flex-1 min-w-[140px] rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 py-2.5 text-[14px] font-medium disabled:opacity-40">
+              {busy === "agree" ? "Saving…" : "Agree and continue"}
+            </button>
+            <Link to="/chat" className="flex-1 min-w-[140px] text-center rounded-lg border border-[var(--cl-border)] px-4 py-2.5 text-[14px] text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]">Not now</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--cl-bg)] text-[var(--cl-text)] flex flex-col md:flex-row">
       <aside className="md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-[var(--cl-border)] bg-[var(--cl-side,var(--cl-bg))] p-3 md:min-h-screen">

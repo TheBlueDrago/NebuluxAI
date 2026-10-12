@@ -388,11 +388,7 @@ export default function CodePage({ userInitial }) {
     if (browserRef.current) {
       const cur = browserRef.current.current();
       if (cur?.type === "page" && cur.text) context += `The person has this web page open in the Nebulux Browser (${cur.url}):\n${cur.text.slice(0, 8000)}\n\n`;
-      else {
-        setBrowsing(true);
-        const found = await browserRef.current.search(text.slice(0, 200)).finally(() => setBrowsing(false));
-        if (found?.length) context += `Web search results from the Nebulux Browser for "${text.slice(0, 200)}":\n` + found.slice(0, 6).map((r, i) => `${i + 1}. ${r.title} (${r.url}) ${r.snippet}`).join("\n") + "\n\nUse these where they help, and give the links you used.\n\n";
-      }
+      // An open browser never means "search the web for this" (owner, 2026-10-12): only the page already open is shared.
     }
     if (reqIdRef.current !== myId) return;
     const intent = resolveIntent(text, "discuss"); // code only when asked for
@@ -731,7 +727,7 @@ export default function CodePage({ userInitial }) {
                   }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : panel === "browser" ? "Ask anything: Nebulux looks it up on the web first…" : "Describe a task or ask a question"}
+                  placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : panel === "browser" ? "Ask anything (it can see the page you have open)…" : "Describe a task or ask a question"}
                   rows={empty ? 2 : 1}
                   className="flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]"
                 />
