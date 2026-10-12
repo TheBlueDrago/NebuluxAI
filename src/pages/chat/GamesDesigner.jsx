@@ -651,7 +651,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
           <button
             onClick={onUpgrade}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-amber-700 to-orange-700 text-[#fff] text-sm font-medium hover:opacity-90 transition-opacity"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-md shadow-fuchsia-500/25 text-[#fff] text-sm font-medium hover:opacity-90 transition-opacity"
           >
             <Crown className="w-4 h-4" /> Upgrade
           </button>

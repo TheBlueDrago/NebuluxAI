@@ -128,7 +128,7 @@ export default function GitHubPush({ html, siteName, plan, onUpgrade }) {
                 <p className="text-slate-400 text-xs mb-3">{access.why}</p>
                 <button
                   onClick={onUpgrade}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-amber-700 to-orange-700 text-[#fff] text-sm font-medium hover:opacity-90"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-md shadow-fuchsia-500/25 text-[#fff] text-sm font-medium hover:opacity-90"
                 >
                   See plans
                 </button>

@@ -127,7 +127,7 @@ export default function GitHubOpen({ siteName, plan, onUpgrade, hasPage, onOpen 
               {!access.allowed ? (
                 <div className="text-center py-6">
                   <p className="text-slate-400 text-sm mb-3">{access.why}</p>
-                  <button onClick={onUpgrade} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-amber-700 to-orange-700 text-[#fff] text-sm font-medium hover:opacity-90">
+                  <button onClick={onUpgrade} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-md shadow-fuchsia-500/25 text-[#fff] text-sm font-medium hover:opacity-90">
                     See plans
                   </button>
                 </div>
