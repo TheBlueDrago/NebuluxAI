@@ -45,6 +45,16 @@ const THUMB = {
 };
 const thumb = (g) => THUMB[g.genre] || "from-indigo-500 to-fuchsia-500";
 const genreIcon = (g) => (GENRES.find((x) => x.id === g.genre) || {}).icon || Gamepad2;
+// The same picture for each kind of game as the public Arcade (src/pages/Arcade.jsx).
+const GENRE_PIC = { io: "🟣", shooting: "🎯", horror: "👻", action: "⚔️", arcade: "🕹️", puzzle: "🧩", racing: "🏎️", sports: "⚽", adventure: "🗺️", strategy: "♟️" };
+function GenreArt({ g, big }) {
+  const Icon = genreIcon(g), pic = GENRE_PIC[g.genre];
+  return pic ? (
+    <span className={`${big ? "text-7xl" : "text-5xl"} drop-shadow-lg transition-transform duration-200 group-hover:scale-110`} aria-hidden="true">{pic}</span>
+  ) : (
+    <Icon className={`${big ? "w-16 h-16" : "w-8 h-8"} keep-color text-white/80`} />
+  );
+}
 
 // Every genre shares one gradient, so a genre row of same-genre games looked
 // like the same tile repeated. Hashing the name into a hue shift gives each
@@ -67,7 +77,6 @@ function NewBadge() {
 }
 
 function GameCard({ g, onPlay }) {
-  const Icon = genreIcon(g);
   return (
     <button onClick={() => onPlay(g.name)} className="group text-left">
       <div
@@ -76,7 +85,7 @@ function GameCard({ g, onPlay }) {
       >
         {isNew(g) && <NewBadge />}
         <div className="absolute inset-0 flex items-center justify-center">
-          <Icon className="w-8 h-8 text-white/70" />
+          <GenreArt g={g} />
         </div>
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
@@ -91,7 +100,6 @@ function GameCard({ g, onPlay }) {
 }
 
 function FeaturedCard({ g, onPlay }) {
-  const Icon = genreIcon(g);
   return (
     <button onClick={() => onPlay(g.name)} className="group text-left w-full">
       <div
@@ -100,7 +108,7 @@ function FeaturedCard({ g, onPlay }) {
       >
         <span className="absolute top-3 left-3 text-xs font-bold uppercase tracking-wider bg-black/40 px-2 py-1 rounded text-white/90">#1 Featured</span>
         <div className="absolute inset-0 flex items-center justify-center">
-          <Icon className="w-16 h-16 text-white/70" />
+          <GenreArt g={g} big />
         </div>
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
@@ -108,8 +116,8 @@ function FeaturedCard({ g, onPlay }) {
           </div>
         </div>
         <div className="absolute bottom-3 left-3 right-3">
-          <p className="text-2xl font-extrabold text-white drop-shadow truncate">{g.title || g.name}</p>
-          <p className="text-xs text-white/80">{GENRE_LABEL[g.genre] || "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}</p>
+          <p className="text-2xl font-extrabold text-white drop-shadow truncate" style={{ color: "#fff" }}>{g.title || g.name}</p>
+          <p className="text-xs text-white/80" style={{ color: "rgba(255,255,255,.85)" }}>{GENRE_LABEL[g.genre] || "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}</p>
         </div>
       </div>
     </button>
