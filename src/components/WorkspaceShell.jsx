@@ -62,7 +62,7 @@ export function ChatWorkspace() {
       <PlanNotice />
       <ChatBox
       claude
-      conversation={conv.activeConversation}
+      conversation={conv.activeConversation && conv.activeConversation.kind !== "code" ? conv.activeConversation : null}
       createConversation={conv.createConversation}
       addMessage={conv.addMessage}
       removeMessage={conv.removeMessage}

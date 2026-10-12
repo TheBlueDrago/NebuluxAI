@@ -7,6 +7,7 @@ import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximiz
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
+import { useLocation } from "react-router-dom";
 import { streamChat } from "@/lib/aiStream";
 import LiveCost from "@/components/chat/LiveCost";
 import { elapsedText, setViewing, startActivity, finishActivity } from "@/lib/aiActivity";
@@ -192,8 +193,42 @@ export default function CodePage({ userInitial }) {
   const [input, setInput] = useState("");
   // The session is kept in this browser (per account), so a refresh or closing the tab loses nothing.
   const codeKey = `nx-code-chat:${shell?.currentUser?.id || "anon"}`;
-  const [messages, setMessages] = useState(() => { try { return JSON.parse(localStorage.getItem(codeKey) || "[]"); } catch { return []; } });
-  useEffect(() => { try { if (messages.length) localStorage.setItem(codeKey, JSON.stringify(messages.slice(-80))); else localStorage.removeItem(codeKey); } catch { /* full or blocked */ } }, [messages, codeKey]);
+  // Every Code conversation is a chat (kind "code") in the sidebar list, saved with the account like
+  // any chat. The first question starts one; ?c=<id> opens one; New chat starts fresh.
+  const conv = shell?.conv;
+  const navigate = shell?.navigate;
+  const location = useLocation();
+  const chatParam = new URLSearchParams(location.search).get("c");
+  const [chatId, setChatId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const loadedFor = useRef(undefined);
+  useEffect(() => {
+    if (!conv || loadedFor.current === chatParam) return;
+    loadedFor.current = chatParam;
+    const c = chatParam && conv.conversations.find((x) => x.id === chatParam && x.kind === "code");
+    if (c) { setChatId(c.id); setMessages(c.messages || []); return; }
+    if (chatParam) return; // not here yet (still syncing): try again when the list changes
+    // The old one-conversation Code (saved on this device) moves into the chat list once.
+    let old = [];
+    try { old = JSON.parse(localStorage.getItem(codeKey) || "[]"); } catch { /* fine */ }
+    if (old.length) {
+      const id = conv.createConversation(String(old.find((m) => m.role === "user")?.content || "Code chat").slice(0, 60), "code");
+      conv.setConversationMessages(id, old);
+      try { localStorage.removeItem(codeKey); } catch { /* fine */ }
+      setChatId(id); setMessages(old);
+      navigate("/chat/code?c=" + encodeURIComponent(id), { replace: true });
+    } else { setChatId(null); setMessages([]); }
+  }, [conv, conv?.conversations, chatParam, codeKey, navigate]);
+  // Save as it goes; the first message creates the chat (named after the question).
+  useEffect(() => {
+    if (!conv || !messages.length) return;
+    if (chatId) { conv.setConversationMessages(chatId, messages.slice(-80)); return; }
+    const id = conv.createConversation(String(messages.find((m) => m.role === "user")?.content || "Code chat").slice(0, 60), "code");
+    conv.setConversationMessages(id, messages.slice(-80));
+    setChatId(id);
+    loadedFor.current = id;
+    navigate("/chat/code?c=" + encodeURIComponent(id), { replace: true });
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [panel, setPanel] = useState(""); // "", "browser", "github"
@@ -487,7 +522,7 @@ export default function CodePage({ userInitial }) {
         {/* top bar: the two panels */}
         <div className="h-12 shrink-0 flex items-center justify-end gap-1 px-3 pl-14 sm:pl-3">
           {messages.length > 0 && <PanelButton icon={Share2} label="Share" on={false} onClick={() => shareChat({ kind: "code", title: String(messages.find((m) => m.role === "user")?.content || "Nebulux Code chat").slice(0, 80), messages })} />}
-          {messages.length > 0 && <PanelButton icon={Plus} label="New session" on={false} onClick={() => { if (loading) stop(); setMessages([]); setAttached([]); }} />}
+          {messages.length > 0 && <PanelButton icon={Plus} label="New chat" on={false} onClick={() => { if (loading) stop(); setMessages([]); setAttached([]); setChatId(null); loadedFor.current = null; navigate("/chat/code"); }} />}
           {!isPhone() && <PanelButton icon={Globe} label="Browser" on={panel === "browser"} onClick={() => setPanel((p) => (p === "browser" ? "" : "browser"))} />}
           <PanelButton icon={Github} label={ghToken ? (repo ? repo.split("/")[1] : "GitHub") : "Connect GitHub"} on={panel === "github"} onClick={() => setPanel((p) => (p === "github" ? "" : "github"))} />
         </div>

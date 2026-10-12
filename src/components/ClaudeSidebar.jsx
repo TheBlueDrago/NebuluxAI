@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { shareChat } from "@/lib/shareChat";
-import { Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
+import { Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -152,8 +152,8 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
             {list.map((c) => (
               <div
                 key={c.id}
-                onClick={() => editingId !== c.id && (conv.selectConversation(c.id), shell.navigate("/chat"), mobile && onClose?.())}
-                className={`group relative flex items-center rounded-lg px-2 py-1.5 cursor-pointer text-[13.5px] ${c.id === conv.activeId && path === "/chat" ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] hover:text-[var(--cl-text)]"}`}
+                onClick={() => editingId !== c.id && (c.kind === "code" ? shell.navigate("/chat/code?c=" + encodeURIComponent(c.id)) : (conv.selectConversation(c.id), shell.navigate("/chat")), mobile && onClose?.())}
+                className={`group relative flex items-center rounded-lg px-2 py-1.5 cursor-pointer text-[13.5px] ${(c.kind === "code" ? path === "/chat/code" && new URLSearchParams(location.search).get("c") === c.id : c.id === conv.activeId && path === "/chat") ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] hover:text-[var(--cl-text)]"}`}
               >
                 {editingId === c.id ? (
                   <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
@@ -175,6 +175,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                   <>
                     <StatusMark status={activity[`chat:${c.id}`]?.status} />
                     {pins.includes(c.id) && <Pin className="w-3 h-3 mr-1 shrink-0 text-[var(--cl-accent)]" />}
+                    {c.kind === "code" && <Code2 className="w-3.5 h-3.5 mr-1.5 shrink-0 text-[var(--cl-accent)]" aria-label="Code chat" />}
                     <span className="truncate flex-1 pr-1 group-hover:pr-24">{c.title}</span>
                     <span className="absolute right-1 hidden group-hover:flex items-center gap-0.5 bg-[var(--cl-hover)] rounded-md">
                       <button onClick={(e) => (e.stopPropagation(), togglePin(c.id))} className="p-1 rounded hover:text-[var(--cl-accent)]" title={pins.includes(c.id) ? "Unpin" : "Pin"} aria-label="Pin chat">

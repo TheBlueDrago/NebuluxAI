@@ -40,8 +40,9 @@ export function useConversations() {
   convRef.current = conversations;
 
   useEffect(() => {
-    if (activeId === null && conversations.length > 0) {
-      setActiveId(conversations[0].id);
+    const first = conversations.find((c) => c.kind !== "code");
+    if (activeId === null && first) {
+      setActiveId(first.id);
     }
   }, []);
 
@@ -87,12 +88,18 @@ export function useConversations() {
 
   const stamp = (c) => ({ ...c, updated: Date.now() });
 
-  const createConversation = useCallback((title = "New Chat") => {
+  // kind "code": a Nebulux Code chat (opens in Code, not in the normal chat).
+  const createConversation = useCallback((title = "New Chat", kind) => {
     const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
-    const conv = { id, title, messages: [], created_date: Date.now(), updated: Date.now() };
+    const conv = { id, title, messages: [], created_date: Date.now(), updated: Date.now(), ...(kind === "code" ? { kind: "code" } : {}) };
     setConversations((prev) => [conv, ...prev]);
-    setActiveId(id);
+    if (kind !== "code") setActiveId(id);
     return id;
+  }, []);
+
+  // Code keeps its own list of messages (with extras like what each answer used) and saves it whole.
+  const setConversationMessages = useCallback((convId, messages) => {
+    setConversations((prev) => prev.map((c) => (c.id === convId ? stamp({ ...c, messages }) : c)));
   }, []);
 
   const selectConversation = useCallback((id) => setActiveId(id), []);
@@ -132,6 +139,7 @@ export function useConversations() {
     createConversation,
     selectConversation,
     addMessage,
+    setConversationMessages,
     renameConversation,
     removeMessage,
     deleteConversation,

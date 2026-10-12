@@ -23,7 +23,7 @@ export async function ensureTable(db) {
 // left out so one chat can't fill the storage.
 export function storable(chat) {
   if (!chat || typeof chat !== "object") return null;
-  const out = { id: String(chat.id || "").slice(0, 100), title: String(chat.title || "Chat").slice(0, 200), created_date: chat.created_date || Date.now(), messages: Array.isArray(chat.messages) ? chat.messages : [] };
+  const out = { id: String(chat.id || "").slice(0, 100), title: String(chat.title || "Chat").slice(0, 200), created_date: chat.created_date || Date.now(), messages: Array.isArray(chat.messages) ? chat.messages : [], ...(chat.kind === "code" ? { kind: "code" } : {}) };
   let s = JSON.stringify(out);
   if (s.length > MAX_CHAT_BYTES) {
     out.messages = out.messages.map((m) => {
