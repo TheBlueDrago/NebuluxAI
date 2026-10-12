@@ -1,10 +1,22 @@
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
 import BlackholeIcon from "@/components/BlackholeIcon";
 
 // Sign-up, password reset and similar pages. Always dark and branded like the login page
 // and the public pages (the "dark" class switches the form components to their dark colors).
 export default function AuthLayout({ title, subtitle, footer, children }) {
+  // Light-mode devices get a "light" class on the page for the app (index.html, src/lib/theme.js).
+  // These screens are always dark, so it comes off while one is showing (e.g. /chat when signed out).
+  useLayoutEffect(() => {
+    const root = document.documentElement, bg = document.body.style.background;
+    if (!root.classList.contains("light")) return;
+    root.classList.remove("light");
+    document.body.style.background = "#020617";
+    return () => {
+      root.classList.add("light");
+      document.body.style.background = bg;
+    };
+  }, []);
   return (
     <div className="dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black flex items-center justify-center px-4 py-10 relative overflow-hidden text-foreground">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
