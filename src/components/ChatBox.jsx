@@ -25,7 +25,12 @@ import AiChooser from "@/components/AiChooser";
 import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
-import useBuildMode, { BUILD_NOTE, DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
+import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
+
+// No modes: answer normally, and write code only when the person asks for something to be made.
+const ANSWER_OR_CODE =
+  "There are no modes: never say you're in a mode or that you can't write code. Answer normally in plain conversational text. " +
+  "Only when the person asks you to make, build, write, fix or change something, give the FULL working code in fenced code blocks (no placeholders), with a short note on how to use it.";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import { TIER_OF_AI } from "@/lib/creditRefresh";
 import OutOfCredits from "@/components/chat/OutOfCredits";
@@ -187,7 +192,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     const fileNote = otherFiles.length ? `\n[Attached files (names only): ${otherFiles.map((f) => f.name).join(", ")}]` : "";
     const sys = ai === "code" ? CODE_SYS : ai === "fable" ? FABLE_SYS : "";
     const intent = ai !== "ai" ? resolveIntent(text, "discuss") : { build: true }; // code only when asked for
-    const modeNote = ai !== "ai" ? (intent.build ? BUILD_NOTE : DISCUSS_NOTE) + "\n\n" : "";
+    // No modes: answer normally, write code only when asked (owner, 2026-10-12).
+    const modeNote = ai !== "ai" ? ANSWER_OR_CODE + "\n\n" : "";
     const cardNote = ai !== "ai" ? "" : wantsFlashcards(text) ? FLASHCARD_NOTE : wantsQuiz(text) ? QUIZ_NOTE : "";
     const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${history}${text}${fileNote}`;
     if (reqIdRef.current !== myId) return;

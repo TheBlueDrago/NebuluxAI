@@ -16,7 +16,13 @@ import BlackholeIcon from "@/components/BlackholeIcon";
 import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
-import useBuildMode, { BUILD_NOTE, DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
+import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
+
+// Nebulux Code has no modes: it does whichever the message needs.
+const BOTH_NOTE =
+  "There are no modes: you can always both talk and write code, so never say you're in a mode or that you can't write code. " +
+  "If the person asks you to make, build, write, fix or change something (a game, a page, an app, a script...), give the FULL working code in fenced code blocks, never partial snippets or placeholders, with a short note on what it does and how to use it. " +
+  "If they ask a question or want to plan or talk, answer in plain conversational text, with short snippets only where they help.";
 import useStickToBottom from "@/hooks/useStickToBottom";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import { secretKeyIn } from "@/lib/privateInfo";
@@ -391,9 +397,10 @@ export default function CodePage({ userInitial }) {
       // An open browser never means "search the web for this" (owner, 2026-10-12): only the page already open is shared.
     }
     if (reqIdRef.current !== myId) return;
-    const intent = resolveIntent(text, "discuss"); // code only when asked for
+    // No modes (they were removed): Code talks and writes code, whichever the message needs.
+    const intent = resolveIntent(text, "discuss"); // only picks the effort level now
     try {
-      const modeNote = (intent.build ? BUILD_NOTE : DISCUSS_NOTE) + (isPhone() ? "" : "\n" + PREVIEW_NOTE);
+      const modeNote = BOTH_NOTE + (isPhone() ? "" : "\n" + PREVIEW_NOTE);
       const eff = effortFor(effort, text, { build: intent.build });
       abortRef.current?.abort();
       const abort = new AbortController();
