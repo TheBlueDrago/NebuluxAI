@@ -4,6 +4,7 @@ import { KeyRound, Home, FlaskConical, BookOpen, Gauge, Plus, Copy, Check, Trash
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import BlackholeIcon from "@/components/BlackholeIcon";
+import PublicLayout from "@/components/PublicLayout";
 import { askConfirm, askText } from "@/lib/dialogs";
 
 // The Nebulux Platform (nebuluxai.com/api): make API keys and use Nebulux AI from your own code.
@@ -165,14 +166,52 @@ export default function ApiPlatform() {
     }
   };
 
+  // Signed out: a landing page for developers and companies (same header and footer as the public pages).
   if (!isAuthenticated) {
+    const login = `/login?returnTo=${encodeURIComponent("/api")}`;
+    const signup = `/register?returnTo=${encodeURIComponent("/api")}`;
     return (
-      <div className="min-h-screen bg-[var(--cl-bg)] text-[var(--cl-text)] flex flex-col items-center justify-center p-6 text-center">
-        <BlackholeIcon className="w-14 h-14 mb-4" />
-        <h1 className="text-3xl font-semibold">Nebulux Platform</h1>
-        <p className="mt-2 text-[var(--cl-muted)] max-w-md">Use Nebulux AI in your own apps and code with an API key.</p>
-        <Link to={`/login?returnTo=${encodeURIComponent("/api")}`} className="mt-6 rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-5 py-2.5 font-medium">Sign in to get a key</Link>
-      </div>
+      <PublicLayout title="Nebulux Platform: the Nebulux AI API">
+        <section className="pt-12 sm:pt-20 pb-10 text-center">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-violet-300"><KeyRound className="w-4 h-4" /> Nebulux Platform</span>
+          <h1 className="mt-3 text-4xl sm:text-6xl font-bold text-white">Put Nebulux AI in your own app</h1>
+          <p className="mt-4 text-lg text-slate-300 max-w-2xl mx-auto">One simple API for chat, writing and code. Make a key, add funds, and call it from any language. You only pay for what you use.</p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to={signup} className="rounded-full px-7 py-3.5 font-semibold text-white bg-gradient-to-r from-indigo-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30 hover:brightness-110">Get an API key</Link>
+            <Link to={login} className="rounded-full px-7 py-3.5 font-semibold text-white border border-white/15 bg-white/5 hover:bg-white/10">Log in</Link>
+          </div>
+        </section>
+        <section className="grid lg:grid-cols-2 gap-6 items-start pb-14">
+          <div className="text-left min-w-0">
+            <h2 className="text-2xl font-bold text-white mb-3">A request in a few lines</h2>
+            <Code lang="curl">{curl()}</Code>
+            <p className="mt-3 text-sm text-slate-400">The answer comes back as JSON with the reply, what it cost and your balance left. JavaScript and Python examples are in the docs after you log in.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {MODELS.map(([id, n, d, m]) => (
+              <div key={id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left">
+                <p className="text-white font-semibold">{n}</p>
+                <code className="text-xs text-violet-300">{id}</code>
+                <p className="mt-2 text-sm text-slate-400">{d}</p>
+                <p className="mt-3 text-sm text-slate-300"><b className="text-white">${(0.1 * m).toFixed(2)}</b> a request + <b className="text-white">${(0.1 * m).toFixed(2)}</b> a reply credit</p>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="grid sm:grid-cols-3 gap-4 pb-16">
+          {[
+            [Gauge, "Pay as you go", "Add funds to each AI's balance. No subscription, and every response shows exactly what it cost."],
+            [KeyRound, "Keys you control", "Make a key for each app, see when it was last used, and delete it any time."],
+            [FlaskConical, "Try before you code", "The Playground sends real requests from your browser, so you can test prompts first."],
+          ].map(([Icon, t, d]) => (
+            <div key={t} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-left">
+              <Icon className="w-6 h-6 text-violet-300" />
+              <h3 className="mt-3 text-white font-semibold">{t}</h3>
+              <p className="mt-1 text-sm text-slate-400">{d}</p>
+            </div>
+          ))}
+        </section>
+      </PublicLayout>
     );
   }
 
