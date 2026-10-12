@@ -96,7 +96,7 @@ export default function CodeStats({ userId, names, kind }) {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
             {tiles.map(([l, v]) => (
-              <div key={l} className="rounded-lg bg-[var(--cl-hover)]/60 px-2.5 py-1.5">
+              <div key={l} className="rounded-lg bg-[color-mix(in_srgb,var(--cl-hover)_60%,transparent)] px-2.5 py-1.5">
                 <p className="text-[13px] text-[var(--cl-muted)]">{l}</p>
                 <p className="text-[15px] font-semibold text-[var(--cl-text)] truncate">{v}</p>
               </div>

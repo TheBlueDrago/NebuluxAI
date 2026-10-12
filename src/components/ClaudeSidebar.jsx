@@ -23,7 +23,7 @@ function NavRow({ icon: Icon, label, onClick, collapsed, active, accent }) {
       title={collapsed ? label : undefined}
       aria-label={label}
       className={`w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-[14px] transition-colors ${
-        active ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/70 hover:text-[var(--cl-text)]"
+        active ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] hover:text-[var(--cl-text)]"
       } ${collapsed ? "justify-center px-0" : ""}`}
     >
       {accent ? (
@@ -88,14 +88,14 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
 
   return (
     <aside
-      className={`h-[100dvh] flex flex-col bg-[var(--cl-side)] border-r border-[var(--cl-border)]/60 text-[var(--cl-muted)] transition-[width] duration-200 ${
+      className={`h-[100dvh] flex flex-col bg-[var(--cl-side)] border-r border-[color-mix(in_srgb,var(--cl-border)_60%,transparent)] text-[var(--cl-muted)] transition-[width] duration-200 ${
         mobile ? "fixed left-0 top-0 z-50 w-[288px] shadow-2xl" : collapsed ? "w-[56px] shrink-0" : "w-[288px] shrink-0"
       }`}
     >
       {/* logo + collapse */}
       <div className={`flex items-center h-14 px-3 gap-1 ${collapsed && !mobile ? "flex-col h-auto py-3 justify-center" : ""}`}>
         {/* light / dark, in the top-left corner */}
-        <button onClick={shell.toggleLight} className="p-1.5 rounded-lg hover:bg-[var(--cl-hover)]/70 text-[var(--cl-muted)]" title={shell.lightMode ? "Dark mode" : "Light mode"} aria-label={shell.lightMode ? "Switch to dark mode" : "Switch to light mode"}>
+        <button onClick={shell.toggleLight} className="p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] text-[var(--cl-muted)]" title={shell.lightMode ? "Dark mode" : "Light mode"} aria-label={shell.lightMode ? "Switch to dark mode" : "Switch to light mode"}>
           {shell.lightMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
         </button>
         {!(collapsed && !mobile) && (
@@ -104,7 +104,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
             Nebulux AI
           </button>
         )}
-        <button onClick={mobile ? onClose : onToggle} className="p-1.5 rounded-lg hover:bg-[var(--cl-hover)]/70 text-[var(--cl-muted)]" title={mobile ? "Close" : collapsed ? "Open sidebar" : "Close sidebar"} aria-label="Toggle sidebar">
+        <button onClick={mobile ? onClose : onToggle} className="p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] text-[var(--cl-muted)]" title={mobile ? "Close" : collapsed ? "Open sidebar" : "Close sidebar"} aria-label="Toggle sidebar">
           {mobile ? <X className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
         </button>
       </div>
@@ -143,7 +143,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Escape" && (setSearch(""), setSearching(false))}
                 placeholder="Search your chats..."
-                className="w-full bg-[var(--cl-card)] border border-[var(--cl-border)] focus:border-[var(--cl-accent)]/60 rounded-lg pl-7 pr-2 py-1.5 text-[13px] text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] outline-none"
+                className="w-full bg-[var(--cl-card)] border border-[var(--cl-border)] focus:border-[color-mix(in_srgb,var(--cl-accent)_60%,transparent)] rounded-lg pl-7 pr-2 py-1.5 text-[13px] text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] outline-none"
               />
             </div>
           )}
@@ -153,7 +153,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               <div
                 key={c.id}
                 onClick={() => editingId !== c.id && (conv.selectConversation(c.id), shell.navigate("/chat"), mobile && onClose?.())}
-                className={`group relative flex items-center rounded-lg px-2 py-1.5 cursor-pointer text-[13.5px] ${c.id === conv.activeId && path === "/chat" ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "hover:bg-[var(--cl-hover)]/70 hover:text-[var(--cl-text)]"}`}
+                className={`group relative flex items-center rounded-lg px-2 py-1.5 cursor-pointer text-[13.5px] ${c.id === conv.activeId && path === "/chat" ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] hover:text-[var(--cl-text)]"}`}
               >
                 {editingId === c.id ? (
                   <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
@@ -165,7 +165,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                         if (e.key === "Enter") (conv.renameConversation(c.id, editValue.trim() || "Untitled"), setEditingId(null));
                         if (e.key === "Escape") setEditingId(null);
                       }}
-                      className="flex-1 min-w-0 bg-[var(--cl-card)] border border-[var(--cl-accent)]/60 rounded px-1.5 py-0.5 text-[13px] text-[var(--cl-text)] outline-none"
+                      className="flex-1 min-w-0 bg-[var(--cl-card)] border border-[color-mix(in_srgb,var(--cl-accent)_60%,transparent)] rounded px-1.5 py-0.5 text-[13px] text-[var(--cl-text)] outline-none"
                     />
                     <button onClick={() => (conv.renameConversation(c.id, editValue.trim() || "Untitled"), setEditingId(null))} className="p-1 rounded hover:bg-[var(--cl-card)]" aria-label="Save name">
                       <Check className="w-3.5 h-3.5" />
@@ -201,45 +201,45 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
       )}
 
       {/* account */}
-      <div className={`relative p-2 border-t border-[var(--cl-border)]/60 ${collapsed && !mobile ? "z-[60]" : ""}`} data-acct>
+      <div className={`relative p-2 border-t border-[color-mix(in_srgb,var(--cl-border)_60%,transparent)] ${collapsed && !mobile ? "z-[60]" : ""}`} data-acct>
         {/* Claude-style account menu: opens upward from your name */}
         {menu && (
           // When the sidebar is closed it's only 56px wide: the menu keeps its normal width and
           // opens out beside it, above the page, instead of being squeezed.
           <div className={`absolute bottom-full mb-1 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5 text-[14px] ${collapsed && !mobile ? "left-2 w-[272px] z-[60]" : "left-2 right-2 z-10"}`}>
             <p className="px-3 pt-1 pb-2 text-[13px] text-[var(--cl-faint)] truncate">{currentUser?.email}</p>
-            <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <Settings className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Settings</span>
               <span className="text-[12px] text-[var(--cl-faint)]">Ctrl+,</span>
             </button>
-            <button onClick={() => { setMenu(false); setMore(false); openProfile("usage"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("usage"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <Gauge className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Usage</span>
             </button>
-            <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); openProfile("general"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <Languages className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Language</span>
             </button>
-            <button onClick={() => { setMenu(false); setMore(false); shell.openHelp(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); shell.openHelp(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <HelpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Get help</span>
             </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
-            <button onClick={() => { setMenu(false); setMore(false); shell.goPlans(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); shell.goPlans(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <ArrowUpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Upgrade plan</span>
             </button>
-            <button onClick={() => { setMenu(false); setMore(false); getApps(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); getApps(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <LayoutGrid className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Get apps and extensions</span>
             </button>
-            <button onClick={() => { setMenu(false); setMore(false); window.open("/whats-new", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); window.open("/whats-new", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <History className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">View changelog</span>
             </button>
             <div className="relative">
-              <button onClick={() => setMore((m) => !m)} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+              <button onClick={() => setMore((m) => !m)} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
                 <Info className="w-4 h-4 text-[var(--cl-muted)]" />
                 <span className="flex-1">Learn more</span>
                 <ChevronRight className="w-4 h-4 text-[var(--cl-faint)]" />
@@ -247,31 +247,31 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               {more && (
                 <div className={`${mobile ? "relative mx-3 mb-1" : "absolute left-full bottom-0 ml-1 w-48"} rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] shadow-2xl py-1.5`}>
                   {[["About Nebulux AI", "/about"], ["Guides", "/guides"], ["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Safety", "/safety"]].map(([l, h]) => (
-                    <a key={h} href={h} target="_blank" rel="noopener" onClick={() => { setMenu(false); setMore(false); }} className="block px-3 py-1.5 text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">{l}</a>
+                    <a key={h} href={h} target="_blank" rel="noopener" onClick={() => { setMenu(false); setMore(false); }} className="block px-3 py-1.5 text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">{l}</a>
                   ))}
                 </div>
               )}
             </div>
             {isAdmin && (
               <>
-                <button onClick={() => { setMenu(false); setMore(false); shell.goMonitor(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+                <button onClick={() => { setMenu(false); setMore(false); shell.goMonitor(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
                   <Activity className="w-4 h-4 text-[var(--cl-muted)]" />
                   <span className="flex-1">Monitor</span>
                 </button>
-                <button onClick={() => { setMenu(false); setMore(false); shell.goPromos(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+                <button onClick={() => { setMenu(false); setMore(false); shell.goPromos(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
                   <Ticket className="w-4 h-4 text-[var(--cl-muted)]" />
                   <span className="flex-1">Promo codes</span>
                 </button>
               </>
             )}
             <div className="my-1 h-px bg-[var(--cl-border)]" />
-            <button onClick={() => { setMenu(false); window.open("/api", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); window.open("/api", "_blank", "noopener"); if (mobile) onClose?.(); }} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <KeyRound className="w-4 h-4 mt-0.5 text-[var(--cl-muted)]" />
               <span className="flex-1">Get API keys<span className="block text-[12.5px] text-[var(--cl-faint)]">on Nebulux Platform</span></span>
               <ExternalLink className="w-4 h-4 text-[var(--cl-muted)]" />
             </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
-            <button onClick={() => { setMenu(false); setMore(false); logOut(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[var(--cl-hover)]/70">
+            <button onClick={() => { setMenu(false); setMore(false); logOut(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <LogOut className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Log out</span>
             </button>
@@ -279,7 +279,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
         )}
         <button
           onClick={() => setMenu((m) => !m)}
-          className={`w-full flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--cl-hover)]/70 text-left ${collapsed && !mobile ? "justify-center p-1" : ""}`}
+          className={`w-full flex items-center gap-2.5 rounded-lg p-2 hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)] text-left ${collapsed && !mobile ? "justify-center p-1" : ""}`}
           title="Your account and settings"
           aria-label="Your account and settings"
         >

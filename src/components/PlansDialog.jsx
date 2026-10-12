@@ -27,10 +27,10 @@ export default function PlansDialog({ open, onClose, plan, onEnterprise }) {
           {PUBLIC_PLANS.map((p) => {
             const mine = p.id === current;
             return (
-              <div key={p.id} className={`flex flex-col rounded-xl border p-4 ${p.highlight ? "border-[var(--cl-accent)] bg-[var(--cl-card)]" : "border-[var(--cl-border)] bg-[var(--cl-card)]/60"}`}>
+              <div key={p.id} className={`flex flex-col rounded-xl border p-4 ${p.highlight ? "border-[var(--cl-accent)] bg-[var(--cl-card)]" : "border-[var(--cl-border)] bg-[color-mix(in_srgb,var(--cl-card)_60%,transparent)]"}`}>
                 <div className="flex items-center justify-between">
                   <p className="text-lg font-semibold">{p.name}</p>
-                  {p.highlight && <span className="rounded-full bg-[var(--cl-accent)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--cl-accent)]">Popular</span>}
+                  {p.highlight && <span className="rounded-full bg-[color-mix(in_srgb,var(--cl-accent)_20%,transparent)] px-2 py-0.5 text-[11px] font-medium text-[var(--cl-accent)]">Popular</span>}
                 </div>
                 <p className="mt-2"><span className="text-3xl font-bold">{p.price}</span><span className="text-[13px] text-[var(--cl-muted)]">{p.period}</span></p>
                 <p className="mt-2 text-[13px] text-[var(--cl-muted)]">{p.blurb.replace(" Coming soon in a later update.", "")}</p>

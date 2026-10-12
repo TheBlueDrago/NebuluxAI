@@ -56,7 +56,7 @@ export default function SharedChat() {
   const s = state.share;
   return (
     <div className="min-h-screen bg-[var(--cl-bg)] text-[var(--cl-text)]">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--cl-border)] bg-[var(--cl-bg)]/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--cl-border)] bg-[color-mix(in_srgb,var(--cl-bg)_95%,transparent)] px-4 py-3 backdrop-blur">
         <Link to="/chat" className="flex items-center gap-2 font-semibold"><BlackholeIcon className="w-6 h-6" /> Nebulux AI</Link>
         {s && (
           <span className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-[var(--cl-muted)]">

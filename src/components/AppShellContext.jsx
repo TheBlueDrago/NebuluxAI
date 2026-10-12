@@ -175,7 +175,7 @@ export function AppShellProvider({ children }) {
             <h2 id="upgrade-title" className="font-serif text-2xl">{upgradeOpen?.title || "Upgrade to use Nebulux Code"}</h2>
             <p className="mt-2 text-[14.5px] leading-relaxed text-[var(--cl-muted)]">{upgradeOpen?.text || "Nebulux Code is included with Pro and higher plans. Upgrade to build apps, websites and games with the coding AI."}</p>
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setUpgradeOpen(false)} className="rounded-lg border border-[var(--cl-border)] px-4 py-2 text-[14px] text-[var(--cl-muted)] hover:bg-[var(--cl-border)]/60">Not now</button>
+              <button onClick={() => setUpgradeOpen(false)} className="rounded-lg border border-[var(--cl-border)] px-4 py-2 text-[14px] text-[var(--cl-muted)] hover:bg-[color-mix(in_srgb,var(--cl-border)_60%,transparent)]">Not now</button>
               <button onClick={() => { setUpgradeOpen(false); goPlans(); }} className="rounded-lg bg-[var(--cl-text)] px-4 py-2 text-[14px] font-medium text-[var(--cl-bg)] hover:opacity-90">Upgrade</button>
             </div>
           </div>

@@ -33,7 +33,7 @@ const lsGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { r
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* fine */ } };
 
 const Row = ({ title, sub, children }) => (
-  <div className="flex items-center justify-between gap-4 py-4 border-b border-[var(--cl-border)]/70">
+  <div className="flex items-center justify-between gap-4 py-4 border-b border-[color-mix(in_srgb,var(--cl-border)_70%,transparent)]">
     <div className="min-w-0">
       <p className="text-[15px] text-[var(--cl-text)]">{title}</p>
       {sub && <p className="text-[13.5px] text-[var(--cl-muted)] mt-0.5">{sub}</p>}
@@ -51,7 +51,7 @@ const Toggle = ({ on, onChange, label }) => (
   </button>
 );
 const Segmented = ({ value, onChange, options }) => (
-  <div className="flex rounded-lg bg-[var(--cl-hover)]/60 p-0.5">
+  <div className="flex rounded-lg bg-[color-mix(in_srgb,var(--cl-hover)_60%,transparent)] p-0.5">
     {options.map(([k, l]) => (
       <button key={k} onClick={() => onChange(k)} aria-label={typeof l === "string" ? l : k} className={`px-3 py-1 [@media(pointer:coarse)]:py-2 rounded-md text-[14px] ${value === k ? "bg-[var(--cl-card)] text-[var(--cl-text)] shadow" : "text-[var(--cl-muted)]"}`}>{l}</button>
     ))}
@@ -336,7 +336,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
               <div key={group} className="flex sm:block shrink-0 sm:mb-3">
                 <p className="hidden sm:block px-2.5 py-1.5 text-[13px] text-[var(--cl-faint)]">{group}</p>
                 {shown.map(([k, l, Icon]) => (
-                  <button key={k} onClick={() => setTab(k)} className={`shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 rounded-lg px-3 sm:px-2.5 py-2 text-[14px] sm:text-[15px] text-left whitespace-nowrap ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/60 hover:text-[var(--cl-text)]"}`}>
+                  <button key={k} onClick={() => setTab(k)} className={`shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 rounded-lg px-3 sm:px-2.5 py-2 text-[14px] sm:text-[15px] text-left whitespace-nowrap ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_60%,transparent)] hover:text-[var(--cl-text)]"}`}>
                     <Icon className="w-[18px] h-[18px]" />
                     <span className="flex-1">{l}</span>
                   </button>

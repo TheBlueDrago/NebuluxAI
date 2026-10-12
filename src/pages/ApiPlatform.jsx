@@ -268,7 +268,7 @@ export default function ApiPlatform() {
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--cl-muted)]">No API keys yet. Press Create Key to make one.</td></tr>
               ) : (
                 keys.map((k) => (
-                  <tr key={k.id} className="border-b last:border-0 border-[var(--cl-border)] hover:bg-[var(--cl-hover)]/40">
+                  <tr key={k.id} className="border-b last:border-0 border-[var(--cl-border)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_40%,transparent)]">
                     <td className="px-4 py-3 font-medium">{k.name}</td>
                     <td className="px-4 py-3"><code className="text-[12.5px] text-[var(--cl-muted)]">{k.prefix}…</code></td>
                     <td className="px-4 py-3 text-[var(--cl-muted)] truncate max-w-[12rem]">{user?.email || "You"}</td>
@@ -487,7 +487,7 @@ export default function ApiPlatform() {
         </div>
         <nav className="flex md:flex-col gap-1 overflow-x-auto">
           {NAV.map(([k, l, Icon]) => (
-            <button key={k} onClick={() => setTab(k)} className={`shrink-0 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-left whitespace-nowrap ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]/60"}`}>
+            <button key={k} onClick={() => setTab(k)} className={`shrink-0 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-left whitespace-nowrap ${tab === k ? "bg-[var(--cl-hover)] text-[var(--cl-text)]" : "text-[var(--cl-muted)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_60%,transparent)]"}`}>
               <Icon className="w-4 h-4" /> {l}
             </button>
           ))}
