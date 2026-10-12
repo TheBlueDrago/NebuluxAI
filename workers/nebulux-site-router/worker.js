@@ -218,13 +218,16 @@ function ownerNet(request, env) {
 // -> a Response to send instead (down page, or the owner's unlock), or null to carry on.
 // The main address's down page also asks for an email for the launch waitlist (cloudflare-lib/waitlist.js).
 // A plain form (no script), with a hidden "website" field that only bots fill in.
+// The maintenance reel (public/nebulux-reel.mp4, let through below) at the top of the down page.
+var REEL = "<div class='reel'><video id='reel' src='/nebulux-reel.mp4' autoplay loop playsinline preload='auto'></video><button type='button' id='snd' class='snd' hidden>🔊 Tap for sound</button></div><script>(function(){var v=document.getElementById('reel'),b=document.getElementById('snd');if(!v)return;function on(){v.muted=false;v.play();b.hidden=true;}v.muted=false;var p=v.play();if(p&&p.catch)p.catch(function(){v.muted=true;v.play();b.hidden=false;document.addEventListener('pointerdown',on,{once:true});});b.onclick=on;})();</script>";
+var REEL_STYLE = ".reel{position:relative;width:min(300px,70vw);aspect-ratio:9/16;margin:0 auto 22px;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -20px rgba(168,85,247,.6);border:1px solid rgba(255,255,255,.12);background:#000}.reel video{width:100%;height:100%;object-fit:cover;display:block}.snd{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);border:0;border-radius:999px;padding:10px 16px;font:700 14px Inter,system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);cursor:pointer;white-space:nowrap}";
 var MARK = "<div class='orb' aria-hidden='true'></div><div class='brand'>Nebulux AI</div>";
 var WAIT_STYLE = "<style>body>div>p{color:#b9b2df;max-width:420px;margin:14px auto 0;line-height:1.55}form{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}input{font:inherit;font-size:16px;padding:13px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(5,4,15,.6);color:#ede9fe;min-width:230px;flex:1;outline:none;transition:border-color .2s,box-shadow .2s}input:focus{border-color:#a78bfa;box-shadow:0 0 0 4px rgba(167,139,250,.2)}button{font:inherit;font-size:16px;padding:13px 22px;border-radius:14px;border:0;background:linear-gradient(135deg,#7c3aed,#c026d3);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 10px 30px -10px rgba(192,38,211,.7);transition:transform .15s,filter .2s}button:hover{filter:brightness(1.1);transform:translateY(-1px)}.hp{position:absolute;left:-9999px}</style>";
 function waitPage(note) {
   var body = note
     ? "<p>" + note + "</p>"
     : "<p>Want to know when it's back? Leave your email and we'll tell you.</p><form method='post' action='/__waitlist'><input class='hp' name='website' tabindex='-1' autocomplete='off' aria-hidden='true'><input type='email' name='email' required placeholder='you@example.com' aria-label='Your email'><button type='submit'>Notify me</button></form>";
-  return DOWN_PAGE.replace("</style>", "</style>" + WAIT_STYLE).replace(/<\/h1>/, "</h1>" + body).replace("<body>", "<body><div>" + MARK).replace("</body>", "</div></body>");
+  return DOWN_PAGE.replace("</style>", "</style>" + WAIT_STYLE + "<style>" + REEL_STYLE + "</style>").replace(/<\/h1>/, "</h1>" + body).replace("<body>", "<body><div>" + REEL).replace("</body>", "</div></body>");
 }
 async function waitlistPost(request, env) {
   var ip = request.headers.get("cf-connecting-ip") || "unknown";
@@ -303,7 +306,7 @@ async function maintenance(request, env, url) {
   if ((path === "/sitemap.xml" || path === "/robots.txt") && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   // The logo, for domain companies showing "Nebulux AI wants to connect your domain"
   // (domainconnect/nebuluxai.com.website.json logoUrl). Only on the main address.
-  if (path === "/logo-small.jpg" && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
+  if ((path === "/logo-small.jpg" || path === "/nebulux-reel.mp4") && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
   // Keep working while the site is down (they serve people's own websites and code, not the app):
   // "Sign in with Google" on published websites, and the Nebulux API (/v1/, API keys only).
   if ((path.indexOf("/site-auth/") === 0 || path.indexOf("/v1/") === 0) && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
