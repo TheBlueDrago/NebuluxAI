@@ -331,6 +331,88 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
   throw lastErr || new GeminiError("No model available");
 }
 
+// Backup AI: when Google is busy or its free limit is used up (and nothing was written yet), the
+// answer comes from Cloudflare Workers AI instead (free daily allowance, no key: the "AI" binding
+// on the Pages project). Text only, so attached images are mentioned rather than seen.
+const BACKUP_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+async function runWithBackup(env, keys, chain, input, effort, maxTokens, opts) {
+  let started = false;
+  const onDelta = opts.onDelta
+    ? (t) => {
+        started = true;
+        opts.onDelta(t);
+      }
+    : undefined;
+  try {
+    return await runChain(keys, chain, input, effort, maxTokens, { ...opts, onDelta });
+  } catch (err) {
+    const busy = err instanceof GeminiError && (err.retryable || err.status === 429 || err.status === 403);
+    if (!busy || started || !env.AI || opts.shouldStop?.()) throw err;
+    try {
+      return await runBackup(env, input, maxTokens, opts.maxChars, onDelta, opts.shouldStop);
+    } catch {
+      throw err; // the backup failed too: report Google's problem
+    }
+  }
+}
+async function runBackup(env, input, maxTokens, maxChars, onDelta, shouldStop) {
+  const parts = typeof input === "string" ? [{ text: input }] : input;
+  let text = parts.filter((p) => p.text).map((p) => p.text).join("\n");
+  if (parts.some((p) => p.inline_data)) text += "\n\n(The user attached an image, but you can't see images right now. Say so briefly if it matters.)";
+  const stream = await env.AI.run(BACKUP_MODEL, {
+    messages: [
+      { role: "system", content: `${SAFETY_RULES} Today's date is ${new Date().toISOString().slice(0, 10)}.` },
+      { role: "user", content: text },
+    ],
+    max_tokens: maxTokens || 4096,
+    stream: true,
+  });
+  const reader = stream.getReader();
+  const dec = new TextDecoder();
+  const limit = Number.isFinite(maxChars) ? maxChars : Infinity;
+  let buf = "";
+  let out = "";
+  let cut = false;
+  let stopped = false;
+  let finished = false;
+  while (!finished && !cut) {
+    if (shouldStop && shouldStop()) {
+      stopped = true;
+      break;
+    }
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while (!cut && (nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") {
+        finished = true;
+        break;
+      }
+      let piece = "";
+      try {
+        piece = JSON.parse(data).response || "";
+      } catch {
+        continue;
+      }
+      const room = limit - out.length;
+      if (piece.length >= room) {
+        piece = piece.slice(0, Math.max(0, room));
+        cut = true;
+      }
+      out += piece;
+      if (piece && onDelta) onDelta(piece);
+    }
+  }
+  reader.cancel().catch(() => {});
+  if (!out && !stopped) throw new GeminiError("backup returned nothing", { status: 503, retryable: true });
+  return { text: out, cut, stopped, model: "workers-ai" };
+}
+
 // Extra free keys (from other Google accounts or projects) can be added as Cloudflare secrets.
 export const geminiKeys = (env) => [env.GEMINI_API_KEY, env.GEMINI_API_KEY_2, env.GEMINI_API_KEY_3, env.GEMINI_API_KEY_4].filter(Boolean);
 
@@ -469,7 +551,7 @@ export async function onRequestPost(context) {
 
     if (!body.stream) {
       try {
-        const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
+        const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
         counted(context, "ok", r.model);
         return json({ content: r.text, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut)) });
       } catch (err) {
@@ -499,7 +581,7 @@ export async function onRequestPost(context) {
         // What this answer costs as it's written (the app shows it live).
         if (!internal) await send({ meta: { perChars: CHARS_PER_CREDIT, mult } });
         try {
-          const r = await runChain(geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
+          const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           counted(context, "ok", r.model);
           await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });
         } catch (err) {
