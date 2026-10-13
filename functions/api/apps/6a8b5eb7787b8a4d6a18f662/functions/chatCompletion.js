@@ -114,9 +114,10 @@ export const SAFETY_RULES =
 // the next one (overloaded models take ~20-40s just to return their 503).
 const HEADERS_TIMEOUT_MS = 20000;
 const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
-// When the whole chain failed within this long, it's tried once more after a short wait.
-const RETRY_PASS_WITHIN_MS = 15000;
-const RETRY_PASS_WAIT_MS = 2500;
+// When the whole chain failed, it's tried again after a growing wait (Google's free models are often
+// busy for only a few seconds), as long as less than RETRY_PASS_WITHIN_MS has gone by.
+const RETRY_PASS_WITHIN_MS = 45000;
+const RETRY_PASS_WAITS_MS = [2000, 4000, 7000, 10000];
 
 class GeminiError extends Error {
   constructor(message, { status = 0, retryable = false, badConfig = false } = {}) {
@@ -307,7 +308,7 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
       }
     : undefined;
   const t0 = Date.now();
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass <= RETRY_PASS_WAITS_MS.length; pass++) {
     for (let i = 0; i < chain.length; i++) {
       const isLast = i === chain.length - 1;
       // Each key is a separate free allowance: when Google says a key's limit is used up (429),
@@ -323,10 +324,9 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
         }
       }
     }
-    // Every model said no quickly (per-minute rate limits, which clear in seconds, rather
-    // than slow overload): wait a moment and go round once more instead of failing.
-    if (Date.now() - t0 > RETRY_PASS_WITHIN_MS || opts.shouldStop?.()) break;
-    await new Promise((r) => setTimeout(r, RETRY_PASS_WAIT_MS));
+    // Every model said no (busy or per-minute limits, which usually clear in seconds): wait a moment and go round once more instead of failing.
+    if (pass === RETRY_PASS_WAITS_MS.length || Date.now() - t0 > RETRY_PASS_WITHIN_MS || opts.shouldStop?.()) break;
+    await new Promise((r) => setTimeout(r, RETRY_PASS_WAITS_MS[pass]));
   }
   throw lastErr || new GeminiError("No model available");
 }
