@@ -294,6 +294,9 @@ const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
 const mult = (stat) => 1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02;
 const P = { body: makeBody({ shirt: 0xd62828, pants: 0x2a4a8a, hat: "straw" }), pos: V(), vel: V(), hp: 100, en: 100, onGround: false, jumps: 0, swing: 0, atkCd: 0, combo: 0, dashCd: 0, hurtT: 0, tool: 1, cds: {}, boat: null, faceYaw: 0, drownT: 0, lavaT: 0 };
 scene.add(P.body.g);
+// Your Nebulux AI username over your head (Nebulux Games passes it in; "You" elsewhere).
+const myName = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? window.nebulux.username : "You";
+const nameTag = makeLabel(myName, "#ffffff", 768); nameTag.scale.set(6, 1, 1); scene.add(nameTag);
 const cam = { yaw: Math.PI, pitch: 0.38, dist: 16 };
 function spawnPoint() { const isl = ISLANDS.find((i) => i.spawn && i.sea === S.sea); return V(isl.x, groundAt(isl.x, isl.z + 4) + 0.1, isl.z + 4); }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
@@ -746,7 +749,7 @@ function tick() {
 
     // body
     const by = P.faceYaw; let dy = by - P.body.g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.body.g.rotation.y += dy * Math.min(1, 16 * dt);
-    P.body.g.position.copy(P.pos); if (inWater()) P.body.g.position.y -= 1.8; if (P.boat) P.body.g.position.y += 0.2;
+    P.body.g.position.copy(P.pos); if (inWater()) P.body.g.position.y -= 1.8; if (P.boat) P.body.g.position.y += 0.2; nameTag.position.copy(P.body.g.position).setY(P.body.g.position.y + 5.6);
     if (P.swing > 0) { P.swing += dt * 4; if (P.swing >= 1) P.swing = 0; }
     animBody(P.body, P.boat ? 0 : Math.hypot(P.vel.x, P.vel.z), T, P.swing, !P.onGround && !inWater());
     P.body.inner.visible = P.hurtT <= 0 || Math.floor(T * 20) % 2 === 0;
