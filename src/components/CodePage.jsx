@@ -264,6 +264,7 @@ export default function CodePage({ userInitial }) {
     try { localStorage.setItem("nx-code-session", v); } catch { /* fine */ }
   };
   const scrollRef = useRef(null);
+  const inputBoxRef = useRef(null);
   const reqIdRef = useRef(0);
   const abortRef = useRef(null);
 
@@ -563,6 +564,39 @@ export default function CodePage({ userInitial }) {
 
   const queued = loading || q.paused;
   const canSend = input.trim().length > 0 && (queued || !exhausted);
+
+  const newCodeChat = () => {
+    if (loading) stop();
+    setMessages([]);
+    setAttached([]);
+    setChatId(null);
+    loadedFor.current = null;
+    navigate("/chat/code");
+  };
+
+  // Keyboard shortcuts, the same as Chat: Esc stops the answer, "/" jumps to the message box,
+  // Ctrl+Shift+O (Cmd+Shift+O on a Mac) starts a new Code chat.
+  const keysRef = useRef({});
+  keysRef.current = { stop: loading ? () => stop() : null, newChat: newCodeChat };
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName) || e.target?.isContentEditable;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      if (e.key === "Escape" && keysRef.current.stop) {
+        e.preventDefault();
+        keysRef.current.stop();
+      } else if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        inputBoxRef.current?.focus();
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        keysRef.current.newChat();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const announce = useReplyAnnouncer(messages, loading, "code");
   const empty = messages.length === 0 && !loading;
 
@@ -573,7 +607,7 @@ export default function CodePage({ userInitial }) {
         {/* top bar: the two panels */}
         <div className="h-12 shrink-0 flex items-center justify-end gap-1 px-3 pl-14 sm:pl-3">
           {messages.length > 0 && <PanelButton icon={Share2} label="Share" on={false} onClick={() => shareChat({ kind: "code", title: String(messages.find((m) => m.role === "user")?.content || "Nebulux Code chat").slice(0, 80), messages })} />}
-          {messages.length > 0 && <PanelButton icon={Plus} label="New chat" on={false} onClick={() => { if (loading) stop(); setMessages([]); setAttached([]); setChatId(null); loadedFor.current = null; navigate("/chat/code"); }} />}
+          {messages.length > 0 && <PanelButton icon={Plus} label="New chat" on={false} onClick={newCodeChat} />}
           {!isPhone() && <PanelButton icon={Globe} label="Browser" on={panel === "browser"} onClick={() => setPanel((p) => (p === "browser" ? "" : "browser"))} />}
           <PanelButton icon={Github} label={ghToken ? (repo ? repo.split("/")[1] : "GitHub") : "Connect GitHub"} on={panel === "github"} onClick={() => setPanel((p) => (p === "github" ? "" : "github"))} />
         </div>
@@ -781,6 +815,7 @@ export default function CodePage({ userInitial }) {
             <div className="claude-composer bg-[var(--cl-card)] border border-[var(--cl-border)] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,.25)] focus-within:border-[var(--cl-focus)] transition-colors">
               <div className="flex items-end gap-2">
                 <textarea
+                  ref={inputBoxRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
