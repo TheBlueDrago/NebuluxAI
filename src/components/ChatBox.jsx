@@ -50,7 +50,7 @@ import { privateInfoIn } from "@/lib/privateInfo";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import LiveCost from "@/components/chat/LiveCost";
-import { setViewing, clearOut } from "@/lib/aiActivity";
+import { setViewing, clearOut, elapsedText } from "@/lib/aiActivity";
 import { waitText, nextRefresh } from "@/lib/creditRefresh";
 
 // "Continue this answer when my credits come back": { [conversationId]: { ai, resetsAt } }.
@@ -205,6 +205,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       const abort = new AbortController();
       abortRef.current = abort;
       clearOut(`chat:${convId}`);
+      const t0 = Date.now();
       const res = await streamChat({ prompt: fullPrompt, question: text, model: MODELS[ai] || "automatic", effort: eff, ...(images.length ? { images } : {}) }, (soFar) => {
         if (reqIdRef.current === myId) setLive(soFar);
       }, { signal: abort.signal, activity: { key: `chat:${convId}`, where: "chat", label: conversation?.title || chatTitle(text), question: text, ai: AI_NAMES[ai] } });
@@ -216,7 +217,9 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       const content = res.content ?? "";
       notifyDone(content);
       recordMessage(shell?.currentUser?.id, ai, text.length + content.length, "chat");
-      addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, ...(res.more ? { more: true } : {}) });
+      // what this answer used and how long it took, shown under it
+      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}) };
+      addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, used, ...(res.more ? { more: true } : {}) });
       if (talkBackRef.current) speakText(content);
       // Away on another tab: ring the bell and play the chime.
       if (typeof document !== "undefined" && document.hidden) addNotification({ kind: "ai", text: `Nebulux AI finished: ${text.slice(0, 60)}`, link: "/chat" });
@@ -520,6 +523,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                       )}
                       <ReadAloud text={m.content} />
                       <CopyButton getText={() => m.content} label="Copy reply" className="p-1 rounded-md text-slate-500 hover:text-slate-200" />
+                      {m.used && (
+                        <span className="text-[11.5px] text-slate-500 px-1" title="What this answer used">
+                          {m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
+                        </span>
+                      )}
                       <ReportReply question={messages[i - 1]?.role === "user" ? messages[i - 1].content : ""} reply={m.content} />
                     </div>
                     {i === messages.length - 1 && !loading && !isExhausted && (
