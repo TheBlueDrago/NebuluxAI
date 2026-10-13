@@ -15,7 +15,6 @@ import LiveCost from "@/components/chat/LiveCost";
 import { elapsedText, setViewing, startActivity, finishActivity } from "@/lib/aiActivity";
 import EffortPicker from "@/components/chat/EffortPicker";
 import BlackholeIcon from "@/components/BlackholeIcon";
-import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
@@ -538,12 +537,8 @@ export default function CodePage({ userInitial }) {
       setTimeout(() => publishTo(target), 700);
       return;
     }
-    if (loading || q.shouldQueue(loading, text)) {
-      q.push(text);
-      setInput("");
-      if (!loading) q.runNext();
-      return;
-    }
+    // No queue: one message at a time, so nothing is sent while it's still answering.
+    if (loading) return;
     if (exhausted) return;
     runPrompt(text);
   };
@@ -705,7 +700,6 @@ export default function CodePage({ userInitial }) {
 
           {/* message box */}
           <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3">
-            <QueueList q={q} loading={loading} />
             {empty && (
               <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[14px]">
                 <div className="relative">

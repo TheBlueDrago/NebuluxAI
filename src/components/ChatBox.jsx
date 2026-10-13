@@ -22,7 +22,6 @@ import { Plus, RotateCcw, Pencil, ImagePlus } from "lucide-react";
 import AttachedFile from "@/components/chat/AttachedFile";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import AiChooser from "@/components/AiChooser";
-import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
@@ -304,19 +303,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // stays in the box if not).
     const risky = privateInfoIn(text);
     if (risky && !await askConfirm(`This looks like it has ${risky} in it. It's safer not to share that with the AI (or anyone online). Send it anyway?`)) return;
-    if (q.shouldInterrupt(loading, text)) {
-      // Claude-style: stop, then answer the new message with what was written so far in mind.
-      q.setSteer(live);
-      stop(true);
-      runPrompt(text, selectedAi);
-      return;
-    }
-    if (q.shouldQueue(loading, text)) {
-      q.push(text);
-      setInput("");
-      if (!loading) q.runNext();
-      return;
-    }
+    // No queue: one message at a time, so nothing is sent while it's still answering.
+    if (loading) return;
     if (isExhausted) return;
     talkBackRef.current = spokenRef.current;
     spokenRef.current = false;
@@ -624,7 +612,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
         </div>
 
         <div className={claude ? "w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3" : "border-t border-slate-700/50 p-3"}>
-          <QueueList q={q} loading={loading} />
 
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">

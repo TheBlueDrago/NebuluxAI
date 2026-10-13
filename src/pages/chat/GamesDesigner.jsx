@@ -11,7 +11,6 @@ import Markdown from "@/components/chat/Markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Gamepad2, RefreshCw, Plus, X, Crown, Rocket, Paperclip } from "lucide-react";
 import BlackholeIcon from "@/components/BlackholeIcon";
-import QueueList from "@/components/chat/QueueList";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
@@ -508,19 +507,8 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
   const send = () => {
     const text = input.trim();
     if (!text) return;
-    if (q.shouldInterrupt(loading, text)) {
-      // Claude-style: stop, then answer the new message with what was written so far in mind.
-      q.setSteer("(it was still working on the page)");
-      stop(true);
-      runPrompt(text, selectedAi);
-      return;
-    }
-    if (q.shouldQueue(loading, text)) {
-      q.push(text);
-      setInput("");
-      if (!loading) q.runNext();
-      return;
-    }
+    // No queue: one message at a time, so nothing is sent while it's still working.
+    if (loading) return;
     if (sendExhausted) return;
     runPrompt(text, selectedAi);
   };
@@ -753,7 +741,6 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
           </div>
 
           <div className="p-3 border-t border-slate-700/50">
-            <QueueList q={q} loading={loading} />
             {files.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {files.map((f, i) => (
