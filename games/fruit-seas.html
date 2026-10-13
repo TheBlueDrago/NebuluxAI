@@ -588,7 +588,7 @@ function openShop() {
     FRUIT_NAMES.map((n) => { const f = FRUITS[n]; return `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(f.rar)}<div style="font-size:12px;opacity:.8">${f.skills.map((s) => s[0] + ": " + s[1]).join(" · ")}</div></div><button class="btn" data-buy="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button></div>`; }).join(""));
   $("mb").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => { const n = b.dataset.buy; if (S.beli < FRUITS[n].price) return; S.beli -= FRUITS[n].price; S.inv.push(n); save(); show(`Bought ${n} Fruit!`, 1.5); openShop(); });
 }
-const spinCost = () => (S.freeSpin ? 0 : Math.max(5000, Math.round(S.lvl * 1500)));
+const spinCost = () => (S.freeSpin ? 0 : 5000 + Math.floor(S.lvl / 10) * 5000);
 function rollFruit() {
   const tot = FRUIT_NAMES.reduce((a, n) => a + RAR_W[FRUITS[n].rar], 0); let r = Math.random() * tot;
   for (const n of FRUIT_NAMES) { r -= RAR_W[FRUITS[n].rar]; if (r <= 0) return n; } return FRUIT_NAMES[0];
