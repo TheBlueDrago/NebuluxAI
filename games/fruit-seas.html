@@ -406,13 +406,13 @@ function gainXp(x) {
   if (S.lvl >= 100) return;
   S.xp += x;
   while (S.xp >= xpNeed() && S.lvl < 100) {
-    S.xp -= xpNeed(); S.lvl++; S.pts += 3; P.hp = maxHp(); P.en = maxEn();
+    S.xp -= xpNeed(); S.lvl++; S.pts += 3; P.hp += 8;
     show(`LEVEL UP!  Lv. ${S.lvl}\n+3 stat points`, 2.5); ring(P.pos, 0xffd23a, 8, 0.8); $("bStats").classList.add("new");
   }
 }
 function hurtPlayer(d, from) {
   if (P.hurtT > 0 || dead) return;
-  P.hp -= Math.round(d); P.hurtT = 0.4; shake = 0.25;
+  P.hp -= Math.round(d); P.hurtT = 0.4; P.lastHit = T; shake = 0.25;
   const away = P.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.01) P.vel.addScaledVector(away.normalize(), 8);
   if (P.hp <= 0) die();
 }
@@ -430,6 +430,7 @@ function face(dir) { P.faceYaw = Math.atan2(dir.x, dir.z); }
 
 function basicAttack() {
   if (P.atkCd > 0 || P.boat) return;
+  P.lastHit = T;
   const dir = aimDir(); face(dir);
   if (P.tool === 3 && S.fruit) { // fruit click: small fruit shot
     const f = FRUITS[S.fruit]; P.atkCd = 0.45; P.swing = 0.001;
@@ -465,7 +466,7 @@ function useSkill(sk, statKey, color) {
   if ((P.cds[id] || 0) > 0) return;
   if (P.en < energy) return show("Not enough energy", 0.8);
   if (P.boat) return;
-  P.cds[id] = cd; P.en -= energy; P.swing = 0.001;
+  P.cds[id] = cd; P.en -= energy; P.lastHit = T; P.swing = 0.001;
   const dir = aimDir(); face(dir);
   const dmg = power * mult(statKey);
   const fxo = { burn: o.burn, freeze: o.freeze };
@@ -606,7 +607,7 @@ function openGacha() {
     if (spinning || S.beli < spinCost()) return;
     S.beli -= spinCost(); S.freeSpin = false; spinning = true; $("spin").disabled = true;
     const win = rollFruit(), list = Array.from({ length: 46 }, () => pick(FRUIT_NAMES)); list[40] = win; fill(list);
-    const W = 104, wrap = $("reelwrap").clientWidth, target = 40 * W + W / 2 - wrap / 2 + rnd(-30, 30);
+    const card = reel.children[40], wrap = $("reelwrap").clientWidth, target = card.offsetLeft + card.offsetWidth / 2 - wrap / 2 + rnd(-card.offsetWidth * 0.3, card.offsetWidth * 0.3);
     const t0 = performance.now(), dur = 4200;
     const step = (now) => {
       const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
@@ -750,7 +751,8 @@ function tick() {
     P.atkCd -= dt; P.dashCd -= dt; P.hurtT -= dt;
     for (const k in P.cds) P.cds[k] -= dt;
     P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt);
-    if (P.onGround && !lavaAt(P.pos.x, P.pos.z)) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.01 * dt);
+    // Health only comes back slowly, after 6 seconds without fighting (attacking or being hit) (not in water or lava).
+    if (P.onGround && !lavaAt(P.pos.x, P.pos.z) && T - (P.lastHit || -99) > 6) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.015 * dt);
 
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
