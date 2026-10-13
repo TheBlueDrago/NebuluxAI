@@ -126,8 +126,13 @@ export function useConversations() {
 
   // Chats imported from a backup file (Settings) show up right away.
   useEffect(() => {
-    window.addEventListener(CHATS_CHANGED, reload);
-    return () => window.removeEventListener(CHATS_CHANGED, reload);
+    // detail.open: also make that chat the open one (a shared chat someone continues).
+    const onChange = (e) => {
+      reload();
+      if (e && e.detail && e.detail.open) setActiveId(e.detail.open);
+    };
+    window.addEventListener(CHATS_CHANGED, onChange);
+    return () => window.removeEventListener(CHATS_CHANGED, onChange);
   }, [reload]);
 
   const activeConversation = conversations.find((c) => c.id === activeId) || null;

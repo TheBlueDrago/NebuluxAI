@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { Code2, Loader2, Lock, MessageSquare } from "lucide-react";
+import { ArrowRight, Code2, Copy, Check, Loader2, Lock, MessageSquare } from "lucide-react";
+import { CHATS_CHANGED } from "@/lib/chatBackup";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import Markdown from "@/components/chat/Markdown";
@@ -13,11 +14,32 @@ import usePageTitle from "@/hooks/usePageTitle";
 // anywhere in the app: components/AppShellContext.jsx reads PENDING_SHARE).
 export const PENDING_SHARE = "nx-pending-share";
 
+// Copies the shared chat into your own chats so you can keep talking to it.
+function continueChat(s) {
+  const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+  const messages = s.messages.map((m) => ({ role: m.role === "user" ? "user" : "ai", content: m.content }));
+  const conv = { id, title: s.title || "Shared chat", messages, created_date: Date.now(), updated: Date.now(), ...(s.kind === "code" ? { kind: "code" } : {}) };
+  try {
+    const list = JSON.parse(localStorage.getItem("infinity-ai-conversations") || "[]");
+    localStorage.setItem("infinity-ai-conversations", JSON.stringify([conv, ...list]));
+  } catch {
+    return null;
+  }
+  window.dispatchEvent(new CustomEvent(CHATS_CHANGED, { detail: { open: s.kind === "code" ? null : id } }));
+  return s.kind === "code" ? `/chat/code?c=${encodeURIComponent(id)}` : "/chat";
+}
+
+const when = (iso) => {
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+};
+
 export default function SharedChat() {
   const { id } = useParams();
   const { isAuthenticated, authChecked } = useAuth();
   const navigate = useNavigate();
   const [state, setState] = useState({ loading: true });
+  const [copied, setCopied] = useState(false);
   usePageTitle(state.share?.title || state.title || "Shared chat");
 
   const load = useCallback(async () => {
@@ -76,7 +98,31 @@ export default function SharedChat() {
         )}
         {s && (
           <>
-            <h1 className="font-serif text-2xl mb-6">{s.title}</h1>
+            <div className="mb-8 rounded-2xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-5">
+              <div className="flex items-center gap-2 text-[12.5px] text-[var(--cl-muted)]">
+                {s.kind === "code" ? <Code2 className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                {s.kind === "code" ? "Nebulux Code chat" : "Chat"} · {s.messages.length} message{s.messages.length === 1 ? "" : "s"}{s.created_at ? ` · shared ${when(s.created_at)}` : ""}
+              </div>
+              <h1 className="mt-2 font-serif text-2xl sm:text-[28px] leading-tight">{s.title}</h1>
+              <p className="mt-1 text-[13.5px] text-[var(--cl-muted)]">{s.own ? "You shared this chat." : `${s.owner_name || "Someone"} shared this chat with you.`}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    const to = continueChat(s);
+                    if (to) navigate(to);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--cl-text)] px-4 py-2 text-[14px] font-medium text-[var(--cl-bg)] hover:opacity-90"
+                >
+                  Continue this chat <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => navigator.clipboard.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--cl-border)] px-4 py-2 text-[14px] text-[var(--cl-text)] hover:bg-[var(--cl-hover)]"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy link"}
+                </button>
+              </div>
+            </div>
             <div className="space-y-5">
               {s.messages.map((m, i) =>
                 m.role === "user" ? (
@@ -89,7 +135,9 @@ export default function SharedChat() {
               )}
             </div>
             <div className="mt-10 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-4 text-center text-[14px] text-[var(--cl-muted)]">
-              This is a copy of a chat. <Link to={s.kind === "code" ? "/chat/code" : "/chat"} className="text-[var(--cl-text)] underline">Start your own</Link>
+              This is a copy of a chat.{" "}
+              <button onClick={() => { const to = continueChat(s); if (to) navigate(to); }} className="text-[var(--cl-text)] underline">Continue it</button> or{" "}
+              <Link to={s.kind === "code" ? "/chat/code" : "/chat"} className="text-[var(--cl-text)] underline">start your own</Link>
             </div>
           </>
         )}
