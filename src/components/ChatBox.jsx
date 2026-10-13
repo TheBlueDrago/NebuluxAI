@@ -23,7 +23,7 @@ import AttachedFile from "@/components/chat/AttachedFile";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import AiChooser from "@/components/AiChooser";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
-import useMessageQueue from "@/hooks/useMessageQueue";
+import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
 
 // No modes: answer normally, and write code only when the person asks for something to be made.
@@ -303,8 +303,18 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // stays in the box if not).
     const risky = privateInfoIn(text);
     if (risky && !await askConfirm(`This looks like it has ${risky} in it. It's safer not to share that with the AI (or anyone online). Send it anyway?`)) return;
-    // No queue: one message at a time, so nothing is sent while it's still answering.
-    if (loading) return;
+    // Sent while it's still answering: "after you finish…" waits; anything else switches to it now,
+    // and the interrupted request is finished afterwards.
+    if (loading) {
+      setInput("");
+      if (isAfterMsg(text)) { q.push(text); return; }
+      const earlier = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+      q.setSteer(live);
+      stop(true);
+      if (earlier) q.push(`Now go back and finish my earlier request where you left off: ${earlier}`);
+      runPrompt(text, selectedAi);
+      return;
+    }
     if (isExhausted) return;
     talkBackRef.current = spokenRef.current;
     spokenRef.current = false;
@@ -642,7 +652,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               rows={claude && empty ? 2 : 1}
               className={claude ? "flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]" : "flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"}
             />
-            <SendOrStopButton loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} {...(claude ? { gradient: "from-[var(--cl-accent)] to-[var(--cl-accent2)]" } : {})} />
+            <SendOrStopButton busySend loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} {...(claude ? { gradient: "from-[var(--cl-accent)] to-[var(--cl-accent2)]" } : {})} />
           </div>
           <div className={claude ? "nx-tools flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pb-1" : "nx-tools flex flex-wrap items-center gap-x-2 gap-y-1 mt-2"}>
             {/* Like Claude's: files, microphone, AI, strength, then credits and context on the right. */}

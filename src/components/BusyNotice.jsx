@@ -19,7 +19,7 @@ export default function BusyNotice() {
   return (
     <div role="status" aria-live="polite" className="fixed left-1/2 -translate-x-1/2 top-[calc(0.75rem+env(safe-area-inset-top))] z-[70] flex items-center gap-2 rounded-full border border-[var(--cl-border)] bg-[var(--cl-card)] px-4 py-2 text-[13.5px] text-[var(--cl-text)] shadow-xl">
       <Loader2 className="w-4 h-4 animate-spin text-[var(--cl-muted)]" />
-      Lots of people are using the AI right now. Trying again{busy.of > 1 ? ` (${busy.attempt}/${busy.of})` : ""}…
+      The AI hit its limit for a moment. Trying again{busy.of > 1 ? ` (${busy.attempt}/${busy.of})` : ""}…
     </div>
   );
 }

@@ -343,8 +343,11 @@ const counted = (context, kind, model) => {
 function failure(err) {
   const busy = err instanceof GeminiError && err.retryable;
   return {
+    // 429 = our free Google allowance is used up for the moment (not other people); otherwise Google's AI is overloaded.
     error: busy
-      ? "Nebulux AI is very busy right now. Please try again in a minute."
+      ? err.status === 429
+        ? "Nebulux AI has used its free AI limit for the moment. Please try again in a minute."
+        : "Google's AI (which Nebulux AI uses) is overloaded right now. Please try again in a minute."
       : err instanceof GeminiError && err.status === 451
         ? "The AI can't help with that one. Try asking in a different way."
         : "The AI couldn't answer that request. Try again, or ask it a little differently.",

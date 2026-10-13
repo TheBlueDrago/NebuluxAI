@@ -16,7 +16,7 @@ import { elapsedText, setViewing, startActivity, finishActivity } from "@/lib/ai
 import EffortPicker from "@/components/chat/EffortPicker";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
-import useMessageQueue from "@/hooks/useMessageQueue";
+import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
 
 // Nebulux Code has no modes: it does whichever the message needs.
@@ -488,7 +488,7 @@ export default function CodePage({ userInitial }) {
   const runRef = useRef({ active: false, start: 0, credits: 0 });
   const stop = (steerArg) => {
     const steer = steerArg === true;
-    runRef.current = { active: false, start: 0, credits: 0 };
+    if (!steer) runRef.current = { active: false, start: 0, credits: 0 };
     reqIdRef.current++;
     abortRef.current?.abort();
     setTimeout(() => spend(), 2500);
@@ -537,8 +537,18 @@ export default function CodePage({ userInitial }) {
       setTimeout(() => publishTo(target), 700);
       return;
     }
-    // No queue: one message at a time, so nothing is sent while it's still answering.
-    if (loading) return;
+    // Sent while it's still answering: "after you finish…" waits; anything else switches to it now,
+    // and the interrupted request is finished afterwards. The credits and time keep counting.
+    if (loading) {
+      setInput("");
+      if (isAfterMsg(text)) { q.push(text); return; }
+      const earlier = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+      q.setSteer(live);
+      stop(true);
+      if (earlier) q.push(`Now go back and finish my earlier request where you left off: ${earlier}`);
+      runPrompt(text);
+      return;
+    }
     if (exhausted) return;
     runPrompt(text);
   };
@@ -785,7 +795,7 @@ export default function CodePage({ userInitial }) {
                   rows={empty ? 2 : 1}
                   className="flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]"
                 />
-                <SendOrStopButton loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} gradient="from-[var(--cl-accent)] to-[var(--cl-accent2)]" />
+                <SendOrStopButton busySend loading={loading} focused={focused} queued={queued} canSend={canSend} onSend={send} onStop={stop} gradient="from-[var(--cl-accent)] to-[var(--cl-accent2)]" />
               </div>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 pb-1">
                 <VoiceInput onText={(t) => setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${t}` : t))} />
