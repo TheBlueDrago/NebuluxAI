@@ -81,7 +81,7 @@
 <div id="start"><div class="center">
   <h1>FRUIT SEAS</h1>
   <p style="font-weight:700">Fight pirates, find and spin for Sea Fruits with amazing powers, level up your stats and conquer both seas.<br>Careful: once you eat a fruit, <b>the sea is your enemy</b>. You can't swim any more, so use a boat!</p>
-  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Q</kbd> dash · <kbd>Shift</kbd> shift lock<br>
+  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>Ctrl</kbd> mouse lock<br>
   <kbd>Right mouse</kbd> drag to turn the camera · <kbd>Wheel</kbd> zoom · <kbd>Click</kbd> attack (aims at your mouse)<br>
   <kbd>1</kbd> Fists · <kbd>2</kbd> Sword · <kbd>3</kbd> Fruit · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> skills · <kbd>E</kbd> talk / open · <kbd>B</kbd> boat</div>
   <button class="big" id="play">PLAY</button>
@@ -535,11 +535,11 @@ addEventListener("keydown", (e) => {
   if (!started || dead || modalOpen) return;
   if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") equip(3);
   if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C");
-  if (e.code === "KeyQ") dash();
+  if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash();
   if (e.code === "KeyE") interact();
   if (e.code === "KeyB") toggleBoat();
   if (e.code === "Space") jump();
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") { shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.(); $("lockdot").style.display = shiftLock ? "block" : "none"; }
+  if (e.code === "ControlLeft" || e.code === "ControlRight") { e.preventDefault(); shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.(); $("lockdot").style.display = shiftLock ? "block" : "none"; }
 });
 addEventListener("keyup", (e) => { keys[e.code] = false; });
 document.addEventListener("pointerlockchange", () => { if (!document.pointerLockElement && shiftLock) { shiftLock = false; $("lockdot").style.display = "none"; } });
