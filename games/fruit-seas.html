@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fruit Seas</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #top{position:fixed;left:14px;top:12px;width:280px;pointer-events:none}
+  #lvl{font-size:22px;font-weight:900}
+  .bar{position:relative;height:18px;border-radius:4px;background:#1b1b1b;overflow:hidden;margin:5px 0;border:2px solid #000}
+  .bar i{display:block;height:100%;width:100%}
+  .bar span{position:absolute;inset:0;font-size:11px;font-weight:800;display:grid;place-items:center}
+  #hp i{background:#3ad13a} #en i{background:#2f8cff} #xp i{background:#ffd23a}
+  #beli{font-size:18px;font-weight:900;color:#7dff7d}
+  #side{position:fixed;left:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+  .sb{width:60px;height:60px;border-radius:10px;border:3px solid #000;background:#2b2b2b;color:#fff;font-weight:900;font-size:11px;cursor:pointer;display:grid;place-items:center;text-align:center;line-height:1.1}
+  .sb:hover{background:#3d3d3d} .sb em{font-style:normal;font-size:22px;display:block}
+  .sb.new{background:#e2a600}
+  #hot{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px}
+  .slot{width:74px;height:62px;border-radius:8px;border:3px solid #000;background:rgba(30,30,30,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:800;cursor:pointer;position:relative}
+  .slot.on{border-color:#fff;background:rgba(70,70,70,.95)}
+  .slot b{position:absolute;left:4px;top:1px;font-size:11px;opacity:.8}
+  #skills{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .sk{min-width:170px;height:34px;border-radius:6px;border:3px solid #000;background:rgba(30,30,30,.85);display:flex;align-items:center;gap:8px;padding:0 8px;font-size:13px;font-weight:800;position:relative;overflow:hidden}
+  .sk kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-size:13px}
+  .sk .cdv{position:absolute;left:0;top:0;bottom:0;background:rgba(255,40,40,.45)}
+  .sk.low{opacity:.5}
+  #msg{position:fixed;left:50%;top:18%;transform:translateX(-50%);font-size:28px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line}
+  #prompt{position:fixed;left:50%;top:62%;transform:translateX(-50%);font-weight:900;font-size:16px;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:8px;display:none}
+  #prompt kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px}
+  #warn{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px #f00;opacity:0;transition:opacity .2s}
+  #lockdot{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px;border:2px solid #fff;border-radius:50%;display:none;pointer-events:none}
+  .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.5);z-index:4}
+  .box{width:min(560px,92vw);max-height:82vh;overflow:auto;background:#262626;border:4px solid #000;border-radius:14px;padding:18px;position:relative}
+  .box h2{margin:0 0 10px;font-size:24px}
+  .x{position:absolute;right:12px;top:10px;background:#d33;border:3px solid #000;color:#fff;font-weight:900;border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:16px}
+  .row{display:flex;align-items:center;gap:10px;background:#333;border:2px solid #000;border-radius:8px;padding:8px 10px;margin:6px 0}
+  .row .grow{flex:1}
+  .btn{font:inherit;font-weight:900;border:3px solid #000;border-radius:8px;padding:6px 14px;cursor:pointer;background:#3ad13a;color:#000}
+  .btn.gray{background:#777} .btn.blue{background:#2f8cff;color:#fff} .btn:disabled{opacity:.45;cursor:default}
+  .fr{width:34px;height:34px;border-radius:50%;border:3px solid #000;flex:none;position:relative}
+  .fr::after{content:"";position:absolute;inset:3px;border-radius:50%;background:repeating-conic-gradient(rgba(0,0,0,.35) 0 8deg,transparent 8deg 45deg)}
+  .rar{font-size:11px;font-weight:900;padding:1px 6px;border-radius:4px;border:2px solid #000}
+  #reelwrap{height:120px;overflow:hidden;position:relative;border:3px solid #000;border-radius:10px;background:#1a1a1a;margin:10px 0}
+  #reel{display:flex;position:absolute;left:0;top:10px;will-change:transform}
+  .card{width:96px;height:96px;margin:0 4px;border-radius:8px;border:3px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:900;flex:none}
+  #needle{position:absolute;left:50%;top:0;bottom:0;width:4px;margin-left:-2px;background:#ffd23a;box-shadow:0 0 8px #ffd23a;z-index:1}
+  #start,#dead{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#1e88e5cc,#0b2a52ee);z-index:6}
+  #dead{display:none}
+  .center{text-align:center;max-width:560px;padding:20px}
+  h1{font-size:68px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;letter-spacing:2px}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}
+  .keys{font-size:13px;line-height:1.9;opacity:.95}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+</style>
+</head>
+<body>
+<div id="top" class="sh">
+  <div id="lvl">Lv. 1</div>
+  <div class="bar" id="hp"><i></i><span></span></div>
+  <div class="bar" id="en"><i></i><span></span></div>
+  <div class="bar" id="xp" style="height:10px"><i></i></div>
+  <div id="beli">$0</div>
+  <div id="where" style="font-size:13px;font-weight:800"></div>
+</div>
+<div id="side">
+  <button class="sb" id="bStats"><em>📊</em>Stats</button>
+  <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
+  <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
+</div>
+<div id="hot"></div>
+<div id="skills"></div>
+<div id="msg" class="sh"></div>
+<div id="prompt"></div>
+<div id="warn"></div>
+<div id="lockdot"></div>
+<div class="modal" id="modal"><div class="box"><button class="x" id="mx">X</button><h2 id="mt"></h2><div id="mb"></div></div></div>
+<div id="start"><div class="center">
+  <h1>FRUIT SEAS</h1>
+  <p style="font-weight:700">Fight pirates, find and spin for Sea Fruits with amazing powers, level up your stats and conquer both seas.<br>Careful: once you eat a fruit, <b>the sea is your enemy</b>. You can't swim any more, so use a boat!</p>
+  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Q</kbd> dash · <kbd>Shift</kbd> shift lock<br>
+  <kbd>Right mouse</kbd> drag to turn the camera · <kbd>Wheel</kbd> zoom · <kbd>Click</kbd> attack (aims at your mouse)<br>
+  <kbd>1</kbd> Combat · <kbd>2</kbd> Sword · <kbd>3</kbd> Fruit · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> skills · <kbd>E</kbd> talk / open · <kbd>B</kbd> boat</div>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="dead"><div class="center"><h1 style="color:#ff4d4d">YOU DIED</h1><p style="font-weight:700">You respawn at the island of your sea. You keep your level, stats, money and fruit.</p><button class="big" id="again">RESPAWN</button></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const money = (n) => "$" + Math.floor(n).toLocaleString();
+
+// ================= renderer / scene =================
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const cvs = renderer.domElement;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 900);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+scene.add(new THREE.HemisphereLight(0xffffff, 0x4a6a3a, 0.8));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, far: 260 });
+scene.add(sun, sun.target);
+
+const matCache = {};
+const mat = (c) => matCache[c] || (matCache[c] = new THREE.MeshLambertMaterial({ color: c }));
+const box = (w, h, d, c, cast = true) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.castShadow = cast; m.receiveShadow = true; return m; };
+
+// ================= world: 2 seas =================
+const CELL = 2;
+const SEAS = [
+  { name: "First Sea", cx: 0, sky: 0x8fd3ff, water: 0x1e90ff },
+  { name: "Second Sea", cx: 1600, sky: 0x9fb8e8, water: 0x1565c0 },
+];
+const ISLANDS = [
+  { sea: 0, x: 0, z: 0, r: 24, h: 3, name: "Starter Island", lvl: 1, n: 5, mob: "Bandit", top: "grass", spawn: true },
+  { sea: 0, x: 105, z: -35, r: 26, h: 4, name: "Jungle", lvl: 6, n: 6, mob: "Jungle Raider", top: "grass", hill: true },
+  { sea: 0, x: -95, z: -115, r: 26, h: 3, name: "Desert", lvl: 12, n: 6, mob: "Desert Thief", top: "sand" },
+  { sea: 0, x: 55, z: -205, r: 28, h: 5, name: "Pirate Fort", lvl: 18, n: 5, mob: "Fort Guard", top: "stone", boss: { name: "Captain Ironjaw", lvl: 25, hp: 3500, color: 0x222222 } },
+  { sea: 1, x: 1600, z: 0, r: 24, h: 3, name: "Harbor Town", lvl: 30, n: 4, mob: "Dock Thug", top: "grass", spawn: true },
+  { sea: 1, x: 1720, z: -60, r: 28, h: 5, name: "Frost Peak", lvl: 35, n: 6, mob: "Ice Raider", top: "snow", hill: true },
+  { sea: 1, x: 1490, z: -150, r: 28, h: 4, name: "Ember Volcano", lvl: 42, n: 6, mob: "Lava Brute", top: "lava", hill: true },
+  { sea: 1, x: 1640, z: -250, r: 30, h: 4, name: "Ghost Reef", lvl: 50, n: 5, mob: "Ghost Sailor", top: "ghost", boss: { name: "Admiral Frostbeard", lvl: 60, hp: 12000, color: 0x9fd8ff } },
+];
+const TOPS = {
+  grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
+  snow: [0xf4fbff, 0xe6f2fa, 0xffffff], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
+};
+const heights = new Map(); // "cx,cz" -> {y, lava}
+const key = (cx, cz) => cx + "," + cz;
+const solids = [];
+{
+  const cells = [];
+  for (const isl of ISLANDS) {
+    const R = isl.r + 7;
+    for (let cx = Math.floor((isl.x - R) / CELL); cx <= Math.ceil((isl.x + R) / CELL); cx++)
+      for (let cz = Math.floor((isl.z - R) / CELL); cz <= Math.ceil((isl.z + R) / CELL); cz++) {
+        const wx = cx * CELL + 1, wz = cz * CELL + 1, d = Math.hypot(wx - isl.x, wz - isl.z);
+        const edge = isl.r + Math.sin(Math.atan2(wz - isl.z, wx - isl.x) * 5 + isl.x) * 2;
+        let y, col, lava = false;
+        if (d < edge) {
+          y = isl.h + (isl.hill ? Math.round(Math.max(0, 1 - d / (isl.r * 0.55)) * 6) : 0);
+          col = pick(TOPS[isl.top]);
+          if (isl.top === "lava" && d < isl.r * 0.18) { col = 0xff6a00; lava = true; y = isl.h + 3; }
+          else if (isl.top === "lava" && Math.random() < 0.06 && d > 6) { col = 0xff8a1a; lava = true; }
+        } else if (d < edge + 3) { y = isl.h - 1; col = pick(TOPS.sand); }
+        else if (d < edge + 6) { y = 1; col = pick(TOPS.sand); }
+        else continue;
+        if (heights.has(key(cx, cz))) continue;
+        heights.set(key(cx, cz), { y, lava });
+        cells.push([wx, y, wz, col]);
+      }
+  }
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL, 1, CELL), new THREE.MeshLambertMaterial(), cells.length);
+  const m4 = new THREE.Matrix4(), c = new THREE.Color();
+  cells.forEach(([x, y, z, col], i) => {
+    const hgt = y + 6; m4.makeScale(1, hgt, 1); m4.setPosition(x, y - hgt / 2, z); im.setMatrixAt(i, m4); im.setColorAt(i, c.setHex(col));
+  });
+  im.receiveShadow = true; im.castShadow = true; scene.add(im);
+}
+const groundAt = (x, z) => { const h = heights.get(key(Math.floor(x / CELL), Math.floor(z / CELL))); return h ? h.y : -1.1; };
+const lavaAt = (x, z) => { const h = heights.get(key(Math.floor(x / CELL), Math.floor(z / CELL))); return h && h.lava; };
+const islandAt = (x, z) => ISLANDS.find((i) => Math.hypot(x - i.x, z - i.z) < i.r + 4);
+const seaOf = (x) => (x > 800 ? 1 : 0);
+
+// decorations: blocky trees, rocks, houses, crystals
+for (const isl of ISLANDS) {
+  const count = isl.spawn ? 6 : 12;
+  for (let i = 0; i < count; i++) {
+    const a = rnd(0, Math.PI * 2), d = rnd(isl.spawn ? 12 : 6, isl.r - 3);
+    const x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d, y = groundAt(x, z);
+    if (lavaAt(x, z)) continue;
+    const g = new THREE.Group(); g.position.set(x, y, z);
+    if (isl.top === "grass") { g.add(box(1, 5, 1, 0x8b5a2b).translateY(2.5)); g.add(box(4, 2, 4, 0x2fa83a).translateY(5.2)); g.add(box(2.6, 1.6, 2.6, 0x38c046).translateY(6.8)); }
+    else if (isl.top === "snow") { g.add(box(1, 3, 1, 0x6b4423).translateY(1.5)); [3.6, 2.6, 1.6].forEach((s, k) => g.add(box(s, 1.4, s, k % 2 ? 0xffffff : 0x2e7d4f).translateY(3 + k * 1.4))); }
+    else if (isl.top === "sand") { g.add(box(1.2, 4, 1.2, 0x3e9b4f).translateY(2)); g.add(box(2.4, 1, 1, 0x3e9b4f).translateY(2.5).translateX(1)); g.add(box(1, 1.6, 1, 0x3e9b4f).translateY(3.4).translateX(1.7)); }
+    else if (isl.top === "ghost") { g.add(box(1, 4, 1, 0x3a3a46).translateY(2)); g.add(box(3, 0.6, 0.6, 0x3a3a46).translateY(3.6)); g.add(box(1.2, 1.2, 1.2, 0x8fffd0).translateY(4.6)); }
+    else { g.add(box(rnd(2, 3.4), rnd(1.5, 3), rnd(2, 3.4), isl.top === "lava" ? 0x2b2220 : 0x6d6d75).translateY(1)); }
+    scene.add(g); solids.push({ x, z, r: 1.3 });
+  }
+  if (isl.spawn || isl.boss) { // a couple of blocky buildings
+    const spots = isl.boss ? [[-10, -8], [10, -8]] : [[-12, 10], [13, 9]];
+    for (const [ox, oz] of spots) {
+      const x = isl.x + ox, z = isl.z + oz, y = groundAt(x, z);
+      const g = new THREE.Group(); g.position.set(x, y, z);
+      g.add(box(7, 5, 6, isl.boss ? 0x7a7a82 : 0xe9d8b4).translateY(2.5));
+      const roof = box(8, 1.2, 7, isl.boss ? 0x4a4a52 : 0xc0392b); roof.position.y = 5.6; g.add(roof);
+      g.add(box(1.6, 2.8, 0.3, 0x6b4423).translateY(1.4).translateZ(3.05));
+      scene.add(g); solids.push({ x, z, r: 4.2 });
+    }
+  }
+}
+function makeLabel(text, color = "#fff", w = 512) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128;
+  const x = c.getContext("2d"); x.font = "900 60px Segoe UI, system-ui"; x.textAlign = "center"; x.textBaseline = "middle";
+  x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
+  s.scale.set(w / 128 * 1.1, 1.1, 1); return s;
+}
+for (const isl of ISLANDS) { const l = makeLabel(isl.name, "#ffd23a", 768); l.scale.set(18, 3, 1); l.position.set(isl.x, isl.h + 20, isl.z); scene.add(l); }
+
+// ocean that follows you
+const seaGeo = new THREE.PlaneGeometry(700, 700, 70, 70); seaGeo.rotateX(-Math.PI / 2);
+const seaMat = new THREE.MeshLambertMaterial({ color: 0x1e90ff, transparent: true, opacity: 0.88 });
+const ocean = new THREE.Mesh(seaGeo, seaMat); ocean.receiveShadow = true; scene.add(ocean);
+const seaBase = seaGeo.attributes.position.array.slice();
+
+// ================= characters (blocky, like Roblox) =================
+function makeBody(o = {}) {
+  const g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
+  const skin = o.skin ?? 0xf5c99a;
+  const torso = box(1.6, 1.6, 0.8, o.shirt ?? 0x2f8cff); torso.position.y = 2.4; inner.add(torso);
+  const head = box(1.1, 1.1, 1.1, skin); head.position.y = 3.75; inner.add(head);
+  const eyes = box(0.6, 0.15, 0.05, 0x111111); eyes.position.set(0, 3.85, 0.56); inner.add(eyes);
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const leg = new THREE.Group(); leg.position.set(sx, 1.6, 0); const l = box(0.78, 1.6, 0.78, o.pants ?? 0x2b2b4a); l.position.y = -0.8; leg.add(l); inner.add(leg); legs.push(leg);
+    const arm = new THREE.Group(); arm.position.set(sx * 2.5, 3.1, 0); const a = box(0.75, 1.6, 0.75, o.sleeve ?? skin); a.position.y = -0.7; arm.add(a); inner.add(arm); arms.push(arm);
+  }
+  if (o.hat === "straw") { inner.add(box(2.2, 0.15, 2.2, 0xe8c766).translateY(4.35)); inner.add(box(1.2, 0.5, 1.2, 0xe8c766).translateY(4.6)); inner.add(box(1.25, 0.18, 1.25, 0xd62828).translateY(4.45)); }
+  if (o.hat === "bandana") inner.add(box(1.2, 0.4, 1.2, o.hatColor ?? 0xc0392b).translateY(4.25));
+  if (o.hat === "tricorn") { inner.add(box(2, 0.25, 1.6, 0x161616).translateY(4.4)); inner.add(box(1.2, 0.6, 1.2, 0x161616).translateY(4.7)); inner.add(box(0.4, 0.4, 0.05, 0xffffff).translateY(4.7).translateZ(0.62)); }
+  if (o.hat === "helmet") inner.add(box(1.3, 0.6, 1.3, o.hatColor ?? 0x9aa0aa).translateY(4.4));
+  // the sword in the right hand (shown when the sword is equipped)
+  const sword = new THREE.Group(); sword.position.set(0, -1.5, 0.3);
+  sword.add(box(0.15, 0.15, 0.5, 0x3a2a1a)); const bl = box(0.12, 0.3, 2.6, 0xdfe6ee); bl.position.z = 1.5; sword.add(bl); sword.blade = bl;
+  arms[1].add(sword); sword.visible = false;
+  if (o.scale) g.scale.setScalar(o.scale);
+  return { g, inner, legs, arms, sword };
+}
+function animBody(b, speed, t, swing, air) {
+  const s = Math.sin(t * 11) * Math.min(speed / 10, 1) * 0.9;
+  b.legs[0].rotation.x = air ? -0.5 : s; b.legs[1].rotation.x = air ? 0.3 : -s;
+  b.arms[0].rotation.x = air ? -0.6 : -s;
+  b.arms[1].rotation.x = swing > 0 ? -Math.PI / 2 - Math.sin(swing * Math.PI) * 0.8 : air ? -0.6 : s;
+  b.arms[1].rotation.z = swing > 0 ? Math.sin(swing * Math.PI) * 0.9 : 0;
+}
+function hpBar() {
+  const g = new THREE.Group();
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.28), new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false }));
+  const fg = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.2), new THREE.MeshBasicMaterial({ color: 0x3ad13a, depthTest: false }));
+  fg.position.z = 0.01; bg.renderOrder = 10; fg.renderOrder = 11; g.add(bg, fg); g.fg = fg; return g;
+}
+
+// ================= data: fruits, swords =================
+const RAR = { Common: "#b8b8b8", Uncommon: "#4fc3f7", Rare: "#b36bff", Legendary: "#ff4fd8", Mythical: "#ff3b3b" };
+const RAR_W = { Common: 40, Uncommon: 28, Rare: 20, Legendary: 9, Mythical: 3 };
+// Each skill: [key, name, cooldown, energy, power, type, extra]
+const FRUITS = {
+  Spin: { rar: "Common", price: 7500, color: 0x9be7ff, css: "#9be7ff", skills: [["Z", "Spin Blade", 3, 15, 30, "proj", { size: 0.8, speed: 45, range: 40, pierce: true }], ["X", "Whirl Dash", 5, 20, 26, "dash", { dist: 18 }], ["C", "Cyclone", 9, 35, 45, "aoe", { r: 9, self: true }]] },
+  Bomb: { rar: "Common", price: 12000, color: 0x5a5a5a, css: "#9a9a9a", skills: [["Z", "Bomb Throw", 3, 15, 40, "proj", { size: 0.7, speed: 32, range: 45, explode: 5 }], ["X", "Self Blast", 6, 25, 55, "aoe", { r: 7, self: true }], ["C", "Bomb Rain", 11, 40, 38, "rain", { n: 6, r: 4 }]] },
+  Rubber: { rar: "Uncommon", price: 75000, color: 0xff5ea8, css: "#ff5ea8", skills: [["Z", "Stretch Pistol", 2, 12, 40, "proj", { size: 0.7, speed: 80, range: 30, skin: true }], ["X", "Gatling Barrage", 7, 30, 12, "barrage", { n: 10, r: 6 }], ["C", "Rocket", 6, 20, 35, "dash", { dist: 26 }]] },
+  Flame: { rar: "Rare", price: 250000, color: 0xff7a1a, css: "#ff7a1a", skills: [["Z", "Fire Fist", 3, 18, 60, "proj", { size: 1.1, speed: 40, range: 50, pierce: true, explode: 4, burn: true }], ["X", "Flame Pillar", 7, 30, 75, "aoe", { r: 6, burn: true }], ["C", "Inferno Ring", 12, 45, 90, "aoe", { r: 13, self: true, burn: true }]] },
+  Frost: { rar: "Rare", price: 350000, color: 0x7fdcff, css: "#7fdcff", skills: [["Z", "Ice Spear", 2.5, 15, 55, "proj", { size: 0.6, speed: 65, range: 55, pierce: true, freeze: 1 }], ["X", "Glacier", 8, 30, 60, "aoe", { r: 8, freeze: 3 }], ["C", "Absolute Zero", 14, 50, 70, "aoe", { r: 15, self: true, freeze: 4 }]] },
+  Light: { rar: "Legendary", price: 650000, color: 0xfff27a, css: "#fff27a", skills: [["Z", "Light Beam", 2, 15, 70, "proj", { size: 0.5, speed: 160, range: 70, pierce: true }], ["X", "Light Speed", 4, 15, 30, "dash", { dist: 40 }], ["C", "Sky Rain", 12, 45, 55, "rain", { n: 9, r: 5 }]] },
+  Quake: { rar: "Mythical", price: 1000000, color: 0xf2f2f2, css: "#f2f2f2", skills: [["Z", "Quake Punch", 3, 20, 85, "proj", { size: 1.4, speed: 50, range: 40, pierce: true, explode: 5 }], ["X", "Tremor", 8, 35, 95, "aoe", { r: 12, self: true }], ["C", "Sea Split", 16, 60, 130, "aoe", { r: 20, self: true }]] },
+};
+const FRUIT_NAMES = Object.keys(FRUITS);
+const SWORDS = {
+  Katana: { price: 0, mult: 1, color: 0xdfe6ee, sea: 0 },
+  Cutlass: { price: 25000, mult: 1.7, color: 0xc9a85a, sea: 0 },
+  "Dual Katana": { price: 120000, mult: 2.6, color: 0xff4d4d, sea: 0 },
+  "Frost Blade": { price: 600000, mult: 4, color: 0x7fdcff, sea: 1 },
+  "Shadow Edge": { price: 1500000, mult: 5.5, color: 0x6a2bbd, sea: 1 },
+};
+const COMBAT = [["Z", "Heavy Punch", 4, 10, 30, "aoe", { r: 4, front: true }], ["X", "Flying Kick", 6, 15, 26, "dash", { dist: 16 }]];
+const SWORD_SK = [["Z", "Spin Slash", 5, 12, 34, "aoe", { r: 6, self: true }], ["X", "Dash Slash", 7, 18, 42, "dash", { dist: 20 }]];
+const STATS = [["melee", "Melee", "Combat damage", 0xffffff], ["defense", "Health", "+20 max health each", 0], ["sword", "Sword", "Sword damage", 0], ["energy", "Energy", "+15 max energy each", 0], ["fruit", "Blox Fruit", "Fruit damage", 0]];
+
+// ================= save =================
+const DEF = { lvl: 1, xp: 0, beli: 250, pts: 0, st: { melee: 0, defense: 0, sword: 0, energy: 0, fruit: 0 }, fruit: null, inv: [], swords: ["Katana"], sword: "Katana", sea: 0, freeSpin: true, seaUnlocked: false, bosses: {} };
+let S = DEF;
+try { const s = JSON.parse(localStorage.getItem("fruitseas-save") || "null"); if (s && s.lvl) S = { ...DEF, ...s, st: { ...DEF.st, ...s.st } }; } catch { /* no storage */ }
+const save = () => { try { localStorage.setItem("fruitseas-save", JSON.stringify(S)); } catch { /* ignore */ } };
+setInterval(save, 5000);
+
+// ================= player =================
+const maxHp = () => 100 + (S.lvl - 1) * 8 + S.st.defense * 20;
+const maxEn = () => 100 + (S.lvl - 1) * 4 + S.st.energy * 15;
+const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
+const mult = (stat) => 1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02;
+const P = { body: makeBody({ shirt: 0xd62828, pants: 0x2a4a8a, hat: "straw" }), pos: V(), vel: V(), hp: 100, en: 100, onGround: false, jumps: 0, swing: 0, atkCd: 0, combo: 0, dashCd: 0, hurtT: 0, tool: 1, cds: {}, boat: null, faceYaw: 0, drownT: 0, lavaT: 0 };
+scene.add(P.body.g);
+const cam = { yaw: Math.PI, pitch: 0.38, dist: 16 };
+function spawnPoint() { const isl = ISLANDS.find((i) => i.spawn && i.sea === S.sea); return V(isl.x, groundAt(isl.x, isl.z + 4) + 0.1, isl.z + 4); }
+P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
+
+// ================= NPCs =================
+const npcs = [];
+function addNpc(isl, ox, oz, name, color, open, opts = {}) {
+  const b = makeBody({ shirt: color, pants: 0x333333, hat: opts.hat, hatColor: opts.hatColor, skin: opts.skin });
+  const x = isl.x + ox, z = isl.z + oz; b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-ox, -oz); scene.add(b.g);
+  const l = makeLabel(name, "#7dff7d", 768); l.scale.set(8, 1.3, 1); l.position.set(x, groundAt(x, z) + 5.6, z); scene.add(l);
+  npcs.push({ b, x, z, name, open }); solids.push({ x, z, r: 1.2 });
+}
+for (const isl of ISLANDS.filter((i) => i.spawn)) {
+  addNpc(isl, -6, -6, "Fruit Dealer", 0x2e7d32, openShop, { hat: "bandana", hatColor: 0x1b5e20 });
+  addNpc(isl, 0, -9, "Fruit Gacha", 0x6a1b9a, openGacha, { hat: "tricorn" });
+  addNpc(isl, 6, -6, "Sword Dealer", 0x455a64, openSwords, { hat: "helmet" });
+  addNpc(isl, 9, 4, "Sea Traveler", 0x0d47a1, openTravel, { hat: "tricorn" });
+}
+// a gacha machine next to the gacha NPC
+for (const isl of ISLANDS.filter((i) => i.spawn)) {
+  const g = new THREE.Group(); const x = isl.x + 3, z = isl.z - 10; g.position.set(x, groundAt(x, z), z);
+  g.add(box(2.4, 3.6, 2, 0x8e24aa).translateY(1.8)); const glass = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.6, 0.2), new THREE.MeshLambertMaterial({ color: 0xaee9ff, transparent: true, opacity: 0.6 })); glass.position.set(0, 2.6, 1); g.add(glass);
+  for (let i = 0; i < 5; i++) g.add(box(0.35, 0.35, 0.35, FRUITS[pick(FRUIT_NAMES)].color).translateY(2.2 + (i % 2) * 0.5).translateX(-0.6 + i * 0.3).translateZ(0.9));
+  scene.add(g); solids.push({ x, z, r: 1.5 });
+}
+
+// ================= chests =================
+const chests = [];
+function spawnChest(isl) {
+  for (let t = 0; t < 20; t++) {
+    const a = rnd(0, 7), d = rnd(4, isl.r - 4), x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d;
+    if (lavaAt(x, z) || solids.some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 1.5)) continue;
+    const g = new THREE.Group(); g.position.set(x, groundAt(x, z), z);
+    g.add(box(1.6, 1, 1.1, 0x8b5a2b).translateY(0.5)); const lid = box(1.7, 0.4, 1.2, 0xffc107); lid.position.y = 1.2; g.add(lid);
+    scene.add(g); chests.push({ g, x, z, isl }); return;
+  }
+}
+ISLANDS.forEach((i) => { spawnChest(i); spawnChest(i); });
+
+// ================= enemies =================
+const enemies = [];
+function spawnEnemy(isl, boss) {
+  const lvl = boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4));
+  let x, z;
+  for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? rnd(0, 6) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
+  const shirts = { grass: [0x8d6e63, 0x558b2f], sand: [0xd7a35a, 0xa1887f], stone: [0x546e7a, 0x37474f], snow: [0x90caf9, 0xeceff1], lava: [0xbf360c, 0x4e342e], ghost: [0x80cbc4, 0x4db6ac] }[isl.top];
+  const b = boss ? makeBody({ shirt: boss.color, pants: 0x222222, hat: "tricorn", scale: 2.2, skin: isl.top === "ghost" ? 0xbfe9ff : 0xd9a066 })
+    : makeBody({ shirt: pick(shirts), pants: 0x333333, hat: pick(["bandana", "helmet", "bandana"]), hatColor: pick([0xc0392b, 0x2c3e50, 0x16a085, 0xf39c12]), skin: isl.top === "ghost" ? 0xbfe9ff : pick([0xf5c99a, 0xc68642, 0x8d5524]) });
+  b.sword.visible = boss || Math.random() < 0.5;
+  const pos = V(x, groundAt(x, z), z); b.g.position.copy(pos); scene.add(b.g);
+  const bar = hpBar(); scene.add(bar);
+  const name = boss ? boss.name : isl.mob;
+  const label = makeLabel(`${name} [Lv. ${lvl}]`, boss ? "#ff4d4d" : "#ffffff", 768); label.scale.set(7, 1.1, 1); scene.add(label);
+  const mhp = boss ? boss.hp : Math.round(40 + lvl * 22 + lvl * lvl * 0.6);
+  enemies.push({ b, pos, isl, boss, lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: rnd(0.5, 1.5), swing: 0, slow: 0, freeze: 0, burn: 0, kb: V(), t: rnd(0, 9), wander: pos.clone(), dmg: boss ? 12 + lvl * 1.4 : 4 + lvl * 1.1, speed: boss ? 9 : 10, special: 5, name });
+}
+for (const isl of ISLANDS) { for (let i = 0; i < isl.n; i++) spawnEnemy(isl); if (isl.boss) spawnEnemy(isl, isl.boss); }
+
+// ================= effects =================
+const shots = [], fx = [];
+function addFx(m, life, upd) { scene.add(m); fx.push({ m, t: 0, life, upd }); }
+function ring(pos, color, r, life = 0.45) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.7, 1, 32), new THREE.MeshBasicMaterial({ color, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.copy(pos).setY(pos.y + 0.3);
+  addFx(m, life, (k) => { m.scale.setScalar(0.5 + k * r); m.material.opacity = 1 - k; });
+}
+function pillar(pos, color, r, h = 10, life = 0.5) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 16, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }));
+  m.position.copy(pos).setY(pos.y + h / 2);
+  addFx(m, life, (k) => { m.scale.set(1 + k * 0.3, 1, 1 + k * 0.3); m.material.opacity = 0.6 * (1 - k); });
+}
+function cubes(pos, color, n = 8, spd = 7) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), new THREE.MeshBasicMaterial({ color }));
+    m.position.copy(pos); const v = V(rnd(-1, 1), rnd(0.4, 1.6), rnd(-1, 1)).multiplyScalar(spd);
+    addFx(m, 0.6, (k, dt) => { v.y -= 20 * dt; m.position.addScaledVector(v, dt); m.scale.setScalar(1 - k); });
+  }
+}
+function floatText(pos, text, color) {
+  const s = makeLabel(text, color, 512); s.scale.set(3.2, 0.8, 1); s.position.copy(pos).add(V(rnd(-0.8, 0.8), 5, rnd(-0.8, 0.8)));
+  addFx(s, 0.9, (k, dt) => { s.position.y += 3 * dt; s.material.opacity = 1 - k * k; });
+}
+let shake = 0;
+
+// ================= combat =================
+function hurtEnemy(e, dmg, from, fxo = {}) {
+  if (e.hp <= 0) return;
+  dmg = Math.round(dmg * rnd(0.9, 1.1));
+  e.hp -= dmg; floatText(e.pos, String(dmg), fxo.freeze ? "#9fe8ff" : fxo.burn ? "#ffae5a" : "#ffffff");
+  const away = e.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.001) e.kb.addScaledVector(away.normalize(), e.boss ? 2 : fxo.kb ?? 10);
+  if (fxo.freeze) e.freeze = Math.max(e.freeze, fxo.freeze);
+  if (fxo.burn) e.burn = 3;
+  e.aggro = 8;
+  if (e.hp <= 0) killEnemy(e);
+}
+function killEnemy(e) {
+  scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
+  const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
+  gainXp(xp); S.beli += cash; floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
+  if (e.boss) {
+    S.bosses[e.name] = true;
+    if (e.isl.sea === 0 && !S.seaUnlocked) { S.seaUnlocked = true; show(`${e.name} defeated!\nThe Sea Traveler can now take you to the Second Sea!`, 5); }
+    else show(`${e.name} defeated!`, 4);
+    if (Math.random() < 0.35) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`${e.name} dropped a ${f} Fruit!\nOpen Fruits to eat it.`, 4); }
+  }
+  enemies.splice(enemies.indexOf(e), 1); save();
+  setTimeout(() => spawnEnemy(e.isl, e.boss), e.boss ? 90000 : 12000);
+}
+function gainXp(x) {
+  if (S.lvl >= 100) return;
+  S.xp += x;
+  while (S.xp >= xpNeed() && S.lvl < 100) {
+    S.xp -= xpNeed(); S.lvl++; S.pts += 3; P.hp = maxHp(); P.en = maxEn();
+    show(`LEVEL UP!  Lv. ${S.lvl}\n+3 stat points`, 2.5); ring(P.pos, 0xffd23a, 8, 0.8); $("bStats").classList.add("new");
+  }
+}
+function hurtPlayer(d, from) {
+  if (P.hurtT > 0 || dead) return;
+  P.hp -= Math.round(d); P.hurtT = 0.4; shake = 0.25;
+  const away = P.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.01) P.vel.addScaledVector(away.normalize(), 8);
+  if (P.hp <= 0) die();
+}
+
+// Mouse aim: where the mouse points, at the player's height.
+const mouse = { x: 0, y: 0 }, ray = new THREE.Raycaster();
+function aimPoint() {
+  ray.setFromCamera(shiftLock ? { x: 0, y: 0 } : mouse, camera);
+  const plane = new THREE.Plane(V(0, 1, 0), -(P.pos.y + 1.5)), p = V();
+  if (!ray.ray.intersectPlane(plane, p) || p.distanceTo(P.pos) > 120) { const d = V(); camera.getWorldDirection(d); d.y = 0; p.copy(P.pos).addScaledVector(d.normalize(), 30); }
+  return p;
+}
+function aimDir() { const d = aimPoint().sub(P.pos).setY(0); return d.lengthSq() ? d.normalize() : V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)); }
+function face(dir) { P.faceYaw = Math.atan2(dir.x, dir.z); }
+
+function basicAttack() {
+  if (P.atkCd > 0 || P.boat) return;
+  const dir = aimDir(); face(dir);
+  if (P.tool === 3 && S.fruit) { // fruit click: small fruit shot
+    const f = FRUITS[S.fruit]; P.atkCd = 0.45; P.swing = 0.001;
+    shoot({ color: f.color, size: 0.45, speed: 60, range: 30, dmg: 10 * mult("fruit") }, dir);
+    return;
+  }
+  const sword = P.tool === 2;
+  P.combo = (P.combo + 1) % 4; P.atkCd = sword ? 0.4 : 0.32; P.swing = 0.001;
+  const dmg = sword ? 13 * SWORDS[S.sword].mult * mult("sword") : 9 * mult("melee");
+  const reach = sword ? 4.6 : 3.4;
+  let hit = false;
+  for (const e of enemies.slice()) {
+    const to = e.pos.clone().sub(P.pos); const dd = to.setY(0).length();
+    if (dd < reach + (e.boss ? 2 : 0) && to.normalize().dot(dir) > 0.2) { hurtEnemy(e, P.combo === 3 ? dmg * 1.6 : dmg, P.pos, { kb: P.combo === 3 ? 16 : 4 }); hit = true; }
+  }
+  if (hit) cubes(P.pos.clone().addScaledVector(dir, 2.5).setY(P.pos.y + 2.5), sword ? SWORDS[S.sword].color : 0xffffff, 4, 4);
+  P.vel.addScaledVector(dir, 3);
+}
+function shoot(o, dir) {
+  const m = o.skin ? box(0.8, 0.8, 0.8, 0xf5c99a, false) : new THREE.Mesh(new THREE.SphereGeometry(o.size, 10, 8), new THREE.MeshBasicMaterial({ color: o.color }));
+  m.position.copy(P.pos).setY(P.pos.y + 2.6).addScaledVector(dir, 1.5); scene.add(m);
+  let arm = null;
+  if (o.skin) { arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 1), mat(0xf5c99a)); scene.add(arm); }
+  shots.push({ m, arm, dir: dir.clone(), o, left: o.range, hit: new Set() });
+}
+function explode(pos, r, dmg, color, fxo) {
+  ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 12, 10); shake = Math.max(shake, 0.2);
+  for (const e of enemies.slice()) if (e.pos.distanceTo(pos) < r + (e.boss ? 2 : 0)) hurtEnemy(e, dmg, pos, fxo);
+}
+function useSkill(sk, statKey, color) {
+  const [k, , cd, energy, power, type, o] = sk;
+  const id = P.tool + k;
+  if ((P.cds[id] || 0) > 0) return;
+  if (P.en < energy) return show("Not enough energy", 0.8);
+  if (P.boat) return;
+  P.cds[id] = cd; P.en -= energy; P.swing = 0.001;
+  const dir = aimDir(); face(dir);
+  const dmg = power * mult(statKey);
+  const fxo = { burn: o.burn, freeze: o.freeze };
+  if (type === "proj") shoot({ ...o, color, dmg, fxo }, dir);
+  else if (type === "aoe") {
+    const c = o.self ? P.pos.clone() : o.front ? P.pos.clone().addScaledVector(dir, 3) : (() => { const a = aimPoint(); const d = a.clone().sub(P.pos).setY(0); if (d.length() > 35) d.setLength(35); return P.pos.clone().add(d); })();
+    c.y = groundAt(c.x, c.z) > -1 ? Math.max(groundAt(c.x, c.z), P.pos.y - 3) : P.pos.y;
+    explode(c, o.r, dmg, color, fxo); if (o.r >= 8) pillar(c, color, o.r * 0.5, 14, 0.6);
+  } else if (type === "dash") {
+    const start = P.pos.clone(); P.vel.addScaledVector(dir, o.dist * 3.2); P.vel.y = 4; P.dashHit = { dmg, color, set: new Set(), t: 0.35, fxo };
+    ring(start, color, 3, 0.3);
+  } else if (type === "barrage") {
+    let n = 0; const iv = setInterval(() => { P.swing = 0.001; const at = P.pos.clone().addScaledVector(aimDir(), 3); explode(at, 3.5, dmg, color, { kb: 1 }); if (++n >= o.n) clearInterval(iv); }, 90);
+  } else if (type === "rain") {
+    const a = aimPoint();
+    for (let i = 0; i < o.n; i++) setTimeout(() => { const p = a.clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))); p.y = Math.max(groundAt(p.x, p.z), 0); pillar(p, color, 1.2, 18, 0.4); explode(p, o.r, dmg, color, fxo); }, i * 140);
+  }
+}
+function skillsFor(tool) {
+  if (tool === 1) return { list: COMBAT, stat: "melee", color: 0xffffff };
+  if (tool === 2) return { list: SWORD_SK, stat: "sword", color: SWORDS[S.sword].color, power: SWORDS[S.sword].mult };
+  if (tool === 3 && S.fruit) return { list: FRUITS[S.fruit].skills, stat: "fruit", color: FRUITS[S.fruit].color };
+  return { list: [], stat: "melee", color: 0xffffff };
+}
+function trySkill(k) {
+  const s = skillsFor(P.tool); const sk = s.list.find((x) => x[0] === k); if (!sk) return;
+  const scaled = s.power ? [...sk.slice(0, 4), sk[4] * s.power, ...sk.slice(5)] : sk;
+  useSkill(scaled, s.stat, s.color);
+}
+function dash() {
+  if (P.dashCd > 0 || P.boat) return;
+  P.dashCd = 0.9; const d = moveDir(); const dir = d.lengthSq() ? d : V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
+  P.vel.addScaledVector(dir, 34); ring(P.pos, 0xffffff, 2.5, 0.25);
+}
+
+// ================= boat =================
+function toggleBoat() {
+  if (dead) return;
+  if (P.boat) { // get off
+    scene.remove(P.boat.g); P.boat = null; P.vel.y = 6; return;
+  }
+  // find water next to you
+  const f = V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
+  let spot = null;
+  for (let d = 0; d <= 16 && !spot; d += 2) for (let a = 0; a < 8 && !spot; a++) {
+    const dir = d === 0 ? f : f.clone().applyAxisAngle(V(0, 1, 0), (a % 2 ? 1 : -1) * Math.ceil(a / 2) * 0.6);
+    const p = P.pos.clone().addScaledVector(dir, d); if (groundAt(p.x, p.z) < 0) spot = p;
+  }
+  if (!spot) return show("Walk closer to the water to call your boat", 1.5);
+  const g = new THREE.Group();
+  g.add(box(3.4, 1.2, 7, 0x8b5a2b).translateY(0.3)); g.add(box(3.6, 0.5, 7.2, 0x6b4423).translateY(1));
+  const mast = box(0.35, 7, 0.35, 0x6b4423); mast.position.set(0, 4, -0.5); g.add(mast);
+  const sail = box(4, 3.6, 0.15, 0xffffff); sail.position.set(0, 5, -0.4); g.add(sail);
+  const flag = box(1.1, 0.7, 0.05, 0x111111); flag.position.set(0.6, 7.6, -0.5); g.add(flag);
+  g.position.copy(spot).setY(0); scene.add(g);
+  P.boat = { g, speed: 0, yaw: P.faceYaw }; P.pos.set(spot.x, 0.8, spot.z); P.vel.set(0, 0, 0);
+}
+
+// ================= input (Blox Fruits style) =================
+const keys = {};
+let started = false, dead = false, shiftLock = false, rmb = false, modalOpen = false;
+addEventListener("keydown", (e) => {
+  if (e.repeat && e.code !== "Space") return;
+  keys[e.code] = true;
+  if (e.code === "Escape" && modalOpen) return closeModal();
+  if (!started || dead || modalOpen) return;
+  if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") equip(3);
+  if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C");
+  if (e.code === "KeyQ") dash();
+  if (e.code === "KeyE") interact();
+  if (e.code === "KeyB") toggleBoat();
+  if (e.code === "Space") jump();
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") { shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.(); $("lockdot").style.display = shiftLock ? "block" : "none"; }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; });
+document.addEventListener("pointerlockchange", () => { if (!document.pointerLockElement && shiftLock) { shiftLock = false; $("lockdot").style.display = "none"; } });
+cvs.addEventListener("mousedown", (e) => { if (!started || dead) return; if (e.button === 2) rmb = true; if (e.button === 0) basicAttack(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  if (rmb || shiftLock) { cam.yaw -= e.movementX * 0.005; cam.pitch = clamp(cam.pitch + e.movementY * 0.004, -0.2, 1.35); }
+});
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 6, 32); }, { passive: true });
+function jump() {
+  if (P.boat) return;
+  if (P.onGround || inWater()) { P.vel.y = inWater() ? 9 : 14; P.jumps = 1; P.onGround = false; }
+  else if (P.jumps < 2) { P.vel.y = 13; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
+}
+const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.boat;
+function equip(n) { P.tool = P.tool === n ? 0 : n; if (P.tool === 3 && !S.fruit) { show("You haven't eaten a fruit yet", 1.2); P.tool = 0; } drawHot(); }
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW) d.add(f); if (keys.KeyS) d.sub(f); if (keys.KeyD) d.add(r); if (keys.KeyA) d.sub(r);
+  return d.lengthSq() ? d.normalize() : d;
+}
+function interact() {
+  const n = npcs.find((n) => Math.hypot(n.x - P.pos.x, n.z - P.pos.z) < 5);
+  if (n) return n.open();
+  const c = chests.find((c) => Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 3.5);
+  if (c) {
+    const cash = Math.round(rnd(80, 200) * (c.isl.lvl + 2)); S.beli += cash; floatText(c.g.position, `+${money(cash)}`, "#7dff7d"); cubes(c.g.position.clone().setY(c.g.position.y + 1), 0xffc107, 12);
+    if (Math.random() < 0.06) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`You found a ${f} Fruit in the chest!`, 3); }
+    scene.remove(c.g); chests.splice(chests.indexOf(c), 1); setTimeout(() => spawnChest(c.isl), 40000); save();
+  }
+}
+
+// ================= UI =================
+let msgT = 0;
+function show(t, s = 2) { $("msg").innerText = t; $("msg").style.opacity = 1; msgT = s; }
+function openModal(title, html) { modalOpen = true; rmb = false; $("mt").textContent = title; $("mb").innerHTML = html; $("modal").style.display = "grid"; document.exitPointerLock?.(); }
+function closeModal() { modalOpen = false; $("modal").style.display = "none"; }
+$("mx").onclick = closeModal;
+$("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
+const fruitIcon = (n) => `<span class="fr" style="background:${FRUITS[n].css}"></span>`;
+const rarTag = (r) => `<span class="rar" style="background:${RAR[r]};color:#000">${r}</span>`;
+
+function openShop() {
+  openModal("Fruit Dealer", `<p style="margin:0 0 6px;opacity:.85">Bought fruits go to your Fruits bag. Eat one from there.</p>` +
+    FRUIT_NAMES.map((n) => { const f = FRUITS[n]; return `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(f.rar)}<div style="font-size:12px;opacity:.8">${f.skills.map((s) => s[0] + ": " + s[1]).join(" · ")}</div></div><button class="btn" data-buy="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button></div>`; }).join(""));
+  $("mb").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => { const n = b.dataset.buy; if (S.beli < FRUITS[n].price) return; S.beli -= FRUITS[n].price; S.inv.push(n); save(); show(`Bought ${n} Fruit!`, 1.5); openShop(); });
+}
+const spinCost = () => (S.freeSpin ? 0 : Math.max(5000, Math.round(S.lvl * 1500)));
+function rollFruit() {
+  const tot = FRUIT_NAMES.reduce((a, n) => a + RAR_W[FRUITS[n].rar], 0); let r = Math.random() * tot;
+  for (const n of FRUIT_NAMES) { r -= RAR_W[FRUITS[n].rar]; if (r <= 0) return n; } return FRUIT_NAMES[0];
+}
+let spinning = false;
+function openGacha() {
+  const odds = FRUIT_NAMES.map((n) => { const tot = FRUIT_NAMES.reduce((a, m) => a + RAR_W[FRUITS[m].rar], 0); return `${n} ${(RAR_W[FRUITS[n].rar] / tot * 100).toFixed(1)}%`; }).join(" · ");
+  openModal("Fruit Gacha", `<div id="reelwrap"><div id="needle"></div><div id="reel"></div></div>
+    <div style="text-align:center"><button class="btn blue" id="spin" style="font-size:18px" ${S.beli < spinCost() ? "disabled" : ""}>${S.freeSpin ? "FREE SPIN!" : "Spin for " + money(spinCost())}</button></div>
+    <p style="font-size:12px;opacity:.75;text-align:center">${odds}</p>`);
+  const reel = $("reel");
+  const fill = (arr) => { reel.innerHTML = arr.map((n) => `<div class="card" style="background:${RAR[FRUITS[n].rar]}33;border-color:${RAR[FRUITS[n].rar]}">${fruitIcon(n)}${n}</div>`).join(""); };
+  fill(Array.from({ length: 8 }, () => pick(FRUIT_NAMES)));
+  $("spin").onclick = () => {
+    if (spinning || S.beli < spinCost()) return;
+    S.beli -= spinCost(); S.freeSpin = false; spinning = true; $("spin").disabled = true;
+    const win = rollFruit(), list = Array.from({ length: 46 }, () => pick(FRUIT_NAMES)); list[40] = win; fill(list);
+    const W = 104, wrap = $("reelwrap").clientWidth, target = 40 * W + W / 2 - wrap / 2 + rnd(-30, 30);
+    const t0 = performance.now(), dur = 4200;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      reel.style.transform = `translateX(${-target * e}px)`;
+      if (k < 1) requestAnimationFrame(step);
+      else { spinning = false; S.inv.push(win); save(); show(`You got the ${win} Fruit! (${FRUITS[win].rar})\nOpen Fruits to eat it`, 3); const b = $("spin"); if (b) { b.disabled = S.beli < spinCost(); b.textContent = "Spin for " + money(spinCost()); } }
+    };
+    requestAnimationFrame(step);
+  };
+}
+function openFruits() {
+  const cur = S.fruit ? `<div class="row" style="border-color:#ffd23a">${fruitIcon(S.fruit)}<div class="grow"><b>Eaten: ${S.fruit} Fruit</b> ${rarTag(FRUITS[S.fruit].rar)}<div style="font-size:12px;opacity:.8">You can't swim. Use a boat (B).</div></div></div>` : `<p>You haven't eaten a fruit. You can still swim!</p>`;
+  const bag = S.inv.length ? S.inv.map((n, i) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div><button class="btn" data-eat="${i}">Eat</button><button class="btn gray" data-drop="${i}">Drop</button></div>`).join("") : `<p style="opacity:.7">Your bag is empty. Buy fruits from the Fruit Dealer, spin the Gacha, or open chests.</p>`;
+  openModal("Fruits", cur + "<h3>Bag</h3>" + bag);
+  $("mb").querySelectorAll("[data-eat]").forEach((b) => b.onclick = () => {
+    const i = +b.dataset.eat, n = S.inv[i];
+    if (S.fruit && !confirm(`Eat the ${n} Fruit? You will lose your ${S.fruit} Fruit.`)) return;
+    S.inv.splice(i, 1); S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
+    ring(P.pos, FRUITS[n].color, 6, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), FRUITS[n].color, 20);
+    show(`You ate the ${n} Fruit!\nYou can't swim any more`, 3);
+  });
+  $("mb").querySelectorAll("[data-drop]").forEach((b) => b.onclick = () => { S.inv.splice(+b.dataset.drop, 1); save(); openFruits(); });
+}
+function openStats() {
+  $("bStats").classList.remove("new");
+  const desc = { melee: `Combat damage x${mult("melee").toFixed(2)}`, defense: `Max health ${maxHp()}`, sword: `Sword damage x${mult("sword").toFixed(2)}`, energy: `Max energy ${maxEn()}`, fruit: `Fruit damage x${mult("fruit").toFixed(2)}` };
+  openModal("Stats", `<p style="margin:0 0 8px"><b style="font-size:18px">Points: ${S.pts}</b> <span style="opacity:.75">(3 per level)</span></p>` +
+    STATS.map(([k, name]) => `<div class="row"><div class="grow"><b>${name}: ${S.st[k]}</b><div style="font-size:12px;opacity:.8">${desc[k]}</div></div><button class="btn" data-add="${k}" data-n="1" ${S.pts < 1 ? "disabled" : ""}>+1</button><button class="btn" data-add="${k}" data-n="5" ${S.pts < 5 ? "disabled" : ""}>+5</button><button class="btn blue" data-add="${k}" data-n="all" ${S.pts < 1 ? "disabled" : ""}>Max</button></div>`).join("") +
+    `<div style="text-align:right;margin-top:8px"><button class="btn gray" id="reset">Reset stats</button></div>`);
+  $("mb").querySelectorAll("[data-add]").forEach((b) => b.onclick = () => { const n = b.dataset.n === "all" ? S.pts : Math.min(+b.dataset.n, S.pts); S.st[b.dataset.add] += n; S.pts -= n; save(); openStats(); });
+  $("reset").onclick = () => { const used = Object.values(S.st).reduce((a, b) => a + b, 0); for (const k in S.st) S.st[k] = 0; S.pts += used; P.hp = Math.min(P.hp, maxHp()); save(); openStats(); };
+}
+function openSwords() {
+  openModal("Sword Dealer", Object.entries(SWORDS).filter(([, s]) => s.sea <= S.sea).map(([n, s]) => {
+    const own = S.swords.includes(n);
+    return `<div class="row"><span class="fr" style="border-radius:4px;background:#${s.color.toString(16).padStart(6, "0")}"></span><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Damage x${s.mult}</div></div>${own ? (S.sword === n ? `<button class="btn gray" disabled>Equipped</button>` : `<button class="btn blue" data-eq="${n}">Equip</button>`) : `<button class="btn" data-buy="${n}" ${S.beli < s.price ? "disabled" : ""}>${money(s.price)}</button>`}</div>`;
+  }).join("") + (S.sea === 0 ? `<p style="font-size:12px;opacity:.7">Stronger swords are sold in the Second Sea.</p>` : ""));
+  $("mb").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => { const n = b.dataset.buy; if (S.beli < SWORDS[n].price) return; S.beli -= SWORDS[n].price; S.swords.push(n); S.sword = n; save(); openSwords(); });
+  $("mb").querySelectorAll("[data-eq]").forEach((b) => b.onclick = () => { S.sword = b.dataset.eq; save(); openSwords(); });
+}
+function openTravel() {
+  if (S.sea === 0) {
+    const ok = S.seaUnlocked && S.lvl >= 30;
+    openModal("Sea Traveler", `<p>The Second Sea is dangerous: enemies start at <b>Lv. 30</b>.</p>
+      <div class="row"><div class="grow">Defeat Captain Ironjaw at Pirate Fort</div><b>${S.seaUnlocked ? "✅" : "❌"}</b></div>
+      <div class="row"><div class="grow">Reach Lv. 30</div><b>${S.lvl >= 30 ? "✅" : "❌ (Lv. " + S.lvl + ")"}</b></div>
+      <div style="text-align:center;margin-top:10px"><button class="btn blue" id="go" ${ok ? "" : "disabled"}>Travel to the Second Sea</button></div>`);
+    $("go").onclick = () => travel(1);
+  } else {
+    openModal("Sea Traveler", `<p>Want to go back to the First Sea?</p><div style="text-align:center"><button class="btn blue" id="go">Travel to the First Sea</button></div>`);
+    $("go").onclick = () => travel(0);
+  }
+}
+function travel(sea) {
+  closeModal(); if (P.boat) toggleBoat();
+  S.sea = sea; save(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
+}
+$("bStats").onclick = () => started && openStats();
+$("bFruits").onclick = () => started && openFruits();
+$("bBoat").onclick = () => started && toggleBoat();
+
+function drawHot() {
+  const slots = [[1, "Combat", "👊"], [2, S.sword, "🗡️"], [3, S.fruit ? S.fruit : "No fruit", "🍎"]];
+  $("hot").innerHTML = slots.map(([n, label, icon]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b><span style="font-size:20px">${icon}</span>${label}</div>`).join("");
+  $("hot").querySelectorAll(".slot").forEach((s) => s.onclick = () => equip(+s.dataset.t));
+  P.body.sword.visible = P.tool === 2; P.body.sword.blade.material = mat(SWORDS[S.sword].color);
+}
+function drawSkills() {
+  const s = skillsFor(P.tool);
+  $("skills").innerHTML = s.list.map((sk) => { const left = Math.max(0, P.cds[P.tool + sk[0]] || 0); return `<div class="sk ${P.en < sk[3] ? "low" : ""}"><div class="cdv" style="width:${(left / sk[2]) * 100}%"></div><kbd>${sk[0]}</kbd>${sk[1]}${left > 0 ? ` <span style="margin-left:auto;opacity:.8">${left.toFixed(1)}</span>` : ""}</div>`; }).join("");
+}
+
+function die() { dead = true; shiftLock = false; document.exitPointerLock?.(); $("lockdot").style.display = "none"; $("dead").style.display = "grid"; if (P.boat) { scene.remove(P.boat.g); P.boat = null; } }
+$("again").onclick = () => { $("dead").style.display = "none"; dead = false; P.hp = maxHp(); P.en = maxEn(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; drawHot(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+
+const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
+
+// ================= main loop =================
+const clock = new THREE.Clock();
+let T = 0, lastIsl = null, uiT = 0;
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.05); T += dt;
+  const sea = SEAS[S.sea];
+  scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 120, 380); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
+
+  // waves
+  ocean.position.set(Math.round(P.pos.x / 10) * 10, 0, Math.round(P.pos.z / 10) * 10);
+  const pa = seaGeo.attributes.position.array;
+  for (let i = 0; i < pa.length; i += 3) { const wx = seaBase[i] + ocean.position.x, wz = seaBase[i + 2] + ocean.position.z; pa[i + 1] = Math.sin(wx * 0.07 + T * 1.4) * 0.3 + Math.cos(wz * 0.05 + T) * 0.3 - 0.3; }
+  seaGeo.attributes.position.needsUpdate = true;
+
+  if (started && !dead && !modalOpen) {
+    const g = groundAt(P.pos.x, P.pos.z);
+    if (P.boat) {
+      // sail: W/S throttle, A/D steer, camera-relative like walking
+      const md = moveDir(); const b = P.boat;
+      if (md.lengthSq()) { const ty = Math.atan2(md.x, md.z); let d = ty - b.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); b.yaw += d * Math.min(1, 2.5 * dt); b.speed = Math.min(30, b.speed + 30 * dt); } else b.speed = Math.max(0, b.speed - 20 * dt);
+      const nx = P.pos.x + Math.sin(b.yaw) * b.speed * dt, nz = P.pos.z + Math.cos(b.yaw) * b.speed * dt;
+      if (groundAt(nx, nz) < 0) { P.pos.x = nx; P.pos.z = nz; } else { b.speed = 0; scene.remove(b.g); P.boat = null; P.pos.set(nx, groundAt(nx, nz) + 0.2, nz); show("Landed", 1); }
+      if (P.boat) { P.pos.y = 0.9 + Math.sin(T * 2) * 0.15; b.g.position.set(P.pos.x, Math.sin(T * 2) * 0.15, P.pos.z); b.g.rotation.y = b.yaw; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; P.faceYaw = b.yaw; }
+      P.vel.set(0, 0, 0); P.onGround = true;
+    } else {
+      const want = moveDir().multiplyScalar(inWater() ? 9 : 16);
+      const k = P.onGround || inWater() ? 14 : 5;
+      P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt);
+      if (keys.Space && P.onGround) jump();
+      P.vel.y -= 36 * dt;
+      if (inWater() && P.vel.y < 0) P.vel.y *= 0.5;
+      P.pos.addScaledVector(P.vel, dt);
+      collide(P.pos, 0.8);
+      const g2 = groundAt(P.pos.x, P.pos.z);
+      // can't walk up walls taller than a step: push back out
+      if (P.pos.y < g2 - 1.6 && g2 > 0) { P.pos.x -= P.vel.x * dt; P.pos.z -= P.vel.z * dt; P.vel.x = P.vel.z = 0; }
+      const gNow = groundAt(P.pos.x, P.pos.z), floor = gNow < 0 ? -0.6 : gNow;
+      if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0; if (P.onGround) P.jumps = 0; } else P.onGround = false;
+      if (want.lengthSq() > 1 && !shiftLock && P.swing === 0) P.faceYaw = Math.atan2(want.x, want.z);
+      if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
+    }
+    // stay inside the sea
+    const sc = V(SEAS[S.sea].cx, 0, -100), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 360) { so.setLength(360); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
+
+    // dash-skill hits
+    if (P.dashHit) { P.dashHit.t -= dt; for (const e of enemies.slice()) if (!P.dashHit.set.has(e) && e.pos.distanceTo(P.pos) < (e.boss ? 5 : 3.5)) { P.dashHit.set.add(e); hurtEnemy(e, P.dashHit.dmg, P.pos, P.dashHit.fxo); } cubes(P.pos.clone().setY(P.pos.y + 2), P.dashHit.color, 1, 2); if (P.dashHit.t <= 0) P.dashHit = null; }
+
+    // fruit users can't swim
+    if (inWater() && S.fruit) {
+      P.drownT += dt; P.hp -= maxHp() * 0.18 * dt; $("warn").style.opacity = 0.8; P.vel.y = Math.min(P.vel.y, -2);
+      if (P.drownT > 0.3 && msgT <= 0) show("Fruit users can't swim!\nGet out of the water or press B for a boat", 1.2);
+      if (P.hp <= 0) die();
+    } else { P.drownT = 0; $("warn").style.opacity = P.hurtT > 0.2 ? 0.4 : 0; }
+    if (lavaAt(P.pos.x, P.pos.z) && P.onGround) { P.hp -= maxHp() * 0.12 * dt; $("warn").style.opacity = 0.6; if (P.hp <= 0) die(); }
+
+    // body
+    const by = P.faceYaw; let dy = by - P.body.g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.body.g.rotation.y += dy * Math.min(1, 16 * dt);
+    P.body.g.position.copy(P.pos); if (inWater()) P.body.g.position.y -= 1.8; if (P.boat) P.body.g.position.y += 0.2;
+    if (P.swing > 0) { P.swing += dt * 4; if (P.swing >= 1) P.swing = 0; }
+    animBody(P.body, P.boat ? 0 : Math.hypot(P.vel.x, P.vel.z), T, P.swing, !P.onGround && !inWater());
+    P.body.inner.visible = P.hurtT <= 0 || Math.floor(T * 20) % 2 === 0;
+    P.atkCd -= dt; P.dashCd -= dt; P.hurtT -= dt;
+    for (const k in P.cds) P.cds[k] -= dt;
+    P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt);
+    if (P.onGround && !lavaAt(P.pos.x, P.pos.z)) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.01 * dt);
+
+    const isl = islandAt(P.pos.x, P.pos.z);
+    if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
+    lastIsl = isl;
+
+    // enemies
+    for (const e of enemies.slice()) {
+      e.t += dt; e.atkCd -= dt; e.freeze -= dt; e.special -= dt; e.aggro = (e.aggro || 0) - dt;
+      if (e.burn > 0) { const before = Math.ceil(e.burn * 2); e.burn -= dt; if (Math.ceil(e.burn * 2) !== before) { e.hp -= Math.ceil(e.maxHp * 0.015); if (e.hp <= 0) { killEnemy(e); continue; } } }
+      const to = P.pos.clone().sub(e.pos); to.y = 0; const d = to.length();
+      const playerOnIsl = Math.hypot(P.pos.x - e.isl.x, P.pos.z - e.isl.z) < e.isl.r + 8 && !P.boat;
+      const aggro = playerOnIsl && (d < (e.boss ? 30 : 20) || e.aggro > 0);
+      let mv = V();
+      if (e.freeze > 0) { /* frozen */ } else if (aggro) {
+        if (d > (e.boss ? 4.5 : 2.8)) mv = to.clone().normalize();
+        else if (e.atkCd <= 0) { e.atkCd = e.boss ? 1.1 : 1.0; e.swing = 0.001; setTimeout(() => { if (e.hp > 0 && e.pos.distanceTo(P.pos) < (e.boss ? 6.5 : 4)) hurtPlayer(e.dmg, e.pos); }, 180); }
+        if (e.boss && e.special <= 0 && d < 24) {
+          e.special = 5; const c = e.pos.clone(); ring(c, 0xff3030, 1, 0.9);
+          setTimeout(() => { if (e.hp <= 0) return; explodeEnemy(c, 10, e.dmg * 1.8, e.boss.color === 0x9fd8ff ? 0x9fe8ff : 0xff3030); }, 700);
+        }
+      } else {
+        if (e.wander.distanceTo(e.pos) < 1.5 || Math.random() < 0.003) { const a = rnd(0, 7), r = rnd(0, e.isl.r - 4); e.wander.set(e.isl.x + Math.cos(a) * r, 0, e.isl.z + Math.sin(a) * r); }
+        mv = e.wander.clone().sub(e.pos).setY(0); mv = mv.lengthSq() > 2 ? mv.normalize().multiplyScalar(0.35) : V();
+      }
+      const sp = e.freeze > 0 ? 0 : e.speed;
+      e.pos.addScaledVector(mv, sp * dt).addScaledVector(e.kb, dt); e.kb.multiplyScalar(Math.max(0, 1 - 7 * dt));
+      const fc = V(e.pos.x - e.isl.x, 0, e.pos.z - e.isl.z); if (fc.length() > e.isl.r - 1) { fc.setLength(e.isl.r - 1); e.pos.x = e.isl.x + fc.x; e.pos.z = e.isl.z + fc.z; }
+      collide(e.pos, e.boss ? 1.8 : 0.8);
+      e.pos.y = Math.max(0, groundAt(e.pos.x, e.pos.z));
+      e.b.g.position.copy(e.pos);
+      if (aggro && e.freeze <= 0) e.b.g.rotation.y = Math.atan2(to.x, to.z); else if (mv.lengthSq() > 0.01) e.b.g.rotation.y = Math.atan2(mv.x, mv.z);
+      if (e.swing > 0) { e.swing += dt * 4; if (e.swing >= 1) e.swing = 0; }
+      animBody(e.b, mv.length() * sp, e.t, e.swing, false);
+      const tint = e.freeze > 0 ? 0x2a7aa0 : e.burn > 0 ? 0x803000 : 0;
+      e.b.inner.children.forEach((c) => { if (c.material && c.material.emissive && c.userData.tint !== tint) { c.material = c.material.clone(); c.material.emissive.setHex(tint); c.userData.tint = tint; } });
+      const top = e.boss ? 11 : 5.2, vis = d < 70;
+      e.bar.visible = e.label.visible = vis;
+      if (vis) {
+        e.bar.position.copy(e.pos).setY(e.pos.y + top); e.bar.quaternion.copy(camera.quaternion);
+        const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k);
+        e.bar.fg.material.color.setHex(k > 0.5 ? 0x3ad13a : k > 0.25 ? 0xffc107 : 0xff3b3b);
+        e.label.position.copy(e.pos).setY(e.pos.y + top + 0.8);
+      }
+    }
+
+    // projectiles
+    for (const s of shots.slice()) {
+      const step = s.o.speed * dt; s.m.position.addScaledVector(s.dir, step); s.left -= step;
+      if (s.arm) { const hand = P.pos.clone().setY(P.pos.y + 2.6); const mid = hand.clone().add(s.m.position).multiplyScalar(0.5); s.arm.position.copy(mid); s.arm.scale.z = hand.distanceTo(s.m.position); s.arm.lookAt(s.m.position); }
+      let done = s.left <= 0 || s.m.position.y < groundAt(s.m.position.x, s.m.position.z) + 0.3;
+      for (const e of enemies.slice()) {
+        if (s.hit.has(e)) continue;
+        const c = e.pos.clone().setY(e.pos.y + (e.boss ? 4 : 2.2));
+        if (c.distanceTo(s.m.position) < s.o.size + (e.boss ? 3 : 1.5)) {
+          s.hit.add(e);
+          if (s.o.explode) explode(s.m.position.clone(), s.o.explode, s.o.dmg, s.o.color, s.o.fxo);
+          else hurtEnemy(e, s.o.dmg, P.pos, s.o.fxo || {});
+          if (!s.o.pierce) { done = true; break; }
+        }
+      }
+      if (done) { if (s.o.explode && s.left <= 0) explode(s.m.position.clone(), s.o.explode, s.o.dmg, s.o.color, s.o.fxo); scene.remove(s.m); if (s.arm) scene.remove(s.arm); shots.splice(shots.indexOf(s), 1); }
+    }
+
+    // prompt
+    const near = npcs.find((n) => Math.hypot(n.x - P.pos.x, n.z - P.pos.z) < 5) || chests.find((c) => Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 3.5);
+    $("prompt").style.display = near ? "block" : "none";
+    if (near) $("prompt").innerHTML = `<kbd>E</kbd> ${near.name ? "Talk to " + near.name : "Open chest"}`;
+
+    // camera: Roblox-style orbit
+    const head = P.pos.clone().setY(P.pos.y + 3.2 - (inWater() ? 1.6 : 0));
+    const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
+    const cp = head.clone().add(off); cp.y = Math.max(cp.y, groundAt(cp.x, cp.z) + 1, 0.8);
+    camera.position.lerp(cp, Math.min(1, 18 * dt));
+    if (shiftLock) camera.position.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.6));
+    if (shake > 0) { shake -= dt; camera.position.add(V(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake)); }
+    camera.lookAt(head.x + (shiftLock ? Math.cos(cam.yaw) * 1.6 : 0), head.y, head.z - (shiftLock ? Math.sin(cam.yaw) * 1.6 : 0));
+    sun.position.copy(P.pos).add(V(50, 90, 30)); sun.target.position.copy(P.pos);
+  } else if (!started) {
+    camera.position.set(Math.sin(T * 0.08) * 70, 34, Math.cos(T * 0.08) * 70 - 20); camera.lookAt(0, 0, -20);
+    sun.position.set(50, 90, 30); sun.target.position.set(0, 0, 0);
+  }
+
+  for (const f of fx.slice()) { f.t += dt; const k = Math.min(1, f.t / f.life); f.upd(k, dt); if (k >= 1) { scene.remove(f.m); fx.splice(fx.indexOf(f), 1); } }
+  for (const c of chests) c.g.children[1].position.y = 1.2 + Math.abs(Math.sin(T * 3)) * 0.12;
+  for (const n of npcs) n.b.inner.position.y = Math.sin(T * 2 + n.x) * 0.05;
+
+  // HUD
+  if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }
+  uiT -= dt;
+  if (uiT <= 0) {
+    uiT = 0.1;
+    $("lvl").textContent = `Lv. ${S.lvl}` + (S.pts ? `  (+${S.pts} points)` : "");
+    const hp = Math.max(0, P.hp); $("hp").firstChild.style.width = `${clamp(hp / maxHp(), 0, 1) * 100}%`; $("hp").lastChild.textContent = `${Math.ceil(hp)} / ${maxHp()}`;
+    $("en").firstChild.style.width = `${clamp(P.en / maxEn(), 0, 1) * 100}%`; $("en").lastChild.textContent = `${Math.floor(P.en)} / ${maxEn()}`;
+    $("xp").firstChild.style.width = `${(S.xp / xpNeed()) * 100}%`;
+    $("beli").textContent = money(S.beli);
+    $("where").textContent = `${SEAS[S.sea].name}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
+    if (started) drawSkills();
+  }
+  renderer.render(scene, camera);
+}
+function explodeEnemy(pos, r, dmg, color) {
+  ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 14, 10); shake = 0.35;
+  if (P.pos.distanceTo(pos) < r) hurtPlayer(dmg, pos);
+}
+tick();
+})();
+</script>
+</body>
+</html>
