@@ -3,7 +3,9 @@ import { shareChat } from "@/lib/shareChat";
 import { askConfirm, askText, showNotice } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReportReply from "@/components/chat/ReportReply";
-import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximize2, Minimize2, Share2 } from "lucide-react";
+import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximize2, Minimize2, Share2, Gamepad2 } from "lucide-react";
+import { loadDesignerHtmlIntoProject, genProjectId } from "@/lib/designerStore";
+import { GAME_DESIGNER_STORE_KEY } from "@/lib/gameDesignerStore";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
@@ -19,6 +21,7 @@ import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
 
 // Nebulux Code has no modes: it does whichever the message needs.
+const PUBLISH_NOTE = "If the person wants to publish what you built, tell them to say \"publish this to Nebulux Games\" or \"publish this to the Website Designer\" (or press those buttons under your answer); the app opens it there to publish.";
 const BOTH_NOTE =
   "There are no modes: you can always both talk and write code, so never say you're in a mode or that you can't write code. " +
   "If the person asks you to make, build, write, fix or change something (a game, a page, an app, a script...), give the FULL working code in fenced code blocks, never partial snippets or placeholders, with a short note on what it does and how to use it. " +
@@ -58,6 +61,19 @@ import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, l
 const MODELS = { ai: "automatic", code: "claude_sonnet_4_6", opus5: "claude_opus_4_8", fable: "claude-sonnet-5" };
 const AI_NAMES = { ai: "AI", code: "Galaxy", opus5: "Space", fable: "Nebula" };
 // A full web page in a reply (an html code block), to run in the Nebulux Browser.
+// "Publish this to Nebulux Games / the Website Designer": which one they mean (null = neither).
+const publishTarget = (t) => {
+  t = String(t || "");
+  if (!/\b(publish|put|send|move|post|upload|add|open|make)\b/i.test(t)) return null;
+  if (/\b(nebulux games|game designer|games designer|arcade|as a game|to games|on games|in games)\b/i.test(t)) return "game";
+  if (/\b(website designer|site designer|web designer|as a website|to websites?|on websites?|in websites?)\b/i.test(t)) return "site";
+  return null;
+};
+// A web address-friendly name from a page's <title> (or the question that made it).
+const slugOf = (html, fallback) => {
+  const t = (String(html).match(/<title>([^<]{1,60})<\/title>/i) || [])[1] || fallback || "";
+  return t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "my-project";
+};
 const htmlOf = (text) => {
   const m = String(text || "").match(/```html?\s*\n([\s\S]*?)```/i);
   return m && /<(html|body|canvas|div|script)\b/i.test(m[1]) ? m[1] : "";
@@ -403,7 +419,7 @@ export default function CodePage({ userInitial }) {
     // No modes (they were removed): Code talks and writes code, whichever the message needs.
     const intent = resolveIntent(text, "discuss"); // only picks the effort level now
     try {
-      const modeNote = BOTH_NOTE + (isPhone() ? "" : "\n" + PREVIEW_NOTE);
+      const modeNote = BOTH_NOTE + "\n" + PUBLISH_NOTE + (isPhone() ? "" : "\n" + PREVIEW_NOTE);
       const eff = effortFor(effort, text, { build: intent.build });
       abortRef.current?.abort();
       const abort = new AbortController();
@@ -485,6 +501,22 @@ export default function CodePage({ userInitial }) {
     }
   };
 
+  // ---- publishing what Code built: opens it in the Website Designer or the Nebulux Games designer,
+  // where it's published the usual way (names, plan limits and safety checks all apply there).
+  const lastHtml = () => { for (let i = messages.length - 1; i >= 0; i--) { const h = messages[i].role === "ai" && htmlOf(messages[i].content); if (h) return { html: h, q: messages[i - 1]?.content || "" }; } return null; };
+  const publishTo = (kind, page = lastHtml()) => {
+    if (!page) return false;
+    const name = slugOf(page.html, page.q);
+    if (kind === "game") {
+      try { localStorage.setItem(GAME_DESIGNER_STORE_KEY, JSON.stringify({ gameName: name, title: (String(page.html).match(/<title>([^<]{1,60})<\/title>/i) || [])[1] || "", genre: "arcade", messages: [{ role: "ai", content: page.html }], projectId: genProjectId() })); } catch { /* fine */ }
+      navigate("/chat/game-designer");
+    } else {
+      loadDesignerHtmlIntoProject(name, page.html);
+      navigate("/chat/designer/build");
+    }
+    return true;
+  };
+
   const answer = (text) => {
     if (loading || exhausted) return;
     runPrompt(text);
@@ -494,6 +526,18 @@ export default function CodePage({ userInitial }) {
     const text = input.trim();
     if (!text) return;
     if (secretKeyIn(text) && !(await askConfirm("This looks like it has a secret key (like an API key or access token) in it. Anyone who gets it can use that account, so replace it with something like YOUR_API_KEY first. Send it anyway?"))) return;
+    const target = !loading && publishTarget(text);
+    if (target) {
+      const where = target === "game" ? "Nebulux Games" : "the Website Designer";
+      setInput("");
+      if (!lastHtml()) {
+        setMessages((m) => [...m, { role: "user", content: text }, { role: "ai", content: `There's nothing to publish yet. Ask me to make a ${target === "game" ? "game" : "page"} first, then say "publish this to ${where}".` }]);
+        return;
+      }
+      setMessages((m) => [...m, { role: "user", content: text }, { role: "ai", content: `Opening it in ${where}. Give it a name and press **Publish** there.` }]);
+      setTimeout(() => publishTo(target), 700);
+      return;
+    }
     if (loading || q.shouldQueue(loading, text)) {
       q.push(text);
       setInput("");
@@ -600,6 +644,16 @@ export default function CodePage({ userInitial }) {
                           <button type="button" onClick={() => openPreview(htmlOf(m.content), "Preview")} title="Run it in the Nebulux Browser" className="inline-flex items-center gap-1 p-1 rounded-md text-[12px] text-[var(--cl-faint)] hover:text-[var(--cl-text)]">
                             ▶ Preview
                           </button>
+                        )}
+                        {htmlOf(m.content) && (
+                          <>
+                            <button type="button" onClick={() => publishTo("site", { html: htmlOf(m.content), q: messages[i - 1]?.content || "" })} title="Open this in the Website Designer to publish it" className="inline-flex items-center gap-1 p-1 rounded-md text-[12px] text-[var(--cl-faint)] hover:text-[var(--cl-text)]">
+                              <Globe className="w-3.5 h-3.5" /> Website Designer
+                            </button>
+                            <button type="button" onClick={() => publishTo("game", { html: htmlOf(m.content), q: messages[i - 1]?.content || "" })} title="Open this in Nebulux Games to publish it" className="inline-flex items-center gap-1 p-1 rounded-md text-[12px] text-[var(--cl-faint)] hover:text-[var(--cl-text)]">
+                              <Gamepad2 className="w-3.5 h-3.5" /> Nebulux Games
+                            </button>
+                          </>
                         )}
                         {lastCodeBlock(m.content) && (
                           <button type="button" onClick={() => saveToRepo(lastCodeBlock(m.content))} title="Save this code to your GitHub repo" className="inline-flex items-center gap-1 p-1 rounded-md text-[12px] text-[var(--cl-faint)] hover:text-[var(--cl-text)]">
