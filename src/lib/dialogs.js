@@ -45,3 +45,6 @@ export const askText = (message, { defaultValue = "", placeholder = "", maxLengt
 
 // A message with one button.
 export const showNotice = (message, { confirmLabel = "OK" } = {}) => open({ type: "notice", message, confirmLabel });
+
+// The share card for a chat link (copy, send with the phone's share sheet, or open in a new tab).
+export const showShare = ({ url, title, kind, count, note, copied }) => open({ type: "share", url, title, kind, count, note, copied, confirmLabel: "Done" });
