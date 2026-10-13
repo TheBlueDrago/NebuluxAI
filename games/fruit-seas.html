@@ -499,7 +499,8 @@ function trySkill(k) {
 function dash() {
   if (P.dashCd > 0 || P.boat) return;
   P.dashCd = 0.9; const d = moveDir(); const dir = d.lengthSq() ? d : V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
-  P.vel.addScaledVector(dir, 34); ring(P.pos, 0xffffff, 2.5, 0.25);
+  // a long, quick dash: about 13 studs in a quarter of a second
+  P.dashT = 0.25; P.dashVel = dir.clone().multiplyScalar(52); ring(P.pos, 0xffffff, 3.5, 0.3);
 }
 
 // ================= boat =================
@@ -714,7 +715,8 @@ function tick() {
     } else {
       const want = moveDir().multiplyScalar(inWater() ? 9 : 16);
       const k = P.onGround || inWater() ? 14 : 5;
-      P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt);
+      if (P.dashT > 0) { P.dashT -= dt; P.vel.x = P.dashVel.x; P.vel.z = P.dashVel.z; P.vel.y = Math.max(P.vel.y, 0); cubes(P.pos.clone().setY(P.pos.y + 2), 0xffffff, 1, 2); }
+      else { P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt); }
       if (keys.Space && P.onGround) jump();
       P.vel.y -= 36 * dt;
       if (inWater() && P.vel.y < 0) P.vel.y *= 0.5;
