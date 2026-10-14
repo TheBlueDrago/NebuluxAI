@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bed Brawl</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;width:260px;font-weight:900}
+  .bar{position:relative;height:18px;border-radius:4px;background:#1b1b1b;overflow:hidden;margin:5px 0;border:2px solid #000}
+  .bar i{display:block;height:100%;background:#3ad13a} .bar span{position:absolute;inset:0;font-size:11px;display:grid;place-items:center}
+  #res{font-size:17px;margin-top:4px} #res b{margin-right:12px}
+  #teams{position:fixed;right:14px;top:12px;display:flex;flex-direction:column;gap:5px;font-weight:900;font-size:14px}
+  .tm{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.5);border:2px solid #000;border-radius:8px;padding:4px 10px}
+  .tm i{width:14px;height:14px;border-radius:3px;border:2px solid #000;display:inline-block}
+  #hot{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px}
+  .slot{width:70px;height:58px;border-radius:8px;border:3px solid #000;background:rgba(30,30,30,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:800;cursor:pointer;position:relative}
+  .slot.on{border-color:#fff;background:rgba(70,70,70,.95)} .slot b{position:absolute;left:4px;top:1px;font-size:11px;opacity:.8} .slot em{font-style:normal;font-size:20px}
+  #msg{position:fixed;left:50%;top:18%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line}
+  #feed{position:fixed;right:14px;top:150px;display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-weight:800;font-size:13px}
+  #feed div{background:rgba(0,0,0,.55);padding:3px 8px;border-radius:6px}
+  #prompt{position:fixed;left:50%;top:62%;transform:translateX(-50%);font-weight:900;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:8px;display:none}
+  #cross{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px;pointer-events:none;display:none}
+  #cross::before,#cross::after{content:"";position:absolute;background:#fff;box-shadow:0 0 2px #000}
+  #cross::before{left:6px;top:0;width:2px;height:14px} #cross::after{top:6px;left:0;height:2px;width:14px}
+  .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.5);z-index:4}
+  .box{width:min(520px,92vw);max-height:82vh;overflow:auto;background:#262626;border:4px solid #000;border-radius:14px;padding:18px;position:relative}
+  .box h2{margin:0 0 10px} .x{position:absolute;right:12px;top:10px;background:#d33;border:3px solid #000;color:#fff;font-weight:900;border-radius:8px;width:36px;height:36px;cursor:pointer}
+  .row{display:flex;align-items:center;gap:10px;background:#333;border:2px solid #000;border-radius:8px;padding:8px 10px;margin:6px 0} .row .g{flex:1}
+  .btn{font:inherit;font-weight:900;border:3px solid #000;border-radius:8px;padding:6px 12px;cursor:pointer;background:#3ad13a;color:#000} .btn:disabled{opacity:.45;cursor:default}
+  #start,#end{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#5c6bc0dd,#1a1a3aee);z-index:6}
+  #end{display:none} .c{text-align:center;max-width:580px;padding:20px}
+  h1{font-size:68px;margin:0;font-weight:900;color:#ff5252;-webkit-text-stroke:3px #000}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none} body.touch #cross{display:block}
+  body.touch #hot{bottom:auto;top:12px;left:50%}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:66px;height:66px;border-radius:50%;border:3px solid #000;background:rgba(30,30,30,.7);color:#fff;font:900 14px Segoe UI,sans-serif;touch-action:none}
+</style>
+</head>
+<body>
+<div id="hud" class="sh">
+  <div class="bar" id="hp"><i></i><span></span></div>
+  <div id="res"><b style="color:#e0e0e0">⬜ <span id="iron">0</span> iron</b><b style="color:#ffd23a">🟨 <span id="gold">0</span> gold</b></div>
+  <div id="tip" style="font-size:12px;margin-top:4px;opacity:.9"></div>
+</div>
+<div id="teams" class="sh"></div>
+<div id="feed"></div>
+<div id="hot"></div>
+<div id="msg" class="sh"></div>
+<div id="prompt"></div>
+<div id="cross"></div>
+<div class="modal" id="modal"><div class="box"><button class="x" id="mx">X</button><h2 id="mt"></h2><div id="mb"></div></div></div>
+<div id="touch"><div id="joy"><div id="knob"></div></div>
+  <button class="tb" data-a="hit" style="right:28px;bottom:40px;width:84px;height:84px;background:rgba(214,40,40,.85)">Hit</button>
+  <button class="tb" data-a="place" style="right:128px;bottom:30px;background:rgba(47,140,255,.85)">Place</button>
+  <button class="tb" data-a="jump" style="right:40px;bottom:140px">Jump</button>
+  <button class="tb" data-a="E" style="right:130px;bottom:116px">Shop</button>
+</div>
+<div id="start"><div class="c">
+  <h1>BED BRAWL</h1>
+  <p style="font-weight:700">You're the <b style="color:#42a5f5">Blue</b> team. Protect your bed, collect iron and gold, buy blocks and swords, build bridges and break the other teams' beds. While your bed stands, you come back when you fall. The last team standing wins!</p>
+  <p class="keys" style="font-size:13px;line-height:1.9"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to turn the camera, click to place a block<br><kbd>Left click</kbd> hit / break blocks · <kbd>1</kbd> sword · <kbd>2</kbd> blocks · <kbd>3</kbd> golden apple · <kbd>E</kbd> shop · <kbd>Ctrl</kbd> mouse lock</p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="end"><div class="c"><h1 id="endT"></h1><p id="endP" style="font-weight:700;font-size:18px"></p><button class="big" id="again">Play again</button></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+// ---------- sound ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+function noise(d, v = 0.1, hp = 800) { const a = audio(); if (!a) return; const n = Math.floor(a.sampleRate * d), b = a.createBuffer(1, n, a.sampleRate), c = b.getChannelData(0); for (let i = 0; i < n; i++) c[i] = (Math.random() * 2 - 1) * (1 - i / n); const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = b; f.type = "highpass"; f.frequency.value = hp; g.gain.value = v; s.connect(f).connect(g).connect(a.destination); s.start(); }
+const SFX = { place: () => tone(180, 0.06, "square", 0.05), brk: () => noise(0.12, 0.12, 300), hit: () => { noise(0.07, 0.13, 500); tone(150, 0.07, "square", 0.04, -60); }, hurt: () => tone(220, 0.14, "square", 0.06, -110), coin: () => tone(1300, 0.05, "square", 0.025), bed: () => [400, 300, 200].forEach((n, i) => tone(n, 0.25, "sawtooth", 0.08, 0, i * 0.15)), win: () => [523, 659, 784, 1047].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)) };
+
+// ---------- scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x7ec8f5); scene.fog = new THREE.Fog(0x7ec8f5, 80, 220);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 600);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(40, 80, 30); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, far: 220 }); scene.add(sun);
+const mats = {}; const mat = (c) => mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c }));
+const bm = (w, h, d, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.castShadow = m.receiveShadow = true; return m; };
+
+// ---------- voxel world ----------
+const C = 1.5; // block size
+const blocks = new Map(); // "x,y,z" -> { x,y,z, type, team, hp, mesh }
+const blockMeshes = [];
+const key = (x, y, z) => x + "," + y + "," + z;
+const GEO = new THREE.BoxGeometry(C, C, C);
+const TEAMS = [
+  { id: 0, name: "Blue", color: 0x42a5f5, css: "#42a5f5", cx: 0, cz: 22 },
+  { id: 1, name: "Red", color: 0xef5350, css: "#ef5350", cx: 22, cz: 0 },
+  { id: 2, name: "Green", color: 0x66bb6a, css: "#66bb6a", cx: 0, cz: -22 },
+  { id: 3, name: "Yellow", color: 0xffee58, css: "#ffee58", cx: -22, cz: 0 },
+];
+const TYPE = { grass: { c: 0x5fcf4a, hp: Infinity }, dirt: { c: 0x8d6e4b, hp: Infinity }, stone: { c: 0x9e9e9e, hp: Infinity }, gen: { c: 0xd7d7d7, hp: Infinity }, goldgen: { c: 0xffc107, hp: Infinity }, wool: { hp: 1 }, bed: { hp: 6 } };
+function setBlock(x, y, z, type, team = -1) {
+  const k = key(x, y, z); if (blocks.has(k)) return null;
+  const color = type === "wool" ? TEAMS[team].color : type === "bed" ? (team === 0 ? 0x1565c0 : 0xc62828) : TYPE[type].c;
+  const m = new THREE.Mesh(GEO, mat(color)); m.castShadow = m.receiveShadow = true;
+  m.position.set(x * C, y * C + C / 2, z * C); if (type === "bed") { m.scale.y = 0.55; m.position.y = y * C + C * 0.275; }
+  scene.add(m); const b = { x, y, z, type, team, hp: TYPE[type].hp, mesh: m }; m.userData.b = b; blocks.set(k, b); blockMeshes.push(m); return b;
+}
+function removeBlock(b) { blocks.delete(key(b.x, b.y, b.z)); scene.remove(b.mesh); const i = blockMeshes.indexOf(b.mesh); if (i >= 0) blockMeshes.splice(i, 1); }
+const solidAt = (x, y, z) => blocks.has(key(x, y, z));
+// islands
+function island(cx, cz, r, top = "grass") {
+  for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) {
+    if (Math.abs(x) === r && Math.abs(z) === r) continue;
+    setBlock(cx + x, 0, cz + z, top); if (Math.abs(x) < r && Math.abs(z) < r) setBlock(cx + x, -1, cz + z, "dirt");
+  }
+}
+const beds = []; const gens = [];
+for (const t of TEAMS) {
+  island(t.cx, t.cz, 4);
+  // bed at the back of the island (away from the middle), generator at the front
+  const back = V(Math.sign(t.cx), 0, Math.sign(t.cz));
+  const bx = t.cx + back.x * 2, bz = t.cz + back.z * 2;
+  const side = V(-back.z, 0, back.x);
+  t.bed = [setBlock(bx, 1, bz, "bed", t.id), setBlock(bx + side.x, 1, bz + side.z, "bed", t.id)];
+  t.bedAlive = true; beds.push(...t.bed);
+  const gx = t.cx - back.x * 3, gz = t.cz - back.z * 3; removeBlock(blocks.get(key(gx, 0, gz))); setBlock(gx, 0, gz, "gen").mesh.material = mat(0xeeeeee);
+  t.gen = { x: gx * C, z: gz * C, store: 0 };
+  t.spawn = V((t.cx - back.x) * C, C, (t.cz - back.z) * C);
+  t.shop = V((t.cx + side.x * 3) * C, C, (t.cz + side.z * 3) * C);
+  // shopkeeper
+  const sk = makeBody(0x7e57c2, 0x333333); sk.g.position.copy(t.shop); sk.g.rotation.y = Math.atan2(-side.x, -side.z); scene.add(sk.g); t.keeper = sk;
+}
+island(0, 0, 5, "stone");
+for (const [x, z] of [[-2, -2], [2, 2], [-2, 2], [2, -2]]) { setBlock(x, 1, z, "stone"); setBlock(x, 2, z, "stone"); }
+removeBlock(blocks.get(key(0, 0, 0))); setBlock(0, 0, 0, "goldgen");
+const goldGen = { x: 0, z: 0, store: 0 };
+function makeLabel(text, color) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const x = c.getContext("2d");
+  x.font = "900 60px Segoe UI, system-ui"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, 256, 64); x.fillStyle = color; x.fillText(text, 256, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(4, 1, 1); return s;
+}
+for (const t of TEAMS) { const l = makeLabel("SHOP", "#ffd23a"); l.position.copy(t.shop).setY(C + 3.6); scene.add(l); }
+{ const l = makeLabel("GOLD", "#ffd23a"); l.position.set(0, C + 2.5, 0); scene.add(l); }
+
+// ---------- characters ----------
+function makeBody(shirt, pants = 0x333333) {
+  const g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
+  const torso = bm(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; inner.add(torso);
+  const head = bm(1.1, 1.1, 1.1, 0xffcc80); head.position.y = 3.75; inner.add(head); const eyes = bm(0.6, 0.15, 0.05, 0x111111); eyes.position.set(0, 3.85, 0.56); inner.add(eyes);
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) { const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = bm(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); inner.add(L); legs.push(L); const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = bm(0.75, 1.6, 0.75, 0xffcc80); a.position.y = -0.7; A.add(a); inner.add(A); arms.push(A); }
+  const sword = new THREE.Group(); sword.position.set(0, -1.5, 0.3); sword.add(bm(0.15, 0.15, 0.5, 0x3a2a1a)); const bl = bm(0.12, 0.3, 2.2, 0xa1887f); bl.position.z = 1.3; sword.add(bl); sword.blade = bl; arms[1].add(sword);
+  g.scale.setScalar(0.62); return { g, inner, legs, arms, sword };
+}
+function animBody(b, speed, t, swing, air) {
+  const s = Math.sin(t * 12) * Math.min(speed / 9, 1) * 0.9;
+  b.legs[0].rotation.x = air ? -0.4 : s; b.legs[1].rotation.x = air ? 0.3 : -s; b.arms[0].rotation.x = -s;
+  b.arms[1].rotation.x = swing > 0 ? -Math.PI / 2 - Math.sin(swing * Math.PI) * 0.9 : s;
+}
+const SWORDS = { Wood: { dmg: 9, c: 0xa1887f }, Stone: { dmg: 14, c: 0x9e9e9e }, Iron: { dmg: 20, c: 0xeceff1 }, Diamond: { dmg: 28, c: 0x4dd0e1 } };
+const HW = 0.42, HH = 2.6;
+
+// ---------- player ----------
+const P = { team: 0, body: makeBody(TEAMS[0].color), pos: V(), vel: V(), hp: 100, onGround: false, coyote: 0, yaw: 0, swing: 0, atkCd: 0, hurtT: 0, sword: "Wood", wool: 16, apples: 0, iron: 0, gold: 0, armor: 0, tool: 1, dead: false, kills: 0, beds: 0 };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.42, dist: 11 };
+P.pos.copy(TEAMS[0].spawn);
+
+// ---------- bots ----------
+const bots = [];
+function spawnBot(t) {
+  const b = makeBody(t.color); b.g.position.copy(t.spawn); scene.add(b.g);
+  const label = makeLabel(t.name + " Bot", t.css); scene.add(label);
+  const bot = { t, b, label, pos: t.spawn.clone(), vel: V(), hp: 100, dmg: 6, atkCd: 1, swing: 0, mode: "home", target: null, placeCd: 0, breakT: 0, dead: false, rushAt: 30 + t.id * 28 + rnd(0, 10), yaw: 0, kb: V(), stuck: 0 };
+  bots.push(bot); return bot;
+}
+for (const t of TEAMS.slice(1)) t.bot = spawnBot(t);
+
+// ---------- input ----------
+const keys = {}; let started = false, over = false, locked = false, rmb = null, modalOpen = false;
+const mouse = { x: 0, y: 0 };
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (e.code === "Escape" && modalOpen) return closeModal();
+  if (!started || over || modalOpen) return;
+  if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") eatApple();
+  if (e.code === "KeyE") openShop();
+  if (e.code === "Space") e.preventDefault();
+  if (e.code === "ControlLeft" || e.code === "ControlRight") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; $("cross").style.display = locked || document.body.classList.contains("touch") ? "block" : "none"; });
+cvs.addEventListener("mousedown", (e) => {
+  if (!started || over || P.dead) return;
+  if (e.button === 0) primary();
+  if (e.button === 2) { rmb = { moved: 0 }; if (locked) placeBlock(); }
+});
+addEventListener("mouseup", (e) => { if (e.button === 2 && rmb) { if (!locked && rmb.moved < 6 && started && !P.dead) placeBlock(); rmb = null; } });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  if ((rmb && !locked) || locked) { cam.yaw -= e.movementX * 0.005; cam.pitch = clamp(cam.pitch + e.movementY * 0.004, -0.4, 1.35); if (rmb) rmb.moved += Math.abs(e.movementX) + Math.abs(e.movementY); }
+});
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.2, 4, 26); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+if (matchMedia("(pointer: coarse)").matches) {
+  document.body.classList.add("touch");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  document.querySelectorAll(".tb").forEach((b) => b.addEventListener("touchstart", (e) => { e.preventDefault(); if (!started || over || modalOpen || P.dead) return; const a = b.dataset.a; if (a === "hit") primary(); else if (a === "place") placeBlock(); else if (a === "jump") keys.Space = true, setTimeout(() => (keys.Space = false), 120); else openShop(); }, { passive: false }));
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.4, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+}
+const aimCenter = () => locked || document.body.classList.contains("touch");
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW) d.add(f); if (keys.KeyS) d.sub(f); if (keys.KeyD) d.add(r); if (keys.KeyA) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+const ray = new THREE.Raycaster();
+function aimHit() {
+  ray.setFromCamera(aimCenter() ? { x: 0, y: 0 } : mouse, camera);
+  const hits = ray.intersectObjects(blockMeshes, false);
+  for (const h of hits) { if (h.object.position.distanceTo(P.pos) > 9) return null; return h; }
+  return null;
+}
+function aimDir() { ray.setFromCamera(aimCenter() ? { x: 0, y: 0 } : mouse, camera); const d = ray.ray.direction.clone(); d.y = 0; return d.normalize(); }
+
+// ---------- actions ----------
+function equip(n) { P.tool = n; drawHot(); }
+function primary() {
+  if (P.atkCd > 0 || modalOpen) return;
+  P.atkCd = 0.33; P.swing = 0.001;
+  const dir = aimDir(); P.yaw = Math.atan2(dir.x, dir.z);
+  // hit a bot in front first
+  for (const bot of bots) {
+    if (bot.dead) continue;
+    const to = bot.pos.clone().sub(P.pos); to.y = 0;
+    if (to.length() < 3.4 && Math.abs(bot.pos.y - P.pos.y) < 2.5 && to.normalize().dot(dir) > 0.3) { hurtBot(bot, P.tool === 1 ? SWORDS[P.sword].dmg : 4, P.pos); return; }
+  }
+  // otherwise break the block you aim at (only placed blocks and beds)
+  const h = aimHit(); if (!h) return; const b = h.object.userData.b;
+  if (b.type === "wool" || b.type === "bed") {
+    if (b.type === "bed" && b.team === P.team) return show("That's your own bed!", 1);
+    b.hp -= 1; SFX.brk(); cubes(h.object.position, b.type === "bed" ? 0xc62828 : TEAMS[b.team].color, 4);
+    if (b.hp <= 0) { if (b.type === "bed") breakBed(TEAMS[b.team], "You"); else removeBlock(b); }
+  }
+}
+function placeBlock() {
+  if (P.tool !== 2) { equip(2); }
+  if (P.wool <= 0) return show("Out of blocks: buy more at the shop", 1.2);
+  const h = aimHit(); if (!h) return;
+  const b = h.object.userData.b, n = h.face.normal;
+  const x = b.x + Math.round(n.x), y = b.y + Math.round(n.y), z = b.z + Math.round(n.z);
+  if (y > 8 || y < -1 || solidAt(x, y, z)) return;
+  // not inside a player or bot
+  const inside = (p) => Math.abs(p.x - x * C) < C / 2 + HW && Math.abs(p.z - z * C) < C / 2 + HW && p.y < (y + 1) * C && p.y + HH > y * C;
+  if (inside(P.pos) || bots.some((bt) => !bt.dead && inside(bt.pos))) return;
+  setBlock(x, y, z, "wool", P.team); P.wool--; SFX.place(); P.swing = 0.001; drawHot();
+}
+function eatApple() { if (P.apples <= 0) return show("No golden apples", 1); P.apples--; P.hp = Math.min(100, P.hp + 40); tone(700, 0.2, "triangle", 0.06, 300); drawHot(); }
+function breakBed(t, who) {
+  if (!t.bedAlive) return;
+  t.bedAlive = false; for (const b of t.bed) if (blocks.has(key(b.x, b.y, b.z))) removeBlock(b);
+  SFX.bed(); feed(`${t.name} bed was destroyed by ${who}!`, t.css); if (who === "You") P.beds++;
+  show(t.id === P.team ? "YOUR BED WAS DESTROYED!\nYou won't come back if you fall" : `${t.name.toUpperCase()} BED DESTROYED!`, 2.5);
+}
+function hurtBot(bot, dmg, from) {
+  bot.hp -= dmg; SFX.hit(); floatText(bot.pos, String(Math.round(dmg)), "#fff");
+  const away = bot.pos.clone().sub(from).setY(0).normalize(); bot.kb.addScaledVector(away, 9); bot.vel.y = 5;
+  if (bot.mode === "home" || bot.mode === "rush") bot.mode = "fight";
+  if (bot.hp <= 0) killBot(bot, "You");
+}
+function killBot(bot, who) {
+  if (bot.dead) return;
+  bot.dead = true; bot.b.g.visible = false; bot.label.visible = false; cubes(bot.pos.clone().setY(bot.pos.y + 1.5), bot.t.color, 14);
+  if (who === "You") { P.kills++; P.iron += 4; }
+  feed(`${bot.t.name} Bot ${who === "void" ? "fell into the void" : "was knocked out by " + who}${bot.t.bedAlive ? "" : " (FINAL)"}`, bot.t.css);
+  if (bot.t.bedAlive) setTimeout(() => { bot.dead = false; bot.hp = 100; bot.pos.copy(bot.t.spawn); bot.vel.set(0, 0, 0); bot.mode = "home"; bot.b.g.visible = true; bot.label.visible = true; bot.rushAt = T + rnd(20, 40); }, 5000);
+  else { bot.out = true; checkWin(); }
+}
+function hurtPlayer(dmg, from) {
+  if (P.hurtT > 0 || P.dead) return;
+  P.hp -= dmg * (1 - P.armor * 0.3); P.hurtT = 0.35; SFX.hurt();
+  const away = P.pos.clone().sub(from).setY(0).normalize(); P.vel.addScaledVector(away, 9); P.vel.y = 6;
+  if (P.hp <= 0) killPlayer("was knocked out");
+}
+function killPlayer(how) {
+  if (P.dead) return;
+  P.dead = true; P.body.g.visible = false; cubes(P.pos.clone().setY(P.pos.y + 1.5), TEAMS[0].color, 14);
+  feed(`You ${how}${TEAMS[0].bedAlive ? "" : " (FINAL)"}`, TEAMS[0].css);
+  P.iron = 0; P.gold = 0; // you drop your resources, like in Bed Wars
+  if (TEAMS[0].bedAlive) { show("You died! Coming back in 4…", 2); setTimeout(() => { P.dead = false; P.hp = 100; P.pos.copy(TEAMS[0].spawn); P.vel.set(0, 0, 0); P.body.g.visible = true; }, 4000); }
+  else endGame(false);
+}
+function checkWin() { if (bots.every((b) => b.out)) endGame(true); }
+function endGame(won) {
+  over = true; document.exitPointerLock?.(); if (won) SFX.win();
+  $("endT").textContent = won ? "VICTORY!" : "GAME OVER"; $("endT").style.color = won ? "#ffd23a" : "#ff5252";
+  $("endP").innerHTML = `${won ? "Blue team wins! " : "Your team is out. "}<br>Kills: ${P.kills} · Beds broken: ${P.beds} · Time ${Math.floor(T / 60)}:${String(Math.floor(T % 60)).padStart(2, "0")}`;
+  $("end").style.display = "grid";
+}
+$("again").onclick = () => location.reload();
+
+// ---------- effects ----------
+const fx = [];
+function cubes(pos, color, n = 8) { for (let i = 0; i < n; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshBasicMaterial({ color })); m.position.copy(pos); const v = V(rnd(-1, 1), rnd(0.5, 1.6), rnd(-1, 1)).multiplyScalar(6); scene.add(m); fx.push({ m, t: 0, life: 0.6, upd: (k, dt) => { v.y -= 20 * dt; m.position.addScaledVector(v, dt); m.scale.setScalar(1 - k); } }); } }
+function floatText(pos, text, color) { const s = makeLabel(text, color); s.scale.set(2.4, 0.6, 1); s.position.copy(pos).add(V(rnd(-0.5, 0.5), 3.4, 0)); scene.add(s); fx.push({ m: s, t: 0, life: 0.8, upd: (k, dt) => { s.position.y += 2.5 * dt; s.material.opacity = 1 - k; } }); }
+
+// ---------- ui ----------
+let msgT = 0;
+function show(t, s = 1.6) { $("msg").innerText = t; $("msg").style.opacity = 1; msgT = s; }
+function feed(text, color) { const d = document.createElement("div"); d.innerHTML = `<span style="color:${color}">■</span> ${text}`; $("feed").prepend(d); setTimeout(() => d.remove(), 7000); while ($("feed").children.length > 5) $("feed").lastChild.remove(); }
+function openModal(t, html) { modalOpen = true; $("mt").textContent = t; $("mb").innerHTML = html; $("modal").style.display = "grid"; document.exitPointerLock?.(); }
+function closeModal() { modalOpen = false; $("modal").style.display = "none"; }
+$("mx").onclick = closeModal; $("modal").addEventListener("click", (e) => e.target.id === "modal" && closeModal());
+const SHOP = [
+  { id: "wool", name: "16 Blocks", cost: [4, "iron"], buy: () => (P.wool += 16) },
+  { id: "stone", name: "Stone Sword (14 dmg)", cost: [10, "iron"], ok: () => P.sword === "Wood", buy: () => (P.sword = "Stone") },
+  { id: "iron", name: "Iron Sword (20 dmg)", cost: [7, "gold"], ok: () => P.sword === "Wood" || P.sword === "Stone", buy: () => (P.sword = "Iron") },
+  { id: "dia", name: "Diamond Sword (28 dmg)", cost: [16, "gold"], ok: () => P.sword !== "Diamond", buy: () => (P.sword = "Diamond") },
+  { id: "armor", name: "Armor (takes 30% less damage per level)", cost: [12, "iron"], ok: () => P.armor < 2, buy: () => P.armor++, label: () => `Armor level ${P.armor + 1}` },
+  { id: "apple", name: "Golden Apple (heals 40)", cost: [3, "gold"], buy: () => P.apples++ },
+];
+function openShop() {
+  const t = TEAMS[0];
+  if (P.pos.distanceTo(t.shop) > 7) return show("Go to the SHOP on your island", 1.2);
+  openModal("Shop", `<p style="margin:0 0 6px;opacity:.85">You have <b>${P.iron} iron</b> and <b style="color:#ffd23a">${P.gold} gold</b>. Iron comes from the white pad on your island; gold from the middle island.</p>` +
+    SHOP.map((s) => { const can = (P[s.cost[1]] >= s.cost[0]) && (!s.ok || s.ok()); return `<div class="row"><div class="g"><b>${s.label ? s.label() : s.name}</b></div><button class="btn" data-id="${s.id}" ${can ? "" : "disabled"}>${s.cost[0]} ${s.cost[1]}</button></div>`; }).join(""));
+  $("mb").querySelectorAll("[data-id]").forEach((b) => b.onclick = () => { const s = SHOP.find((x) => x.id === b.dataset.id); if (P[s.cost[1]] < s.cost[0]) return; P[s.cost[1]] -= s.cost[0]; s.buy(); tone(900, 0.08, "square", 0.05); drawHot(); openShop(); });
+}
+function drawHot() {
+  const slots = [[1, `${P.sword} Sword`, "🗡️"], [2, `Blocks ×${P.wool}`, "🟦"], [3, `Apple ×${P.apples}`, "🍏"]];
+  $("hot").innerHTML = slots.map(([n, l, i]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b><em>${i}</em>${l}</div>`).join("");
+  $("hot").querySelectorAll(".slot").forEach((s) => s.onclick = () => (+s.dataset.t === 3 ? eatApple() : equip(+s.dataset.t)));
+  P.body.sword.visible = P.tool === 1; P.body.sword.blade.material = mat(SWORDS[P.sword].c);
+}
+function drawTeams() {
+  $("teams").innerHTML = TEAMS.map((t) => { const alive = t.id === 0 ? !P.dead || t.bedAlive : !t.bot.out; return `<div class="tm"><i style="background:${t.css}"></i>${t.name} ${t.bedAlive ? "🛏️" : "❌"} ${alive ? "" : "OUT"}</div>`; }).join("");
+}
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); drawHot(); show("Protect your bed!\nBuild bridges and break the others", 3); };
+
+// ---------- physics ----------
+function collide(e, dt, w = HW) {
+  const axes = ["x", "z", "y"]; let ground = false;
+  for (const a of axes) {
+    e.pos[a] += e.vel[a] * dt;
+    const x0 = Math.round((e.pos.x - w) / C), x1 = Math.round((e.pos.x + w) / C), z0 = Math.round((e.pos.z - w) / C), z1 = Math.round((e.pos.z + w) / C);
+    const y0 = Math.floor(e.pos.y / C), y1 = Math.floor((e.pos.y + HH - 0.01) / C);
+    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) for (let y = y0; y <= y1; y++) {
+      const b = blocks.get(key(x, y, z)); if (!b) continue;
+      const top = (y + 1) * C * (b.type === "bed" ? 1 : 1), bh = b.type === "bed" ? C * 0.55 : C;
+      if (!(Math.abs(e.pos.x - x * C) < C / 2 + w && Math.abs(e.pos.z - z * C) < C / 2 + w && e.pos.y < y * C + bh && e.pos.y + HH > y * C)) continue;
+      if (a === "y") { if (e.vel.y <= 0) { e.pos.y = y * C + bh; ground = true; } else e.pos.y = y * C - HH; e.vel.y = 0; }
+      else { const c = a === "x" ? x * C : z * C; if (y * C + bh - e.pos.y <= 0.85 && e.onGround) { e.pos.y = y * C + bh; continue; } e.pos[a] = e.pos[a] > c ? c + C / 2 + w : c - C / 2 - w; e.vel[a] = 0; e.bumped = true; }
+    }
+  }
+  e.onGround = ground; return ground;
+}
+
+// ---------- bots' brains ----------
+function botTick(bot, dt) {
+  if (bot.dead || bot.out) return;
+  bot.atkCd -= dt; bot.placeCd -= dt;
+  const toP = P.pos.clone().sub(bot.pos); toP.y = 0; const dP = toP.length();
+  // decide
+  const home = V(bot.t.cx * C, C, bot.t.cz * C);
+  const playerNearHome = P.pos.distanceTo(home) < 12 && !P.dead;
+  if (!P.dead && (dP < 9 || playerNearHome)) bot.mode = "fight";
+  else if (bot.mode === "fight" && (P.dead || dP > 16)) bot.mode = TEAMS[0].bedAlive && T > bot.rushAt ? "rush" : "home";
+  else if (bot.mode === "home" && T > bot.rushAt) bot.mode = "rush";
+  let target;
+  if (bot.mode === "fight") target = P.pos.clone();
+  else if (bot.mode === "rush") {
+    // go for the player's bed; if it's gone, go for the player
+    target = TEAMS[0].bedAlive ? TEAMS[0].bed[0].mesh.position.clone() : P.pos.clone();
+  } else target = bot.t.spawn.clone().add(V(Math.sin(T * 0.5 + bot.t.id) * 2, 0, Math.cos(T * 0.4) * 2));
+  const to = target.clone().sub(bot.pos); to.y = 0; const dist = to.length();
+  const dir = dist > 0.01 ? to.clone().normalize() : V();
+  bot.yaw = Math.atan2(dir.x, dir.z);
+  let speed = bot.mode === "home" ? (dist > 1.5 ? 5 : 0) : 7.5;
+  // bridge: if the next step has no floor, place a block there (like a real player bridging)
+  const ahead = bot.pos.clone().addScaledVector(dir, 1.2);
+  const fx = Math.round(ahead.x / C), fz = Math.round(ahead.z / C), fy = Math.floor((bot.pos.y - 0.1) / C);
+  if (bot.onGround && speed > 0 && !solidAt(fx, fy, fz) && fy >= 0) {
+    if (bot.placeCd <= 0) { setBlock(fx, fy, fz, "wool", bot.t.id); bot.placeCd = 0.28; bot.swing = 0.001; }
+    else speed = 0.6;
+  }
+  // a wall in the way: break it (only placed blocks)
+  const wy = Math.floor((bot.pos.y + 0.3) / C), wall = blocks.get(key(fx, wy, fz)) || blocks.get(key(fx, wy + 1, fz));
+  if (wall && (wall.type === "wool") && speed > 0) { bot.breakT += dt; speed = 0; if (bot.breakT > 0.7) { removeBlock(wall); SFX.brk(); bot.breakT = 0; bot.swing = 0.001; } }
+  // at the enemy bed: hit it
+  if (bot.mode === "rush" && TEAMS[0].bedAlive && dist < 2.6) {
+    speed = 0; bot.breakT += dt;
+    if (bot.breakT > 0.9) { bot.breakT = 0; bot.swing = 0.001; const bed = TEAMS[0].bed[0]; bed.hp -= 1; SFX.brk(); if (bed.hp <= 0) breakBed(TEAMS[0], `${bot.t.name} Bot`); }
+  }
+  // attack the player
+  if (bot.mode === "fight" && dP < 3 && Math.abs(P.pos.y - bot.pos.y) < 2.5) {
+    speed = dP > 1.6 ? speed : 0;
+    if (bot.atkCd <= 0) { bot.atkCd = 0.75; bot.swing = 0.001; hurtPlayer(bot.dmg + Math.min(10, T / 40), bot.pos); }
+  }
+  // move with knockback, gravity and blocks
+  bot.vel.x = dir.x * speed + bot.kb.x; bot.vel.z = dir.z * speed + bot.kb.z; bot.kb.multiplyScalar(Math.max(0, 1 - 6 * dt));
+  if (bot.onGround && (bot.bumped) && speed > 0 && Math.random() < 0.05) bot.vel.y = 12; // hop over small steps
+  bot.bumped = false;
+  bot.vel.y -= 40 * dt; collide(bot, dt);
+  if (bot.pos.y < -25) killBot(bot, "void");
+  bot.b.g.position.copy(bot.pos); bot.b.g.rotation.y = bot.yaw;
+  if (bot.swing > 0) { bot.swing += dt * 4; if (bot.swing >= 1) bot.swing = 0; }
+  animBody(bot.b, speed, T + bot.t.id, bot.swing, !bot.onGround);
+  bot.label.position.copy(bot.pos).setY(bot.pos.y + 3.2); bot.label.material.opacity = 1;
+  bot.b.sword.blade.material = mat(T > 160 ? 0xeceff1 : T > 70 ? 0x9e9e9e : 0xa1887f);
+}
+
+// ---------- loop ----------
+const clock = new THREE.Clock(); let T = 0, uiT = 0;
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.04);
+  if (started && !over && !modalOpen) {
+    T += dt;
+    if (!P.dead) {
+      const want = moveDir().multiplyScalar(9.5);
+      const k = P.onGround ? 16 : 6;
+      P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt);
+      P.coyote = P.onGround ? 0.1 : P.coyote - dt;
+      if (keys.Space && P.coyote > 0) { P.vel.y = 12.5; P.coyote = 0; }
+      P.vel.y = Math.max(P.vel.y - 40 * dt, -50);
+      collide(P, dt);
+      if (P.pos.y < -25) killPlayer("fell into the void");
+      if (want.lengthSq() > 1 && P.swing === 0) P.yaw = Math.atan2(want.x, want.z);
+      if (locked) P.yaw = cam.yaw + Math.PI;
+      let d = P.yaw - P.body.g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); P.body.g.rotation.y += d * Math.min(1, 16 * dt);
+      P.body.g.position.copy(P.pos);
+      if (P.swing > 0) { P.swing += dt * 4; if (P.swing >= 1) P.swing = 0; }
+      animBody(P.body, Math.hypot(P.vel.x, P.vel.z), T, P.swing, !P.onGround);
+      P.body.inner.visible = P.hurtT <= 0 || Math.floor(T * 20) % 2 === 0;
+      P.atkCd -= dt; P.hurtT -= dt;
+      // collect from generators
+      const g = TEAMS[0].gen; if (Math.hypot(P.pos.x - g.x, P.pos.z - g.z) < 2.6 && g.store >= 1) { P.iron += Math.floor(g.store); g.store -= Math.floor(g.store); SFX.coin(); }
+      if (Math.hypot(P.pos.x, P.pos.z) < 2.6 && goldGen.store >= 1) { P.gold += Math.floor(goldGen.store); goldGen.store -= Math.floor(goldGen.store); SFX.coin(); }
+      if (P.onGround && P.hp < 100 && P.hurtT < -4) P.hp = Math.min(100, P.hp + 4 * dt);
+    }
+    for (const t of TEAMS) t.gen.store = Math.min(48, t.gen.store + dt * 1.1);
+    goldGen.store = Math.min(12, goldGen.store + dt / 6);
+    // bots buy better swords and hit harder over time
+    for (const bot of bots) { botTick(bot, dt); bot.dmg = 6 + (T > 70 ? 3 : 0) + (T > 160 ? 4 : 0); }
+    const nearShop = P.pos.distanceTo(TEAMS[0].shop) < 7 && !P.dead;
+    $("prompt").style.display = nearShop ? "block" : "none"; $("prompt").innerHTML = "<kbd>E</kbd> Open shop";
+  }
+  for (const t of TEAMS) { t.keeper.g.rotation.y += 0; }
+  for (const f of fx.slice()) { f.t += dt; const k = Math.min(1, f.t / f.life); f.upd(k, dt); if (k >= 1) { scene.remove(f.m); fx.splice(fx.indexOf(f), 1); } }
+  // camera
+  const head = P.pos.clone().setY(P.pos.y + 2.2);
+  const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
+  camera.position.lerp(head.clone().add(off), Math.min(1, 16 * dt));
+  if (locked || document.body.classList.contains("touch")) camera.position.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.2));
+  camera.lookAt(head.x + (aimCenter() ? Math.cos(cam.yaw) * 1.2 : 0), head.y, head.z - (aimCenter() ? Math.sin(cam.yaw) * 1.2 : 0));
+  if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }
+  uiT -= dt;
+  if (uiT <= 0) {
+    uiT = 0.12;
+    $("hp").firstChild.style.width = `${clamp(P.hp, 0, 100)}%`; $("hp").lastChild.textContent = `${Math.ceil(Math.max(0, P.hp))} / 100${P.armor ? `  🛡${P.armor}` : ""}`;
+    $("iron").textContent = P.iron; $("gold").textContent = P.gold;
+    $("tip").textContent = T < 40 ? "Stand on the white pad for iron · E at the SHOP to buy blocks" : TEAMS[0].bedAlive ? "Build a bridge to an enemy island and break their bed!" : "No bed: don't fall!";
+    if (started) { drawTeams(); if (P.tool === 2 || uiT) { const w = $("hot").querySelector('[data-t="2"]'); if (w) w.lastChild.textContent = `Blocks ×${P.wool}`; } }
+  }
+  renderer.render(scene, camera);
+}
+tick();
+})();
+</script>
+</body>
+</html>
