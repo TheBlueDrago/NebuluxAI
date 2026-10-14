@@ -102,6 +102,11 @@ const STEPS = [
 
 // Built-in games (src/lib/builtInGames.js), listed by name so their code isn't loaded here.
 const GAMES = [
+  { name: "fruit-seas", title: "Fruit Seas", text: "Sail between islands, eat fruits with powers and beat the bosses.", color: "from-amber-500 to-rose-500", tag: "New" },
+  { name: "sky-obby", title: "Sky Obby", text: "50 hard stages in the sky and a glass bridge at the end.", color: "from-sky-500 to-emerald-500", tag: "New" },
+  { name: "bed-brawl", title: "Bed Brawl", text: "Protect your bed, build bridges and break the others'.", color: "from-blue-500 to-indigo-500", tag: "New" },
+  { name: "brawl-blitz", title: "Brawl Blitz", text: "3 vs 3 gem grab with five fighters to pick from.", color: "from-fuchsia-500 to-purple-600", tag: "New" },
+  { name: "storm-royale", title: "Storm Royale", text: "Drop in, loot, and be the last one standing.", color: "from-violet-500 to-cyan-500", tag: "New" },
   { name: "pulse", title: "Pulse Jump", text: "Jump and fly through 7 neon levels.", color: "from-indigo-500 to-fuchsia-500" },
   { name: "veck", title: "Veck", text: "Fight waves of bots in a zero-gravity arena.", color: "from-fuchsia-500 to-rose-500" },
 ];
@@ -371,22 +376,25 @@ export default function Landing() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Play one now</h2>
-            <p className="mt-2 text-slate-400">Games made with Nebulux AI. No account needed.</p>
+            <p className="mt-2 text-slate-400">3D games made with Nebulux AI, for phones and computers. No account needed; sign in to get on the leaderboards.</p>
           </div>
           <Link to="/arcade" className="shrink-0 text-sm text-indigo-300 hover:text-indigo-200">All games</Link>
         </div>
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {GAMES.map((g) => (
             <Link
               key={g.name}
               to={`/play/${g.name}`}
-              className="group flex items-center gap-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 hover:border-fuchsia-500/50 transition-colors"
+              className="group flex items-center gap-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 hover:border-fuchsia-500/50 hover:-translate-y-0.5 transition-all"
             >
               <span className={`shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${g.color} flex items-center justify-center`}>
                 <Gamepad2 className="w-7 h-7 text-white" />
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block font-semibold text-white">{g.title}</span>
+                <span className="flex items-center gap-2 font-semibold text-white">
+                  {g.title}
+                  {g.tag && <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-fuchsia-300">{g.tag}</span>}
+                </span>
                 <span className="block text-sm text-slate-400">{g.text}</span>
               </span>
               <Play className="w-5 h-5 text-slate-500 group-hover:text-white shrink-0" />
