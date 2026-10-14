@@ -56,6 +56,15 @@ const AI_NAMES = { ai: "Nebulux AI", code: "Galaxy", opus5: "Space", fable: "Neb
 const RESERVED = ["home", "www", "admin", "api", "mail", "infinity", "ai", "app", "login", "register", "support", "blog"];
 
 // One-tap improvements shown under the latest version of the site.
+// Ideas on the empty start screen: a label, an emoji and the request the AI gets.
+const SITE_IDEAS = [
+  ["Bakery or café", "🧁", "Build a warm, inviting website for a small bakery and café: a big hero photo, the menu with prices, opening hours, a map section and an order button."],
+  ["My portfolio", "🎨", "Build a personal portfolio website: a short intro about me, a grid of my projects with pictures, my skills, and a contact section."],
+  ["App landing page", "🚀", "Build a modern landing page for a new app: a bold headline, what it does in 3 features, screenshots, pricing plans and a sign-up button."],
+  ["Restaurant", "🍝", "Build an elegant restaurant website: a full-screen photo, the menu by course, a booking form, opening hours and reviews."],
+  ["Event or party", "🎉", "Build a fun event website: the date, time and place with a countdown, what's happening, and an RSVP form."],
+  ["School club", "📚", "Build a website for a school club: what we do, when and where we meet, upcoming events, photos and a join form."],
+];
 // One-tap improvements under the latest build: a short label, and the fuller request the AI gets.
 const SITE_TWEAKS = [
   ["Make it look more modern", "Make the whole site look more modern and polished: better spacing, a cleaner font pairing, softer shadows, rounded corners and a consistent colour palette. Keep all the content."],
@@ -899,7 +908,20 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                   <Globe className="w-6 h-6 text-white" />
                 </div>
                 <p className="text-slate-300 font-medium">Describe your website</p>
-                <p className="text-slate-500 text-sm mt-1">Nebulux AI will build it live</p>
+                <p className="text-slate-500 text-sm mt-1">Nebulux AI will build it live. Or start from an idea:</p>
+                <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-sm">
+                  {SITE_IDEAS.map(([label, emoji, ask]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => runPrompt(ask, selectedAi)}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-[13px] text-slate-200 hover:border-sky-500/50 hover:bg-sky-500/10 transition-colors"
+                    >
+                      <span className="text-lg leading-none">{emoji}</span>
+                      <span className="truncate">{label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
