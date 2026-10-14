@@ -182,13 +182,13 @@ const SEAS = [
   { name: "Second Sea", cx: 1600, sky: 0x9fb8e8, water: 0x1565c0 },
 ];
 const ISLANDS = [
-  { sea: 0, x: 0, z: 0, r: 24, h: 3, name: "Starter Island", lvl: 1, n: 5, mob: "Bandit", top: "grass", spawn: true },
-  { sea: 0, x: 105, z: -35, r: 26, h: 4, name: "Jungle", lvl: 6, n: 6, mob: "Jungle Raider", top: "grass", hill: true },
-  { sea: 0, x: -95, z: -115, r: 26, h: 3, name: "Desert", lvl: 12, n: 6, mob: "Desert Thief", top: "sand" },
+  { sea: 0, x: 0, z: 0, r: 24, h: 3, name: "Starter Island", lvl: 1, n: 5, mob: "Bandit", top: "grass", spawn: true, boss: { name: "Bandit Leader", lvl: 6, hp: 450, color: 0x8d6e63 } },
+  { sea: 0, x: 105, z: -35, r: 26, h: 4, name: "Jungle", lvl: 6, n: 6, mob: "Jungle Raider", top: "grass", hill: true, boss: { name: "Gorilla King", lvl: 12, hp: 1300, color: 0x3e2723 } },
+  { sea: 0, x: -95, z: -115, r: 26, h: 3, name: "Desert", lvl: 12, n: 6, mob: "Desert Thief", top: "sand", boss: { name: "Sand Chief", lvl: 18, hp: 2100, color: 0xd7a35a } },
   { sea: 0, x: 55, z: -205, r: 28, h: 5, name: "Pirate Fort", lvl: 18, n: 5, mob: "Fort Guard", top: "stone", boss: { name: "Captain Ironjaw", lvl: 25, hp: 3500, color: 0x222222 } },
-  { sea: 1, x: 1600, z: 0, r: 24, h: 3, name: "Harbor Town", lvl: 30, n: 4, mob: "Dock Thug", top: "grass", spawn: true },
-  { sea: 1, x: 1720, z: -60, r: 28, h: 5, name: "Frost Peak", lvl: 35, n: 6, mob: "Ice Raider", top: "snow", hill: true },
-  { sea: 1, x: 1490, z: -150, r: 28, h: 4, name: "Ember Volcano", lvl: 42, n: 6, mob: "Lava Brute", top: "lava", hill: true },
+  { sea: 1, x: 1600, z: 0, r: 24, h: 3, name: "Harbor Town", lvl: 30, n: 4, mob: "Dock Thug", top: "grass", spawn: true, boss: { name: "Dock Boss", lvl: 35, hp: 4200, color: 0x37474f } },
+  { sea: 1, x: 1720, z: -60, r: 28, h: 5, name: "Frost Peak", lvl: 35, n: 6, mob: "Ice Raider", top: "snow", hill: true, boss: { name: "Frost Warden", lvl: 42, hp: 6500, color: 0x90caf9 } },
+  { sea: 1, x: 1490, z: -150, r: 28, h: 4, name: "Ember Volcano", lvl: 42, n: 6, mob: "Lava Brute", top: "lava", hill: true, boss: { name: "Magma Titan", lvl: 50, hp: 9000, color: 0xbf360c } },
   { sea: 1, x: 1640, z: -250, r: 30, h: 4, name: "Ghost Reef", lvl: 50, n: 5, mob: "Ghost Sailor", top: "ghost", boss: { name: "Admiral Frostbeard", lvl: 60, hp: 12000, color: 0x9fd8ff } },
 ];
 const TOPS = {
@@ -423,7 +423,7 @@ const enemies = [];
 function spawnEnemy(isl, boss) {
   const lvl = boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4));
   let x, z;
-  for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? rnd(0, 6) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
+  for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? (isl.spawn ? rnd(15, isl.r - 4) : rnd(0, 6)) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
   const shirts = { grass: [0x8d6e63, 0x558b2f], sand: [0xd7a35a, 0xa1887f], stone: [0x546e7a, 0x37474f], snow: [0x90caf9, 0xeceff1], lava: [0xbf360c, 0x4e342e], ghost: [0x80cbc4, 0x4db6ac] }[isl.top];
   const b = boss ? makeBody({ shirt: boss.color, pants: 0x222222, hat: "tricorn", scale: 2.2, skin: isl.top === "ghost" ? 0xbfe9ff : 0xd9a066 })
     : makeBody({ shirt: pick(shirts), pants: 0x333333, hat: pick(["bandana", "helmet", "bandana"]), hatColor: pick([0xc0392b, 0x2c3e50, 0x16a085, 0xf39c12]), skin: isl.top === "ghost" ? 0xbfe9ff : pick([0xf5c99a, 0xc68642, 0x8d5524]) });
@@ -488,9 +488,10 @@ Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
   }
   if (e.boss) {
     S.bosses[e.name] = true;
-    if (e.isl.sea === 0 && !S.seaUnlocked) { S.seaUnlocked = true; show(`${e.name} defeated!\nThe Sea Traveler can now take you to the Second Sea!`, 5); }
+    if (e.name === "Captain Ironjaw" && !S.seaUnlocked) { S.seaUnlocked = true; show(`${e.name} defeated!\nThe Sea Traveler can now take you to the Second Sea!`, 5); }
     else show(`${e.name} defeated!`, 4);
-    if (Math.random() < 0.35) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`${e.name} dropped a ${f} Fruit!\nOpen Fruits to eat it.`, 4); }
+    const bigBoss = e.name === "Captain Ironjaw" || e.name === "Admiral Frostbeard";
+    if (Math.random() < (bigBoss ? 0.35 : 0.1)) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`${e.name} dropped a ${f} Fruit!\nOpen Fruits to eat it.`, 4); }
   }
   enemies.splice(enemies.indexOf(e), 1); save();
   setTimeout(() => spawnEnemy(e.isl, e.boss), e.boss ? 90000 : 12000);
