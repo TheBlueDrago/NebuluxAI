@@ -69,6 +69,15 @@
   .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}
   .keys{font-size:13px;line-height:1.9;opacity:.95}
   kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  /* phones held upright */
+  @media (max-aspect-ratio:1/1){
+    body.touch #top{width:170px} body.touch #top .bar{height:14px}
+    body.touch #skills{top:12px;right:12px} body.touch .sk{min-width:140px;height:30px;font-size:12px}
+    body.touch #hot{top:auto;bottom:250px;right:auto;left:50%;transform:translateX(-50%)}
+    body.touch #mini{top:auto;bottom:320px;left:auto;right:12px;transform:none;width:90px;height:90px}
+    body.touch #side{top:auto;bottom:190px;left:14px}
+    body.touch #hot{bottom:300px} body.touch #mini{bottom:360px}
+  }
 </style>
 </head>
 <body>

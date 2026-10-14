@@ -30,7 +30,7 @@
 </head>
 <body>
 <div id="hud" class="sh"><div id="stage">Stage 1</div><div id="sub"></div><div id="bar"><i></i></div></div>
-<div id="btns"><button class="b" id="skip">Skip stage ($)</button><button class="b" id="reset">Respawn (R)</button></div>
+<div id="btns"><button class="b" id="reset">Respawn (R)</button></div>
 <div id="msg" class="sh"></div>
 <div id="touch"><div id="joy"><div id="knob"></div></div><button id="jumpB">JUMP</button></div>
 <div id="start"><div class="c">
@@ -54,6 +54,7 @@ const rr = (a, b) => a + rand() * (b - a);
 let AC = null;
 const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
 function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+function noiseCrack() { const a = audio(); if (!a) return; [1800, 1200, 2400].forEach((n, i) => tone(n, 0.08, "square", 0.05, -600, i * 0.04)); }
 const SFX = { jump: () => tone(300, 0.12, "square", 0.04, 300), die: () => tone(400, 0.35, "sawtooth", 0.06, -330), check: () => [660, 880, 1100].forEach((n, i) => tone(n, 0.12, "triangle", 0.07, 0, i * 0.07)), win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)) };
 
 // ---------- scene ----------
@@ -86,46 +87,76 @@ let cur = V(0, 0, 0); // where the course is heading
 const startPad = add(0, -1, 0, 14, 2, 14, "check", 0); checkpoints[0] = startPad;
 const stageStarts = [V(0, 1, 0)];
 let dir = 0; // heading angle (turns now and then)
+// Stages 1-49 are obstacles, each ending on its own green checkpoint. Stage 50 is the glass bridge.
+const glass = [];
 for (let st = 1; st <= STAGES; st++) {
   const hard = st / STAGES;
-  const fwd = () => V(Math.sin(dir), 0, -Math.cos(dir));
+  const fwd = () => V(Math.round(Math.sin(dir)), 0, -Math.round(Math.cos(dir))); // straight lines only
   const step = (dist, up = 0) => { cur = cur.clone().addScaledVector(fwd(), dist); cur.y += up; return cur.clone(); };
-  const type = st % 5 === 0 ? "check" : ["jumps", "thin", "kill", "move", "spin", "bounce", "tower", "zig"][Math.floor(rand() * 8)];
+  if (st === STAGES) {
+    // the glass bridge: 12 rows of two panes. One pane in each row is fake and breaks when you land on it.
+    const f = fwd(), side = V(-f.z, 0, f.x);
+    const sign = makeLabel("GLASS BRIDGE", "#9be7ff"); const sp = cur.clone().addScaledVector(f, 4); sign.position.set(sp.x, sp.y + 7, sp.z); sign.scale.set(12, 3, 1); scene.add(sign);
+    for (let i = 0; i < 12; i++) {
+      const p = step(5, 0); const fake = rand() < 0.5 ? -1 : 1;
+      for (const sd of [-1, 1]) {
+        const q = p.clone().addScaledVector(side, sd * 2.1);
+        const g = add(q.x, q.y - 0.25, q.z, 3, 0.5, 3, "floor", st, 0xbfefff);
+        g.m.material = new THREE.MeshLambertMaterial({ color: 0xbfefff, transparent: true, opacity: 0.45 });
+        g.fake = sd === fake; glass.push(g);
+      }
+    }
+    stageStarts[st] = cur.clone();
+    break;
+  }
+  const kinds = ["jumps", "thin", "kill", "move", "spin", "bounce", "tower", "zig", "vanish", "lava"];
+  const type = kinds[Math.floor(rand() * kinds.length)];
   if (type === "jumps") {
-    for (let i = 0; i < 4; i++) { const p = step(rr(5, 6.5 + hard * 1.5), rr(-0.5, 1.2)); add(p.x, p.y - 0.5, p.z, 3.2 - hard * 0.8, 1, 3.2 - hard * 0.8, "floor", st); }
+    const sz = Math.max(1.6, 2.8 - hard * 1.2);
+    for (let i = 0; i < 4; i++) { const p = step(rr(5.5, 6.8 + hard * 1.2), rr(-0.5, 1.4)); add(p.x, p.y - 0.5, p.z, sz, 1, sz, "floor", st); }
   } else if (type === "thin") {
-    const p = step(9, 0.5); const f = fwd(); const len = 14;
-    add(p.x, p.y - 0.5, p.z, Math.abs(f.x) > 0.5 ? len : 1.1 - hard * 0.4, 1, Math.abs(f.z) > 0.5 ? len : 1.1 - hard * 0.4, "floor", st);
+    const f = fwd(), len = 16, wdt = Math.max(0.45, 0.9 - hard * 0.45); const p = step(len / 2 + 2, 0.3);
+    add(p.x, p.y - 0.5, p.z, Math.abs(f.x) > 0.5 ? len : wdt, 1, Math.abs(f.z) > 0.5 ? len : wdt, "floor", st);
     cur = cur.clone().addScaledVector(f, len / 2);
-  } else if (type === "kill") {
-    const p = step(10, 0); const f = fwd(), side = V(-f.z, 0, f.x);
-    add(p.x, p.y - 0.5, p.z, 9, 1, 9, "floor", st);
-    for (let i = -1; i <= 1; i++) { const q = p.clone().addScaledVector(side, i * 3).addScaledVector(f, (i % 2) * 2); if (i !== 0 || hard > 0.4) killers.push(add(q.x, q.y + 0.3, q.z, 2, 0.6, 2, "kill", st)); }
-    cur = cur.clone().addScaledVector(f, 4.5);
+  } else if (type === "kill" || type === "lava") {
+    // a floor covered in red: only a few safe tiles to step on
+    const f = fwd(), side = V(-f.z, 0, f.x); const start = step(3, 0);
+    for (let i = 0; i < 4; i++) {
+      const safe = Math.floor(rand() * 3) - 1;
+      for (let k = -1; k <= 1; k++) {
+        const q = start.clone().addScaledVector(f, i * 2.6).addScaledVector(side, k * 2.6);
+        if (k === safe || (type === "kill" && rand() < 0.35 - hard * 0.3)) add(q.x, q.y - 0.5, q.z, 2.4, 1, 2.4, "floor", st);
+        else killers.push(add(q.x, q.y - 0.5, q.z, 2.4, 1, 2.4, "kill", st));
+      }
+    }
+    cur = start.clone().addScaledVector(f, 3 * 2.6);
   } else if (type === "move") {
-    for (let i = 0; i < 2; i++) {
-      const p = step(8, 0.5); const f = fwd(), side = V(-f.z, 0, f.x);
-      const s = add(p.x, p.y - 0.5, p.z, 3.5, 1, 3.5, "floor", st);
-      s.move = { from: V(s.x, s.y, s.z), axis: side, amp: 4 + hard * 3, speed: 1 + hard * 1.2, ph: rand() * 6 };
+    for (let i = 0; i < 3; i++) {
+      const p = step(7.5, 0.5); const f = fwd(), side = V(-f.z, 0, f.x);
+      const s2 = add(p.x, p.y - 0.5, p.z, 3, 1, 3, "floor", st);
+      s2.move = { from: V(s2.x, s2.y, s2.z), axis: side, amp: 4 + hard * 3, speed: 1.2 + hard * 1.6, ph: rand() * 6 };
     }
   } else if (type === "spin") {
-    const p = step(11, 0); add(p.x, p.y - 0.5, p.z, 11, 1, 11, "floor", st);
-    const bar = add(p.x, p.y + 0.8, p.z, 10, 0.8, 0.8, "kill", st); bar.spin = { speed: 1.4 + hard * 1.6, len: 5 }; killers.push(bar);
+    const p = step(10, 0); add(p.x, p.y - 0.5, p.z, 11, 1, 11, "floor", st);
+    const bar = add(p.x, p.y + 0.8, p.z, 10, 0.8, 0.8, "kill", st); bar.spin = { speed: 1.8 + hard * 2.2, len: 5 }; killers.push(bar);
+    if (hard > 0.5) { const bar2 = add(p.x, p.y + 2.6, p.z, 10, 0.8, 0.8, "kill", st); bar2.spin = { speed: -(1.4 + hard * 1.6), len: 5 }; killers.push(bar2); }
     cur = cur.clone().addScaledVector(fwd(), 5.5);
   } else if (type === "bounce") {
-    const p = step(7, 0); add(p.x, p.y - 0.5, p.z, 3.5, 1, 3.5, "bounce", st);
-    const q = step(9, 7); add(q.x, q.y - 0.5, q.z, 5, 1, 5, "floor", st);
+    const p = step(7, 0); add(p.x, p.y - 0.5, p.z, 3, 1, 3, "bounce", st);
+    const q = step(9, 7); add(q.x, q.y - 0.5, q.z, Math.max(2.2, 4 - hard * 2), 1, Math.max(2.2, 4 - hard * 2), "floor", st);
   } else if (type === "tower") {
-    for (let i = 0; i < 4; i++) { dir += (i % 2 ? 1 : -1) * 0.8; const p = step(4.6, 2.2); add(p.x, p.y - 0.5, p.z, 2.8, 1, 2.8, "floor", st); }
+    for (let i = 0; i < 5; i++) { const sd = i % 2 ? 1 : -1, f = fwd(), side = V(-f.z, 0, f.x); cur = cur.clone().addScaledVector(f, 3.6).addScaledVector(side, sd * 2.4); cur.y += 2.3; add(cur.x, cur.y - 0.5, cur.z, 2.2, 1, 2.2, "floor", st); }
   } else if (type === "zig") {
-    const f0 = fwd(), side = V(-f0.z, 0, f0.x);
-    for (let i = 0; i < 5; i++) { cur = cur.clone().addScaledVector(f0, 4.4).addScaledVector(side, i % 2 ? 3 : -3); cur.y += 0.4; add(cur.x, cur.y - 0.5, cur.z, 2.2, 1, 2.2, "floor", st); }
-  } else { // checkpoint stage
-    const p = step(8, 1); const c = add(p.x, p.y - 0.5, p.z, 8, 1, 8, "check", st); checkpoints[st] = c;
-    const sign = makeLabel(`Stage ${st}`, "#2ee66b"); sign.position.set(p.x, p.y + 6, p.z); sign.scale.set(8, 2, 1); scene.add(sign);
+    const f0 = fwd(), side = V(-f0.z, 0, f0.x), sz = Math.max(1.4, 2.2 - hard);
+    for (let i = 0; i < 6; i++) { cur = cur.clone().addScaledVector(f0, 4.6).addScaledVector(side, i % 2 ? 3.2 : -3.2); cur.y += 0.4; add(cur.x, cur.y - 0.5, cur.z, sz, 1, sz, "floor", st); }
+  } else { // vanish: platforms that blink in and out
+    for (let i = 0; i < 4; i++) { const p = step(6, 0.4); const s2 = add(p.x, p.y - 0.5, p.z, 3, 1, 3, "floor", st, 0xff9800); s2.blink = { ph: i * 0.9, on: 1.6, off: 1.1 }; }
   }
+  // the checkpoint at the end of this stage
+  const cp = step(6, 0.3); checkpoints[st] = add(cp.x, cp.y - 0.5, cp.z, 4, 1, 4, "check", st);
+  if (st % 10 === 0) { const sign = makeLabel(`Stage ${st}`, "#2ee66b"); sign.position.set(cp.x, cp.y + 5, cp.z); sign.scale.set(7, 1.75, 1); scene.add(sign); }
   stageStarts[st] = cur.clone();
-  if (rand() < 0.35) dir += rr(-0.9, 0.9);
+  if (rand() < 0.3) dir += (rand() < 0.5 ? 1 : -1) * Math.PI / 2;
 }
 const endP = cur.clone().addScaledVector(V(Math.sin(dir), 0, -Math.cos(dir)), 9);
 const finish = add(endP.x, endP.y - 0.5, endP.z, 12, 1, 12, "finish", STAGES);
@@ -208,15 +239,9 @@ let msgT = 0;
 function show(t, s = 1.6) { $("msg").innerText = t; $("msg").style.opacity = 1; msgT = s; }
 const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 $("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); spawnAt(lastCheck()); show(S.stage ? `Welcome back! Stage ${S.stage}` : "Reach the trophy at the top!", 2.5); };
-$("again").onclick = () => { $("win").style.display = "none"; S.stage = 0; S.deaths = 0; S.time = 0; S.skips = 0; save(); spawnAt(0); started = true; };
+$("again").onclick = () => { $("win").style.display = "none"; glass.forEach((g) => { g.broken = false; g.m.visible = true; }); S.stage = 0; S.deaths = 0; S.time = 0; S.skips = 0; save(); spawnAt(0); started = true; };
 $("reset").onclick = () => started && die("Respawned");
-$("skip").onclick = () => {
-  if (!started) return;
-  const next = Object.keys(checkpoints).map(Number).filter((k) => k > S.stage).sort((a, b) => a - b)[0];
-  if (next === undefined) return;
-  S.skips++; S.stage = next; save(); spawnAt(next); show(`Skipped to stage ${next}`, 1.5);
-};
-$("skip").textContent = "Skip to next checkpoint";
+
 
 let deadT = 0;
 function die(why = "Oof!") {
@@ -236,6 +261,7 @@ function tick() {
   for (const s of solids) {
     if (s.move) { const o = Math.sin(T * s.move.speed + s.move.ph) * s.move.amp; const nx = s.move.from.x + s.move.axis.x * o, nz = s.move.from.z + s.move.axis.z * o; s.dx = nx - s.x; s.dz = nz - s.z; s.x = nx; s.z = nz; s.m.position.set(s.x, s.y, s.z); }
     if (s.spin) s.m.rotation.y = T * s.spin.speed;
+    if (s.blink) { const cyc = s.blink.on + s.blink.off, k = (T + s.blink.ph) % cyc; s.off = k > s.blink.on; s.m.visible = !s.off; s.m.material.opacity = 1; }
   }
   trophy.rotation.y = T;
   if (started && deadT <= 0) {
@@ -252,7 +278,8 @@ function tick() {
     for (const a of axes) {
       P.pos[a] += P.vel[a] * dt;
       for (const s of solids) {
-        if (s.kind === "kill" || !overlap(P.pos, s)) continue;
+        if (s.kind === "kill" || s.off || s.broken || !overlap(P.pos, s)) continue;
+        if (a === "y" && s.fake && P.vel.y <= 0) { s.broken = true; s.m.visible = false; noiseCrack(); continue; } // fake glass!
         if (a === "y") {
           if (P.vel.y <= 0) { P.pos.y = s.y + s.h / 2; landed = s; } else P.pos.y = s.y - s.h / 2 - HH;
           P.vel.y = 0;

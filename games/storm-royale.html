@@ -33,7 +33,8 @@
   .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}
   kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
   #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
-  body.touch #inv{bottom:auto;top:56px;right:14px} body.touch #hud{left:170px} body.touch #mini{top:130px;width:110px;height:110px}
+  body.touch #inv{bottom:auto;top:56px;right:14px} body.touch #hud{left:170px;width:auto;right:250px;min-width:120px} body.touch #mini{top:130px;width:110px;height:110px}
+  @media (max-aspect-ratio:1/1){body.touch #hud{left:14px;right:auto;width:160px;bottom:auto;top:56px} body.touch #inv{top:118px;bottom:auto;right:auto;left:50%;transform:translateX(-50%)} body.touch .slot{width:64px;height:52px} body.touch #mini{top:180px;bottom:auto;right:14px;width:90px;height:90px}}
   #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
   #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
   .tb{position:fixed;width:66px;height:66px;border-radius:50%;border:3px solid #000;background:rgba(30,30,30,.7);color:#fff;font:900 13px Segoe UI,sans-serif;touch-action:none}
@@ -300,6 +301,7 @@ function interact() { const it = nearestLoot(me); if (it) take(me, it); }
 
 // ---------- bots ----------
 function botTick(f, dt) {
+  if (f.glide) { if (!f.landAt) f.landAt = pick(towns).clone().add(V(rnd(-14, 14), 0, rnd(-14, 14))); const to = f.landAt.clone().sub(f.pos).setY(0); return to.length() > 2 ? to.normalize().multiplyScalar(8) : V(); }
   f.aiT -= dt; f.fireT -= dt;
   if (f.reloadT > 0) { f.reloadT -= dt; if (f.reloadT <= 0) { const need = GUNS[gunOf(f)].mag - f.ammo[f.slot]; f.ammo[f.slot] += need; } }
   // choose a target: someone close and visible
@@ -340,7 +342,9 @@ function clearLine(a, b) { const o = a.clone().setY(a.y + 2), d = b.clone().setY
 
 // ---------- movement and collision ----------
 function moveF(f, want, dt) {
-  const k = f.onGround ? 14 : 4;
+  // gliding down at the start: fast sideways, slow fall, until you land
+  if (f.glide) { want = want.clone().multiplyScalar(2.6); f.vel.y = -13; }
+  const k = f.onGround ? 14 : f.glide ? 3 : 4;
   f.vel.x += (want.x - f.vel.x) * Math.min(1, k * dt); f.vel.z += (want.z - f.vel.z) * Math.min(1, k * dt);
   f.vel.y -= 32 * dt;
   for (const a of ["x", "z"]) {
@@ -351,7 +355,7 @@ function moveF(f, want, dt) {
   }
   f.pos.y += f.vel.y * dt;
   let floor = 0; for (const b of boxes) if (Math.abs(f.pos.x - b.x) < b.w / 2 + 0.3 && Math.abs(f.pos.z - b.z) < b.d / 2 + 0.3 && f.pos.y >= b.h - 0.5) floor = Math.max(floor, b.h);
-  if (f.pos.y <= floor) { f.pos.y = floor; f.vel.y = 0; f.onGround = true; } else f.onGround = false;
+  if (f.pos.y <= floor) { if (f.glide && f === me) show("Landed! Find a chest", 1.5); f.glide = false; f.pos.y = floor; f.vel.y = 0; f.onGround = true; } else f.onGround = false;
   const d = Math.hypot(f.pos.x, f.pos.z); if (d > R + 10) { f.pos.x *= (R + 10) / d; f.pos.z *= (R + 10) / d; }
 }
 
@@ -382,8 +386,9 @@ $("play").onclick = () => {
   $("start").style.display = "none"; audio();
   me = addFighter("You", true, 0x1e88e5);
   BOT_NAMES.forEach((n) => addFighter(n, false, pick([0xe53935, 0x43a047, 0xfdd835, 0x8e24aa, 0xff7043, 0x00897b, 0x6d4c41])));
+  for (const f of fighters) { f.glide = true; f.pos.y = rnd(90, 120); }
   me.guns[0] = "Pistol"; me.ammo[0] = 12; for (const f of fighters) if (!f.human && Math.random() < 0.5) { f.guns[0] = "Pistol"; f.ammo[0] = 12; }
-  nextPhase(); drawInv(); started = true; show("Find a chest (E) and survive the storm!", 3);
+  nextPhase(); drawInv(); started = true; show("Glide down and pick where to land!\nFind chests (E) and survive the storm", 3.5);
   if (!touch) setTimeout(() => cvs.requestPointerLock?.(), 50);
 };
 
@@ -411,7 +416,7 @@ function tick() {
         if (keys.Space && f.onGround) { f.vel.y = 11; f.onGround = false; }
         f.fireT -= dt;
         if (f.reloadT > 0) { f.reloadT -= dt; if (f.reloadT <= 0) { const g = gunOf(f); const need = Math.min(GUNS[g].mag - f.ammo[f.slot], f.reserve); f.ammo[f.slot] += need; f.reserve -= need; drawInv(); } }
-        if (mouseDown) { const before = f.ammo[f.slot]; const d = V(); camera.getWorldDirection(d); const origin = camera.position.clone().addScaledVector(d, 4); fire(f, d, origin); if (f.ammo[f.slot] !== before) drawInv(); }
+        if (mouseDown && !f.glide) { const before = f.ammo[f.slot]; const d = V(); camera.getWorldDirection(d); const origin = camera.position.clone().addScaledVector(d, 4); fire(f, d, origin); if (f.ammo[f.slot] !== before) drawInv(); }
       } else want = botTick(f, dt);
       moveF(f, want, dt);
       // storm damage
