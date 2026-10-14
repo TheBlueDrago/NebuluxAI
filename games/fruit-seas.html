@@ -32,6 +32,8 @@
   #prompt{position:fixed;left:50%;top:62%;transform:translateX(-50%);font-weight:900;font-size:16px;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:8px;display:none}
   #prompt kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px}
   #warn{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px #f00;opacity:0;transition:opacity .2s}
+  #mini{position:fixed;right:14px;top:14px;width:170px;height:170px;border-radius:50%;border:3px solid #000;background:#1565c0;box-shadow:0 4px 0 rgba(0,0,0,.4);pointer-events:none}
+  body.touch #mini{width:84px;height:84px;top:8px;right:auto;left:50%;transform:translateX(-50%);opacity:.9}
   #touch{display:none}
   body.touch #touch{display:block}
   body.touch #skills{bottom:auto;top:12px;right:12px}
@@ -90,6 +92,7 @@
 <div id="prompt"></div>
 <div id="warn"></div>
 <div id="lockdot"></div>
+<canvas id="mini" width="340" height="340"></canvas>
 <div id="touch">
   <div id="joy"><div id="knob"></div></div>
   <button class="tb big" data-a="atk" style="right:28px;bottom:40px">Hit</button>
@@ -654,7 +657,7 @@ const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.bo
 function equip(n) { if ((n === 2 && !S.sword) || (n === 3 && !S.fruit)) return; P.tool = P.tool === n ? 0 : n; drawHot(); }
 // ---- phone controls: a joystick on the left, buttons on the right, drag anywhere else to look ----
 const joy = { x: 0, y: 0, id: null };
-if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
+if (matchMedia("(pointer: coarse)").matches) { // phones and tablets (not laptops with a touch screen)
   document.body.classList.add("touch");
   const J = $("joy"), K = $("knob");
   const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
@@ -970,9 +973,32 @@ function tick() {
     const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
     if (qq) $("quest").innerHTML = `📜 Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
     $("where").textContent = `${SEAS[S.sea].name}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
-    if (started) drawSkills();
+    if (started) { drawSkills(); drawMini(); }
   }
   renderer.render(scene, camera);
+}
+// The minimap: islands of this sea, enemies nearby (red), NPCs (green), you (the arrow, facing your way).
+const MM = $("mini").getContext("2d");
+function drawMini() {
+  const W = 340, R = W / 2, scale = R / 80; // shows about 80 studs around you
+  MM.clearRect(0, 0, W, W); MM.save(); MM.beginPath(); MM.arc(R, R, R, 0, 7); MM.clip();
+  MM.fillStyle = S.sea ? "#1565c0" : "#1e88e5"; MM.fillRect(0, 0, W, W);
+  const toMap = (x, z) => [R + (x - P.pos.x) * scale, R + (z - P.pos.z) * scale];
+  for (const i of ISLANDS) {
+    if (i.sea !== S.sea) continue;
+    const [mx, my] = toMap(i.x, i.z);
+    MM.fillStyle = "#f2d58a"; MM.beginPath(); MM.arc(mx, my, (i.r + 5) * scale, 0, 7); MM.fill();
+    MM.fillStyle = { grass: "#55c742", sand: "#e8c977", stone: "#8a8a92", snow: "#f4fbff", lava: "#5a4a44", ghost: "#5b6b7a" }[i.top]; MM.beginPath(); MM.arc(mx, my, i.r * scale, 0, 7); MM.fill();
+    MM.font = "bold 20px Segoe UI, sans-serif"; MM.textAlign = "center"; MM.lineWidth = 5; MM.strokeStyle = "#000"; MM.fillStyle = "#fff";
+    MM.strokeText(i.name, mx, my - i.r * scale - 6); MM.fillText(i.name, mx, my - i.r * scale - 6);
+  }
+  for (const e of enemies) { const [mx, my] = toMap(e.pos.x, e.pos.z); MM.fillStyle = e.boss ? "#ff1744" : "#ff5252"; MM.beginPath(); MM.arc(mx, my, e.boss ? 9 : 4, 0, 7); MM.fill(); }
+  for (const n of npcs) { const [mx, my] = toMap(n.x, n.z); MM.fillStyle = n.name === "Quest Giver" ? "#ffd23a" : "#7dff7d"; MM.fillRect(mx - 4, my - 4, 8, 8); }
+  for (const ch of chests) { const [mx, my] = toMap(ch.x, ch.z); MM.fillStyle = "#ffc107"; MM.fillRect(mx - 3, my - 3, 6, 6); }
+  // you
+  MM.translate(R, R); MM.rotate(-P.faceYaw + Math.PI);
+  MM.fillStyle = "#fff"; MM.strokeStyle = "#000"; MM.lineWidth = 3; MM.beginPath(); MM.moveTo(0, -14); MM.lineTo(10, 10); MM.lineTo(0, 5); MM.lineTo(-10, 10); MM.closePath(); MM.fill(); MM.stroke();
+  MM.restore();
 }
 function explodeEnemy(pos, r, dmg, color) {
   ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 14, 10); shake = 0.35;
