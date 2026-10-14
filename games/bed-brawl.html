@@ -284,11 +284,11 @@ function breakBed(t, who) {
   SFX.bed(); feed(`${t.name} bed was destroyed by ${who}!`, t.css); if (who === "You") P.beds++;
   show(t.id === P.team ? "YOUR BED WAS DESTROYED!\nYou won't come back if you fall" : `${t.name.toUpperCase()} BED DESTROYED!`, 2.5);
 }
-function hurtBot(bot, dmg, from) {
-  bot.hp -= dmg; SFX.hit(); floatText(bot.pos, String(Math.round(dmg)), "#fff");
+function hurtBot(bot, dmg, from, who = "You") {
+  bot.hp -= dmg; if (who === "You") { SFX.hit(); floatText(bot.pos, String(Math.round(dmg)), "#fff"); }
   const away = bot.pos.clone().sub(from).setY(0).normalize(); bot.kb.addScaledVector(away, 9); bot.vel.y = 5;
   if (bot.mode === "home" || bot.mode === "rush") bot.mode = "fight";
-  if (bot.hp <= 0) killBot(bot, "You");
+  if (bot.hp <= 0) killBot(bot, who);
 }
 function killBot(bot, who) {
   if (bot.dead) return;
@@ -381,19 +381,23 @@ function collide(e, dt, w = HW) {
 function botTick(bot, dt) {
   if (bot.dead || bot.out) return;
   bot.atkCd -= dt; bot.placeCd -= dt;
-  const toP = P.pos.clone().sub(bot.pos); toP.y = 0; const dP = toP.length();
-  // decide
+  // everyone not on this bot's team: you and the other bots
   const home = V(bot.t.cx * C, C, bot.t.cz * C);
-  const playerNearHome = P.pos.distanceTo(home) < 12 && !P.dead;
-  if (!P.dead && (dP < 9 || playerNearHome)) bot.mode = "fight";
-  else if (bot.mode === "fight" && (P.dead || dP > 16)) bot.mode = TEAMS[0].bedAlive && T > bot.rushAt ? "rush" : "home";
+  const enemies = [P, ...bots.filter((o) => o !== bot)].filter((o) => !o.dead && !o.out);
+  let foe = null, fd = 9;
+  for (const o of enemies) { const d = o.pos.distanceTo(bot.pos), atHome = o.pos.distanceTo(home) < 12; if (Math.abs(o.pos.y - bot.pos.y) < 6 && (d < fd || (atHome && d < 20))) { fd = d; foe = o; } }
+  if (foe) { bot.mode = "fight"; bot.foe = foe; }
+  else if (bot.mode === "fight") bot.mode = T > bot.rushAt ? "rush" : "home";
   else if (bot.mode === "home" && T > bot.rushAt) bot.mode = "rush";
+  // which bed to go for: you half the time, otherwise another team
+  if (bot.mode === "rush" && (!bot.rushTeam || !bot.rushTeam.bedAlive)) {
+    const open = TEAMS.filter((t) => t !== bot.t && t.bedAlive);
+    bot.rushTeam = open.length ? (open.includes(TEAMS[0]) && Math.random() < 0.5 ? TEAMS[0] : open[Math.floor(Math.random() * open.length)]) : null;
+  }
   let target;
-  if (bot.mode === "fight") target = P.pos.clone();
-  else if (bot.mode === "rush") {
-    // go for the player's bed; if it's gone, go for the player
-    target = TEAMS[0].bedAlive ? TEAMS[0].bed[0].mesh.position.clone() : P.pos.clone();
-  } else target = bot.t.spawn.clone().add(V(Math.sin(T * 0.5 + bot.t.id) * 2, 0, Math.cos(T * 0.4) * 2));
+  if (bot.mode === "fight") target = bot.foe.pos.clone();
+  else if (bot.mode === "rush") target = bot.rushTeam ? bot.rushTeam.bed[0].mesh.position.clone() : (enemies[0] ? enemies[0].pos.clone() : bot.t.spawn.clone());
+  else target = bot.t.spawn.clone().add(V(Math.sin(T * 0.5 + bot.t.id) * 2, 0, Math.cos(T * 0.4) * 2));
   const to = target.clone().sub(bot.pos); to.y = 0; const dist = to.length();
   const dir = dist > 0.01 ? to.clone().normalize() : V();
   bot.yaw = Math.atan2(dir.x, dir.z);
@@ -409,14 +413,18 @@ function botTick(bot, dt) {
   const wy = Math.floor((bot.pos.y + 0.3) / C), wall = blocks.get(key(fx, wy, fz)) || blocks.get(key(fx, wy + 1, fz));
   if (wall && (wall.type === "wool") && speed > 0) { bot.breakT += dt; speed = 0; if (bot.breakT > 0.7) { removeBlock(wall); SFX.brk(); bot.breakT = 0; bot.swing = 0.001; } }
   // at the enemy bed: hit it
-  if (bot.mode === "rush" && TEAMS[0].bedAlive && dist < 2.6) {
+  const rt = bot.rushTeam;
+  if (bot.mode === "rush" && rt && rt.bedAlive && dist < 2.6) {
     speed = 0; bot.breakT += dt;
-    if (bot.breakT > 0.9) { bot.breakT = 0; bot.swing = 0.001; const bed = TEAMS[0].bed[0]; bed.hp -= 1; SFX.brk(); if (bed.hp <= 0) breakBed(TEAMS[0], `${bot.t.name} Bot`); }
+    if (bot.breakT > 0.9) { bot.breakT = 0; bot.swing = 0.001; const bed = rt.bed[0]; bed.hp -= 1; SFX.brk(); if (bed.hp <= 0) breakBed(rt, `${bot.t.name} Bot`); }
   }
-  // attack the player
-  if (bot.mode === "fight" && dP < 3 && Math.abs(P.pos.y - bot.pos.y) < 2.5) {
-    speed = dP > 1.6 ? speed : 0;
-    if (bot.atkCd <= 0) { bot.atkCd = 0.75; bot.swing = 0.001; hurtPlayer(bot.dmg + Math.min(10, T / 40), bot.pos); }
+  // attack whoever it's fighting
+  if (bot.mode === "fight" && fd < 3) {
+    speed = fd > 1.6 ? speed : 0;
+    if (bot.atkCd <= 0) {
+      bot.atkCd = 0.75; bot.swing = 0.001; const dmg = bot.dmg + Math.min(10, T / 40);
+      if (bot.foe === P) hurtPlayer(dmg, bot.pos); else hurtBot(bot.foe, dmg, bot.pos, `${bot.t.name} Bot`);
+    }
   }
   // move with knockback, gravity and blocks
   bot.vel.x = dir.x * speed + bot.kb.x; bot.vel.z = dir.z * speed + bot.kb.z; bot.kb.multiplyScalar(Math.max(0, 1 - 6 * dt));
