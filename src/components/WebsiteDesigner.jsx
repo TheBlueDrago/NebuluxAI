@@ -56,7 +56,18 @@ const AI_NAMES = { ai: "Nebulux AI", code: "Galaxy", opus5: "Space", fable: "Neb
 const RESERVED = ["home", "www", "admin", "api", "mail", "infinity", "ai", "app", "login", "register", "support", "blog"];
 
 // One-tap improvements shown under the latest version of the site.
-const SITE_TWEAKS = ["Make it look more modern", "Add a contact form", "Improve the wording", "Make it better on phones", "Add a new section"];
+// One-tap improvements under the latest build: a short label, and the fuller request the AI gets.
+const SITE_TWEAKS = [
+  ["Make it look more modern", "Make the whole site look more modern and polished: better spacing, a cleaner font pairing, softer shadows, rounded corners and a consistent colour palette. Keep all the content."],
+  ["Add smooth animations", "Add tasteful animations: sections fade and slide in as you scroll, buttons and cards lift slightly on hover. Keep it subtle and respect prefers-reduced-motion."],
+  ["Add dark mode", "Add a dark mode with a toggle button in the header that remembers the choice, and follows the device setting the first time."],
+  ["Make it better on phones", "Make the site work great on phones: a menu button that opens the navigation, text and buttons big enough to tap, no sideways scrolling, and images that fit the screen."],
+  ["Add a contact form", "Add a contact section with a form (name, email, message) that checks the fields before sending and shows a thank-you message."],
+  ["Add an FAQ", "Add an FAQ section with 5 questions visitors to this kind of site would really ask, each opening and closing when tapped."],
+  ["Add reviews", "Add a reviews section with 3 short, believable customer reviews with star ratings, clearly marked as examples to replace."],
+  ["Improve the wording", "Rewrite the text to be clearer and more convincing: a strong headline, short paragraphs, and buttons that say exactly what happens."],
+  ["Add a new section", "Add one new section that fits this site and makes it more useful, matching the existing design."],
+];
 
 const SYSTEM = `You are Nebulux AI Website Designer. The user describes a website and you build it.
 BRANDING: this platform is Nebulux AI (sites live at name.nebuluxai.com). Never write "Blackhole", "Blackhole AI" or "blackhole-ai-tech.com" anywhere in a page, including comments; when editing a page that has them, change them to Nebulux AI / nebuluxai.com (keep ids like blackhole-products as nebulux-products).
@@ -913,11 +924,12 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                         {m === lastAi && !loading && !sendExhausted && (
                           // One tap to improve the site (each is a normal message, so it's charged like one).
                           <div className="flex flex-wrap gap-1.5 pt-1">
-                            {SITE_TWEAKS.map((t) => (
+                            {SITE_TWEAKS.map(([t, ask]) => (
                               <button
                                 key={t}
                                 type="button"
-                                onClick={() => runPrompt(t, selectedAi)}
+                                title={ask}
+                                onClick={() => runPrompt(ask, selectedAi)}
                                 className="px-2.5 py-1 rounded-full border border-sky-500/40 bg-sky-500/10 text-[12px] text-sky-200 hover:bg-sky-500/20 transition-colors"
                               >
                                 {t}
