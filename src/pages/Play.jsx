@@ -9,6 +9,7 @@ import { findBuiltInGame } from "@/lib/builtInGames";
 import PreviewFrame from "@/components/PreviewFrame";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import ShareLink from "@/components/designer/ShareLink";
+import GameBoards from "@/components/GameBoards";
 
 // Public page for a shared game: anyone can play without an account, then make their own.
 export default function Play() {
@@ -59,6 +60,7 @@ export default function Play() {
           <span className="font-semibold truncate">{game?.title || name}</span>
           {game?.genre && <span className="hidden sm:inline text-xs text-slate-400 capitalize shrink-0">· {game.genre}</span>}
         </div>
+        {game && !game.missing && <GameBoards name={name} />}
         {game && !game.missing && (
           <ShareLink url={window.location.href} title={game.title || name} className="bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" />
         )}

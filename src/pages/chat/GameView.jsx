@@ -8,6 +8,7 @@ import { useAppShell } from "@/components/AppShellContext";
 import { findBuiltInGame } from "@/lib/builtInGames";
 import PreviewFrame from "@/components/PreviewFrame";
 import ShareLink from "@/components/designer/ShareLink";
+import GameBoards from "@/components/GameBoards";
 
 export default function GameView() {
   const { name } = useParams();
@@ -80,6 +81,7 @@ export default function GameView() {
               <Wand2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Remix</span>
             </button>
           )}
+          {!loading && !notFound && <GameBoards name={name} />}
           {!loading && !notFound && (
             <ShareLink url={`${window.location.origin}/play/${name}`} title={title} className="bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" iconOnlyOnPhone />
           )}
