@@ -86,7 +86,15 @@ export function withPreviewShim(html, opts) {
   if (!html) return html;
   // With { player }: games get the player's Nebulux AI username ("Anonymous" when signed out) as
   // window.nebulux.username, the same in every game.
-  const who = opts && opts.player !== undefined ? `window.nebulux=Object.freeze({username:${JSON.stringify(String(opts.player || "Anonymous").slice(0, 24)).replace(/</g, "\\u003c")}});` : "";
+  // Leaderboards too: nebulux.score(board, score) and nebulux.top(board) each resolve to the
+  // board's top 10 [{ name, score }] ([] when it can't be reached), see PreviewFrame.
+  const who =
+    opts && opts.player !== undefined
+      ? `(function(){var q={},n=0;addEventListener("message",function(e){var d=e.data;if(e.source!==parent||!d||d.type!=="nebulux-top")return;var f=q[d.id];if(f){delete q[d.id];f(d.top||[])}});` +
+        `function ask(m){return new Promise(function(r){var id=++n;q[id]=r;m.id=id;try{parent.postMessage(m,"*")}catch(_){delete q[id];r([])}setTimeout(function(){if(q[id]){delete q[id];r([])}},10000)})}` +
+        `window.nebulux=Object.freeze({username:${JSON.stringify(String(opts.player || "Anonymous").slice(0, 24)).replace(/</g, "\\u003c")},` +
+        `score:function(b,s){return ask({type:"nebulux-score",board:String(b),score:Number(s)})},top:function(b){return ask({type:"nebulux-top-get",board:String(b)})}})})();`
+      : "";
   const saveJs = opts && opts.save ? `window.__nxSave=${JSON.stringify(opts.save).replace(/</g, "\\u003c")};` : "";
   const SHIM = who || saveJs ? `<script>${who}${saveJs}<\/script>` + BASE_SHIM : BASE_SHIM;
   const head = html.match(/<head[^>]*>/i);

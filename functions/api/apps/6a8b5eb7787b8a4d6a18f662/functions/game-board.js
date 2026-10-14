@@ -1,0 +1,57 @@
+// Leaderboards for published games: the 10 best scores on each board, with the players' Nebulux
+// usernames. A game asks through window.nebulux.score / window.nebulux.top (lib/previewShim.js,
+// components/PreviewFrame.jsx passes the messages on to here).
+// { action: "top", name, board }            -> { top: [{ name, score }] }   (anyone)
+// { action: "score", name, board, score }   -> { top }                      (signed in)
+// Boards whose name ends in "time" rank the lowest score first (fastest finish).
+// KV (PUBLISHED_HTML): board:<game>:<board>. Only written when the board changes, to keep
+// within the free KV write limit.
+import { json } from "../../../../../cloudflare-lib/published.js";
+import { currentUser } from "../../../../../cloudflare-lib/credits.js";
+import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
+
+const SIZE = 10;
+const MAX_SCORE = 1e9;
+
+export function addScore(list, entry, low) {
+  const had = list.find((x) => x.uid === entry.uid);
+  if (had && (low ? had.score <= entry.score : had.score >= entry.score)) {
+    if (had.name === entry.name) return null; // not a new best: nothing to save
+    had.name = entry.name;
+    return list;
+  }
+  const out = list.filter((x) => x.uid !== entry.uid);
+  out.push(entry);
+  out.sort((a, b) => (low ? a.score - b.score : b.score - a.score));
+  const top = out.slice(0, SIZE);
+  return top.some((x) => x.uid === entry.uid) || had ? top : null;
+}
+
+export async function onRequestPost({ request, env }) {
+  try {
+    const kv = env.PUBLISHED_HTML;
+    const body = await request.json().catch(() => ({}));
+    const game = String(body.name || "").toLowerCase();
+    const board = String(body.board || "score").toLowerCase();
+    if (!/^[a-z0-9-]{1,63}$/.test(game) || !/^[a-z0-9-]{1,24}$/.test(board)) return json({ error: "Which leaderboard?" }, 400);
+    const key = `board:${game}:${board}`;
+    const low = board.endsWith("time");
+    const list = (await kv.get(key, "json")) || [];
+    const show = (l) => l.map((x) => ({ name: x.name, score: x.score }));
+
+    if (body.action === "score") {
+      const user = await currentUser(request);
+      if (!user) return json({ error: "Sign in to get on the leaderboard.", top: show(list) }, 401);
+      if (!(await allow(`board:${user.id}`, 30, 60))) return json({ error: TOO_MANY, top: show(list) }, 429);
+      const score = Math.round(Number(body.score) * 100) / 100;
+      if (!Number.isFinite(score) || score < 0 || score > MAX_SCORE) return json({ error: "That score doesn't look right.", top: show(list) }, 400);
+      const name = String(user.full_name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 24) || "Player";
+      const next = addScore(list, { uid: user.id, name, score }, low);
+      if (next) await kv.put(key, JSON.stringify(next));
+      return json({ top: show(next || list) });
+    }
+    return json({ top: show(list) });
+  } catch (err) {
+    return json({ error: (err && err.message) || "Something went wrong." }, 500);
+  }
+}

@@ -166,6 +166,48 @@ function makeLabel(text, color) {
   x.font = "900 64px Segoe UI, system-ui"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, 256, 64); x.fillStyle = color; x.fillText(text, 256, 64);
   return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
 }
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+const ME = (window.nebulux && window.nebulux.username) || "";
+// A leaderboard sign in the world: title, then the top 10. show(v) formats a score.
+function makeBoard(title, show, color = "#ffd54f") {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 640; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const g = new THREE.Group();
+  const wood = new THREE.MeshLambertMaterial({ color: 0x4e342e });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(6, 7.5), new THREE.MeshBasicMaterial({ map: tex })); face.position.y = 5.6; g.add(face);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(6.5, 8, 0.3), wood); back.position.set(0, 5.6, -0.18); g.add(back);
+  for (const sx of [-2.7, 2.7]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 0.4), wood); p.position.set(sx, 0.9, -0.18); g.add(p); }
+  const b = { g, list: null, show, draw(list, note) {
+    if (list) b.list = list;
+    const L = b.list;
+    const gr = x.createLinearGradient(0, 0, 0, 640); gr.addColorStop(0, "#1a1240"); gr.addColorStop(1, "#0b0820"); x.fillStyle = gr; x.fillRect(0, 0, 512, 640);
+    x.strokeStyle = color; x.lineWidth = 10; x.strokeRect(5, 5, 502, 630);
+    x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.font = "900 44px Segoe UI, system-ui"; x.fillText("🏆 " + title, 256, 52);
+    x.fillStyle = "rgba(255,255,255,.18)"; x.fillRect(30, 88, 452, 3);
+    if (note || !L || !L.length) {
+      x.fillStyle = "#cfd8ff"; x.font = "600 28px Segoe UI, system-ui";
+      String(note || (L ? "No scores yet.\nBe the first!" : "Loading…")).split("\n").forEach((t, i) => x.fillText(t, 256, 300 + i * 40));
+    } else L.slice(0, 10).forEach((r, i) => {
+      const y = 126 + i * 50, mine = ME && r.name === ME;
+      if (mine) { x.fillStyle = "rgba(255,213,79,.18)"; x.fillRect(22, y - 23, 468, 46); }
+      x.textAlign = "left"; x.font = "800 30px Segoe UI, system-ui"; x.fillStyle = ["#ffd700", "#e0e0e0", "#ff9e57"][i] || "#9fa8da"; x.fillText(String(i + 1), 34, y);
+      x.fillStyle = mine ? "#ffe082" : "#fff"; x.font = "700 28px Segoe UI, system-ui"; let n = String(r.name); while (x.measureText(n).width > 290 && n.length > 3) n = n.slice(0, -2); if (n !== String(r.name)) n += "…"; x.fillText(n, 80, y);
+      x.textAlign = "right"; x.fillStyle = "#b9f6ca"; x.font = "800 28px Segoe UI, system-ui"; x.fillText(show(r.score), 480, y);
+    });
+    tex.needsUpdate = true;
+  } };
+  b.draw(null, NX ? "" : "Play on nebuluxai.com\nto join the leaderboard");
+  return b;
+}
+// Load a board's top 10, and send a score (only on Nebulux AI; signed out it just shows the board).
+function loadBoard(b, name) { if (NX) NX.top(name).then((l) => b.draw(l)); }
+function sendScore(name, score, ...boards) { if (NX && Number.isFinite(score)) NX.score(name, score).then((l) => { for (const b of boards) b.draw(l); }); }
+// Stage 1: who got furthest. The trophy: the fastest finishes.
+const fmtTime = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const stageBoard = makeBoard("Highest stage", (v) => `Stage ${v}`); stageBoard.g.position.set(-3.8, 0, -4.2); stageBoard.g.rotation.y = 0.35; scene.add(stageBoard.g);
+const timeBoard = makeBoard("Fastest finish", fmtTime, "#9be7ff");
+{ const f = V(Math.round(Math.sin(dir)), 0, -Math.round(Math.cos(dir))); const p = endP.clone().addScaledVector(f, 5); timeBoard.g.position.set(p.x, p.y, p.z); timeBoard.g.rotation.y = Math.atan2(-f.x, -f.z); scene.add(timeBoard.g); }
+loadBoard(stageBoard, "stage"); loadBoard(timeBoard, "time");
 const lowest = Math.min(...solids.map((s) => s.y)) - 25;
 
 // ---------- player (blocky) ----------
@@ -296,10 +338,11 @@ function tick() {
       if (landed.kind === "bounce") { P.vel.y = 30; P.onGround = false; tone(500, 0.2, "sine", 0.06, 600); }
       if (landed.stage > S.stage && landed.kind !== "kill") {
         S.stage = landed.stage;
-        if (landed.kind === "check") { SFX.check(); show(`Checkpoint! Stage ${landed.stage}`, 1.5); save(); }
+        if (landed.kind === "check") { SFX.check(); show(`Checkpoint! Stage ${landed.stage}`, 1.5); save(); if (landed.stage % 5 === 0) sendScore("stage", landed.stage, stageBoard); }
       }
       if (landed.kind === "finish" && $("win").style.display !== "grid") {
         SFX.win(); started = false; S.best = S.best === null ? S.time : Math.min(S.best, S.time); save();
+        sendScore("stage", STAGES, stageBoard); sendScore("time", S.time, timeBoard);
         $("winText").innerHTML = `You beat all ${STAGES} stages!<br>Time ${fmt(S.time)} · ${S.deaths} falls${S.skips ? ` · ${S.skips} skips` : ""}<br>Best time ${fmt(S.best)}`;
         $("win").style.display = "grid"; document.exitPointerLock?.();
       }

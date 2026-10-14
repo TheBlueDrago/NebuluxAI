@@ -39,6 +39,8 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
   brokenRef.current = onBroken;
   const saveRef = useRef(null);
   saveRef.current = saving ? saveName : null;
+  const nameRef = useRef(null);
+  nameRef.current = saveName || null;
 
   useEffect(() => {
     retried.current = false;
@@ -51,6 +53,17 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
       if (!d || !ref.current || e.source !== ref.current.contentWindow) return;
       if (d.type === "nebulux-save") {
         if (saveRef.current) base44.functions.invoke("game-save", { action: "set", name: saveRef.current, data: d.data }).catch(() => {});
+        return;
+      }
+      // Leaderboards (functions/.../game-board.js): the answer goes back to the game by id.
+      if ((d.type === "nebulux-score" || d.type === "nebulux-top-get") && nameRef.current) {
+        const win = ref.current.contentWindow;
+        const reply = (top) => win.postMessage({ type: "nebulux-top", id: d.id, top: Array.isArray(top) ? top : [] }, "*");
+        const send = d.type === "nebulux-score" && saveRef.current ? { action: "score", score: d.score } : { action: "top" };
+        base44.functions
+          .invoke("game-board", { ...send, name: nameRef.current, board: d.board })
+          .then((r) => reply(r?.data?.top))
+          .catch((e) => reply(e?.response?.data?.top));
         return;
       }
       if (d.type !== "nebulux-health") return;

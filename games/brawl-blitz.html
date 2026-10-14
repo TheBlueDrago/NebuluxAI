@@ -345,7 +345,7 @@ function tick() {
     $("count").innerHTML = countdown ? `<span style="color:${countdown.team === 0 ? "#64b5f6" : "#ef5350"}">${Math.ceil(countdown.t)}</span>` : "";
     if (countdown && countdown.t <= 0) {
       over = true; const won = countdown.team === 0; if (won) SFX.win();
-      $("endT").textContent = won ? "VICTORY!" : "DEFEAT"; $("endT").style.color = won ? "#ffd23a" : "#ff5252";
+      LB.end(won); $("endT").textContent = won ? "VICTORY!" : "DEFEAT"; $("endT").style.color = won ? "#ffd23a" : "#ff5252";
       $("endP").textContent = `Blue ${sb} gems · Red ${sr} gems · time ${Math.floor(T / 60)}:${String(Math.floor(T % 60)).padStart(2, "0")}`;
       $("end").style.display = "grid";
     }
@@ -363,6 +363,32 @@ function tick() {
   renderer.render(scene, camera);
 }
 tick();
+})();
+// ---------- lobby leaderboard (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const LB = (() => {
+  const nx = window.nebulux && window.nebulux.top ? window.nebulux : null, me = (window.nebulux && window.nebulux.username) || "";
+  const key = "lb-wins"; // this game's own win count (each game keeps its own saves)
+  let wins = 0; try { wins = +localStorage.getItem(key) || 0; } catch { /* no storage */ }
+  const css = document.createElement("style");
+  css.textContent = `.lb{margin:14px auto 0;max-width:340px;text-align:left;background:rgba(0,0,0,.35);border:2px solid rgba(255,213,79,.5);border-radius:14px;padding:10px 14px}
+.lb h3{margin:0 0 6px;font-size:15px;color:#ffd54f;text-align:center;letter-spacing:.5px}.lb ol{margin:0;padding:0;list-style:none;font-size:14px}
+.lb li{display:flex;gap:8px;padding:3px 6px;border-radius:7px}.lb li b{width:18px;color:#9fa8da}.lb li:nth-child(1) b{color:#ffd700}.lb li:nth-child(2) b{color:#e0e0e0}.lb li:nth-child(3) b{color:#ff9e57}
+.lb li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lb li i{font-style:normal;color:#b9f6ca;font-weight:800}.lb li.me{background:rgba(255,213,79,.18)}.lb p{margin:4px 0 0;font-size:12px;opacity:.75;text-align:center}`;
+  document.head.appendChild(css);
+  const el = document.createElement("div"); el.className = "lb";
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const draw = (list) => {
+    el.innerHTML = `<h3>🏆 Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
+      : !list ? `<p>Loading…</p>` : !list.length ? `<p>No winners yet. Be the first!</p>`
+      : `<ol>${list.slice(0, 5).map((r, i) => `<li class="${me && r.name === me ? "me" : ""}"><b>${i + 1}</b><span>${esc(r.name)}</span><i>${r.score}</i></li>`).join("")}</ol>`)
+      + `<p>Your wins: <b>${wins}</b></p>`;
+  };
+  const play = document.getElementById("play"); play.insertAdjacentElement("afterend", el);
+  draw(null); if (nx) nx.top("wins").then(draw);
+  return {
+    // A match ended: count a win and send the new total.
+    end(won) { if (!won || Date.now() - LB.t < 5000) return; LB.t = Date.now(); wins++; try { localStorage.setItem(key, wins); } catch { /* ignore */ } draw(null); if (nx) nx.score("wins", wins).then(draw); else draw(); },
+  };
 })();
 </script>
 </body>
