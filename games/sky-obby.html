@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sky Obby</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900}
+  #stage{font-size:30px} #sub{font-size:14px;opacity:.95;margin-top:2px}
+  #bar{width:240px;height:14px;background:#1b1b1b;border:2px solid #000;border-radius:4px;overflow:hidden;margin-top:6px}
+  #bar i{display:block;height:100%;background:linear-gradient(90deg,#3ad13a,#ffd23a)}
+  #msg{position:fixed;left:50%;top:20%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  #start,#win{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#4fc3f7cc,#1a237eee);z-index:6}
+  #win{display:none}
+  .c{text-align:center;max-width:560px;padding:20px}
+  h1{font-size:72px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  #jumpB{position:fixed;right:30px;bottom:34px;width:90px;height:90px;border-radius:50%;border:3px solid #000;background:rgba(58,209,58,.85);color:#000;font:900 18px Segoe UI,sans-serif;touch-action:none}
+</style>
+</head>
+<body>
+<div id="hud" class="sh"><div id="stage">Stage 1</div><div id="sub"></div><div id="bar"><i></i></div></div>
+<div id="btns"><button class="b" id="skip">Skip stage ($)</button><button class="b" id="reset">Respawn (R)</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"><div id="joy"><div id="knob"></div></div><button id="jumpB">JUMP</button></div>
+<div id="start"><div class="c">
+  <h1>SKY OBBY</h1>
+  <p style="font-weight:700">Jump your way up 50 stages in the sky. Green pads save your progress. Don't touch anything <b style="color:#ff5252">red</b>!</p>
+  <p class="keys" style="font-size:14px"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to turn the camera · <kbd>Wheel</kbd> zoom · <kbd>Ctrl</kbd> mouse lock · <kbd>R</kbd> respawn</p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="win"><div class="c"><h1>YOU WIN!</h1><p id="winText" style="font-weight:700;font-size:18px"></p><button class="big" id="again">Play again</button></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+let seed = 7; const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); // same course every time
+const rr = (a, b) => a + rand() * (b - a);
+
+// ---------- sound ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = { jump: () => tone(300, 0.12, "square", 0.04, 300), die: () => tone(400, 0.35, "sawtooth", 0.06, -330), check: () => [660, 880, 1100].forEach((n, i) => tone(n, 0.12, "triangle", 0.07, 0, i * 0.07)), win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)) };
+
+// ---------- scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87d7ff); scene.fog = new THREE.Fog(0x87d7ff, 90, 260);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+scene.add(new THREE.HemisphereLight(0xffffff, 0x88aacc, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshLambertMaterial({ color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+// clouds
+for (let i = 0; i < 40; i++) { const g = new THREE.Group(); for (let k = 0; k < 4; k++) { const c = new THREE.Mesh(new THREE.BoxGeometry(rr(6, 12), rr(3, 5), rr(6, 10)), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 })); c.position.set(k * 5, rr(-1, 1), rr(-2, 2)); g.add(c); } g.position.set(rr(-200, 200), rr(-40, 120), rr(-300, 40)); scene.add(g); }
+
+// ---------- course ----------
+// Every solid is an axis-aligned box: { x,y,z (center), w,h,d, kind: "floor"|"kill"|"check"|"bounce"|"finish", stage, move }
+const solids = [], killers = [], checkpoints = [];
+const COLORS = [0x4fc3f7, 0xba68c8, 0xffb74d, 0x81c784, 0xf06292, 0x9575cd, 0x4dd0e1, 0xffd54f];
+function add(x, y, z, w, h, d, kind = "floor", stage = 0, color) {
+  const c = color ?? (kind === "kill" ? 0xff2d2d : kind === "check" ? 0x2ee66b : kind === "bounce" ? 0xffeb3b : kind === "finish" ? 0xffd700 : COLORS[stage % COLORS.length]);
+  const m = boxMesh(w, h, d, c, kind === "kill" ? 0x550000 : kind === "check" ? 0x0a4a1a : 0);
+  m.position.set(x, y, z); scene.add(m);
+  const s = { x, y, z, w, h, d, kind, stage, m, dx: 0, dy: 0, dz: 0 };
+  solids.push(s); return s;
+}
+const STAGES = 50;
+let cur = V(0, 0, 0); // where the course is heading
+const startPad = add(0, -1, 0, 14, 2, 14, "check", 0); checkpoints[0] = startPad;
+const stageStarts = [V(0, 1, 0)];
+let dir = 0; // heading angle (turns now and then)
+for (let st = 1; st <= STAGES; st++) {
+  const hard = st / STAGES;
+  const fwd = () => V(Math.sin(dir), 0, -Math.cos(dir));
+  const step = (dist, up = 0) => { cur = cur.clone().addScaledVector(fwd(), dist); cur.y += up; return cur.clone(); };
+  const type = st % 5 === 0 ? "check" : ["jumps", "thin", "kill", "move", "spin", "bounce", "tower", "zig"][Math.floor(rand() * 8)];
+  if (type === "jumps") {
+    for (let i = 0; i < 4; i++) { const p = step(rr(5, 6.5 + hard * 1.5), rr(-0.5, 1.2)); add(p.x, p.y - 0.5, p.z, 3.2 - hard * 0.8, 1, 3.2 - hard * 0.8, "floor", st); }
+  } else if (type === "thin") {
+    const p = step(9, 0.5); const f = fwd(); const len = 14;
+    add(p.x, p.y - 0.5, p.z, Math.abs(f.x) > 0.5 ? len : 1.1 - hard * 0.4, 1, Math.abs(f.z) > 0.5 ? len : 1.1 - hard * 0.4, "floor", st);
+    cur = cur.clone().addScaledVector(f, len / 2);
+  } else if (type === "kill") {
+    const p = step(10, 0); const f = fwd(), side = V(-f.z, 0, f.x);
+    add(p.x, p.y - 0.5, p.z, 9, 1, 9, "floor", st);
+    for (let i = -1; i <= 1; i++) { const q = p.clone().addScaledVector(side, i * 3).addScaledVector(f, (i % 2) * 2); if (i !== 0 || hard > 0.4) killers.push(add(q.x, q.y + 0.3, q.z, 2, 0.6, 2, "kill", st)); }
+    cur = cur.clone().addScaledVector(f, 4.5);
+  } else if (type === "move") {
+    for (let i = 0; i < 2; i++) {
+      const p = step(8, 0.5); const f = fwd(), side = V(-f.z, 0, f.x);
+      const s = add(p.x, p.y - 0.5, p.z, 3.5, 1, 3.5, "floor", st);
+      s.move = { from: V(s.x, s.y, s.z), axis: side, amp: 4 + hard * 3, speed: 1 + hard * 1.2, ph: rand() * 6 };
+    }
+  } else if (type === "spin") {
+    const p = step(11, 0); add(p.x, p.y - 0.5, p.z, 11, 1, 11, "floor", st);
+    const bar = add(p.x, p.y + 0.8, p.z, 10, 0.8, 0.8, "kill", st); bar.spin = { speed: 1.4 + hard * 1.6, len: 5 }; killers.push(bar);
+    cur = cur.clone().addScaledVector(fwd(), 5.5);
+  } else if (type === "bounce") {
+    const p = step(7, 0); add(p.x, p.y - 0.5, p.z, 3.5, 1, 3.5, "bounce", st);
+    const q = step(9, 7); add(q.x, q.y - 0.5, q.z, 5, 1, 5, "floor", st);
+  } else if (type === "tower") {
+    for (let i = 0; i < 4; i++) { dir += (i % 2 ? 1 : -1) * 0.8; const p = step(4.6, 2.2); add(p.x, p.y - 0.5, p.z, 2.8, 1, 2.8, "floor", st); }
+  } else if (type === "zig") {
+    const f0 = fwd(), side = V(-f0.z, 0, f0.x);
+    for (let i = 0; i < 5; i++) { cur = cur.clone().addScaledVector(f0, 4.4).addScaledVector(side, i % 2 ? 3 : -3); cur.y += 0.4; add(cur.x, cur.y - 0.5, cur.z, 2.2, 1, 2.2, "floor", st); }
+  } else { // checkpoint stage
+    const p = step(8, 1); const c = add(p.x, p.y - 0.5, p.z, 8, 1, 8, "check", st); checkpoints[st] = c;
+    const sign = makeLabel(`Stage ${st}`, "#2ee66b"); sign.position.set(p.x, p.y + 6, p.z); sign.scale.set(8, 2, 1); scene.add(sign);
+  }
+  stageStarts[st] = cur.clone();
+  if (rand() < 0.35) dir += rr(-0.9, 0.9);
+}
+const endP = cur.clone().addScaledVector(V(Math.sin(dir), 0, -Math.cos(dir)), 9);
+const finish = add(endP.x, endP.y - 0.5, endP.z, 12, 1, 12, "finish", STAGES);
+const trophy = new THREE.Group(); trophy.add(boxMesh(1.4, 2, 1.4, 0xffd700, 0x553300).translateY(1)); trophy.add(boxMesh(2.6, 0.5, 2.6, 0x8d6e63).translateY(-0.2)); trophy.position.set(endP.x, endP.y + 1, endP.z); scene.add(trophy);
+function makeLabel(text, color) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const x = c.getContext("2d");
+  x.font = "900 64px Segoe UI, system-ui"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, 256, 64); x.fillStyle = color; x.fillText(text, 256, 64);
+  return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
+}
+const lowest = Math.min(...solids.map((s) => s.y)) - 25;
+
+// ---------- player (blocky) ----------
+function makeBody() {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, 0x1e88e5); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, 0xffcc80); head.position.y = 3.75; g.add(head); const eyes = boxMesh(0.6, 0.15, 0.05, 0x111111); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) { const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, 0x37474f); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L); const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, 0xffcc80); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A); }
+  g.scale.setScalar(0.62); return { g, legs, arms };
+}
+const P = { body: makeBody(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, coyote: 0, buffer: 0 };
+scene.add(P.body.g);
+const HW = 0.45, HH = 2.6; // player half-width and height (scaled body)
+const cam = { yaw: 0, pitch: 0.35, dist: 13 };
+
+// ---------- save ----------
+let S = { stage: 0, best: null, deaths: 0, time: 0, skips: 0 };
+try { const s = JSON.parse(localStorage.getItem("skyobby-save") || "null"); if (s) S = { ...S, ...s }; } catch { /* no storage */ }
+const save = () => { try { localStorage.setItem("skyobby-save", JSON.stringify(S)); } catch { /* ignore */ } };
+setInterval(save, 4000);
+function spawnAt(stage) {
+  let k = stage; while (k > 0 && !checkpoints[k] && !stageStarts[k]) k--;
+  const c = checkpoints[k];
+  if (c) P.pos.set(c.x, c.y + c.h / 2 + 0.05, c.z); else { const p = stageStarts[k]; P.pos.set(p.x, p.y + 0.1, p.z); }
+  P.vel.set(0, 0, 0);
+}
+// you respawn at the last checkpoint you reached (a green pad)
+const lastCheck = () => { for (let k = S.stage; k >= 0; k--) if (checkpoints[k]) return k; return 0; };
+
+// ---------- input ----------
+const keys = {}; let started = false, locked = false, rmb = false;
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.buffer = 0.15; e.preventDefault(); }
+  if (e.code === "KeyR") die("Respawned");
+  if (e.code === "ControlLeft" || e.code === "ControlRight") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= e.movementX * 0.005; cam.pitch = clamp(cam.pitch + e.movementY * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 5, 30); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+if (matchMedia("(pointer: coarse)").matches) {
+  document.body.classList.add("touch");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  $("jumpB").addEventListener("touchstart", (e) => { e.preventDefault(); P.buffer = 0.15; }, { passive: false });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+}
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+
+// ---------- ui ----------
+let msgT = 0;
+function show(t, s = 1.6) { $("msg").innerText = t; $("msg").style.opacity = 1; msgT = s; }
+const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); spawnAt(lastCheck()); show(S.stage ? `Welcome back! Stage ${S.stage}` : "Reach the trophy at the top!", 2.5); };
+$("again").onclick = () => { $("win").style.display = "none"; S.stage = 0; S.deaths = 0; S.time = 0; S.skips = 0; save(); spawnAt(0); started = true; };
+$("reset").onclick = () => started && die("Respawned");
+$("skip").onclick = () => {
+  if (!started) return;
+  const next = Object.keys(checkpoints).map(Number).filter((k) => k > S.stage).sort((a, b) => a - b)[0];
+  if (next === undefined) return;
+  S.skips++; S.stage = next; save(); spawnAt(next); show(`Skipped to stage ${next}`, 1.5);
+};
+$("skip").textContent = "Skip to next checkpoint";
+
+let deadT = 0;
+function die(why = "Oof!") {
+  if (deadT > 0) return;
+  S.deaths++; SFX.die(); deadT = 0.5; show(why, 1);
+  P.body.g.visible = false;
+  setTimeout(() => { S.stage = lastCheck(); spawnAt(S.stage); P.body.g.visible = true; deadT = 0; }, 450);
+}
+
+// ---------- physics ----------
+const overlap = (p, s) => Math.abs(p.x - s.x) < s.w / 2 + HW && Math.abs(p.z - s.z) < s.d / 2 + HW && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+const clock = new THREE.Clock(); let T = 0;
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.04); T += dt;
+  // moving and spinning things
+  for (const s of solids) {
+    if (s.move) { const o = Math.sin(T * s.move.speed + s.move.ph) * s.move.amp; const nx = s.move.from.x + s.move.axis.x * o, nz = s.move.from.z + s.move.axis.z * o; s.dx = nx - s.x; s.dz = nz - s.z; s.x = nx; s.z = nz; s.m.position.set(s.x, s.y, s.z); }
+    if (s.spin) s.m.rotation.y = T * s.spin.speed;
+  }
+  trophy.rotation.y = T;
+  if (started && deadT <= 0) {
+    // ride moving platforms
+    if (P.onGround && P.ground) { P.pos.x += P.ground.dx; P.pos.z += P.ground.dz; }
+    const want = moveDir().multiplyScalar(13);
+    const k = P.onGround ? 16 : 7;
+    P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt);
+    P.coyote = P.onGround ? 0.1 : P.coyote - dt; P.buffer -= dt;
+    if ((keys.Space || P.buffer > 0) && P.coyote > 0) { P.vel.y = 15.5; P.coyote = 0; P.buffer = 0; P.onGround = false; SFX.jump(); }
+    P.vel.y = Math.max(P.vel.y - 40 * dt, -60);
+    // move one axis at a time and push out of boxes
+    const axes = ["x", "z", "y"]; let landed = null;
+    for (const a of axes) {
+      P.pos[a] += P.vel[a] * dt;
+      for (const s of solids) {
+        if (s.kind === "kill" || !overlap(P.pos, s)) continue;
+        if (a === "y") {
+          if (P.vel.y <= 0) { P.pos.y = s.y + s.h / 2; landed = s; } else P.pos.y = s.y - s.h / 2 - HH;
+          P.vel.y = 0;
+        } else {
+          const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+          // small ledges: step up instead of stopping
+          if (s.y + s.h / 2 - P.pos.y < 0.6 && s.y + s.h / 2 - P.pos.y > 0) { P.pos.y = s.y + s.h / 2; continue; }
+          P.pos[a] = P.pos[a] > c ? c + half : c - half; P.vel[a] = 0;
+        }
+      }
+    }
+    P.onGround = !!landed; P.ground = landed;
+    if (landed) {
+      if (landed.kind === "bounce") { P.vel.y = 30; P.onGround = false; tone(500, 0.2, "sine", 0.06, 600); }
+      if (landed.stage > S.stage && landed.kind !== "kill") {
+        S.stage = landed.stage;
+        if (landed.kind === "check") { SFX.check(); show(`Checkpoint! Stage ${landed.stage}`, 1.5); save(); }
+      }
+      if (landed.kind === "finish" && $("win").style.display !== "grid") {
+        SFX.win(); started = false; S.best = S.best === null ? S.time : Math.min(S.best, S.time); save();
+        $("winText").innerHTML = `You beat all ${STAGES} stages!<br>Time ${fmt(S.time)} · ${S.deaths} falls${S.skips ? ` · ${S.skips} skips` : ""}<br>Best time ${fmt(S.best)}`;
+        $("win").style.display = "grid"; document.exitPointerLock?.();
+      }
+    }
+    // red things
+    for (const s of killers) {
+      if (s.spin) {
+        const ang = T * s.spin.speed, dx = P.pos.x - s.x, dz = P.pos.z - s.z;
+        const along = dx * Math.cos(ang) - dz * Math.sin(ang), across = dx * Math.sin(ang) + dz * Math.cos(ang);
+        if (Math.abs(along) < s.spin.len + HW && Math.abs(across) < 0.4 + HW && P.pos.y < s.y + 0.4 && P.pos.y + HH > s.y - 0.4) die("Hit by the spinner!");
+      } else if (overlap(P.pos, s)) die("Ouch! Don't touch red");
+    }
+    if (P.pos.y < lowest) die("You fell!");
+    S.time += dt;
+    // body
+    if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+    if (locked) P.yaw = cam.yaw + Math.PI;
+    let d = P.yaw - P.body.g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); P.body.g.rotation.y += d * Math.min(1, 15 * dt);
+    P.body.g.position.copy(P.pos);
+    const sp = Math.hypot(P.vel.x, P.vel.z), sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+    P.body.legs[0].rotation.x = P.onGround ? sw : -0.5; P.body.legs[1].rotation.x = P.onGround ? -sw : 0.3; P.body.arms[0].rotation.x = P.onGround ? -sw : -2.6; P.body.arms[1].rotation.x = P.onGround ? sw : -2.6;
+  }
+  // camera
+  const head = P.pos.clone().setY(P.pos.y + 2.2);
+  const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
+  camera.position.lerp(head.clone().add(off), Math.min(1, 16 * dt)); camera.lookAt(head);
+  sun.position.copy(P.pos).add(V(30, 60, 20)); sun.target.position.copy(P.pos);
+  // hud
+  if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }
+  $("stage").textContent = `Stage ${S.stage} / ${STAGES}`;
+  $("sub").textContent = `⏱ ${fmt(S.time)} · 💀 ${S.deaths}${S.best !== null ? ` · 🏆 ${fmt(S.best)}` : ""}`;
+  $("bar").firstChild.style.width = `${(S.stage / STAGES) * 100}%`;
+  renderer.render(scene, camera);
+}
+spawnAt(lastCheck());
+tick();
+})();
+</script>
+</body>
+</html>
