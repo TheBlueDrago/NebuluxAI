@@ -65,6 +65,7 @@
   <div class="bar" id="xp" style="height:10px"><i></i></div>
   <div id="beli">$0</div>
   <div id="where" style="font-size:13px;font-weight:800"></div>
+  <div id="quest" style="display:none;margin-top:8px;background:rgba(0,0,0,.55);border:2px solid #000;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:800"></div>
 </div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
@@ -281,7 +282,7 @@ const SWORD_SK = [["Z", "Spin Slash", 5, 12, 34, "aoe", { r: 6, self: true }], [
 const STATS = [["melee", "Melee", "Fists damage", 0xffffff], ["defense", "Health", "+20 max health each", 0], ["sword", "Sword", "Sword damage", 0], ["energy", "Energy", "+15 max energy each", 0], ["fruit", "Blox Fruit", "Fruit damage", 0]];
 
 // ================= save =================
-const DEF = { lvl: 1, xp: 0, beli: 250, pts: 0, st: { melee: 0, defense: 0, sword: 0, energy: 0, fruit: 0 }, fruit: null, inv: [], swords: [], sword: null, sea: 0, freeSpin: true, seaUnlocked: false, bosses: {} };
+const DEF = { lvl: 1, xp: 0, beli: 250, pts: 0, st: { melee: 0, defense: 0, sword: 0, energy: 0, fruit: 0 }, fruit: null, inv: [], swords: [], sword: null, sea: 0, freeSpin: true, seaUnlocked: false, bosses: {}, quest: null };
 let S = DEF;
 try { const s = JSON.parse(localStorage.getItem("fruitseas-save") || "null"); if (s && s.lvl) S = { ...DEF, ...s, st: { ...DEF.st, ...s.st } }; } catch { /* no storage */ }
 const save = () => { try { localStorage.setItem("fruitseas-save", JSON.stringify(S)); } catch { /* ignore */ } };
@@ -314,6 +315,32 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, 0, -9, "Fruit Gacha", 0x6a1b9a, openGacha, { hat: "tricorn" });
   addNpc(isl, 6, -6, "Sword Dealer", 0x455a64, openSwords, { hat: "helmet" });
   addNpc(isl, 9, 4, "Sea Traveler", 0x0d47a1, openTravel, { hat: "tricorn" });
+}
+// A Quest Giver on every island: defeat that island's enemies for a big reward.
+for (const isl of ISLANDS) {
+  let ox = -4, oz = 8;
+  for (let t = 0; t < 12 && (lavaAt(isl.x + ox, isl.z + oz) || solids.some((s) => Math.hypot(s.x - isl.x - ox, s.z - isl.z - oz) < s.r + 1.5)); t++) { const a = t * 0.9; ox = Math.cos(a) * 9; oz = Math.sin(a) * 9; }
+  addNpc(isl, ox, oz, "Quest Giver", 0xf9a825, () => openQuest(isl), { hat: "bandana", hatColor: 0xf57f17 });
+}
+const questFor = (isl) => {
+  const need = isl.spawn ? 5 : 7, lvl = isl.lvl + 1;
+  return { isl: isl.name, mob: isl.mob, need, have: 0, xp: Math.round(need * (20 + lvl * 12) * 2.5), cash: Math.round(lvl * 450 + 300) };
+};
+function openQuest(isl) {
+  const q = S.quest, offer = questFor(isl);
+  if (q && q.isl === isl.name) {
+    openModal("Quest Giver", `<p>Keep going! Defeat <b>${q.need} ${q.mob}s</b> on ${q.isl}.</p><div class="row"><div class="grow">Progress</div><b>${q.have} / ${q.need}</b></div>
+      <div class="row"><div class="grow">Reward</div><b style="color:#ffd23a">${q.xp.toLocaleString()} XP</b><b style="color:#7dff7d">${money(q.cash)}</b></div>
+      <div style="text-align:right;margin-top:8px"><button class="btn gray" id="qx">Abandon quest</button></div>`);
+    $("qx").onclick = () => { S.quest = null; save(); closeModal(); };
+    return;
+  }
+  const low = S.lvl < isl.lvl;
+  openModal("Quest Giver", `<p>${low ? `<b style="color:#ff6b6b">Careful: these enemies are Lv. ${isl.lvl}+ and you're Lv. ${S.lvl}.</b><br>` : ""}The ${offer.mob}s are causing trouble on ${isl.name}. Defeat <b>${offer.need}</b> of them!</p>
+    <div class="row"><div class="grow">Reward</div><b style="color:#ffd23a">${offer.xp.toLocaleString()} XP</b><b style="color:#7dff7d">${money(offer.cash)}</b></div>
+    ${q ? `<p style="font-size:12px;opacity:.8">This replaces your quest on ${q.isl} (${q.have}/${q.need}).</p>` : ""}
+    <div style="text-align:center;margin-top:10px"><button class="btn" id="qa">Accept quest</button></div>`);
+  $("qa").onclick = () => { S.quest = offer; save(); closeModal(); show(`Quest: defeat ${offer.need} ${offer.mob}s`, 2.5); };
 }
 // a gacha machine next to the gacha NPC
 for (const isl of ISLANDS.filter((i) => i.spawn)) {
@@ -396,6 +423,13 @@ function killEnemy(e) {
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
   gainXp(xp); S.beli += cash; floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
+  const q = S.quest;
+  if (q && !e.boss && e.name === q.mob) {
+    q.have++;
+    if (q.have >= q.need) { S.quest = null; const lv = S.lvl; gainXp(q.xp); S.beli += q.cash; show(`Quest complete!
++${q.xp.toLocaleString()} XP  +${money(q.cash)}${S.lvl > lv ? `
+Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
+  }
   if (e.boss) {
     S.bosses[e.name] = true;
     if (e.isl.sea === 0 && !S.seaUnlocked) { S.seaUnlocked = true; show(`${e.name} defeated!\nThe Sea Traveler can now take you to the Second Sea!`, 5); }
@@ -854,6 +888,8 @@ function tick() {
     $("en").firstChild.style.width = `${clamp(P.en / maxEn(), 0, 1) * 100}%`; $("en").lastChild.textContent = `${Math.floor(P.en)} / ${maxEn()}`;
     $("xp").firstChild.style.width = `${(S.xp / xpNeed()) * 100}%`;
     $("beli").textContent = money(S.beli);
+    const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
+    if (qq) $("quest").innerHTML = `📜 Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
     $("where").textContent = `${SEAS[S.sea].name}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
     if (started) drawSkills();
   }
