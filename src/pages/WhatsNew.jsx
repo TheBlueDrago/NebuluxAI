@@ -1,11 +1,21 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, ShieldCheck, Zap, BookOpen, Globe, Gift } from "lucide-react";
+import { Sparkles, ShieldCheck, Zap, BookOpen, Globe, Gift, Gamepad2 } from "lucide-react";
 import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 
 // What changed lately, newest first, in plain words. Add to the top when something people
 // would notice goes live; keep safety changes in Trust & safety's list too.
 const UPDATES = [
+  {
+    date: "October 2026",
+    items: [
+      { icon: Gamepad2, text: "Five new 3D games on Nebulux Games, all playable on phones and computers: Fruit Seas (sail between islands, find fruits with powers, quests and bosses), Sky Obby (50 hard stages and a glass bridge), Bed Brawl (protect your bed, build bridges, break the others'), Brawl Blitz (3 vs 3 gem grab with five fighters) and Storm Royale (drop in, loot, and be the last one standing)." },
+      { icon: Sparkles, text: "Send a message while the AI is still answering: say \"do this first\" and it switches right away, then finishes what it was doing; say \"after you finish\" and it waits its turn." },
+      { icon: Globe, text: "Share a chat with a proper share card: copy the link, or send it straight to WhatsApp, X, Reddit or email. Whoever opens it can continue the chat in their own account." },
+      { icon: Zap, text: "Fewer errors when the AI is busy: it keeps trying for longer instead of giving up, and the message tells you honestly what happened." },
+      { icon: Sparkles, text: "Nebulux Code: your code chats are saved in the chat list, long code folds into a box with Show more, you can see the credits and time each answer used, and you can publish what it builds straight to Nebulux Games or the Website Designer." },
+    ],
+  },
   {
     date: "September 2026",
     items: [
@@ -59,15 +69,30 @@ export default function WhatsNew() {
           <Link to="/contact?topic=idea" className="text-indigo-300 hover:text-indigo-200 underline">Tell us</Link>.
         </p>
       </section>
-      <div className="max-w-2xl mx-auto space-y-10">
-        {UPDATES.map((u) => (
-          <section key={u.date}>
-            <h2 className="text-xl font-bold text-white">{u.date}</h2>
-            <ul className="mt-4 space-y-3">
+      <div className="max-w-2xl mx-auto space-y-12">
+        {UPDATES.map((u, i) => (
+          <section key={u.date} className="relative pl-8 sm:pl-10">
+            <span className="absolute left-2.5 sm:left-3.5 top-3 bottom-0 w-px bg-gradient-to-b from-indigo-500/60 via-slate-700 to-transparent" />
+            <span className={`absolute left-0.5 sm:left-1.5 top-1.5 w-5 h-5 rounded-full border-4 border-slate-950 ${i === 0 ? "bg-fuchsia-400 shadow-[0_0_16px_rgba(232,121,249,0.7)]" : "bg-indigo-400"}`} />
+            <h2 className="flex items-center gap-3 text-xl sm:text-2xl font-bold text-white">
+              {u.date}
+              {i === 0 && (
+                <span className="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30">Latest</span>
+              )}
+              <span className="ml-auto text-xs font-medium text-slate-500">{u.items.length} updates</span>
+            </h2>
+            <ul className="mt-5 space-y-3">
               {u.items.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex gap-3 rounded-2xl bg-slate-900/50 border border-slate-800 p-4">
-                  <Icon className="w-5 h-5 text-indigo-300 shrink-0 mt-0.5" />
-                  <span className="text-slate-300">{text}</span>
+                <li
+                  key={text}
+                  className={`group flex gap-4 rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 ${
+                    i === 0 ? "bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/5 border-indigo-500/25" : "bg-slate-900/50 border-slate-800"
+                  }`}
+                >
+                  <span className="shrink-0 w-9 h-9 rounded-xl grid place-items-center bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/20 border border-indigo-400/20 group-hover:scale-110 transition-transform">
+                    <Icon className="w-[18px] h-[18px] text-indigo-200" />
+                  </span>
+                  <span className="text-slate-300 leading-relaxed">{text}</span>
                 </li>
               ))}
             </ul>
