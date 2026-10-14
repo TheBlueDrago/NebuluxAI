@@ -17,7 +17,8 @@
   #super{position:fixed;right:20px;bottom:20px;width:86px;height:86px;border-radius:50%;border:4px solid #000;background:conic-gradient(#ffd23a var(--p,0%),#333 0);display:grid;place-items:center;font-weight:900;font-size:13px;text-align:center;line-height:1.1}
   #super.ready{animation:pulse .8s infinite alternate;cursor:pointer} @keyframes pulse{to{box-shadow:0 0 22px #ffd23a}}
   #start,#end{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#ff7043dd,#4a148cee);z-index:6}
-  #end{display:none} .c{text-align:center;max-width:720px;padding:20px}
+  #end{display:none} .c{text-align:center;max-width:720px;padding:20px;max-height:100vh;overflow:auto;box-sizing:border-box}
+  @media (max-height:520px){h1{font-size:40px} .card{width:140px;padding:8px} .card p{font-size:11px} .cards{margin:8px 0}}
   h1{font-size:68px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000}
   .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:14px 0}
   .card{width:170px;border:4px solid #000;border-radius:14px;padding:12px;background:#2b2b2b;cursor:pointer;text-align:left}
@@ -66,6 +67,8 @@ const SFX = { shoot: () => tone(520, 0.08, "square", 0.035, -300), hit: () => to
 const BRAWLERS = {
   Blaster: { hp: 3800, speed: 9, color: 0xff7043, desc: "Shotgun: 5 pellets, great up close. Super: a huge blast that knocks enemies back.", range: 12, reload: 1.2, shoot: (s, dir) => { for (let i = -2; i <= 2; i++) bullet(s, dir.clone().applyAxisAngle(V(0, 1, 0), i * 0.12), 30, 12, 300, 0.35); }, sup: (s, dir) => { for (let i = -6; i <= 6; i++) bullet(s, dir.clone().applyAxisAngle(V(0, 1, 0), i * 0.09), 32, 15, 420, 0.5, { kb: 14 }); } },
   Sniper: { hp: 2800, speed: 9.5, color: 0x26c6da, desc: "One long, strong shot. Super: a giant shot that goes through everyone.", range: 26, reload: 1.6, shoot: (s, dir) => bullet(s, dir, 48, 26, 1100, 0.4), sup: (s, dir) => bullet(s, dir, 40, 30, 1900, 1.2, { pierce: true }) },
+  Bomber: { hp: 3000, speed: 9, color: 0x7e57c2, desc: "Throws bombs over walls. Super: a big bomb that blows up a wide area.", range: 15, reload: 1.5, lob: true, shoot: (s, dir, dist) => lob(s, dir, dist, 1150, 2.6), sup: (s, dir, dist) => lob(s, dir, dist, 2000, 5) },
+  Medic: { hp: 3300, speed: 9.5, color: 0x66bb6a, desc: "Quick healing darts. Super: heals you and every teammate near you.", range: 18, reload: 1.0, shoot: (s, dir) => bullet(s, dir, 44, 18, 620, 0.35), sup: (s) => { for (const o of fighters) if (o.team === s.team && !o.dead && o.pos.distanceTo(s.pos) < 9) { o.hp = Math.min(o.maxHp, o.hp + 2200); floatText(o.pos, "+2200", "#69f0ae"); } ringFx(s.pos, 0x69f0ae, 9); } },
   Tank: { hp: 5600, speed: 8.5, color: 0x8d6e63, desc: "Big punches up close, lots of health. Super: charge forward and smash.", range: 6, reload: 1.0, shoot: (s, dir) => { for (let i = -1; i <= 1; i++) bullet(s, dir.clone().applyAxisAngle(V(0, 1, 0), i * 0.25), 26, 6, 700, 0.6); }, sup: (s, dir) => { s.charge = { dir: dir.clone(), t: 0.45, hit: new Set() }; } },
 };
 let pick = "Blaster";
@@ -138,6 +141,7 @@ function addFighter(type, team, human, name) {
   const body = makeBody(type, team); scene.add(body.g);
   const spawnZ = team === 0 ? L / 2 - 4 : -L / 2 + 4;
   const s = { type, team, human, name, body, pos: V(0, 0, spawnZ), vel: V(), hp: BRAWLERS[type].hp, maxHp: BRAWLERS[type].hp, ammo: 3, reloadT: 0, superP: 0, gems: 0, dead: false, respawnT: 0, yaw: team === 0 ? Math.PI : 0, kb: V(), hidden: false, lastShot: -9, bar: hpBar(), label: null, aiT: 0, aim: V(), strafe: rnd(-1, 1) };
+  s.spawnShield = 0;
   s.label = makeLabel(`${name}`, team === 0 ? "#90caf9" : "#ef9a9a"); s.label.scale.set(4, 1, 1); scene.add(s.label);
   s.gemLabel = makeLabel("", "#e040fb", 256); s.gemLabel.scale.set(1.6, 0.8, 1); scene.add(s.gemLabel);
   fighters.push(s); return s;
@@ -151,6 +155,17 @@ function bullet(s, dir, speed, range, dmg, size, o = {}) {
   m.position.copy(s.pos).setY(1.5).addScaledVector(dir, 1.2); scene.add(m);
   bullets.push({ m, dir: dir.clone().setY(0).normalize(), speed, left: range, dmg, size, owner: s, hit: new Set(), ...o });
 }
+const bombs = [];
+function lob(s, dir, dist, dmg, radius) {
+  const d = clamp(dist || BRAWLERS[s.type].range, 3, BRAWLERS[s.type].range);
+  const to = s.pos.clone().addScaledVector(dir, d); to.x = clamp(to.x, -W / 2, W / 2); to.z = clamp(to.z, -L / 2, L / 2);
+  const m = new THREE.Mesh(new THREE.SphereGeometry(radius > 3 ? 0.7 : 0.45, 10, 8), new THREE.MeshLambertMaterial({ color: 0x212121, emissive: 0x440000 }));
+  m.position.copy(s.pos).setY(1.5); scene.add(m);
+  const mark = new THREE.Mesh(new THREE.RingGeometry(radius - 0.2, radius, 28), new THREE.MeshBasicMaterial({ color: s.team === 0 ? 0x4fc3f7 : 0xff5252, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+  mark.rotation.x = -Math.PI / 2; mark.position.copy(to).setY(0.06); scene.add(mark);
+  bombs.push({ m, mark, from: s.pos.clone(), to, t: 0, dur: 0.75, dmg, radius, owner: s });
+}
+function ringFx(pos, color, r) { const m = new THREE.Mesh(new THREE.RingGeometry(0.6, 1, 32), new THREE.MeshBasicMaterial({ color, transparent: true, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.copy(pos).setY(0.1); scene.add(m); fx.push({ m, t: 0, life: 0.45, upd: (k) => { m.scale.setScalar(0.5 + k * r); m.material.opacity = 1 - k; } }); }
 function spawnGem(pos, vel) {
   const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), new THREE.MeshLambertMaterial({ color: 0xe040fb, emissive: 0x6a1b9a }));
   m.position.copy(pos).setY(0.6); scene.add(m); gems.push({ m, vel: vel || V(rnd(-4, 4), 0, rnd(-4, 4)), age: 0 });
@@ -174,24 +189,25 @@ function ko(s, by) {
 }
 function respawn(s) { s.dead = false; s.hp = s.maxHp; s.ammo = 3; s.pos.set(rnd(-6, 6), 0, s.team === 0 ? L / 2 - 4 : -L / 2 + 4); s.body.g.visible = true; s.bar.visible = true; s.label.visible = true; s.gemLabel.visible = true; s.spawnShield = 2; }
 
-function tryShoot(s, dir, isSuper) {
+function tryShoot(s, dir, isSuper, dist) {
   if (s.dead) return false;
   const b = BRAWLERS[s.type];
-  if (isSuper) { if (s.superP < 1) return false; s.superP = 0; b.sup(s, dir); SFX.sup(); s.yaw = Math.atan2(dir.x, dir.z); s.lastShot = T; return true; }
+  if (isSuper) { if (s.superP < 1) return false; s.superP = 0; b.sup(s, dir, dist); SFX.sup(); s.yaw = Math.atan2(dir.x, dir.z); s.lastShot = T; return true; }
   if (s.ammo < 1 || T - s.lastShot < 0.3) return false;
-  s.ammo -= 1; s.lastShot = T; b.shoot(s, dir); if (s === me || s.pos.distanceTo(me.pos) < 18) SFX.shoot(); s.yaw = Math.atan2(dir.x, dir.z); return true;
+  s.ammo -= 1; s.lastShot = T; b.shoot(s, dir, dist); if (s === me || s.pos.distanceTo(me.pos) < 18) SFX.shoot(); s.yaw = Math.atan2(dir.x, dir.z); return true;
 }
 
 // ---------- input ----------
 const keys = {}; const mouse = { x: 0, y: 0 }; let started = false, over = false, mouseDown = false;
-addEventListener("keydown", (e) => { keys[e.code] = true; if (started && !over && e.code === "Space") { e.preventDefault(); tryShoot(me, aimDir(), true); } });
+addEventListener("keydown", (e) => { keys[e.code] = true; if (started && !over && e.code === "Space") { e.preventDefault(); tryShoot(me, aimDir(), true, aimDist()); } });
 addEventListener("keyup", (e) => { keys[e.code] = false; });
 addEventListener("mousemove", (e) => { mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; });
-cvs.addEventListener("mousedown", (e) => { if (!started || over) return; if (e.button === 0) { mouseDown = true; tryShoot(me, aimDir(), false); } if (e.button === 2) tryShoot(me, aimDir(), true); });
+cvs.addEventListener("mousedown", (e) => { if (!started || over) return; if (e.button === 0) { mouseDown = true; tryShoot(me, aimDir(), false, aimDist()); } if (e.button === 2) tryShoot(me, aimDir(), true, aimDist()); });
 addEventListener("mouseup", () => (mouseDown = false));
 cvs.addEventListener("contextmenu", (e) => e.preventDefault());
-$("super").onclick = () => started && !over && tryShoot(me, aimDir(), true);
+$("super").onclick = () => started && !over && tryShoot(me, aimDir(), true, aimDist());
 const ray = new THREE.Raycaster(), ground = new THREE.Plane(V(0, 1, 0), -1.5);
+function aimDist() { if (touch) { const t = nearestEnemy(me, 30); return t ? t.pos.distanceTo(me.pos) : 99; } ray.setFromCamera(mouse, camera); const p = V(); ray.ray.intersectPlane(ground, p); return p.setY(0).distanceTo(me.pos.clone().setY(0)); }
 function aimDir() {
   if (touch) { const t = nearestEnemy(me, 30); if (t) return t.pos.clone().sub(me.pos).setY(0).normalize(); return V(Math.sin(me.yaw), 0, Math.cos(me.yaw)); }
   ray.setFromCamera(mouse, camera); const p = V(); ray.ray.intersectPlane(ground, p); const d = p.sub(me.pos).setY(0); return d.lengthSq() ? d.normalize() : V(0, 0, -1);
@@ -205,8 +221,8 @@ if (touch) {
   addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
   const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
   addEventListener("touchend", end); addEventListener("touchcancel", end);
-  $("fireB").addEventListener("touchstart", (e) => { e.preventDefault(); if (started && !over) tryShoot(me, aimDir(), false); }, { passive: false });
-  $("super").addEventListener("touchstart", (e) => { e.preventDefault(); if (started && !over) tryShoot(me, aimDir(), true); }, { passive: false });
+  $("fireB").addEventListener("touchstart", (e) => { e.preventDefault(); if (started && !over) tryShoot(me, aimDir(), false, aimDist()); }, { passive: false });
+  $("super").addEventListener("touchstart", (e) => { e.preventDefault(); if (started && !over) tryShoot(me, aimDir(), true, aimDist()); }, { passive: false });
 }
 
 // ---------- AI ----------
@@ -230,11 +246,11 @@ function ai(s, dt) {
   const to = goal.clone().sub(s.pos).setY(0);
   const move = to.length() > 0.6 ? to.normalize() : V();
   // shoot
-  if (enemy && !blocked(s.pos, enemy.pos)) {
+  if (enemy && (b.lob || !blocked(s.pos, enemy.pos))) {
     const d = enemy.pos.distanceTo(s.pos);
     if (d < b.range + 1) {
       const lead = enemy.pos.clone().addScaledVector(enemy.vel, d / 40); const dir = lead.sub(s.pos).setY(0).normalize().applyAxisAngle(V(0, 1, 0), rnd(-0.08, 0.08));
-      if (s.superP >= 1 && d < b.range) tryShoot(s, dir, true); else if (s.ammo >= 1 && Math.random() < dt * 2.2) tryShoot(s, dir, false);
+      if (s.type === "Medic" && s.superP >= 1) { if (fighters.some((o) => o.team === s.team && !o.dead && o.hp < o.maxHp * 0.5 && o.pos.distanceTo(s.pos) < 8)) tryShoot(s, dir, true); } else if (s.superP >= 1 && d < b.range) tryShoot(s, dir, true, d); if (s.ammo >= 1 && Math.random() < dt * 2.2) tryShoot(s, dir, false, d);
     }
   }
   return move;
@@ -248,9 +264,9 @@ $("play").onclick = () => {
   const types = Object.keys(BRAWLERS), names = [...NAMES].sort(() => Math.random() - 0.5);
   me = addFighter(pick, 0, true, "You");
   me.pos.x = 0;
-  addFighter(types[Math.floor(Math.random() * 3)], 0, false, names[0]).pos.x = -6;
-  addFighter(types[Math.floor(Math.random() * 3)], 0, false, names[1]).pos.x = 6;
-  for (let i = 0; i < 3; i++) addFighter(types[i], 1, false, names[2 + i]).pos.x = (i - 1) * 6;
+  addFighter(types[Math.floor(Math.random() * types.length)], 0, false, names[0]).pos.x = -6;
+  addFighter(types[Math.floor(Math.random() * types.length)], 0, false, names[1]).pos.x = 6;
+  for (let i = 0; i < 3; i++) addFighter(types[Math.floor(Math.random() * types.length)], 1, false, names[2 + i]).pos.x = (i - 1) * 6;
   $("myname").textContent = `You · ${pick}`;
   started = true; show("Grab the gems!", 2);
 };
@@ -271,7 +287,7 @@ function tick() {
         move = V(); if (keys.KeyW || keys.ArrowUp) move.z -= 1; if (keys.KeyS || keys.ArrowDown) move.z += 1; if (keys.KeyA || keys.ArrowLeft) move.x -= 1; if (keys.KeyD || keys.ArrowRight) move.x += 1;
         if (joy.x || joy.y) move.set(joy.x, 0, joy.y);
         if (move.lengthSq() > 1) move.normalize();
-        if (mouseDown && !touch) tryShoot(me, aimDir(), false);
+        if (mouseDown && !touch) tryShoot(me, aimDir(), false, aimDist());
         if (!touch && move.lengthSq() === 0) s.yaw = Math.atan2(aimDir().x, aimDir().z);
       } else move = ai(s, dt);
       // tank charge
@@ -311,6 +327,15 @@ function tick() {
         if (o.pos.clone().setY(1.5).distanceTo(bl.m.position) < bl.size + 1.1) { bl.hit.add(o); hurt(o, bl.dmg, bl.owner.pos, { kb: bl.kb, by: bl.owner }); bl.owner.superP = Math.min(1, bl.owner.superP + bl.dmg / 6000); if (!bl.pierce) { done = true; break; } }
       }
       if (done) { scene.remove(bl.m); bullets.splice(bullets.indexOf(bl), 1); }
+    }
+    for (const bo of bombs.slice()) {
+      bo.t += dt; const k = Math.min(1, bo.t / bo.dur);
+      bo.m.position.lerpVectors(bo.from, bo.to, k); bo.m.position.y = 1.5 + Math.sin(k * Math.PI) * 7;
+      if (k >= 1) {
+        scene.remove(bo.m, bo.mark); bombs.splice(bombs.indexOf(bo), 1); ringFx(bo.to, 0xff7043, bo.radius); cubes(bo.to.clone().setY(1), 0xff7043, 12);
+        tone(90, 0.3, "sine", 0.08, -40);
+        for (const o of fighters) if (o.team !== bo.owner.team && !o.dead && o.spawnShield <= 0 && o.pos.distanceTo(bo.to) < bo.radius + 0.6) { hurt(o, bo.dmg, bo.to, { kb: 6, by: bo.owner }); bo.owner.superP = Math.min(1, bo.owner.superP + bo.dmg / 6000); }
+      }
     }
     for (const g of gems) { g.age += dt; g.m.position.addScaledVector(g.vel, dt); g.vel.multiplyScalar(Math.max(0, 1 - 3 * dt)); if (inWall(g.m.position.x, g.m.position.z)) { g.m.position.addScaledVector(g.vel, -dt); g.vel.multiplyScalar(-1); } g.m.position.x = clamp(g.m.position.x, -W / 2 + 1, W / 2 - 1); g.m.position.z = clamp(g.m.position.z, -L / 2 + 1, L / 2 - 1); g.m.rotation.y += dt * 3; g.m.position.y = 0.6 + Math.sin(T * 4 + g.age) * 0.15; }
     // score and the 15 second countdown

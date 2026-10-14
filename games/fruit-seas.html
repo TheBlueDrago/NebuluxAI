@@ -200,6 +200,9 @@ const ISLANDS = [
   { sea: 1, x: 1490, z: -150, r: 28, h: 4, name: "Ember Volcano", lvl: 42, n: 6, mob: "Lava Brute", top: "lava", hill: true, boss: { name: "Magma Titan", lvl: 50, hp: 9000, color: 0xbf360c } },
   { sea: 1, x: 1640, z: -250, r: 30, h: 4, name: "Ghost Reef", lvl: 50, n: 5, mob: "Ghost Sailor", top: "ghost", boss: { name: "Admiral Frostbeard", lvl: 60, hp: 12000, color: 0x9fd8ff } },
 ];
+// Islands are big: everything above is spread out and scaled up 2.6 times.
+const BIG = 2.6;
+for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG); isl.n = Math.round(isl.n * 1.8); }
 const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
   snow: [0xf4fbff, 0xe6f2fa, 0xffffff], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
@@ -243,7 +246,7 @@ const seaOf = (x) => (x > 800 ? 1 : 0);
 
 // decorations: blocky trees, rocks, houses, crystals
 for (const isl of ISLANDS) {
-  const count = isl.spawn ? 6 : 12;
+  const count = isl.spawn ? 26 : 50;
   for (let i = 0; i < count; i++) {
     const a = rnd(0, Math.PI * 2), d = rnd(isl.spawn ? 12 : 6, isl.r - 3);
     const x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d, y = groundAt(x, z);
@@ -278,7 +281,7 @@ function makeLabel(text, color = "#fff", w = 512) {
 for (const isl of ISLANDS) { const l = makeLabel(isl.name, "#ffd23a", 768); l.scale.set(18, 3, 1); l.position.set(isl.x, isl.h + 20, isl.z); scene.add(l); }
 
 // ocean that follows you
-const seaGeo = new THREE.PlaneGeometry(700, 700, 70, 70); seaGeo.rotateX(-Math.PI / 2);
+const seaGeo = new THREE.PlaneGeometry(1400, 1400, 90, 90); seaGeo.rotateX(-Math.PI / 2);
 const seaMat = new THREE.MeshLambertMaterial({ color: 0x1e90ff, transparent: true, opacity: 0.88 });
 const ocean = new THREE.Mesh(seaGeo, seaMat); ocean.receiveShadow = true; scene.add(ocean);
 const seaBase = seaGeo.attributes.position.array.slice();
@@ -604,6 +607,8 @@ function trySkill(k) {
 }
 function dash() {
   if (P.dashCd > 0 || P.boat) return;
+  if (P.en < 18) return show("Not enough energy", 0.6);
+  P.en -= 18;
   P.dashCd = 0.9; SFX.dash(); const d = moveDir(); const dir = d.lengthSq() ? d : V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
   // a long, quick dash: about 13 studs in a quarter of a second
   P.dashT = 0.25; P.dashVel = dir.clone().multiplyScalar(52); ring(P.pos, 0xffffff, 3.5, 0.3);
@@ -660,8 +665,9 @@ addEventListener("mousemove", (e) => {
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 6, 32); }, { passive: true });
 function jump() {
   if (P.boat) return;
-  if (P.onGround || inWater()) { P.vel.y = inWater() ? 9 : 14; P.jumps = 1; P.onGround = false; }
-  else if (P.jumps < 2) { P.vel.y = 13; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
+  // jumping uses energy (more for the jump in the air); with too little you can't
+  if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 9 : 14; P.jumps = 1; P.onGround = false; }
+  else if (P.jumps < 2) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 13; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
 }
 const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.boat;
 function equip(n) { if ((n === 2 && !S.sword) || (n === 3 && !S.fruit)) return; P.tool = P.tool === n ? 0 : n; drawHot(); }
@@ -823,7 +829,7 @@ function tick() {
   requestAnimationFrame(tick);
   const dt = Math.min(clock.getDelta(), 0.05); T += dt;
   const sea = SEAS[S.sea];
-  scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 120, 380); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
+  scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 160, 560); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
 
   // waves
   ocean.position.set(Math.round(P.pos.x / 10) * 10, 0, Math.round(P.pos.z / 10) * 10);
@@ -860,7 +866,7 @@ function tick() {
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
     // stay inside the sea
-    const sc = V(SEAS[S.sea].cx, 0, -100), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 360) { so.setLength(360); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
+    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 760) { so.setLength(760); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
 
     // dash-skill hits
     if (P.dashHit) { P.dashHit.t -= dt; for (const e of enemies.slice()) if (!P.dashHit.set.has(e) && e.pos.distanceTo(P.pos) < (e.boss ? 5 : 3.5)) { P.dashHit.set.add(e); hurtEnemy(e, P.dashHit.dmg, P.pos, P.dashHit.fxo); } cubes(P.pos.clone().setY(P.pos.y + 2), P.dashHit.color, 1, 2); if (P.dashHit.t <= 0) P.dashHit = null; }

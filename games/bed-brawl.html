@@ -250,6 +250,17 @@ function aimHit() {
 }
 function aimDir() { ray.setFromCamera(aimCenter() ? { x: 0, y: 0 } : mouse, camera); const d = ray.ray.direction.clone(); d.y = 0; return d.normalize(); }
 
+// the outline showing which block you're aiming at (white) or where a new block would go (blue)
+const ghost = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(C * 1.02, C * 1.02, C * 1.02)), new THREE.LineBasicMaterial({ color: 0xffffff }));
+ghost.visible = false; scene.add(ghost);
+function updateGhost() {
+  const h = !P.dead && aimHit(); if (!h) { ghost.visible = false; return; }
+  const b = h.object.userData.b, n = h.face.normal;
+  if (P.tool === 2) { const x = b.x + Math.round(n.x), y = b.y + Math.round(n.y), z = b.z + Math.round(n.z); if (solidAt(x, y, z) || y > 8) { ghost.visible = false; return; } ghost.position.set(x * C, y * C + C / 2, z * C); ghost.material.color.setHex(0x42a5f5); }
+  else { if (b.type !== "wool" && b.type !== "bed") { ghost.visible = false; return; } ghost.position.copy(h.object.position); ghost.material.color.setHex(0xffffff); }
+  ghost.visible = true;
+}
+
 // ---------- actions ----------
 function equip(n) { P.tool = n; drawHot(); }
 function primary() {
@@ -477,6 +488,7 @@ function tick() {
     goldGen.store = Math.min(12, goldGen.store + dt / 6);
     // bots buy better swords and hit harder over time
     for (const bot of bots) { botTick(bot, dt); bot.dmg = 6 + (T > 70 ? 3 : 0) + (T > 160 ? 4 : 0); }
+    updateGhost();
     const nearShop = P.pos.distanceTo(TEAMS[0].shop) < 7 && !P.dead;
     $("prompt").style.display = nearShop ? "block" : "none"; $("prompt").innerHTML = "<kbd>E</kbd> Open shop";
   }
