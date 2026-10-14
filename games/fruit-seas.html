@@ -32,6 +32,18 @@
   #prompt{position:fixed;left:50%;top:62%;transform:translateX(-50%);font-weight:900;font-size:16px;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:8px;display:none}
   #prompt kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px}
   #warn{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px #f00;opacity:0;transition:opacity .2s}
+  #touch{display:none}
+  body.touch #touch{display:block}
+  body.touch #skills{bottom:auto;top:12px;right:12px}
+  body.touch #hot{bottom:auto;top:12px;left:auto;right:200px;transform:none}
+  body.touch #side{flex-direction:row;top:172px;transform:none}
+  body.touch .sb{width:48px;height:48px;font-size:9px}
+  body.touch .sb em{font-size:16px}
+  body.touch .keys, body.touch #help{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:62px;height:62px;border-radius:50%;border:3px solid #000;background:rgba(30,30,30,.7);color:#fff;font:900 15px Segoe UI,system-ui,sans-serif;touch-action:none;display:grid;place-items:center}
+  .tb.big{width:84px;height:84px;font-size:17px;background:rgba(214,40,40,.85)}
   #lockdot{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px;border:2px solid #fff;border-radius:50%;display:none;pointer-events:none}
   .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.5);z-index:4}
   .box{width:min(560px,92vw);max-height:82vh;overflow:auto;background:#262626;border:4px solid #000;border-radius:14px;padding:18px;position:relative}
@@ -78,6 +90,16 @@
 <div id="prompt"></div>
 <div id="warn"></div>
 <div id="lockdot"></div>
+<div id="touch">
+  <div id="joy"><div id="knob"></div></div>
+  <button class="tb big" data-a="atk" style="right:28px;bottom:40px">Hit</button>
+  <button class="tb" data-a="jump" style="right:126px;bottom:28px">Jump</button>
+  <button class="tb" data-a="dash" style="right:40px;bottom:136px">Dash</button>
+  <button class="tb" data-a="Z" style="right:200px;bottom:44px">Z</button>
+  <button class="tb" data-a="X" style="right:134px;bottom:108px">X</button>
+  <button class="tb" data-a="C" style="right:72px;bottom:208px">C</button>
+  <button class="tb" data-a="E" style="right:204px;bottom:122px">E</button>
+</div>
 <div class="modal" id="modal"><div class="box"><button class="x" id="mx">X</button><h2 id="mt"></h2><div id="mb"></div></div></div>
 <div id="start"><div class="center">
   <h1>FRUIT SEAS</h1>
@@ -457,6 +479,7 @@ function hurtPlayer(d, from) {
 // Mouse aim: where the mouse points, at the player's height.
 const mouse = { x: 0, y: 0 }, ray = new THREE.Raycaster();
 function aimPoint() {
+  if (document.body.classList.contains("touch")) { const d = V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw)); return P.pos.clone().setY(P.pos.y + 1.5).addScaledVector(d, 15); } // phones aim where you face
   ray.setFromCamera(shiftLock ? { x: 0, y: 0 } : mouse, camera);
   const plane = new THREE.Plane(V(0, 1, 0), -(P.pos.y + 1.5)), p = V();
   if (!ray.ray.intersectPlane(plane, p) || p.distanceTo(P.pos) > 120) { const d = V(); camera.getWorldDirection(d); d.y = 0; p.copy(P.pos).addScaledVector(d.normalize(), 30); }
@@ -596,9 +619,32 @@ function jump() {
 }
 const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.boat;
 function equip(n) { if ((n === 2 && !S.sword) || (n === 3 && !S.fruit)) return; P.tool = P.tool === n ? 0 : n; drawHot(); }
+// ---- phone controls: a joystick on the left, buttons on the right, drag anywhere else to look ----
+const joy = { x: 0, y: 0, id: null };
+if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
+  document.body.classList.add("touch");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const endJoy = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", endJoy); addEventListener("touchcancel", endJoy);
+  document.querySelectorAll(".tb").forEach((b) => b.addEventListener("touchstart", (e) => {
+    e.preventDefault(); if (!started || dead || modalOpen) return;
+    const a = b.dataset.a;
+    if (a === "atk") basicAttack(); else if (a === "jump") jump(); else if (a === "dash") dash(); else if (a === "E") interact(); else trySkill(a);
+  }, { passive: false }));
+  // looking around: drag on the empty part of the screen
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (look === null) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.2, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endLook = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endLook); cvs.addEventListener("touchcancel", endLook);
+}
 function moveDir() {
   const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
   if (keys.KeyW) d.add(f); if (keys.KeyS) d.sub(f); if (keys.KeyD) d.add(r); if (keys.KeyA) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
   return d.lengthSq() ? d.normalize() : d;
 }
 function interact() {
