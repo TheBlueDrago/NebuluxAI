@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Gamepad2, LayoutTemplate, Mail, MessageCircle, BookOpen } from "lucide-react";
+import { Home, Gamepad2, LayoutTemplate, Mail, MessageCircle, BookOpen, Sparkles } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
 const LINKS = [
@@ -9,6 +9,7 @@ const LINKS = [
   { to: "/guides", label: "Guides", icon: BookOpen },
   { to: "/arcade", label: "Play games", icon: Gamepad2 },
   { to: "/templates", label: "Website templates", icon: LayoutTemplate },
+  { to: "/whats-new", label: "What's new", icon: Sparkles },
   { to: "/contact", label: "Contact us", icon: Mail },
 ];
 
@@ -33,7 +34,7 @@ export default function PageNotFound() {
         </p>
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
           {LINKS.map(({ to, label, icon: Icon }) => (
-            <Link key={to} to={to} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 hover:border-indigo-500/50 transition-colors">
+            <Link key={to} to={to} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 hover:border-indigo-500/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 transition-all">
               <Icon className="w-6 h-6 text-indigo-300 mx-auto" />
               <span className="mt-2 block text-sm text-white">{label}</span>
             </Link>
