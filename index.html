@@ -42,6 +42,20 @@
       })();
     </script>
     <div id="root"></div>
+    <script>
+      // Opening the app while an update is going live can load a page whose code files aren't
+      // there yet, which leaves a blank screen. If nothing has drawn after 8 seconds, reload
+      // once (not again within a minute, so a real outage doesn't loop).
+      setTimeout(function () {
+        try {
+          if (document.getElementById("root").children.length) return;
+          var last = +sessionStorage.getItem("nx-blank-reload") || 0;
+          if (Date.now() - last < 60000) return;
+          sessionStorage.setItem("nx-blank-reload", String(Date.now()));
+          location.reload();
+        } catch (e) {}
+      }, 8000);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
