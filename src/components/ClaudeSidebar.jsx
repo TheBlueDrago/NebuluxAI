@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { shareChat } from "@/lib/shareChat";
-import { Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2 } from "lucide-react";
+import { Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2, Download } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -11,6 +11,7 @@ import { useAiActivity } from "@/lib/aiActivity";
 import StatusMark from "@/components/chat/StatusMark";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import { askConfirm } from "@/lib/dialogs";
+import { downloadChat } from "@/lib/downloadChat";
 
 // The app's left sidebar, laid out like Claude's: logo and collapse button, New chat, the tools,
 // the recent chats, and the account at the bottom. Collapsed, it's a thin strip of icons.
@@ -176,13 +177,16 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                     <StatusMark status={activity[`chat:${c.id}`]?.status} />
                     {pins.includes(c.id) && <Pin className="w-3 h-3 mr-1 shrink-0 text-[var(--cl-accent)]" />}
                     {c.kind === "code" && <Code2 className="w-3.5 h-3.5 mr-1.5 shrink-0 text-[var(--cl-accent)]" aria-label="Code chat" />}
-                    <span className="truncate flex-1 pr-1 group-hover:pr-24">{c.title}</span>
+                    <span className="truncate flex-1 pr-1 group-hover:pr-28">{c.title}</span>
                     <span className="absolute right-1 hidden group-hover:flex items-center gap-0.5 bg-[var(--cl-hover)] rounded-md">
                       <button onClick={(e) => (e.stopPropagation(), togglePin(c.id))} className="p-1 rounded hover:text-[var(--cl-accent)]" title={pins.includes(c.id) ? "Unpin" : "Pin"} aria-label="Pin chat">
                         {pins.includes(c.id) ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                       </button>
                       <button onClick={(e) => (e.stopPropagation(), shareChat({ kind: "chat", title: c.title, messages: c.messages }))} className="p-1 rounded hover:text-[var(--cl-text)]" title="Share" aria-label="Share chat">
                         <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={(e) => (e.stopPropagation(), downloadChat(c.title, c.messages))} className="p-1 rounded hover:text-[var(--cl-text)]" title="Download" aria-label="Download chat">
+                        <Download className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={(e) => (e.stopPropagation(), setEditingId(c.id), setEditValue(c.title))} className="p-1 rounded hover:text-[var(--cl-text)]" title="Rename" aria-label="Rename chat">
                         <Pen className="w-3.5 h-3.5" />
