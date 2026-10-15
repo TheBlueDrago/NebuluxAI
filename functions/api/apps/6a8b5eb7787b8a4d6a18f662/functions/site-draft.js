@@ -43,7 +43,7 @@ export async function onRequestPost(context) {
       if (prev && prev.html === draft.html && prev.siteName === draft.siteName && JSON.stringify(prev.userTurns) === JSON.stringify(draft.userTurns)) {
         return json({ ok: true, unchanged: true });
       }
-      if (!(await allow(`sitedraft:${user.id}`, 120, 3600))) return json({ error: TOO_MANY }, 429);
+      if (!(await allow(`sitedraft:${user.id}`, 30, 3600)) || !(await allow(`sitedraft-day:${user.id}`, 150, 86400))) return json({ error: TOO_MANY }, 429);
       await kv.put(key, JSON.stringify(draft));
       return json({ ok: true });
     }

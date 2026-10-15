@@ -56,7 +56,7 @@ export async function onRequestPost(context) {
       // Skip identical saves: KV's free tier allows 1,000 writes a day.
       const serialized = JSON.stringify(draft);
       if ((await kv.get(key)) === serialized) return json({ ok: true, unchanged: true });
-      if (!(await allow(`draft:${user.id}`, 120, 3600))) return json({ error: TOO_MANY }, 429);
+      if (!(await allow(`draft:${user.id}`, 30, 3600)) || !(await allow(`draft-day:${user.id}`, 150, 86400))) return json({ error: TOO_MANY }, 429);
       await kv.put(key, serialized);
       return json({ ok: true });
     }

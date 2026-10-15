@@ -11,6 +11,14 @@ import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 
 const SIZE = 10;
+// Only these games' boards exist, so nobody can make up names to fill KV.
+const BOARDS = {
+  "sky-obby": ["stage", "time"],
+  "fruit-seas": ["level"],
+  "bed-brawl": ["wins"],
+  "brawl-blitz": ["wins"],
+  "storm-royale": ["wins"],
+};
 const MAX_SCORE = 1e9;
 
 export function addScore(list, entry, low) {
@@ -33,7 +41,7 @@ export async function onRequestPost({ request, env }) {
     const body = await request.json().catch(() => ({}));
     const game = String(body.name || "").toLowerCase();
     const board = String(body.board || "score").toLowerCase();
-    if (!/^[a-z0-9-]{1,63}$/.test(game) || !/^[a-z0-9-]{1,24}$/.test(board)) return json({ error: "Which leaderboard?" }, 400);
+    if (!(BOARDS[game] || []).includes(board)) return json({ error: "Which leaderboard?", top: [] }, 404);
     const key = `board:${game}:${board}`;
     const low = board.endsWith("time");
     const list = (await kv.get(key, "json")) || [];
@@ -42,12 +50,13 @@ export async function onRequestPost({ request, env }) {
     if (body.action === "score") {
       const user = await currentUser(request);
       if (!user) return json({ error: "Sign in to get on the leaderboard.", top: show(list) }, 401);
-      if (!(await allow(`board:${user.id}`, 30, 60))) return json({ error: TOO_MANY, top: show(list) }, 429);
+      if (!(await allow(`board:${user.id}`, 10, 60))) return json({ error: TOO_MANY, top: show(list) }, 429);
       const score = Math.round(Number(body.score) * 100) / 100;
       if (!Number.isFinite(score) || score < 0 || score > MAX_SCORE) return json({ error: "That score doesn't look right.", top: show(list) }, 400);
       const name = String(user.full_name || "").replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 24) || "Player";
       const next = addScore(list, { uid: user.id, name, score }, low);
-      if (next) await kv.put(key, JSON.stringify(next));
+      // At most 40 board changes a day per player (KV writes are shared by the whole site).
+      if (next && (await allow(`board-day:${user.id}`, 40, 86400))) await kv.put(key, JSON.stringify(next));
       return json({ top: show(next || list) });
     }
     return json({ top: show(list) });
