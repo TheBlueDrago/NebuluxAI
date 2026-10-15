@@ -42,6 +42,44 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
   const nameRef = useRef(null);
   nameRef.current = saveName || null;
 
+  // Saves are stored in Cloudflare KV, whose free plan allows only 1,000 writes a day for the
+  // whole site, and games save often (some every few seconds). So a save is sent at most once
+  // every minute, only when it changed, and right away when the player leaves the page.
+  const pending = useRef(null); // { name, data } waiting to be sent
+  const lastSent = useRef("");
+  const saveTimer = useRef(0);
+  const flushSave = () => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = 0;
+    const p = pending.current;
+    pending.current = null;
+    if (!p) return;
+    const json = JSON.stringify(p.data);
+    if (json === lastSent.current) return;
+    lastSent.current = json;
+    base44.functions.invoke("game-save", { action: "set", name: p.name, data: p.data }).catch(() => {});
+  };
+  const flushRef = useRef(flushSave);
+  flushRef.current = flushSave;
+  const queueSave = (name, data) => {
+    pending.current = { name, data };
+    if (!saveTimer.current) saveTimer.current = setTimeout(() => flushRef.current(), 60000);
+  };
+  useEffect(() => {
+    const away = () => document.visibilityState === "hidden" && flushRef.current();
+    document.addEventListener("visibilitychange", away);
+    window.addEventListener("pagehide", away);
+    return () => {
+      document.removeEventListener("visibilitychange", away);
+      window.removeEventListener("pagehide", away);
+      flushRef.current();
+    };
+  }, []);
+  // The save loaded from the account counts as already sent.
+  useEffect(() => {
+    if (save) lastSent.current = JSON.stringify(save);
+  }, [save]);
+
   useEffect(() => {
     retried.current = false;
     setStuck(false);
@@ -52,7 +90,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
       const d = e.data;
       if (!d || !ref.current || e.source !== ref.current.contentWindow) return;
       if (d.type === "nebulux-save") {
-        if (saveRef.current) base44.functions.invoke("game-save", { action: "set", name: saveRef.current, data: d.data }).catch(() => {});
+        if (saveRef.current) queueSave(saveRef.current, d.data);
         return;
       }
       // Leaderboards (functions/.../game-board.js): the answer goes back to the game by id.

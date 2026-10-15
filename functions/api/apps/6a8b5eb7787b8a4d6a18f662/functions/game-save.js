@@ -42,7 +42,9 @@ export async function onRequestPost(context) {
       if (!(await allow(`gamesave:${user.id}`, 120, 60))) return json({ error: TOO_MANY }, 429);
       const data = cleanSave(body.data);
       if (!data) return json({ error: "That save is too big (512 KB at most)." }, 413);
-      await kv.put(key, JSON.stringify(data));
+      // KV writes are scarce on the free plan (1,000 a day); a read is cheap, so skip unchanged saves.
+      const json = JSON.stringify(data);
+      if ((await kv.get(key)) !== json) await kv.put(key, json);
       return json({ ok: true });
     }
     if (body.action === "delete") {
