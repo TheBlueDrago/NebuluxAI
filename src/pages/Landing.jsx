@@ -376,8 +376,8 @@ export default function Landing() {
               to={`/play/${g.name}`}
               className="group flex items-center gap-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 hover:border-fuchsia-500/50 hover:-translate-y-0.5 transition-all"
             >
-              <span className={`shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${g.color} flex items-center justify-center`}>
-                <Gamepad2 className="w-7 h-7 text-white" />
+              <span className={`shrink-0 w-16 h-14 rounded-xl overflow-hidden bg-gradient-to-br ${g.color} flex items-center justify-center`}>
+                {g.tag ? <img src={`/game-thumbs/${g.name}.jpg`} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Gamepad2 className="w-7 h-7 text-white" />}
               </span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-2 font-semibold text-white">
