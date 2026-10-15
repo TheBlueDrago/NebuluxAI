@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { shareChat } from "@/lib/shareChat";
-import { Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2, Download } from "lucide-react";
+import { Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2, Download, MoreHorizontal } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -45,6 +45,15 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  // Touch screens can't hover, so each chat gets a ⋯ button that shows its actions.
+  const [actionsFor, setActionsFor] = useState(null);
+  useEffect(() => {
+    if (!actionsFor) return;
+    // Tapping anywhere else (or one of the actions) puts the ⋯ back.
+    const close = () => setTimeout(() => setActionsFor(null), 0);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [actionsFor]);
   const [editValue, setEditValue] = useState("");
   const [pins, setPins] = useState(pinnedIds);
   const [menu, setMenu] = useState(false);
@@ -177,8 +186,13 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
                     <StatusMark status={activity[`chat:${c.id}`]?.status} />
                     {pins.includes(c.id) && <Pin className="w-3 h-3 mr-1 shrink-0 text-[var(--cl-accent)]" />}
                     {c.kind === "code" && <Code2 className="w-3.5 h-3.5 mr-1.5 shrink-0 text-[var(--cl-accent)]" aria-label="Code chat" />}
-                    <span className="truncate flex-1 pr-1 group-hover:pr-28">{c.title}</span>
-                    <span className="absolute right-1 hidden group-hover:flex items-center gap-0.5 bg-[var(--cl-hover)] rounded-md">
+                    <span className={`truncate flex-1 pr-1 group-hover:pr-28 ${actionsFor === c.id ? "pr-28" : "[@media(hover:none)]:pr-7"}`}>{c.title}</span>
+                    {actionsFor !== c.id && (
+                      <button onClick={(e) => (e.stopPropagation(), setActionsFor(c.id))} className="absolute right-1 hidden [@media(hover:none)]:block p-1 rounded text-[var(--cl-faint)]" aria-label="Chat actions">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    )}
+                    <span className={`absolute right-1 items-center gap-0.5 bg-[var(--cl-hover)] rounded-md ${actionsFor === c.id ? "flex" : "hidden [@media(hover:hover)]:group-hover:flex"}`}>
                       <button onClick={(e) => (e.stopPropagation(), togglePin(c.id))} className="p-1 rounded hover:text-[var(--cl-accent)]" title={pins.includes(c.id) ? "Unpin" : "Pin"} aria-label="Pin chat">
                         {pins.includes(c.id) ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                       </button>
