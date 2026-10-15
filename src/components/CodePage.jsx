@@ -3,7 +3,8 @@ import { shareChat } from "@/lib/shareChat";
 import { askConfirm, askText, showNotice } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReportReply from "@/components/chat/ReportReply";
-import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximize2, Minimize2, Share2, Gamepad2 } from "lucide-react";
+import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximize2, Minimize2, Share2, Gamepad2, Download } from "lucide-react";
+import { downloadChat } from "@/lib/downloadChat";
 import { loadDesignerHtmlIntoProject, genProjectId } from "@/lib/designerStore";
 import { GAME_DESIGNER_STORE_KEY } from "@/lib/gameDesignerStore";
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
@@ -606,6 +607,7 @@ export default function CodePage({ userInitial }) {
         <p className="sr-only" role="status" aria-live="polite">{announce}</p>
         {/* top bar: the two panels */}
         <div className="h-12 shrink-0 flex items-center justify-end gap-1 px-3 pl-14 sm:pl-3">
+          {messages.length > 0 && <PanelButton icon={Download} label="Download" on={false} onClick={() => downloadChat(String(messages.find((m) => m.role === "user")?.content || "Nebulux Code chat").slice(0, 80), messages)} />}
           {messages.length > 0 && <PanelButton icon={Share2} label="Share" on={false} onClick={() => shareChat({ kind: "code", title: String(messages.find((m) => m.role === "user")?.content || "Nebulux Code chat").slice(0, 80), messages })} />}
           {messages.length > 0 && <PanelButton icon={Plus} label="New chat" on={false} onClick={newCodeChat} />}
           {!isPhone() && <PanelButton icon={Globe} label="Browser" on={panel === "browser"} onClick={() => setPanel((p) => (p === "browser" ? "" : "browser"))} />}
