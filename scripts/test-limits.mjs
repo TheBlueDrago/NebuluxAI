@@ -15,7 +15,8 @@ assert(app.siteLimit === siteLimit && app.gameLimit === gameLimit, "the app show
 const now = new Date("2026-09-24T12:00:00Z");
 const site = (n) => ({ name: n, created_date: "2026-01-01T00:00:00" });
 assert(limitError("site", "free", [site("a"), site("b")], now) === "" && /allows 3 websites/.test(limitError("site", "free", [site("a"), site("b"), site("c")], now)), "Free keeps up to 3 websites");
-assert(limitError("site", "pro", [site("a"), site("b")], now) === "" && /3 websites/.test(limitError("site", "pro", [site("a"), site("b"), site("c")], now)), "Pro keeps 3");
+const sites = (n) => Array.from({ length: n }, (_, i) => site("s" + i));
+assert(limitError("site", "pro", sites(9), now) === "" && /10 websites/.test(limitError("site", "pro", sites(10), now)), "Pro keeps 10");
 const game = (d) => ({ name: "g" + d, created_date: d });
 assert(limitError("game", "free", [game("2026-08-30T10:00:00")], now) === "", "last month's game doesn't count this month");
 assert(limitError("game", "free", Array.from({ length: 50 }, (_, i) => game(`2026-09-${String((i % 20) + 1).padStart(2, "0")}T10:00:00`)), now) === "", "games: no limit on Free");

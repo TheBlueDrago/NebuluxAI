@@ -49,7 +49,7 @@ for (const id of ["pro", "team"]) {
   const desc = (checkout.match(new RegExp(`${id}: \\{[\\s\\S]*?description: "([^"]+)"`)) || [])[1] || "";
   assert(desc.includes(`${t.ai} Nebulux AI`) && desc.includes(`${t.aiCode} Code`) && desc.includes(`${t.galaxy5} Galaxy`) && desc.includes(`${t.space5} Space`), `checkout's ${id} description matches its monthly credits`);
   const pub = PUBLIC_PLANS.find((x) => x.id === id).features.join(" | ");
-  assert(pub.includes(`${t.ai} Nebulux AI credits`) && pub.includes(`${t.aiCode} each of Galaxy, Space and Nebula`) && t.aiCode === t.galaxy5 && t.galaxy5 === t.space5, `public pricing lists ${id}'s credits`);
+  assert(pub.includes(`${t.ai} Nebulux AI credits`) && pub.includes(`${t.aiCode} Galaxy, ${t.galaxy5} Space and ${t.space5} Nebula credits`), `public pricing lists ${id}'s credits`);
 }
 const pro = card("Plan2Card");
 const team = card("TeamCard");

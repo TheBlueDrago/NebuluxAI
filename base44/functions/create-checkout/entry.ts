@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
         subscriptionInfo: {
           subscriptionSettings: { frequency: "MONTH" },
           title: "Pro Plan",
-          description: "100 Nebulux AI, 50 Code, 50 Galaxy 5, 50 Space 5 credits, billed monthly",
+          description: "300 Nebulux AI, 150 Code, 100 Galaxy 5, 75 Space 5 credits, billed monthly",
         },
       },
       team: {
@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
         subscriptionInfo: {
           subscriptionSettings: { frequency: "MONTH" },
           title: "Team Plan",
-          description: "150 Nebulux AI, 100 Code, 100 Galaxy 5, 100 Space 5 shared credits, and up to 2 members (3 with you), billed monthly",
+          description: "500 Nebulux AI, 250 Code, 150 Galaxy 5, 100 Space 5 shared credits, and up to 2 members (3 with you), billed monthly",
         },
       },
     };

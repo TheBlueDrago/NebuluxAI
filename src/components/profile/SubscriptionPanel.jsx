@@ -46,7 +46,7 @@ export default function SubscriptionPanel({ onBack, onManagePeople }) {
   else if (source === "grant") status = endsAt ? `Given to you by Nebulux AI until ${fmtDate(endsAt)}.` : "Given to you by Nebulux AI, with no end date.";
   else if (source === "member") status = credits.plan === "enterprise" ? "Through your organization's Enterprise plan." : "Through your team's plan.";
   else if (source === "admin") status = "Admin account: every feature, free.";
-  else status = "You're on the Free plan: 50 Nebulux AI credits every month.";
+  else status = "You're on the Free plan: 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits every month.";
 
   return (
     <div className="p-6">

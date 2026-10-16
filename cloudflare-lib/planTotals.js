@@ -10,8 +10,8 @@ export const TIER_NAMES = { ai: "Nebulux AI", aiCode: "Galaxy", galaxy5: "Space"
 // Secret can no longer be bought; accounts that already have it keep it.
 export const PLAN_TOTALS = {
   free: { ai: 100, aiCode: 75, galaxy5: 50, space5: 25 }, // 2026-09-27: plans are "coming soon", Free is generous
-  pro: { ai: 100, aiCode: 50, galaxy5: 50, space5: 50 },
-  team: { ai: 150, aiCode: 100, galaxy5: 100, space5: 100 },
+  pro: { ai: 300, aiCode: 150, galaxy5: 100, space5: 75 }, // 2026-10-16: Pro and Team clearly above Free
+  team: { ai: 500, aiCode: 250, galaxy5: 150, space5: 100 },
   secret: { ai: 150, aiCode: 100, galaxy5: 100, space5: 100 },
   enterprise: { ai: 100, aiCode: 75, galaxy5: 50, space5: 25 },
   admin: { ai: 150, aiCode: 100, galaxy5: 100, space5: 100 },

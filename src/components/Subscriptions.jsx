@@ -58,7 +58,7 @@ function PriceTag({ amount, pct }) {
 }
 
 function Plan2Card({ onPro, pct }) {
-  const features = ["4 AI's (incl. Space and Nebula in Website Designer)", "50 Galaxy credits", "100 Nebulux AI credits", "50 Space credits", "50 Nebula credits", "Two-way GitHub sync allowed", "Download a ZIP of your website or game in the designers"];
+  const features = ["4 AI's (incl. Space and Nebula in Website Designer)", "150 Galaxy credits", "300 Nebulux AI credits", "100 Space credits", "75 Nebula credits", "Two-way GitHub sync allowed", "Download a ZIP of your website or game in the designers"];
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-emerald-500/60 rounded-3xl p-6 shadow-2xl shadow-emerald-500/10 flex flex-col">
       <div className="flex items-center justify-between">
@@ -95,9 +95,9 @@ function Plan2Card({ onPro, pct }) {
 function TeamCard({ onTeam, pct }) {
   const features = [
     "4 AI's (incl. Space and Nebula in Website Designer)",
-    "100 Galaxy credits",
-    "150 Nebulux AI credits",
-    "100 Space credits",
+    "250 Galaxy credits",
+    "500 Nebulux AI credits",
+    "150 Space credits",
     "100 Nebula credits",
     "Add up to 2 people — everyone shares the credits",
     "Two-way GitHub sync allowed",

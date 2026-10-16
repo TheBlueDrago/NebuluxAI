@@ -4,7 +4,7 @@
 // anyone can call those directly, so the app's own check isn't enough.
 // Games: no limit on any plan (owner, 2026-09-27).
 const GAME_LIMITS = { free: Infinity, pro: Infinity, team: Infinity, secret: Infinity, enterprise: Infinity, admin: Infinity };
-const SITE_LIMITS = { free: 3, pro: 3, team: 3, secret: 5, enterprise: 10, admin: 10 };
+const SITE_LIMITS = { free: 3, pro: 10, team: 10, secret: 5, enterprise: 10, admin: 10 };
 
 export const gameLimit = (plan) => GAME_LIMITS[plan] ?? Infinity;
 export const siteLimit = (plan) => SITE_LIMITS[plan] ?? 3;
