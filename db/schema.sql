@@ -32,3 +32,7 @@ CREATE TABLE IF NOT EXISTS codes (
   tries INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (email, purpose)
 );
+
+-- Busy key/value records kept here instead of KV (cloudflare-lib/hybridkv.js): credits used,
+-- bonus credits, game saves and leaderboards. Also created on first use.
+CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL, at INTEGER);

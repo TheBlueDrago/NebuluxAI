@@ -4,6 +4,7 @@
 // the support email's AI reply and the router looking up published pages.
 import { useOwnDb } from "../cloudflare-lib/published.js";
 import { logError } from "../cloudflare-lib/errorlog.js";
+import { hybridKV } from "../cloudflare-lib/hybridkv.js";
 
 const ALLOWED = [/^\/api\/support-reply$/, /^\/api\/apps\/[^/]+\/functions\/get-(site|game)-html$/];
 const MAINTENANCE = true;
@@ -13,6 +14,12 @@ const DOWN_PAGE =
 
 export async function onRequest(context) {
   useOwnDb(context.env && context.env.DB);
+  // Busy records (credits used, saves, leaderboards) go to D1 instead of KV (cloudflare-lib/hybridkv.js).
+  try {
+    if (context.env && context.env.DB && context.env.PUBLISHED_HTML) context.env.PUBLISHED_HTML = hybridKV(context.env.PUBLISHED_HTML, context.env.DB);
+  } catch {
+    /* bindings can't be swapped here: KV is used as before */
+  }
   const url = new URL(context.request.url);
   if (MAINTENANCE && url.hostname.endsWith(".pages.dev") && !ALLOWED.some((r) => r.test(url.pathname))) {
     return new Response(DOWN_PAGE, { status: 503, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
