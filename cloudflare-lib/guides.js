@@ -2,7 +2,7 @@
 // (src/pages/Guide.jsx) and the Cloudflare function that serves each guide with its text
 // already in the page for search engines (functions/guides/[slug].js) use the same words.
 // Keep every claim true to the product: limits and prices here must match the app.
-export const GUIDES_UPDATED = "2026-10-06";
+export const GUIDES_UPDATED = "2026-10-15";
 
 export const GUIDES = [
   {
@@ -351,6 +351,12 @@ export const GUIDES = [
         heading: "Publish and share",
         paragraphs: [
           "Press Publish and your game gets its own link, like nebuluxai.com/play/yourgame. Anyone can play it straight in their browser with no download and no account. You can publish as many games as you like on every plan.",
+        ],
+      },
+      {
+        heading: "Go 3D",
+        paragraphs: [
+          "Games don't have to be flat. Ask for a 3D game and say where the camera goes, for example: \"A 3D obby seen from behind the player, with jumping platforms, checkpoints and a finish at the top.\" Then play Sky Obby, Fruit Seas or Bed Brawl in the Arcade to see what 3D games made with Nebulux AI can look like.",
         ],
       },
       {
