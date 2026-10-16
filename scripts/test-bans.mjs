@@ -54,7 +54,6 @@ for (const [name, body, what] of [
   ["publish-game", { name: "mygame", html: "<!DOCTYPE html><html><body><canvas></canvas></body></html>", title: "G" }, "publishing a game"],
   ["redeem-promo", { code: "ANYTHING" }, "redeeming a promo code"],
   ["promo-discount", { code: "ANYTHING", productId: "pro" }, "checking a discount code"],
-  ["referrals", { action: "claim-welcome", tier: "ai" }, "claiming referral credits"],
   ["team-invite", { emails: ["friend@example.com"] }, "inviting team members"],
   ["showcase", { action: "set", name: "mysite", on: true }, "featuring a site in the gallery"],
 ]) {

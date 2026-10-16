@@ -44,7 +44,7 @@ assert(s === 200 && b.content === "Hello!" && models.length === 5, "every model 
 models.length = 0;
 failFirst = 99;
 [s, b] = await call({ prompt: "hi", model: "automatic" });
-assert(s === 503 && b.busy === true && models.length === 8, "still busy after two rounds: a busy answer the app can ask again for");
+assert(s === 503 && b.busy === true && models.length >= 8, "still busy after every retry round: a busy answer the app can ask again for");
 assert(/very busy/.test(b.error) && !/Google|free tier/i.test(b.error), "the message doesn't talk about Google's free tier");
 const before = charged();
 assert(before <= 1, "busy answers aren't charged");

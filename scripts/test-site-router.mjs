@@ -93,7 +93,8 @@ assert(res.status === 404, "deeper addresses aren't sites");
   r = await worker.fetch(new Request("https://nebuluxai.com/__owner/wrong"), env);
   assert(r.status === 503, "a wrong unlock link doesn't get in");
   r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123"), env);
-  assert(r.status === 302 && /nx_owner=owner-secret-123/.test(r.headers.get("set-cookie") || ""), "the owner's link unlocks this browser");
+  // The owner's link alone doesn't unlock anything: it asks for the owner password first.
+  assert(r.status !== 302 && !/nx_owner=/.test(r.headers.get("set-cookie") || "") && /password/i.test(await r.text()), "the owner's link asks for the owner password before unlocking");
   r = await worker.fetch(new Request("https://nova.nebuluxai.com/", { headers: { cookie: "nx_owner=owner-secret-123" } }), env);
   assert(r.status === 200, "the owner gets in");
 }

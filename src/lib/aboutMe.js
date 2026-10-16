@@ -1,4 +1,4 @@
-import { languageNote } from "@/lib/prefs";
+import { languageNote } from "./prefs.js";
 // "About you": a few words people write once so the AI tailors every answer (grade, interests,
 // how they like answers). Kept only in this browser, per account; sent with each message like
 // the message itself (the Privacy Policy covers what goes to the AI).
