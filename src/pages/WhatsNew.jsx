@@ -10,6 +10,9 @@ const UPDATES = [
     date: "October 2026",
     items: [
       { icon: Gamepad2, text: "Five new 3D games on Nebulux Games, all playable on phones and computers: Fruit Seas (sail between islands, find fruits with powers, quests and bosses), Sky Obby (50 hard stages and a glass bridge), Bed Brawl (protect your bed, build bridges, break the others'), Brawl Blitz (3 vs 3 gem grab with five fighters) and Storm Royale (drop in, loot, and be the last one standing)." },
+      { icon: Gamepad2, text: "Leaderboards in the new games: Highest stage and Fastest finish in Sky Obby, Top levels next to the Sea Traveler in Fruit Seas, and Most wins in the Bed Brawl, Brawl Blitz and Storm Royale lobbies. Tap the trophy on any game page to see them without playing." },
+      { icon: Globe, text: "The Website Designer has 6 ideas to start from (bakery, portfolio, app landing page and more) and 9 one-tap improvements, including smooth animations, dark mode, an FAQ and reviews." },
+      { icon: BookOpen, text: "Download any chat or Nebulux Code chat as a file you can open anywhere. On phones, tap ⋯ next to a chat to pin, share, download, rename or delete it." },
       { icon: Sparkles, text: "Send a message while the AI is still answering: say \"do this first\" and it switches right away, then finishes what it was doing; say \"after you finish\" and it waits its turn." },
       { icon: Globe, text: "Share a chat with a proper share card: copy the link, or send it straight to WhatsApp, X, Reddit or email. Whoever opens it can continue the chat in their own account." },
       { icon: Zap, text: "Fewer errors when the AI is busy: it keeps trying for longer instead of giving up, and the message tells you honestly what happened." },
