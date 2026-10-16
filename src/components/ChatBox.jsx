@@ -483,7 +483,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
           )}
 
           {messages.map((m, i) => (
-            <div key={i} title={m.at ? new Date(m.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : undefined} className={`flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={i} title={m.at ? new Date(m.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : undefined} className={`group flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={
                   claude
@@ -549,6 +549,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                   </>
                 )}
               </div>
+              {m.role === "user" && (
+                <span className="order-first self-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
+                  <CopyButton getText={() => m.content} label="Copy message" className="p-1 rounded-md text-slate-500 hover:text-slate-200" />
+                </span>
+              )}
               {m.role === "user" && !loading && (i === messages.length - 1 || i === messages.length - 2) && (
                 <button
                   type="button"
