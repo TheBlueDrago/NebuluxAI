@@ -5,7 +5,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 
 // Public /terms and /privacy pages, linked from sign-up, log-in, billing and the
 // report page. Plain language on purpose; keep them in step with what the app does.
-const UPDATED = "October 7, 2026";
+const UPDATED = "October 16, 2026";
 // Optional: a support address to show instead of the contact form (/contact).
 const CONTACT_EMAIL = "";
 
@@ -202,7 +202,7 @@ export function Privacy() {
         <li><strong>Error reports:</strong> if something crashes in your browser, we get the error message, the page's address, your browser type and your account ID, never what you typed.</li>
         <li><strong>API and Playground:</strong> requests made with an API key or in the Playground pass through our servers to Google to get an answer. We keep which key was used, when, which AI and what it cost, not the text of the request or the answer.</li>
         <li><strong>Reports:</strong> when you report a site we keep your reason and note, plus a scrambled (hashed) form of your IP address so the same person can't report one page many times.</li>
-        <li><strong>Game progress:</strong> if you're signed in, what a game saves (levels, scores, unlocks) is kept with your account so you can carry on later, until you delete it on the game's page or delete your account.</li>
+        <li><strong>Game progress:</strong> if you're signed in, what a game saves (levels, scores, unlocks) is kept with your account so you can carry on later, until you delete it on the game's page or delete your account. Some games have leaderboards: when you play one signed in, your best score is shown on it with your username (not your email) for everyone to see.</li>
         <li><strong>Usage analytics:</strong> Cloudflare Web Analytics counts page visits (which pages are opened, how long they take to load, and which website sent you here) to help us see what's working. It uses no cookies, doesn't track you across other websites, and isn't used for ads.</li>
         <li><strong>Technical data:</strong> like any website, our hosting provider handles IP addresses and basic request logs to deliver pages and block attacks.</li>
       </ul>
@@ -252,7 +252,7 @@ export function Privacy() {
 
       <h2>What's public</h2>
       <p>
-        Sites and games you publish are public, and so is anything you add to the gallery. Your chats and unpublished
+        Sites and games you publish are public, and so is anything you add to the gallery, and your username and best score on a game's leaderboard. Your chats and unpublished
         drafts are not shared with other users.
       </p>
 
