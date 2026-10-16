@@ -10,6 +10,9 @@ const UPDATES = [
     date: "October 2026",
     items: [
       { icon: Gamepad2, text: "Five new 3D games on Nebulux Games, all playable on phones and computers: Fruit Seas (sail between islands, find fruits with powers, quests and bosses), Sky Obby (50 hard stages and a glass bridge), Bed Brawl (protect your bed, build bridges, break the others'), Brawl Blitz (3 vs 3 gem grab with five fighters) and Storm Royale (drop in, loot, and be the last one standing)." },
+      { icon: Gamepad2, text: "Remix the 3D games: on the game page, press Remix to copy Fruit Seas, Sky Obby, Bed Brawl, Brawl Blitz or Storm Royale into the Games Designer and change it by chatting." },
+      { icon: Gift, text: "Pro and Team give much more when they open: Pro 300 Nebulux AI, 150 Galaxy, 100 Space and 75 Nebula credits a month and 10 websites; Team 500, 250, 150 and 100 and 10 websites. Games, ZIP downloads and GitHub are free on every plan." },
+      { icon: Zap, text: "Press ? in the chat to see every keyboard shortcut." },
       { icon: Gamepad2, text: "Leaderboards in the new games: Highest stage and Fastest finish in Sky Obby, Top levels next to the Sea Traveler in Fruit Seas, and Most wins in the Bed Brawl, Brawl Blitz and Storm Royale lobbies. Tap the trophy on any game page to see them without playing." },
       { icon: Globe, text: "The Website Designer has 6 ideas to start from (bakery, portfolio, app landing page and more) and 9 one-tap improvements, including smooth animations, dark mode, an FAQ and reviews." },
       { icon: BookOpen, text: "Download any chat or Nebulux Code chat as a file you can open anywhere. On phones, tap ⋯ next to a chat to pin, share, download, rename or delete it." },
