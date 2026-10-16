@@ -143,7 +143,7 @@ function EnterpriseCard({ onEnterprise }) {
     "As many seats as you need",
     "Everyone shares one pool of credits: each seat adds 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula a month",
     "All 4 AI's, ZIP download and two-way GitHub sync",
-    "10 published websites and 10 new games a month",
+    "10 published websites and unlimited games",
   ];
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-violet-500/60 rounded-3xl p-6 shadow-2xl shadow-violet-500/10 flex flex-col">

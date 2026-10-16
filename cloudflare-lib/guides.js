@@ -350,7 +350,7 @@ export const GUIDES = [
       {
         heading: "Publish and share",
         paragraphs: [
-          "Press Publish and your game gets its own link, like nebuluxai.com/play/yourgame. Anyone can play it straight in their browser with no download and no account. The free plan publishes one game a month; Pro publishes three.",
+          "Press Publish and your game gets its own link, like nebuluxai.com/play/yourgame. Anyone can play it straight in their browser with no download and no account. You can publish as many games as you like on every plan.",
         ],
       },
       {
