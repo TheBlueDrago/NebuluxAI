@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { gameThumb } from "@/lib/gameThumbs";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-import { gameThumb } from "@/lib/gameThumbs";
   Menu, Search, Plus, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
   Puzzle, Car, Trophy, Sword, Compass, Brain, Zap, Play, Home as HomeIcon, Loader2,
 } from "lucide-react";
