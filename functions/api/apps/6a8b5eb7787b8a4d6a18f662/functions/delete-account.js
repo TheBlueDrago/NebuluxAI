@@ -5,6 +5,7 @@
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
+import { removeFromBoards } from "./game-board.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;

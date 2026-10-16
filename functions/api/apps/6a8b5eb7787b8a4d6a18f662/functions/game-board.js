@@ -12,7 +12,7 @@ import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 
 const SIZE = 10;
 // Only these games' boards exist, so nobody can make up names to fill KV.
-const BOARDS = {
+export const BOARDS = {
   "sky-obby": ["stage", "time"],
   "fruit-seas": ["level"],
   "bed-brawl": ["wins"],
@@ -33,6 +33,17 @@ export function addScore(list, entry, low) {
   out.sort((a, b) => (low ? a.score - b.score : b.score - a.score));
   const top = out.slice(0, SIZE);
   return top.some((x) => x.uid === entry.uid) || had ? top : null;
+}
+
+// Account deletion (delete-account.js): take the player off every board.
+export async function removeFromBoards(kv, uid) {
+  for (const [game, boards] of Object.entries(BOARDS)) {
+    for (const board of boards) {
+      const key = `board:${game}:${board}`;
+      const list = (await kv.get(key, "json")) || [];
+      if (list.some((x) => x.uid === uid)) await kv.put(key, JSON.stringify(list.filter((x) => x.uid !== uid)));
+    }
+  }
 }
 
 export async function onRequestPost({ request, env }) {
