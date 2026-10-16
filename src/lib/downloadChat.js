@@ -5,7 +5,8 @@ export function chatToMarkdown(title, messages) {
   for (const m of messages || []) {
     const text = typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.map((p) => (typeof p === "string" ? p : p?.text || "")).join("\n") : "";
     if (!text.trim()) continue;
-    parts.push(`## ${m.role === "user" ? "You" : "Nebulux AI"}\n\n${text.trim()}`);
+    const when = m.at ? ` · ${new Date(m.at).toLocaleString()}` : "";
+    parts.push(`## ${m.role === "user" ? "You" : "Nebulux AI"}${when}\n\n${text.trim()}`);
   }
   return parts.join("\n\n") + "\n";
 }
