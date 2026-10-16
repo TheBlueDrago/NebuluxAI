@@ -133,7 +133,17 @@ function suggestNames(n, projectId) {
 
 // Tap-to-fill ideas for an empty game chat.
 // One-tap improvements shown under the latest version of the game.
-const GAME_TWEAKS = ["Make it harder", "Add sound effects", "Add a high score", "Make it work great on phones", "Add a new level"];
+// One-tap improvements under the latest build: a short label, and the fuller request the AI gets.
+const GAME_TWEAKS = [
+  ["Make it harder", "Make the game harder in a fair way: enemies and obstacles speed up over time, add a few tougher challenges later on, and keep the start easy enough to learn."],
+  ["Add sound effects", "Add sound effects made with the Web Audio API (no files): jumping, scoring, getting hit, winning and losing, plus a mute button. Start the sound after the first tap or key press."],
+  ["Add a high score", "Add a high score that is saved in localStorage and shown on the start and game-over screens, with a \"New best!\" message when it is beaten."],
+  ["Make it work great on phones", "Make the game work great on phones: big on-screen touch buttons or a joystick, the game filling the screen in both portrait and landscape, no page scrolling or zooming while playing, and text big enough to read."],
+  ["Add a new level", "Add a new level that looks different and adds one new idea (a new enemy, obstacle or power-up), and show a level-complete screen between levels."],
+  ["Add power-ups", "Add 3 power-ups that appear now and then (for example speed, a shield and double points), each with its own colour, a short timer bar while active, and a sound."],
+  ["Add particles and juice", "Make the game feel better: particle bursts when things are hit or collected, a small screen shake on big hits, smooth animations and a short flash when the player is hurt."],
+  ["Add a pause menu", "Add a pause button and the Escape/P key that pause the game and show a menu with Resume, Restart and Mute."],
+];
 
 const GAME_IDEAS = [
   "A space shooter with power-ups",
@@ -708,11 +718,12 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
                         {m === lastAi && i > 0 && !loading && !sendExhausted && (
                           // One tap to improve the game (each is a normal message, so it's charged like one).
                           <div className="flex flex-wrap gap-1.5 pt-1">
-                            {GAME_TWEAKS.map((t) => (
+                            {GAME_TWEAKS.map(([t, ask]) => (
                               <button
                                 key={t}
                                 type="button"
-                                onClick={() => runPrompt(t, selectedAi)}
+                                title={ask}
+                                onClick={() => runPrompt(ask, selectedAi)}
                                 className="px-2.5 py-1 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 text-[12px] text-fuchsia-200 hover:bg-fuchsia-500/20 transition-colors"
                               >
                                 {t}
