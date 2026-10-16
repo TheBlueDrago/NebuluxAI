@@ -47,6 +47,8 @@ export async function collectMyData(user) {
     }),
     // Progress kept with the account in every game played (functions/.../game-save.js).
     part("gameProgress", async () => (await base44.functions.invoke("game-save", { action: "list" })).data?.saves || {}),
+    // Places on game leaderboards (functions/.../game-board.js).
+    part("leaderboards", async () => (await base44.functions.invoke("game-board", { action: "mine" })).data?.boards || []),
     // The website being worked on, published or not (functions/.../site-draft.js).
     part("websiteDraft", async () => {
       const d = (await base44.functions.invoke("site-draft", { action: "load" })).data?.draft;

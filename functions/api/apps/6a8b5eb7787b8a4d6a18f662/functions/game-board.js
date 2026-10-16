@@ -3,6 +3,7 @@
 // components/PreviewFrame.jsx passes the messages on to here).
 // { action: "top", name, board }            -> { top: [{ name, score }] }   (anyone)
 // { action: "score", name, board, score }   -> { top }                      (signed in)
+// { action: "mine" }                        -> { boards: [{ game, board, place, name, score }] }
 // Boards whose name ends in "time" rank the lowest score first (fastest finish).
 // KV (PUBLISHED_HTML): board:<game>:<board>. Only written when the board changes, to keep
 // within the free KV write limit.
@@ -50,6 +51,20 @@ export async function onRequestPost({ request, env }) {
   try {
     const kv = env.PUBLISHED_HTML;
     const body = await request.json().catch(() => ({}));
+    // Every board the signed-in player is on ("Download my data", src/lib/myData.js).
+    if (body.action === "mine") {
+      const user = await currentUser(request);
+      if (!user) return json({ error: "Please sign in." }, 401);
+      const mine = [];
+      for (const [game, boards] of Object.entries(BOARDS)) {
+        for (const board of boards) {
+          const list = (await kv.get(`board:${game}:${board}`, "json")) || [];
+          const i = list.findIndex((x) => x.uid === user.id);
+          if (i >= 0) mine.push({ game, board, place: i + 1, name: list[i].name, score: list[i].score });
+        }
+      }
+      return json({ boards: mine });
+    }
     const game = String(body.name || "").toLowerCase();
     const board = String(body.board || "score").toLowerCase();
     if (!(BOARDS[game] || []).includes(board)) return json({ error: "Which leaderboard?", top: [] }, 404);
