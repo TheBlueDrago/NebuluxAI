@@ -419,7 +419,7 @@ export const GUIDES = [
       {
         heading: "When you grow",
         paragraphs: [
-          "The Team plan, $20 a month, lets up to three people work on your sites and share one pool of AI credits. On Pro and Team you can also download your site's code or push it to GitHub, so it's always yours.",
+          "The Team plan, $20 a month, lets up to three people work on your sites and share one pool of AI credits. On every plan, Free included, you can also download your site's code or push it to GitHub, so it's always yours.",
         ],
       },
     ],
