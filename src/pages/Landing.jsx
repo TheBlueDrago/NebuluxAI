@@ -46,7 +46,7 @@ const FEATURES = [
     eyebrow: "Websites",
     title: "Describe your website. It's live in minutes.",
     text: "Say what your site is for. The AI writes the pages and the design, and changes anything you ask. Publish it free at yourname.nebuluxai.com.",
-    bullets: ["Free templates to start from", "Edit by chatting or by hand", "Messages from your site's forms come straight to you", "Keep your code: ZIP download, or open and push your GitHub repos, on Pro"],
+    bullets: ["Free templates to start from", "Edit by chatting or by hand", "Messages from your site's forms come straight to you", "Keep your code: ZIP download, or open and push your GitHub repos, free"],
     cta: { to: "/templates", label: "Browse templates" },
     Picture: SiteShot,
   },
