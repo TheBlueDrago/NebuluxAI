@@ -366,7 +366,58 @@ export const GUIDES = [
     ],
     cta: { label: "Make a game free", to: "/register?returnTo=%2Fchat%2Fgame-designer" },
     more: { label: "Play the Arcade", to: "/arcade" },
-    related: ["make-a-website-with-ai", "make-a-website-on-your-phone"],
+    related: ["remix-a-game", "make-a-website-with-ai"],
+  },
+  {
+    "slug": "remix-a-game",
+    "title": "How to remix a game and make it your own",
+    "description": "Copy one of the 3D games in the Arcade, like Sky Obby or Fruit Seas, into the Games Designer and change it just by chatting with the AI.",
+    "minutes": 3,
+    "intro": "Starting from a game that already works is the fastest way to make something great. Remix copies a game into the Games Designer as your own project, and then you change anything by describing it.",
+    "sections": [
+      {
+        "heading": "Pick a game to remix",
+        "paragraphs": [
+          "Open the Arcade and play a few games. The ones you can remix have a Remix button at the top of their page when you're signed in: the built-in games and the 3D games Fruit Seas, Sky Obby, Bed Brawl, Brawl Blitz and Storm Royale."
+        ]
+      },
+      {
+        "heading": "Press Remix",
+        "paragraphs": [
+          "The game opens in the Games Designer as a new project with its own name. The original isn't changed, and nobody else sees your copy until you publish it."
+        ]
+      },
+      {
+        "heading": "Change it by chatting",
+        "paragraphs": [
+          "Tell the AI what to change, one idea at a time, and play the preview after each change."
+        ],
+        "list": [
+          "\"Make the platforms purple and add more lava stages.\"",
+          "\"Give the player a double jump.\"",
+          "\"Add a new fruit that shoots fireballs.\"",
+          "\"Make the bots easier for younger players.\""
+        ]
+      },
+      {
+        "heading": "Publish your version",
+        "paragraphs": [
+          "When you like it, press Publish. Your remix gets its own link, like nebuluxai.com/play/yourgame, that anyone can play in their browser."
+        ]
+      }
+    ],
+    "cta": {
+      "label": "Go to the Arcade",
+      "to": "/arcade"
+    },
+    "more": {
+      "label": "Make a game from scratch",
+      "to": "/guides/make-a-game-without-coding"
+    },
+    "related": [
+      "make-a-game-without-coding",
+      "make-a-website-with-ai"
+    ]
   },
   {
     slug: "small-business-website",
