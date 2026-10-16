@@ -150,6 +150,8 @@ const GAME_IDEAS = [
   "A platformer where a cat collects fish",
   "A maze escape against the clock",
   "A two-player air hockey game",
+  "A 3D obby with checkpoints, seen from behind the player",
+  "A 3D racing game around an island",
 ];
 
 function sanitize(s) {
