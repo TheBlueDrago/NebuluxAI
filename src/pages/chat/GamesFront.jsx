@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+import { gameThumb } from "@/lib/gameThumbs";
   Menu, Search, Plus, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
   Puzzle, Car, Trophy, Sword, Compass, Brain, Zap, Play, Home as HomeIcon, Loader2,
 } from "lucide-react";
@@ -48,7 +49,8 @@ const genreIcon = (g) => (GENRES.find((x) => x.id === g.genre) || {}).icon || Ga
 // The same picture for each kind of game as the public Arcade (src/pages/Arcade.jsx).
 const GENRE_PIC = { io: "🟣", shooting: "🎯", horror: "👻", action: "⚔️", arcade: "🕹️", puzzle: "🧩", racing: "🏎️", sports: "⚽", adventure: "🗺️", strategy: "♟️" };
 function GenreArt({ g, big }) {
-  const Icon = genreIcon(g), pic = GENRE_PIC[g.genre];
+  const Icon = genreIcon(g), pic = GENRE_PIC[g.genre], shot = gameThumb(g.name);
+  if (shot) return <img src={shot} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />;
   return pic ? (
     <span className={`${big ? "text-7xl" : "text-5xl"} drop-shadow-lg transition-transform duration-200 group-hover:scale-110`} aria-hidden="true">{pic}</span>
   ) : (
@@ -70,7 +72,7 @@ const isNew = (g) => g.created_date && Date.now() - new Date(g.created_date).get
 
 function NewBadge() {
   return (
-    <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-emerald-500 text-[9px] font-bold uppercase tracking-wider text-white shadow">
+    <span className="absolute z-10 top-2 left-2 px-1.5 py-0.5 rounded bg-emerald-500 text-[9px] font-bold uppercase tracking-wider text-white shadow">
       New
     </span>
   );
@@ -106,7 +108,7 @@ function FeaturedCard({ g, onPlay }) {
         className={`relative aspect-video rounded-2xl bg-gradient-to-br ${thumb(g)} overflow-hidden ring-1 ring-white/15 transition-transform duration-200 group-hover:scale-[1.02]`}
         style={thumbStyle(g)}
       >
-        <span className="absolute top-3 left-3 text-xs font-bold uppercase tracking-wider bg-black/40 px-2 py-1 rounded text-white/90">#1 Featured</span>
+        <span className="absolute z-10 top-3 left-3 text-xs font-bold uppercase tracking-wider bg-black/40 px-2 py-1 rounded text-white/90">#1 Featured</span>
         <div className="absolute inset-0 flex items-center justify-center">
           <GenreArt g={g} big />
         </div>

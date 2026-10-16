@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { builtInGameEntities } from "@/lib/builtInGames";
 import PublicLayout from "@/components/PublicLayout";
+import { GAME_THUMBS } from "@/lib/gameThumbs";
 
 const GENRES = ["io", "shooting", "horror", "action", "arcade", "puzzle", "racing", "sports", "adventure", "strategy"];
 const GENRE_LABEL = { io: ".io" };
@@ -24,8 +25,6 @@ const THUMB = {
   strategy: "from-slate-500 to-slate-700",
 };
 
-// Games with a real screenshot in public/game-thumbs/<name>.jpg (the rest show their genre's emoji).
-const THUMB_IMG = new Set(["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale"]);
 
 // Public arcade: every game made with Nebulux AI, playable without an account
 // (each opens /play/<name>). Shared game links and search engines bring players here.
@@ -108,7 +107,7 @@ export default function Arcade() {
               className="group rounded-2xl bg-slate-900/60 border border-slate-700/50 p-3 hover:border-fuchsia-500/50 hover:-translate-y-1 hover:shadow-[0_20px_40px_-20px_rgba(217,70,239,.6)] transition-all"
             >
               <div className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br ${THUMB[g.genre] || "from-indigo-500 to-fuchsia-500"} flex items-center justify-center`}>
-                {THUMB_IMG.has(g.name) ? (
+                {GAME_THUMBS.has(g.name) ? (
                   <img src={`/game-thumbs/${g.name}.jpg`} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                 ) : ICON[g.genre] ? <span className="text-5xl drop-shadow-lg transition-transform group-hover:scale-110" aria-hidden="true">{ICON[g.genre]}</span> : <Gamepad2 className="w-9 h-9 text-white/90" />}
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
