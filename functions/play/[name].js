@@ -19,6 +19,6 @@ export async function onRequestGet(context) {
     // Base44 unreachable: the page still works, just with the plain preview.
   }
   if (!game) return page;
-  const html = withGameMeta(await page.text(), { title: game.title || game.name, genre: game.genre });
+  const html = withGameMeta(await page.text(), { title: game.title || game.name, genre: game.genre, name: game.name });
   return new Response(html, { status: 200, headers: withAppHeaders(page.headers) });
 }

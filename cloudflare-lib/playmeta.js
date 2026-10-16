@@ -3,7 +3,10 @@
 // index.html title and share tags to name the game (see functions/play/[name].js).
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export function withGameMeta(html, { title, genre }) {
+// Games with a screenshot in public/game-thumbs/<name>.jpg (480x360) show it as the preview picture.
+export const GAME_THUMBS = new Set(["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale"]);
+
+export function withGameMeta(html, { title, genre, name: slug }) {
   const name = String(title || "").trim().slice(0, 80);
   if (!name) return html;
   const heading = `Play ${name}`;
@@ -15,5 +18,11 @@ export function withGameMeta(html, { title, genre }) {
   out = setMeta(out, "property", "og:title", heading);
   out = setMeta(out, "property", "og:description", text);
   out = setMeta(out, "name", "description", text);
+  if (GAME_THUMBS.has(slug)) {
+    out = setMeta(out, "property", "og:image", `https://nebuluxai.com/game-thumbs/${slug}.jpg`);
+    out = setMeta(out, "property", "og:image:width", "480");
+    out = setMeta(out, "property", "og:image:height", "360");
+    out = setMeta(out, "property", "og:image:alt", name);
+  }
   return out;
 }
