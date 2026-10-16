@@ -9,7 +9,7 @@ const STARTERS = [
   ["🌐", "Make a website", "Make a website for my bakery with a menu, opening hours and an order button"],
   ["🎮", "Make a game", "Make a simple game where you dodge falling stars and get points"],
 ];
-import { askConfirm } from "@/lib/dialogs";
+import { askConfirm, showNotice } from "@/lib/dialogs";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
 import { historyBlock } from "@/lib/chatHistory";
@@ -363,7 +363,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     }
   };
 
-  // Keyboard shortcuts: Esc stops the answer being written, "/" jumps to the message box,
+  // Keyboard shortcuts: Esc stops the answer being written, "/" jumps to the message box, "?" lists them,
   // Ctrl+Shift+O (Cmd+Shift+O on a Mac) starts a new chat.
   const stopRef = useRef(stop);
   stopRef.current = loading ? stop : null;
@@ -375,6 +375,17 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       if (e.key === "Escape" && stopRef.current) {
         e.preventDefault();
         stopRef.current();
+      } else if (e.key === "?" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const mod = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "Cmd" : "Ctrl";
+        showNotice(`Keyboard shortcuts
+
+/   Jump to the message box
+Enter   Send
+Shift+Enter   New line
+Esc   Stop the answer
+${mod}+Shift+O   New chat
+?   Show this list`, { confirmLabel: "Got it" });
       } else if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         inputRef.current?.focus();
