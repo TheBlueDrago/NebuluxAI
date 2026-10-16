@@ -105,7 +105,9 @@ export function useConversations() {
   const selectConversation = useCallback((id) => setActiveId(id), []);
 
   const addMessage = useCallback((convId, message) => {
-    setConversations((prev) => prev.map((c) => (c.id === convId ? stamp({ ...c, messages: [...c.messages, message] }) : c)));
+    // Each message remembers when it was sent (shown when you hover over it in the chat).
+    const m = message && !message.at ? { ...message, at: Date.now() } : message;
+    setConversations((prev) => prev.map((c) => (c.id === convId ? stamp({ ...c, messages: [...c.messages, m] }) : c)));
   }, []);
 
   const renameConversation = useCallback((id, title) => {
