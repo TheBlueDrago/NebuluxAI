@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Loader2, Gamepad2, Flag, Sparkles, Trash2, Save } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Loader2, Gamepad2, Flag, Sparkles, Trash2, Save, Wand2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { askConfirm } from "@/lib/dialogs";
 import { useAuth } from "@/lib/AuthContext";
@@ -10,6 +10,7 @@ import PreviewFrame from "@/components/PreviewFrame";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
+import { GAME_THUMBS } from "@/lib/gameThumbs";
 
 // Public page for a shared game: anyone can play without an account, then make their own.
 export default function Play() {
@@ -17,6 +18,10 @@ export default function Play() {
   const { isAuthenticated } = useAuth();
   const [game, setGame] = useState(null); // { html, title, genre } | { missing: "why" }
   const [resetKey, setResetKey] = useState(0);
+  const navigate = useNavigate();
+  // Built-in games and Nebulux's own 3D games can be copied into the Games Designer and changed.
+  const canRemix = isAuthenticated && game && !game.missing && (findBuiltInGame(name) || GAME_THUMBS.has(name));
+  const remix = () => navigate("/chat/game-designer", { state: findBuiltInGame(name) ? { fresh: true, remix: name } : { fresh: true, remixGame: { name, title: game.title || name, genre: game.genre, html: game.html } } });
 
   // Progress is kept with the account (components/PreviewFrame.jsx); only this deletes it.
   const deleteProgress = async () => {
@@ -60,6 +65,11 @@ export default function Play() {
           <span className="font-semibold truncate">{game?.title || name}</span>
           {game?.genre && <span className="hidden sm:inline text-xs text-slate-400 capitalize shrink-0">· {game.genre}</span>}
         </div>
+        {canRemix && (
+          <button onClick={remix} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs" title="Copy this game and change it by chatting with the AI">
+            <Wand2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Remix</span>
+          </button>
+        )}
         {game && !game.missing && <GameBoards name={name} />}
         {game && !game.missing && (
           <ShareLink url={window.location.href} title={game.title || name} className="bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" />

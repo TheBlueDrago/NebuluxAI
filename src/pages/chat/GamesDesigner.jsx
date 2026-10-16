@@ -161,8 +161,9 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
   const shell = useAppShell();
   const location = useLocation();
   const startFresh = !!location.state?.fresh;
-  // "Remix" on a built-in game starts a new project from a copy of it.
-  const remix = startFresh && location.state?.remix ? findBuiltInGame(location.state.remix) : null;
+  // "Remix" on a built-in game (or one of Nebulux's own 3D games, which hands over its code)
+  // starts a new project from a copy of it.
+  const remix = startFresh ? (location.state?.remix ? findBuiltInGame(location.state.remix) : location.state?.remixGame?.html ? location.state.remixGame : null) : null;
   const initial = remix
     ? { gameName: `my-${remix.name}`, title: `${remix.title || remix.name} remix`, genre: remix.genre || "io", messages: [{ role: "ai", content: remix.html }], projectId: genId() }
     : startFresh
