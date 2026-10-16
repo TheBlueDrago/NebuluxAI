@@ -74,6 +74,8 @@ const SITE_TWEAKS = [
   ["Add a contact form", "Add a contact section with a form (name, email, message) that checks the fields before sending and shows a thank-you message."],
   ["Add an FAQ", "Add an FAQ section with 5 questions visitors to this kind of site would really ask, each opening and closing when tapped."],
   ["Add reviews", "Add a reviews section with 3 short, believable customer reviews with star ratings, clearly marked as examples to replace."],
+  ["Help Google find it", "Improve how the site shows up in search and when shared: a clear title and meta description, Open Graph and Twitter tags, one h1 and sensible headings, alt text on every image, and descriptive link text."],
+  ["Make it load faster", "Make the site load faster without changing how it looks: lazy-load images below the fold, give images width and height, remove unused CSS and scripts, and avoid layout jumps while it loads."],
   ["Improve the wording", "Rewrite the text to be clearer and more convincing: a strong headline, short paragraphs, and buttons that say exactly what happens."],
   ["Add a new section", "Add one new section that fits this site and makes it more useful, matching the existing design."],
 ];
