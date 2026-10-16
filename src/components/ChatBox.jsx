@@ -9,7 +9,8 @@ const STARTERS = [
   ["🌐", "Make a website", "Make a website for my bakery with a menu, opening hours and an order button"],
   ["🎮", "Make a game", "Make a simple game where you dodge falling stars and get points"],
 ];
-import { askConfirm, showNotice } from "@/lib/dialogs";
+import { askConfirm } from "@/lib/dialogs";
+import { showShortcuts } from "@/lib/shortcuts";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
 import { historyBlock } from "@/lib/chatHistory";
@@ -377,15 +378,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
         stopRef.current();
       } else if (e.key === "?" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
-        const mod = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "Cmd" : "Ctrl";
-        showNotice(`Keyboard shortcuts
-
-/   Jump to the message box
-Enter   Send
-Shift+Enter   New line
-Esc   Stop the answer
-${mod}+Shift+O   New chat
-?   Show this list`, { confirmLabel: "Got it" });
+        showShortcuts();
       } else if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         inputRef.current?.focus();

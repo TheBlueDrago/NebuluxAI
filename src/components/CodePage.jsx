@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { shareChat } from "@/lib/shareChat";
 import { askConfirm, askText, showNotice } from "@/lib/dialogs";
+import { showShortcuts } from "@/lib/shortcuts";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReportReply from "@/components/chat/ReportReply";
 import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximize2, Minimize2, Share2, Gamepad2, Download } from "lucide-react";
@@ -587,6 +588,9 @@ export default function CodePage({ userInitial }) {
       if (e.key === "Escape" && keysRef.current.stop) {
         e.preventDefault();
         keysRef.current.stop();
+      } else if (e.key === "?" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        showShortcuts();
       } else if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         inputBoxRef.current?.focus();
