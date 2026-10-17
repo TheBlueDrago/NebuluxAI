@@ -24,8 +24,9 @@ export function cleanAvatar(a) {
   if (FACES.includes(a.face)) o.face = a.face;
   return o;
 }
-// A short code to share instead of an email: the start of the account id.
-export const friendCode = (id) => String(id).replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase();
+// A short code to share instead of an email: the END of the account id (ids start with a
+// timestamp, so the start is the same for everyone who signed up around the same time).
+export const friendCode = (id) => String(id).replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase();
 
 let ready = null;
 function ensure(db) {
@@ -79,8 +80,9 @@ export async function onRequestPost({ request, env }) {
       if (!(await allow(`friend-add:${me}`, 20, 3600))) return json({ error: TOO_MANY }, 429);
       const who = String(body.who || "").trim().slice(0, 80);
       if (!who) return json({ error: "Type a friend code or a username." }, 400);
-      // A friend code (the start of their account id), or an exact username used by only one person.
-      let rows = (await db.prepare("SELECT id FROM rows WHERE entity = 'User' AND upper(substr(replace(id, '-', ''), 1, 8)) = ?").bind(who.toUpperCase()).all()).results || [];
+      // A friend code (the end of their account id), or an exact username used by only one person.
+      let rows = (await db.prepare("SELECT id FROM rows WHERE entity = 'User' AND upper(substr(replace(id, '-', ''), -8)) = ? LIMIT 2").bind(who.toUpperCase()).all()).results || [];
+      if (rows.length > 1) return json({ error: "That friend code matches more than one person. Try their username." }, 409);
       if (!rows.length) rows = (await db.prepare("SELECT id FROM rows WHERE entity = 'User' AND lower(json_extract(data, '$.full_name')) = lower(?) LIMIT 2").bind(who).all()).results || [];
       if (!rows.length) return json({ error: "Nobody found with that friend code or username." }, 404);
       if (rows.length > 1) return json({ error: "More than one person has that username. Ask them for their friend code." }, 409);
