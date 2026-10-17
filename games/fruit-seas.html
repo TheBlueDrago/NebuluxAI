@@ -199,6 +199,11 @@ const ISLANDS = [
   { sea: 1, x: 1720, z: -60, r: 28, h: 5, name: "Frost Peak", lvl: 35, n: 6, mob: "Ice Raider", top: "snow", hill: true, boss: { name: "Frost Warden", lvl: 42, hp: 6500, color: 0x90caf9 } },
   { sea: 1, x: 1490, z: -150, r: 28, h: 4, name: "Ember Volcano", lvl: 42, n: 6, mob: "Lava Brute", top: "lava", hill: true, boss: { name: "Magma Titan", lvl: 50, hp: 9000, color: 0xbf360c } },
   { sea: 1, x: 1640, z: -250, r: 30, h: 4, name: "Ghost Reef", lvl: 50, n: 5, mob: "Ghost Sailor", top: "ghost", boss: { name: "Admiral Frostbeard", lvl: 60, hp: 12000, color: 0x9fd8ff } },
+  // More islands (2026-10-16): two in each sea, levels in between and beyond.
+  { sea: 0, x: -150, z: 40, r: 24, h: 3, name: "Snow Village", lvl: 9, n: 6, mob: "Snow Bandit", top: "snow", hill: true, boss: { name: "Yeti Chief", lvl: 15, hp: 1700, color: 0xeceff1 } },
+  { sea: 0, x: 150, z: -150, r: 26, h: 5, name: "Marine Fortress", lvl: 21, n: 6, mob: "Marine Soldier", top: "stone", boss: { name: "Commodore Steel", lvl: 28, hp: 4200, color: 0x1565c0 } },
+  { sea: 1, x: 1500, z: -330, r: 28, h: 5, name: "Sky Ruins", lvl: 60, n: 6, mob: "Ruin Guardian", top: "stone", hill: true, boss: { name: "Storm King", lvl: 70, hp: 16000, color: 0xffd54f } },
+  { sea: 1, x: 1760, z: -300, r: 30, h: 4, name: "Dragon Lair", lvl: 72, n: 6, mob: "Dragon Cultist", top: "lava", hill: true, boss: { name: "Elder Dragon", lvl: 85, hp: 26000, color: 0x7b1fa2 } },
 ];
 // Islands are big: everything above is spread out and scaled up 2.6 times.
 const BIG = 2.6;
@@ -366,7 +371,13 @@ scene.add(P.body.g);
 const myName = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? window.nebulux.username : "You";
 const nameTag = makeLabel(myName, "#ffffff", 768); nameTag.scale.set(6, 1, 1); scene.add(nameTag);
 const cam = { yaw: Math.PI, pitch: 0.38, dist: 16 };
-function spawnPoint() { const isl = ISLANDS.find((i) => i.spawn && i.sea === S.sea); return V(isl.x, groundAt(isl.x, isl.z + 4) + 0.1, isl.z + 4); }
+// You come back on the last island you stood on in this sea (S.home), else the sea's spawn island.
+function spawnPoint() {
+  const isl = ISLANDS.find((i) => i.name === S.home && i.sea === S.sea) || ISLANDS.find((i) => i.spawn && i.sea === S.sea);
+  // Spawn islands: by the shops in the middle. Others: at the shore, away from the boss in the middle.
+  const dz = isl.spawn ? 4 : isl.r - 8;
+  return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
+}
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
 if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; } }; // automated tests only
 
@@ -890,7 +901,7 @@ function openTravel() {
 }
 function travel(sea) {
   closeModal(); if (P.boat) toggleBoat();
-  S.sea = sea; save(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
+  S.sea = sea; S.home = null; save(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
 }
 $("bStats").onclick = () => started && openStats();
 $("bFruits").onclick = () => started && openFruits();
@@ -987,6 +998,8 @@ function tick() {
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
     lastIsl = isl;
+    // remember the island you are standing on, to come back to it next time
+    if (isl && P.onGround && S.home !== isl.name) { S.home = isl.name; save(); }
 
     // enemies
     for (const e of enemies.slice()) {
