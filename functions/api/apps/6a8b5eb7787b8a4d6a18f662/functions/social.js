@@ -6,6 +6,7 @@
 // { action: "add", who }                      -> { ok } | { error }    (a friend code, or an exact username)
 // { action: "accept" | "remove", id }         -> { ok }
 // { action: "playing", game }                 -> { ok }                (the game you're in; "" when you leave)
+// { action: "playingCounts" }                  -> { counts: { game: n } } (no sign-in needed)
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
@@ -54,10 +55,18 @@ export async function onRequestPost({ request, env }) {
   try {
     const db = env.DB;
     if (!db) return json({ error: "Not available right now." }, 503);
+    const body = await request.json().catch(() => ({}));
+    // How many people are in each game right now (anyone can ask; no names).
+    if (body.action === "playingCounts") {
+      await ensure(db);
+      const r = await db.prepare("SELECT game, COUNT(*) AS n FROM presence WHERE game != '' AND at > ? GROUP BY game").bind(Date.now() - ONLINE_MS).all();
+      const counts = {};
+      for (const x of r.results || []) counts[x.game] = x.n;
+      return json({ counts });
+    }
     const user = await currentUser(request);
     if (!user) return json({ error: "Sign in to use friends and avatars." }, 401);
     await ensure(db);
-    const body = await request.json().catch(() => ({}));
     const me = user.id;
 
     if (body.action === "avatar") {

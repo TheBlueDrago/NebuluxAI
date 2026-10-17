@@ -98,7 +98,7 @@ function GameCard({ g, onPlay }) {
         </div>
       </div>
       <p className="mt-1.5 text-xs font-medium text-slate-200 truncate">{g.title || g.name}</p>
-      <p className="text-xs text-slate-400">{GENRE_LABEL[g.genre] || "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}</p>
+      <p className="text-xs text-slate-400">{g.nowPlaying ? <span className="text-emerald-400 font-semibold">● {g.nowPlaying} playing · </span> : null}{GENRE_LABEL[g.genre] || "Game"} · {g.plays ? `${g.plays.toLocaleString()} play${g.plays === 1 ? "" : "s"}` : "New"}</p>
     </button>
   );
 }
@@ -149,12 +149,21 @@ function EmptyState({ onCreate }) {
 export default function GamesFront() {
   const shell = useAppShell();
   const { sidebarOpen, setSidebarOpen, openProfile, avatarInitial, lightMode, toggleLight, navigate, goGameDesigner, conv, credits, isAdmin } = shell;
-  const [games, setGames] = useState([]);
+  const [rawGames, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState("home");
   const [q, setQ] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [social, setSocial] = useState(null); // "avatar" | "friends" panel
+  const [social, setSocial] = useState(null);
+  // How many people are in each game right now (functions/.../social.js), shown on the tiles.
+  const [nowPlaying, setNowPlaying] = useState({});
+  useEffect(() => {
+    const load = () => base44.functions.invoke("social", { action: "playingCounts" }).then((r) => setNowPlaying(r?.data?.counts || {})).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, []);
+  const games = useMemo(() => rawGames.map((g) => ({ ...g, nowPlaying: nowPlaying[g.name] || 0 })), [rawGames, nowPlaying]); // "avatar" | "friends" panel
 
   const load = async () => {
     const builtIns = builtInGameEntities();
@@ -201,7 +210,8 @@ export default function GamesFront() {
     return g;
   }, [games, cat, q]);
 
-  const ranked = useMemo(() => [...games].sort((a, b) => (b.plays || 0) - (a.plays || 0)), [games]);
+  // Like other game platforms: the games with the most people in them right now first, then most played.
+  const ranked = useMemo(() => [...games].sort((a, b) => b.nowPlaying - a.nowPlaying || (b.plays || 0) - (a.plays || 0)), [games]);
   // The top game by plays. (A record's own "featured" field isn't used: owners can set it on
   // their own games.)
   const featured = useMemo(() => ranked[0] || null, [ranked]);
