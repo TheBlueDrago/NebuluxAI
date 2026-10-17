@@ -238,7 +238,17 @@ const solids = [];
         cells.push([wx, y, wz, col]);
       }
   }
-  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL, 1, CELL), new THREE.MeshLambertMaterial(), cells.length);
+  // Roblox-style studs on top of every block: a small drawn texture (2 x 2 studs a block),
+  // tinted by each block's own colour.
+  const sc = document.createElement("canvas"); sc.width = sc.height = 64; const sx = sc.getContext("2d");
+  sx.fillStyle = "#ffffff"; sx.fillRect(0, 0, 64, 64);
+  for (const cx of [16, 48]) for (const cy of [16, 48]) {
+    sx.fillStyle = "#d9d9d9"; sx.beginPath(); sx.arc(cx + 1.5, cy + 2, 9, 0, 7); sx.fill();
+    sx.fillStyle = "#f4f4f4"; sx.beginPath(); sx.arc(cx, cy, 9, 0, 7); sx.fill();
+  }
+  sx.strokeStyle = "rgba(0,0,0,.12)"; sx.lineWidth = 2; sx.strokeRect(1, 1, 62, 62);
+  const studs = new THREE.CanvasTexture(sc); studs.magFilter = THREE.LinearFilter; studs.anisotropy = 4;
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL, 1, CELL), new THREE.MeshLambertMaterial({ map: studs }), cells.length);
   const m4 = new THREE.Matrix4(), c = new THREE.Color();
   cells.forEach(([x, y, z, col], i) => {
     const hgt = y + 6; m4.makeScale(1, hgt, 1); m4.setPosition(x, y - hgt / 2, z); im.setMatrixAt(i, m4); im.setColorAt(i, c.setHex(col));
@@ -908,8 +918,8 @@ cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.d
 function jump() {
   if (P.boat) return;
   // jumping uses energy (more for the jump in the air); with too little you can't
-  if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 9 : 14; P.jumps = 1; P.onGround = false; }
-  else if (P.jumps < 2) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 13; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
+  if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 14 : 24; P.jumps = 1; P.onGround = false; }
+  else if (P.jumps < 2) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
 }
 // Frost fruit: walking on the sea freezes tiles under your feet (they melt after a few seconds).
 const ICE = 2.4, iceTiles = new Map(), iceMat = new THREE.MeshLambertMaterial({ color: 0xbfefff, transparent: true, opacity: 0.85 });
@@ -1230,11 +1240,12 @@ function tick() {
       P.vel.set(0, 0, 0); P.onGround = true;
     } else {
       const want = moveDir().multiplyScalar(inWater() ? 9 : 16);
-      const k = P.onGround || inWater() ? 14 : 5;
+      const k = P.onGround ? 30 : inWater() ? 14 : 9; // start and stop almost at once, like Roblox
       if (P.dashT > 0) { P.dashT -= dt; P.vel.x = P.dashVel.x; P.vel.z = P.dashVel.z; P.vel.y = Math.max(P.vel.y, 0); cubes(P.pos.clone().setY(P.pos.y + 2), 0xffffff, 1, 2); }
       else { P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt); }
       if (keys.Space && P.onGround) jump();
-      P.vel.y -= 36 * dt;
+      // Roblox-style: strong gravity and a quick jump (snappy, not floaty).
+      P.vel.y = Math.max(P.vel.y - 90 * dt, -70);
       if (inWater() && P.vel.y < 0) P.vel.y *= 0.5;
       P.pos.addScaledVector(P.vel, dt);
       collide(P.pos, 0.8);
