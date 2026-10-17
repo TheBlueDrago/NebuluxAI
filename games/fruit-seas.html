@@ -384,7 +384,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -549,6 +549,22 @@ function spawnRival(sea) {
 }
 for (const sea of [0, 1]) for (let i = 0; i < 4; i++) spawnRival(sea);
 
+// World event: every 8 minutes a Sea King appears on a random island of your sea, around your
+// level. Beat it for a big reward; it sinks back into the sea after 5 minutes.
+let seaKing = null;
+function seaKingEvent() {
+  if (!started || seaKing) return;
+  const isls = ISLANDS.filter((i) => i.sea === S.sea && !i.spawn); if (!isls.length) return;
+  const isl = pick(isls), lvl = Math.max(10, S.lvl + 5);
+  const boss = { name: "Sea King", lvl, hp: Math.round(2500 + lvl * lvl * 3), color: 0x00695c, event: true };
+  const before = enemies.length; spawnEnemy(isl, boss); seaKing = enemies[before];
+  if (seaKing) seaKing.event = true;
+  SFX.boom(); show(`A SEA KING appeared at ${isl.name}!
+Beat it for a huge reward (5 minutes)`, 5);
+  setTimeout(() => { if (seaKing && seaKing.hp > 0) { scene.remove(seaKing.b.g, seaKing.bar, seaKing.label); enemies.splice(enemies.indexOf(seaKing), 1); show("The Sea King sank back into the sea", 3); } seaKing = null; }, 5 * 60000);
+}
+setInterval(seaKingEvent, 8 * 60000);
+
 // Crew: up to 2 crewmates you hire at the Crew Recruiter. They follow you and fight enemies near you.
 const allies = [];
 const crewCost = () => 5000 * (S.crew + 1) * (S.crew + 1);
@@ -643,6 +659,8 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) killEnemy(e);
 }
 function killEnemy(e) {
+  if (e.event) { const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
++${money(big)} and a FREE gacha spin`, 5); }
   if (e.rival) { const bounty = e.lvl * 400; S.beli += bounty; floatText(e.pos, `Bounty +${money(bounty)}`, "#ffb74d"); setTimeout(() => spawnRival(e.isl.sea), 45000); }
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
@@ -657,12 +675,12 @@ Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
   if (e.boss) {
     S.bosses[e.name] = true;
     if (e.name === "Captain Ironjaw" && !S.seaUnlocked) { S.seaUnlocked = true; show(`${e.name} defeated!\nThe Sea Traveler can now take you to the Second Sea!`, 5); }
-    else show(`${e.name} defeated!`, 4);
+    else if (!e.event) show(`${e.name} defeated!`, 4);
     const bigBoss = e.name === "Captain Ironjaw" || e.name === "Admiral Frostbeard";
     if (Math.random() < (bigBoss ? 0.35 : 0.1)) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`${e.name} dropped a ${f} Fruit!\nOpen Fruits to eat it.`, 4); }
   }
   enemies.splice(enemies.indexOf(e), 1); save();
-  setTimeout(() => spawnEnemy(e.isl, e.boss), e.boss ? 90000 : 12000);
+  if (!e.event) setTimeout(() => spawnEnemy(e.isl, e.boss), e.boss ? 90000 : 12000);
 }
 function gainXp(x) {
   if (S.lvl >= 100) return;
