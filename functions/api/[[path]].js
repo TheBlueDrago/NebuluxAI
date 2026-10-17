@@ -15,7 +15,7 @@
 // or code guessing and repeated emails are refused with a 429 (cloudflare-lib/authlimit.js).
 // The entry.ts copy above predates this: if you restore from it, add the authLimit import
 // and call back (scripts/test-authlimit.mjs fails without them).
-import { alertOwner, placeOf } from "../../cloudflare-lib/ownerAlerts.js";
+import { alertOwner, placeOf, rudeText } from "../../cloudflare-lib/ownerAlerts.js";
 import { authLimit } from "../../cloudflare-lib/authlimit.js";
 import { handleEntities } from "../../cloudflare-lib/db.js";
 import { handleAuth, sessionUser, logout, googleStart, googleCallback } from "../../cloudflare-lib/auth.js";
@@ -102,6 +102,16 @@ export async function onRequest(context) {
 
   // Nebulux's own database and sign-in (cloudflare-lib/db.js, auth.js) answer instead of Base44
   // once the DB binding (D1 "nebulux-db") is connected to this Pages project.
+  // Someone renaming themselves to something rude: the owner gets an email (once an hour per person).
+  if ((request.method === "PUT" || request.method === "PATCH") && /\/entities\/User\/me$/.test(path) && context.env && context.env.DB) {
+    const b = await request.clone().json().catch(() => null);
+    const rude = b && typeof b.full_name === "string" ? rudeText(b.full_name) : "";
+    if (rude) {
+      const me = await sessionUser(context.env.DB, request).catch(() => null);
+      const job = alertOwner(context.env, { key: `rude-name:${(me && me.id) || b.full_name}`, subject: `Inappropriate username: ${b.full_name.slice(0, 40)}`, lines: [`New name: ${b.full_name.slice(0, 80)}`, `Email: ${(me && me.email) || "?"}`, `Flagged word: ${rude}`, "You can rename or ban them in Monitor."] });
+      if (context.waitUntil) context.waitUntil(job);
+    }
+  }
   const own = context.env && context.env.DB ? await ownBackend(context, path, url) : null;
   if (own) return own;
   // Nebulux doesn't use Base44 anymore: anything it doesn't answer itself is simply not found,
