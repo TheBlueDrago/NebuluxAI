@@ -11,7 +11,7 @@ AIS AND CREDITS
 - Four AIs: Nebulux AI (everyday), Galaxy (coding), Space and Nebula (the strongest). Pick one in the chooser next to the message box.
 - Each reply uses credits: 1 credit per started 10,000 characters of reply, more on high effort. Credits refill every month.
 - Free plan: every month 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits, 3 published websites and unlimited games.
-- Pro ($15/month), Team ($20/month, up to 3 people) and Enterprise (custom price per seat) are coming soon and can't be bought yet. See them with Upgrade plan.
+- Pro ($15/month, or $162/year), Team ($20/month or $216/year, up to 3 people; yearly saves 10%) and Enterprise (custom price per seat) are coming soon and can't be bought yet. See them with Upgrade plan.
 - Promo codes only give a percentage off, typed on the Billing page at checkout. There are no referrals or free-credit codes.
 - See what you've used in Settings, Usage.
 

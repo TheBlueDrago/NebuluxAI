@@ -103,3 +103,18 @@ assert(Object.entries(PACK_PRICES).every(([tier, sizes]) => rows[SLUG[tier]] ===
   }
   assert(checked >= 8 && wrong.length === 0, `every written Pro/Team price matches checkout (${checked} checked)${wrong.length ? ": " + wrong.join(" | ") : ""}`);
 }
+
+// Yearly billing: a small discount, the same everywhere it's written.
+{
+  const { PUBLIC_PLANS: PP, YEARLY_OFF } = await load("src/lib/publicPlans.js");
+  const { readFileSync } = await import("node:fs");
+  const text = (f) => readFileSync(new URL("../" + f, import.meta.url), "utf8");
+  for (const id of ["pro", "team"]) {
+    const p = PP.find((x) => x.id === id);
+    const want = Math.round(Number(p.price.slice(1)) * 12 * (1 - YEARLY_OFF / 100));
+    assert(p.yearly && p.yearly.price === "$" + want, `${id} yearly is ${YEARLY_OFF}% off twelve months ($${want})`);
+    assert(text("cloudflare-lib/helpguide.js").includes(`$${want}/year`) && text("functions/api/support-reply.js").includes(`$${want} a year`), `the help AI and support replies say ${id} is $${want} a year`);
+  }
+  assert(YEARLY_OFF > 0 && YEARLY_OFF <= 20, "the yearly discount is small");
+  assert(text("src/pages/Pricing.jsx").includes(`save ${YEARLY_OFF}%`) || text("src/pages/Pricing.jsx").includes(`${YEARLY_OFF}% off`), "the pricing page mentions it");
+}

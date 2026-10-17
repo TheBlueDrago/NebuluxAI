@@ -125,7 +125,8 @@ export function AppShellProvider({ children }) {
   const goMonitor = useCallback(() => { navigate("/chat/monitor"); setSidebarOpen(false); }, [navigate]);
   const goPromos = useCallback(() => { navigate("/chat/promos"); setSidebarOpen(false); }, [navigate]);
   const newChat = useCallback(() => { conv.createConversation("New Chat"); navigate("/chat"); setSidebarOpen(false); }, [navigate, conv]);
-  const goBilling = useCallback((productId = "pro") => navigate("/billing", { state: { productId } }), [navigate]);
+  // ?billing=yearly (from the pricing page's switch) carries on to the Billing page.
+  const goBilling = useCallback((productId = "pro") => navigate("/billing", { state: { productId, billing: new URLSearchParams(window.location.search).get("billing") || undefined } }), [navigate]);
   // Back within the app, or to the chat when there is nothing to go back to (a page opened from a link).
   const goBack = useCallback(() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/chat", { replace: true })), [navigate]);
   // The profile opens over the current page as a history entry of its own, so the page stays

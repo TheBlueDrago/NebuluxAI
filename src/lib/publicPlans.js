@@ -2,6 +2,13 @@
 // cloudflare-lib/credits.js (monthly credits), src/lib/publishLimits.js (sites and games)
 // and the prices in base44/functions/create-checkout. Enterprise has no public price: it's
 // $30 a seat a month ($25 from 10 seats, $20 from 25) (cloudflare-lib/enterprise.js), quoted after an application.
+// Yearly billing: a small discount on paying for 12 months at once (2026-10-17).
+export const YEARLY_OFF = 10; // percent
+const yearly = (monthly) => {
+  const year = Math.round(monthly * 12 * (1 - YEARLY_OFF / 100));
+  return { price: "$" + year, period: "/year", perMonth: "$" + (year / 12).toFixed(2) };
+};
+
 export const PUBLIC_PLANS = [
   {
     id: "free",
@@ -16,6 +23,7 @@ export const PUBLIC_PLANS = [
     name: "Pro",
     price: "$15",
     period: "/month",
+    yearly: yearly(15),
     blurb: "More credits, all 4 AI models and your code to keep. Coming soon in a later update.",
     features: [
       "300 Nebulux AI credits a month",
@@ -31,6 +39,7 @@ export const PUBLIC_PLANS = [
     name: "Team",
     price: "$20",
     period: "/month",
+    yearly: yearly(20),
     blurb: "Build with up to 2 friends or coworkers.",
     features: [
       "Up to 3 people, one shared pool of credits",

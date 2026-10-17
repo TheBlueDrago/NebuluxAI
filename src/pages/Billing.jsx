@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import PaymentsNotice from "@/components/PaymentsNotice";
+import { PUBLIC_PLANS, YEARLY_OFF } from "@/lib/publicPlans";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, ShieldCheck, Users, Zap, Gift, Lock, CalendarClock } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
@@ -99,6 +100,9 @@ function Billing() {
   // Only plans and credit packs can be bought here; anything else (e.g. the old Secret) is Pro.
   const productId = chosenPack || (PLANS[requested] ? requested : "pro");
   const plan = PLANS[productId] || packPlan(productId);
+  // Monthly or yearly (a small discount, src/lib/publicPlans.js); from the pricing page's switch too.
+  const [yearly, setYearly] = useState(() => new URLSearchParams(location.search).get("billing") === "yearly" || location.state?.billing === "yearly");
+  const yearPrice = !plan.pack && PUBLIC_PLANS.find((x) => x.id === productId)?.yearly;
   // The bigger of the new-member offer and the promo code (they don't stack).
   const promoPct = promoPctFor(promo, productId);
   const usingPromo = promoPct > offerPct;
@@ -132,7 +136,7 @@ function Billing() {
     setError("");
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("create-checkout", { productId, ...(usingPromo ? { promoCode: promo.code } : {}) });
+      const res = await base44.functions.invoke("create-checkout", { productId, billing: yearPrice && yearly ? "yearly" : "monthly", ...(usingPromo ? { promoCode: promo.code } : {}) });
       const redirectUrl = res.data?.redirectUrl;
       if (!redirectUrl) throw new Error("No checkout URL");
       window.location.href = redirectUrl;
@@ -182,12 +186,23 @@ function Billing() {
                   {usingPromo ? `${promo.code}: ${pct}% off` : `${pct}% off`}
                   {plan.pack ? "" : ", yours for as long as you stay subscribed"}
                 </>
+              ) : yearPrice && yearly ? (
+                <>{yearPrice.price} / year · {yearPrice.perMonth} a month, save {YEARLY_OFF}%</>
               ) : (
                 plan.price
               )}
             </p>
           </div>
         </div>
+        {yearPrice && (
+          <div className="mt-4 inline-flex rounded-full bg-slate-800/80 p-1" role="group" aria-label="Billing">
+            {[[false, "Monthly"], [true, `Yearly · save ${YEARLY_OFF}%`]].map(([v, label]) => (
+              <button key={label} type="button" onClick={() => setYearly(v)} aria-pressed={yearly === v} className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${yearly === v ? "bg-white text-slate-900" : "text-slate-300 hover:text-white"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {plan.pack && (
           <div className="mt-5 space-y-3">
