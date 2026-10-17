@@ -94,6 +94,7 @@
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
   <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
   <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
+  <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
 </div>
 <div id="hot"></div>
 <div id="skills"></div>
@@ -354,7 +355,7 @@ const SWORD_SK = [["Z", "Spin Slash", 5, 12, 34, "aoe", { r: 6, self: true }], [
 const STATS = [["melee", "Melee", "Fists damage", 0xffffff], ["defense", "Health", "+20 max health each", 0], ["sword", "Sword", "Sword damage", 0], ["energy", "Energy", "+15 max energy each", 0], ["fruit", "Blox Fruit", "Fruit damage", 0]];
 
 // ================= save =================
-const DEF = { lvl: 1, xp: 0, beli: 250, pts: 0, st: { melee: 0, defense: 0, sword: 0, energy: 0, fruit: 0 }, fruit: null, inv: [], swords: [], sword: null, sea: 0, freeSpin: true, seaUnlocked: false, bosses: {}, quest: null };
+const DEF = { lvl: 1, xp: 0, beli: 250, pts: 0, st: { melee: 0, defense: 0, sword: 0, energy: 0, fruit: 0 }, fruit: null, inv: [], swords: [], sword: null, sea: 0, freeSpin: true, seaUnlocked: false, bosses: {}, quest: null, pvp: false, pvpOffUntil: 0, pvpSeen: false, crew: 0 };
 let S = DEF;
 try { const s = JSON.parse(localStorage.getItem("fruitseas-save") || "null"); if (s && s.lvl) S = { ...DEF, ...s, st: { ...DEF.st, ...s.st } }; } catch { /* no storage */ }
 const save = () => { try { localStorage.setItem("fruitseas-save", JSON.stringify(S)); } catch { /* ignore */ } };
@@ -379,7 +380,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -430,6 +431,7 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, 0, -9, "Fruit Gacha", 0x6a1b9a, openGacha, { hat: "tricorn" });
   addNpc(isl, 6, -6, "Sword Dealer", 0x455a64, openSwords, { hat: "helmet" });
   addNpc(isl, 9, 4, "Sea Traveler", 0x0d47a1, openTravel, { hat: "tricorn" });
+  addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
 // The leaderboard of top levels stands next to the Sea Traveler on both spawn islands.
 const lvlBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
@@ -505,6 +507,91 @@ function spawnEnemy(isl, boss) {
 }
 for (const isl of ISLANDS) { for (let i = 0; i < isl.n; i++) spawnEnemy(isl); if (isl.boss) spawnEnemy(isl, isl.boss); }
 
+// ================= bot players (PvP) and crew (allies) =================
+// Computer-controlled pirates with player names roam the islands. PvP unlocks at Lv. 5: while
+// it's on, most of them hunt you and you can fight them for a bounty; while it's off, nobody can
+// hurt anybody. Dying turns PvP off for 20 minutes (then it comes back on by itself), and you can
+// switch it on or off with the PvP button (not while you were hit in the last 10 seconds).
+const BOT_NAMES = ["xXSeaWolfXx", "LuffyFan2012", "CaptainNoodle", "Zoro_Main", "BlueBeard99", "PirateKing777", "SaltyTom", "Mira_Waves", "NoobSailor", "DarkTide", "Coral_Queen", "Ace_Flame_", "KrakenKid", "Sir_Splash", "GoldenHook", "Nami_Stormy"];
+const pvpOn = () => S.lvl >= 5 && S.pvp;
+function pvpLabel() {
+  const el = $("pvpTxt"); if (!el) return;
+  el.textContent = S.lvl < 5 ? "PvP Lv.5" : S.pvp ? "PvP: ON" : S.pvpOffUntil > Date.now() ? `PvP ${Math.ceil((S.pvpOffUntil - Date.now()) / 60000)}m` : "PvP: OFF";
+  $("bPvp").style.borderColor = pvpOn() ? "#ff5252" : "";
+}
+function setPvp(on, why) {
+  S.pvp = on; if (on) S.pvpOffUntil = 0; save(); pvpLabel();
+  if (why) show(why, 3);
+}
+$("bPvp").onclick = () => {
+  if (!started) return;
+  if (S.lvl < 5) return show("PvP unlocks at Lv. 5", 2);
+  if (S.pvp && T - (P.lastHurt || -99) < 10) return show("You can't turn PvP off during a fight", 2);
+  setPvp(!S.pvp, S.pvp ? "PvP is OFF\nOther pirates can't hurt you, and you can't hurt them" : "PvP is ON!\nOther pirates can attack you. Beat them for a bounty");
+};
+function spawnRival(sea) {
+  const isls = ISLANDS.filter((i) => i.sea === sea);
+  const isl = pick(isls);
+  const lvl = Math.max(1, Math.min(100, (S.lvl || 1) + Math.floor(rnd(-2, 5))));
+  const a = rnd(0, 7), d = rnd(6, isl.r - 4), x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d;
+  const b = makeBody({ shirt: pick([0xe53935, 0x8e24aa, 0x1e88e5, 0x43a047, 0xfdd835, 0xfb8c00, 0x00acc1]), pants: pick([0x263238, 0x3e2723, 0x1a237e]), hat: pick(["straw", "tricorn", "bandana", "helmet"]), hatColor: pick([0xc0392b, 0x2c3e50, 0xf39c12, 0x16a085]), skin: pick([0xf5c99a, 0xc68642, 0x8d5524, 0xffdbac]) });
+  b.sword.visible = true;
+  const pos = V(x, groundAt(x, z), z); b.g.position.copy(pos); scene.add(b.g);
+  const bar = hpBar(); scene.add(bar);
+  const name = pick(BOT_NAMES.filter((n) => !enemies.some((e) => e.name === n))) || pick(BOT_NAMES);
+  const label = makeLabel(`${name} [Lv. ${lvl}]`, "#ffb74d", 768); label.scale.set(7, 1.1, 1); scene.add(label);
+  const mhp = Math.round((40 + lvl * 22 + lvl * lvl * 0.6) * 1.5);
+  enemies.push({ b, pos, isl, boss: null, lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: rnd(0.5, 1.5), swing: 0, slow: 0, freeze: 0, burn: 0, kb: V(), t: rnd(0, 9), wander: pos.clone(), dmg: (4 + lvl * 1.1) * 1.25, speed: 13, special: 5, name, rival: true, hostile: Math.random() < 0.75 });
+}
+for (const sea of [0, 1]) for (let i = 0; i < 4; i++) spawnRival(sea);
+
+// Crew: up to 2 crewmates you hire at the Crew Recruiter. They follow you and fight enemies near you.
+const allies = [];
+const crewCost = () => 5000 * (S.crew + 1) * (S.crew + 1);
+function addAlly() {
+  const b = makeBody({ shirt: 0x1565c0, pants: 0x263238, hat: "bandana", hatColor: 0x1565c0 });
+  b.sword.visible = true; b.g.position.copy(P.pos); scene.add(b.g);
+  const label = makeLabel(`Crewmate ${allies.length + 1}`, "#7fd1ff", 768); label.scale.set(6, 1, 1); scene.add(label);
+  allies.push({ b, label, pos: P.pos.clone(), t: rnd(0, 9), atkCd: 1, swing: 0, target: null });
+}
+function openCrew() {
+  const full = S.crew >= 2;
+  openModal("Crew Recruiter", `<p>Crewmates follow you everywhere and fight the enemies near you${pvpOn() ? " (and other pirates, while PvP is on)" : ""}.</p>
+    <p>Your crew: <b>${S.crew} / 2</b></p>
+    <div style="text-align:center;margin-top:10px">${full ? "<p>Your crew is full!</p>" : `<button class="btn blue" id="hire" ${S.beli < crewCost() ? "disabled" : ""}>Hire a crewmate for ${money(crewCost())}</button>`}</div>`);
+  const h = $("hire"); if (h) h.onclick = () => { if (S.beli < crewCost() || S.crew >= 2) return; S.beli -= crewCost(); S.crew++; save(); addAlly(); SFX.win(); show("A crewmate joined you!", 2); openCrew(); };
+}
+function updateAllies(dt) {
+  allies.forEach((a, i) => {
+    a.t += dt; a.atkCd -= dt;
+    a.b.g.visible = a.label.visible = !P.boat;
+    if (P.boat) { a.pos.copy(P.pos); return; }
+    // a target: the closest enemy near you (other pirates only while PvP is on)
+    if (!a.target || a.target.hp <= 0 || a.target.pos.distanceTo(P.pos) > 22 || (a.target.rival && !pvpOn())) {
+      a.target = null; let best = 18;
+      for (const e of enemies) { if (e.rival && !pvpOn()) continue; const d = e.pos.distanceTo(P.pos); if (d < best) { best = d; a.target = e; } }
+    }
+    const side = i === 0 ? 1 : -1;
+    const goal = a.target ? a.target.pos : P.pos.clone().add(V(Math.sin(P.faceYaw + side * 2.3), 0, Math.cos(P.faceYaw + side * 2.3)).multiplyScalar(4));
+    const to = goal.clone().sub(a.pos).setY(0), d = to.length();
+    if (a.pos.distanceTo(P.pos) > 45) a.pos.copy(P.pos);
+    let mv = 0;
+    if (d > (a.target ? 3 : 1.2)) { a.pos.addScaledVector(to.normalize(), Math.min(d, 15 * dt)); mv = 15; }
+    else if (a.target && a.atkCd <= 0) { a.atkCd = 0.9; a.swing = 0.001; hurtEnemy(a.target, 5 + S.lvl * 1.6, a.pos, { kb: 4 }); }
+    const g = groundAt(a.pos.x, a.pos.z); a.pos.y = g < 0 ? -0.6 : g;
+    a.b.g.position.copy(a.pos);
+    if (to.lengthSq() > 0.01) a.b.g.rotation.y = Math.atan2(to.x, to.z);
+    if (a.swing > 0) { a.swing += dt * 4; if (a.swing >= 1) a.swing = 0; }
+    animBody(a.b, mv, a.t, a.swing, false);
+    a.label.position.copy(a.pos).setY(a.pos.y + 5.6); a.label.visible = a.pos.distanceTo(P.pos) < 70 && !P.boat;
+  });
+}
+function pvpTick() {
+  if (S.lvl >= 5 && !S.pvpSeen) { S.pvpSeen = true; setPvp(true, "You reached Lv. 5: PvP is ON!\nOther pirates can attack you now. Use the PvP button to turn it off"); }
+  if (S.lvl >= 5 && !S.pvp && S.pvpOffUntil && Date.now() >= S.pvpOffUntil) setPvp(true, "PvP is back ON");
+}
+setInterval(() => { if (started) { pvpTick(); pvpLabel(); } }, 1000);
+
 // ================= effects =================
 const shots = [], fx = [];
 function addFx(m, life, upd) { scene.add(m); fx.push({ m, t: 0, life, upd }); }
@@ -535,6 +622,7 @@ const camBase = V(); let camReady = false;
 // ================= combat =================
 function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) return;
+  if (e.rival && !pvpOn()) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(S.lvl < 5 ? "PvP unlocks at Lv. 5" : "PvP is off: you can't hurt other pirates", 1.5); } return; }
   dmg = Math.round(dmg * rnd(0.9, 1.1));
   SFX.hit();
   e.hp -= dmg; floatText(e.pos, String(dmg), fxo.freeze ? "#9fe8ff" : fxo.burn ? "#ffae5a" : "#ffffff");
@@ -545,6 +633,7 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) killEnemy(e);
 }
 function killEnemy(e) {
+  if (e.rival) { const bounty = e.lvl * 400; S.beli += bounty; floatText(e.pos, `Bounty +${money(bounty)}`, "#ffb74d"); setTimeout(() => spawnRival(e.isl.sea), 45000); }
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
   gainXp(xp); S.beli += cash; floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
@@ -576,7 +665,7 @@ function gainXp(x) {
 }
 function hurtPlayer(d, from) {
   if (P.hurtT > 0 || dead) return;
-  P.hp -= Math.round(d); P.hurtT = 0.4; SFX.hurt(); P.lastHit = T; shake = 0.25;
+  P.hp -= Math.round(d); P.lastHurt = T; P.hurtT = 0.4; SFX.hurt(); P.lastHit = T; shake = 0.25;
   const away = P.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.01) P.vel.addScaledVector(away.normalize(), 8);
   if (P.hp <= 0) die();
 }
@@ -598,6 +687,7 @@ function aimPoint() {
 function assist(d, range, cone) {
   let best = null, bs = -Infinity;
   for (const e of enemies) {
+    if (e.rival && !pvpOn()) continue;
     const to = e.pos.clone().sub(P.pos).setY(0), dist = to.length();
     if (dist < 0.01 || dist > range + (e.boss ? 2 : 0)) continue;
     const c = to.normalize().dot(d);
@@ -918,9 +1008,9 @@ function drawSkills() {
   $("skills").innerHTML = s.list.map((sk) => { const left = Math.max(0, P.cds[P.tool + sk[0]] || 0); return `<div class="sk ${P.en < sk[3] ? "low" : ""}"><div class="cdv" style="width:${(left / sk[2]) * 100}%"></div><kbd>${sk[0]}</kbd>${sk[1]}${left > 0 ? ` <span style="margin-left:auto;opacity:.8">${left.toFixed(1)}</span>` : ""}</div>`; }).join("");
 }
 
-function die() { dead = true; shiftLock = false; document.exitPointerLock?.(); $("lockdot").style.display = "none"; $("dead").style.display = "grid"; if (P.boat) { scene.remove(P.boat.g); P.boat = null; } }
+function die() { if (S.lvl >= 5 && S.pvp) { S.pvp = false; S.pvpOffUntil = Date.now() + 20 * 60000; save(); pvpLabel(); } dead = true; shiftLock = false; document.exitPointerLock?.(); $("lockdot").style.display = "none"; $("dead").style.display = "grid"; if (P.boat) { scene.remove(P.boat.g); P.boat = null; } }
 $("again").onclick = () => { $("dead").style.display = "none"; dead = false; P.hp = maxHp(); P.en = maxEn(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); };
-$("play").onclick = () => { $("start").style.display = "none"; started = true; drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
@@ -994,6 +1084,7 @@ function tick() {
     P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt);
     // Health only comes back slowly, after 6 seconds without fighting (attacking or being hit) (not in water or lava).
     if (P.onGround && !lavaAt(P.pos.x, P.pos.z) && T - (P.lastHit || -99) > 6) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.015 * dt);
+    updateAllies(dt);
 
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
@@ -1007,7 +1098,7 @@ function tick() {
       if (e.burn > 0) { const before = Math.ceil(e.burn * 2); e.burn -= dt; if (Math.ceil(e.burn * 2) !== before) { e.hp -= Math.ceil(e.maxHp * 0.015); if (e.hp <= 0) { killEnemy(e); continue; } } }
       const to = P.pos.clone().sub(e.pos); to.y = 0; const d = to.length();
       const playerOnIsl = Math.hypot(P.pos.x - e.isl.x, P.pos.z - e.isl.z) < e.isl.r + 8 && !P.boat;
-      const aggro = playerOnIsl && (d < (e.boss ? 30 : 20) || e.aggro > 0);
+      const aggro = playerOnIsl && (e.rival ? pvpOn() && !e.isl.spawn && (e.hostile || e.aggro > 0) && (d < 22 || e.aggro > 0) : d < (e.boss ? 30 : 20) || e.aggro > 0);
       let mv = V();
       if (e.freeze > 0) { /* frozen */ } else if (aggro) {
         if (d > (e.boss ? 4.5 : 2.8)) mv = to.clone().normalize();
