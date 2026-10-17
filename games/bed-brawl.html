@@ -93,12 +93,15 @@ const SFX = { place: () => tone(180, 0.06, "square", 0.05), brk: () => noise(0.1
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
-const scene = new THREE.Scene(); scene.background = new THREE.Color(0x7ec8f5); scene.fog = new THREE.Fog(0x7ec8f5, 80, 220);
+
+// Roblox-style sky: a soft gradient (deep blue overhead, pale at the horizon) as the background.
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); const t = new THREE.CanvasTexture(c); return t; };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 80, 220);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 600);
 addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 0.85));
-const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(40, 80, 30); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, far: 220 }); scene.add(sun);
-const mats = {}; const mat = (c) => mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c }));
+scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x667788, 1.05));
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.position.set(40, 80, 30); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, far: 220 }); scene.add(sun);
+const mats = {}; const mat = (c) => mats[c] || (mats[c] = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.02, color: c }));
 const bm = (w, h, d, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.castShadow = m.receiveShadow = true; return m; };
 
 // ---------- voxel world ----------

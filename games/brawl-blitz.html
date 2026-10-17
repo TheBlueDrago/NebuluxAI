@@ -82,9 +82,9 @@ document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x4a3b6b);
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 400);
 addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-scene.add(new THREE.HemisphereLight(0xffffff, 0x554466, 0.85));
-const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(20, 50, 15); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 45, bottom: -45, far: 120 }); scene.add(sun);
-const mats = {}; const mat = (c, o) => mats[c + (o || "")] || (mats[c + (o || "")] = new THREE.MeshLambertMaterial(o ? { color: c, transparent: true, opacity: o } : { color: c }));
+scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x554466, 1.05));
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.position.set(20, 50, 15); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 45, bottom: -45, far: 120 }); scene.add(sun);
+const mats = {}; const mat = (c, o) => mats[c + (o || "")] || (mats[c + (o || "")] = new THREE.MeshStandardMaterial(o ? { roughness: 0.55, metalness: 0.02, color: c, transparent: true, opacity: o } : { color: c }));
 const bm = (w, h, d, c, o) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, o)); m.castShadow = !o; m.receiveShadow = true; return m; };
 
 // ---------- arena ----------
