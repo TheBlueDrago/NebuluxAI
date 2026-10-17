@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { showNotice } from "@/lib/dialogs";
 import { Download, Loader2, Lock } from "lucide-react";
 import { useExportAccess } from "@/lib/exportAccess";
 
@@ -23,9 +24,10 @@ export default function DownloadZip({ html, name, plan, onUpgrade }) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      // ignore
+      // Freed a moment later: revoking it right away can cancel the download in Safari and Firefox.
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch {
+      showNotice("The ZIP couldn't be made. Please try again.");
     } finally {
       setDownloading(false);
     }

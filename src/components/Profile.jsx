@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { askConfirm } from "@/lib/dialogs";
+import { askConfirm, showNotice } from "@/lib/dialogs";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, Upload, LogOut, Mail, Shield, KeyRound, ArrowLeft, Loader2, Crown, Settings, Users, Lock, ShieldCheck, Ticket, Trash2, Gamepad2, Pencil, Eye, EyeOff, Globe, Smartphone, Building2, CreditCard } from "lucide-react";
@@ -39,7 +39,6 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
   // Password reset flow: idle -> sent
   const [pwStep, setPwStep] = useState("idle");
   const [pwBusy, setPwBusy] = useState(false);
-  const [pwError, setPwError] = useState("");
 
   // Account deletion confirmation
   const [delText, setDelText] = useState("");
@@ -66,7 +65,6 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
       setLoading(true);
       setView(initialView);
       setPwStep("idle");
-      setPwError("");
       setDelText("");
       setDelAck(false);
       setDelError("");
@@ -80,7 +78,6 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
 
   const resetPwState = () => {
     setPwStep("idle");
-    setPwError("");
   };
 
   const handleLogout = () => {
@@ -93,13 +90,14 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
   };
 
   const startReset = async () => {
-    setPwError("");
     setPwBusy(true);
     try {
       await base44.auth.resetPasswordRequest(user?.email || "");
       setPwStep("sent");
     } catch (e) {
-      setPwError(e.message || "Could not send reset email");
+      // Shown right away: the button is in two places (Settings and Security), so a message here
+      // reaches the person wherever they pressed it.
+      showNotice(e.message || "We couldn't send the password reset email. Please try again in a minute.");
     } finally {
       setPwBusy(false);
     }
