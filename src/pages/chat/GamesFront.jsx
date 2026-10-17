@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { gameThumb } from "@/lib/gameThumbs";
 import SocialPanel from "@/components/games/SocialPanel";
+import FriendsRow from "@/components/games/FriendsRow";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, Search, Plus, Shirt, Users, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
@@ -314,6 +315,7 @@ export default function GamesFront() {
             <EmptyState onCreate={goGameDesigner} />
           ) : (
             <>
+              {showTop && !q.trim() && shell.currentUser && <FriendsRow onAdd={() => setSocial("friends")} onPlay={play} />}
               {showTop && !q.trim() && continuing.length > 0 && (
                 <section className="mb-6">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-3">

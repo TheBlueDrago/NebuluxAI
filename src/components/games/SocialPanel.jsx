@@ -82,7 +82,7 @@ function AvatarTab() {
   return (
     <div className="grid sm:grid-cols-[160px_1fr] gap-5">
       <div className="rounded-2xl bg-gradient-to-b from-sky-400/30 to-emerald-400/20 border border-white/10 py-5">
-        <AvatarFigure a={a} />
+        <AvatarFigure a={a} size={1.6} />
       </div>
       <div className="space-y-4">
         <Row k="skin" label="Skin" />
