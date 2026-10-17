@@ -3,6 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { withPreviewShim, PREVIEW_SANDBOX } from "@/lib/previewShim";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { askConfirm } from "@/lib/dialogs";
 
 // A game or website shown in a sandboxed frame, with a fix for the "black screen" problem: the
 // preview shim (lib/previewShim.js) reports if the page crashed or still shows nothing a few
@@ -119,6 +120,26 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
           .invoke("game-board", { ...send, name: nameRef.current, board: d.board })
           .then((r) => reply(r?.data?.top))
           .catch((e) => reply(e?.response?.data?.top));
+        return;
+      }
+      // Stardust (functions/.../social.js): a game can show your balance, and spend some only
+      // after you say yes here in the app (the game can't skip this).
+      if ((d.type === "nebulux-stardust" || d.type === "nebulux-spend") && nameRef.current) {
+        const win = ref.current.contentWindow;
+        const reply = (data) => win.postMessage({ type: "nebulux-reply", id: d.id, data }, "*");
+        if (!saveRef.current) return reply({ error: "Sign in to use Stardust." });
+        if (d.type === "nebulux-stardust") {
+          base44.functions.invoke("social", { action: "shop" }).then((r) => reply({ stardust: r?.data?.nebux ?? 0 })).catch(() => reply({}));
+          return;
+        }
+        const price = Math.floor(Number(d.price));
+        askConfirm(`Use ${price} Stardust for "${String(d.what || "this").slice(0, 60)}" in ${title || "this game"}?`, { confirmLabel: `Use ${price} ✨` }).then((yes) => {
+          if (!yes) return reply({ error: "Cancelled." });
+          base44.functions
+            .invoke("social", { action: "spend", game: nameRef.current, price })
+            .then((r) => reply(r?.data || {}))
+            .catch((e) => reply(e?.response?.data || { error: "Couldn't use Stardust right now." }));
+        });
         return;
       }
       if (d.type !== "nebulux-health") return;

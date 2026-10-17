@@ -18,6 +18,10 @@ const HATS = [
   ["wizard", "Wizard hat"],
   ["halo", "Halo"],
 ];
+const DESIGNS = [["plain", "Plain"], ["stripes", "Stripes"], ["star", "Star"], ["flame", "Flames"], ["galaxy", "Galaxy"]];
+const LEGS = [["pants", "Pants"], ["shorts", "Shorts"]];
+const BACKS = [["none", "Nothing"], ["backpack", "Backpack"], ["cape", "Cape"], ["jetpack", "Jetpack"], ["wings", "Wings"]];
+const TRAILS = [["none", "No trail"], ["bubbles", "Bubble buddies"], ["stars", "Star buddies"], ["rainbow", "Rainbow buddies"]];
 const FACES = [
   ["smile", "🙂"],
   ["grin", "😁"],
@@ -68,30 +72,50 @@ function Hat({ a, s }) {
       return null;
   }
 }
+const DESIGN_BG = {
+  stripes: "repeating-linear-gradient(180deg, rgba(255,255,255,.35) 0 4px, transparent 4px 9px)",
+  star: "radial-gradient(circle at 50% 45%, #ffe082 0 18%, transparent 19%)",
+  flame: "linear-gradient(0deg, #ff6f00 0%, #ffca28 35%, transparent 70%)",
+  galaxy: "radial-gradient(circle at 30% 30%, #fff 0 4%, transparent 5%), radial-gradient(circle at 70% 60%, #fff 0 3%, transparent 4%), linear-gradient(135deg, #311b92, #880e4f)",
+};
+const TRAIL_COLORS = { rainbow: ["#ff5252", "#ffd740", "#69f0ae", "#40c4ff", "#e040fb"], stars: ["#fff59d", "#ffe082", "#fff9c4"], bubbles: ["#b3e5fc", "#e1f5fe", "#b2ebf2"] };
 export function AvatarFigure({ a, size = 1 }) {
   const s = (n) => n * size;
   const face = (FACES.find((f) => f[0] === a.face) || FACES[0])[1];
   const part = (style, c, r = 3) => <div className="absolute" style={{ borderRadius: s(r), ...plastic(c), ...style }} />;
+  const shorts = a.legs === "shorts";
+  const back = a.back || "none", trail = a.trail || "none";
   return (
     <div className="relative mx-auto" style={{ width: s(72), height: s(140) }} aria-hidden="true">
+      {/* back bling, behind the body */}
+      {back === "cape" && part({ top: s(44), left: s(12), width: s(48), height: s(70), borderRadius: s(4) + "px " + s(4) + "px " + s(10) + "px " + s(10) + "px", opacity: 0.95 }, "#c62828")}
+      {back === "wings" && <><div className="absolute" style={{ top: s(40), left: s(-14), width: s(34), height: s(40), background: "linear-gradient(135deg,#fff,#e1f5fe)", clipPath: "polygon(100% 20%,0 0,30% 100%)" }} /><div className="absolute" style={{ top: s(40), right: s(-14), width: s(34), height: s(40), background: "linear-gradient(225deg,#fff,#e1f5fe)", clipPath: "polygon(0 20%,100% 0,70% 100%)" }} /></>}
+      {back === "backpack" && part({ top: s(48), left: s(14), width: s(44), height: s(34) }, "#795548", 6)}
+      {back === "jetpack" && <>{part({ top: s(46), left: s(12), width: s(14), height: s(34) }, "#9e9e9e", 6)}{part({ top: s(46), right: s(12), width: s(14), height: s(34) }, "#9e9e9e", 6)}<div className="absolute" style={{ top: s(80), left: s(14), width: s(10), height: s(12), background: "linear-gradient(#ffca28,#ff6f00,transparent)", borderRadius: "50%" }} /><div className="absolute" style={{ top: s(80), right: s(14), width: s(10), height: s(12), background: "linear-gradient(#ffca28,#ff6f00,transparent)", borderRadius: "50%" }} /></>}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center" style={{ top: s(12), width: s(30), height: s(30), borderRadius: s(7), ...plastic(a.skin), fontSize: s(16) }}>
         {face}
       </div>
       <Hat a={a} s={s} />
       {part({ top: s(44), left: s(16), width: s(40), height: s(42) }, a.shirt)}
+      {a.design && a.design !== "plain" && <div className="absolute" style={{ top: s(44), left: s(16), width: s(40), height: s(42), borderRadius: s(3), background: DESIGN_BG[a.design] }} />}
       {part({ top: s(44), left: s(3), width: s(12), height: s(14) }, a.shirt)}
       {part({ top: s(44), right: s(3), width: s(12), height: s(14) }, a.shirt)}
       {part({ top: s(58), left: s(3), width: s(12), height: s(26) }, a.skin)}
       {part({ top: s(58), right: s(3), width: s(12), height: s(26) }, a.skin)}
-      {part({ top: s(87), left: s(17), width: s(18), height: s(44) }, a.pants)}
-      {part({ top: s(87), right: s(17), width: s(18), height: s(44) }, a.pants)}
+      {part({ top: s(87), left: s(17), width: s(18), height: s(shorts ? 18 : 44) }, a.pants)}
+      {part({ top: s(87), right: s(17), width: s(18), height: s(shorts ? 18 : 44) }, a.pants)}
+      {shorts && <>{part({ top: s(105), left: s(17), width: s(18), height: s(26) }, a.skin)}{part({ top: s(105), right: s(17), width: s(18), height: s(26) }, a.skin)}</>}
       {part({ top: s(128), left: s(16), width: s(20), height: s(8) }, "#3a3a3a")}
       {part({ top: s(128), right: s(16), width: s(20), height: s(8) }, "#3a3a3a")}
+      {/* trail: little buddies floating beside you */}
+      {trail !== "none" && TRAIL_COLORS[trail].slice(0, 3).map((c, i) => (
+        <div key={i} className="absolute" style={{ top: s(96 + i * 12), left: s(-18 - i * 10), width: s(12 - i * 2), height: s(12 - i * 2), borderRadius: trail === "bubbles" ? "50%" : s(3), ...(trail === "bubbles" ? { border: `${s(1.5)}px solid ${c}`, background: "rgba(255,255,255,.25)" } : plastic(c)), transform: trail === "stars" ? "rotate(45deg)" : undefined }} />
+      ))}
     </div>
   );
 }
 
-const DEFAULT_LOOK = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile" };
+const DEFAULT_LOOK = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none" };
 // The Stardust shop (prices from the server): { stardust, owned, prices, dailyReady, dailyAmount, playLeft }
 function useShop() {
   const [shop, setShop] = useState(null);
@@ -123,7 +147,7 @@ function AvatarTab({ goShop }) {
     setA((x) => ({ ...x, [k]: v }));
     setSaved("");
   };
-  const needs = [["hat:" + a.hat], ["face:" + a.face]].map(([i]) => i).filter((i) => locked(shop, i));
+  const needs = ["hat:" + a.hat, "face:" + a.face, "design:" + (a.design || "plain"), "back:" + (a.back || "none"), "trail:" + (a.trail || "none")].filter((i) => locked(shop, i));
   const save = async () => {
     if (needs.length) return;
     setSaved("saving");
@@ -164,6 +188,19 @@ function AvatarTab({ goShop }) {
           </div>
         </div>
         {a.hat !== "none" && <Row k="hatColor" label="Hat colour" />}
+        {[["design", "Shirt design", DESIGNS], ["legs", "Legs", LEGS], ["back", "Back bling", BACKS], ["trail", "Trail", TRAILS]].map(([k, label, list]) => (
+          <div key={k}>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {list.map(([id, name]) => (
+                <button key={id} type="button" onClick={() => set(k, id)} className={`px-2.5 py-1 rounded-full text-xs ${(a[k] || list[0][0]) === id ? "bg-white text-slate-900" : "bg-white/10 text-slate-200 hover:bg-white/20"}`}>
+                  {name}
+                  <Lock item={k + ":" + id} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Face</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -189,7 +226,7 @@ function AvatarTab({ goShop }) {
   );
 }
 
-const ITEM_NAMES = Object.fromEntries([...HATS.map(([id, l]) => ["hat:" + id, l]), ...FACES.map(([id, e]) => ["face:" + id, `${e} ${id.charAt(0).toUpperCase() + id.slice(1)} face`])]);
+const ITEM_NAMES = Object.fromEntries([...HATS.map(([id, l]) => ["hat:" + id, l]), ...DESIGNS.map(([id, l]) => ["design:" + id, l + " shirt"]), ...BACKS.map(([id, l]) => ["back:" + id, l]), ...TRAILS.map(([id, l]) => ["trail:" + id, l]), ...FACES.map(([id, e]) => ["face:" + id, `${e} ${id.charAt(0).toUpperCase() + id.slice(1)} face`])]);
 function ShopTab() {
   const [shop, load] = useShop();
   const [busy, setBusy] = useState("");

@@ -11,15 +11,25 @@ import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 
-export const DEFAULT_AVATAR = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile" };
+export const DEFAULT_AVATAR = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none" };
 const HATS = ["none", "straw", "tricorn", "bandana", "helmet", "cap", "crown", "tophat", "viking", "wizard", "headphones", "halo"];
 const FACES = ["smile", "grin", "cool", "angry", "wink"];
+const DESIGNS = ["plain", "stripes", "star", "flame", "galaxy"]; // shirt designs
+const LEGS = ["pants", "shorts"];
+const BACKS = ["none", "backpack", "cape", "wings", "jetpack"]; // back bling
+const TRAILS = ["none", "rainbow", "stars", "bubbles"]; // little buddies that follow you (just for looks)
 // The avatar shop. Prices are in Stardust, a free currency earned by playing (never bought with
 // money). Items not listed here (the basics) are free. Prices live here, on the server.
 export const SHOP = {
   "hat:tricorn": 50, "hat:helmet": 50, "hat:tophat": 120, "hat:headphones": 150, "hat:viking": 200, "hat:wizard": 250, "hat:crown": 300, "hat:halo": 400,
   "face:angry": 40, "face:wink": 60, "face:cool": 80,
+  "design:stripes": 40, "design:star": 80, "design:flame": 150, "design:galaxy": 300,
+  "back:backpack": 80, "back:cape": 150, "back:jetpack": 250, "back:wings": 400,
+  "trail:bubbles": 120, "trail:stars": 250, "trail:rainbow": 500,
 };
+// Games that may spend a player's Stardust (always after the player confirms in the app):
+// only Nebulux's own games, never ones people publish.
+export const SPEND_GAMES = ["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale"];
 const START_NEBUX = 100, DAILY_NEBUX = 25, PLAY_NEBUX = 2, PLAY_CAP = 60; // per ping (every 2 min in a game), per day
 const COLOR = /^#[0-9a-f]{6}$/i;
 const ONLINE_MS = 3 * 60000; // "playing" counts for 3 minutes after the last update
@@ -30,6 +40,10 @@ export function cleanAvatar(a) {
   for (const k of ["skin", "shirt", "pants", "hatColor"]) if (COLOR.test(String(a[k] || ""))) o[k] = String(a[k]).toLowerCase();
   if (HATS.includes(a.hat)) o.hat = a.hat;
   if (FACES.includes(a.face)) o.face = a.face;
+  if (DESIGNS.includes(a.design)) o.design = a.design;
+  if (LEGS.includes(a.legs)) o.legs = a.legs;
+  if (BACKS.includes(a.back)) o.back = a.back;
+  if (TRAILS.includes(a.trail)) o.trail = a.trail;
   return o;
 }
 // A short code to share instead of an email: the END of the account id (ids start with a
@@ -96,7 +110,7 @@ export async function onRequestPost({ request, env }) {
       if (!(await allow(`avatar:${me}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
       const avatar = cleanAvatar(body.avatar);
       const w = await wallet(db, me);
-      if (!owns(w, "hat:" + avatar.hat) || !owns(w, "face:" + avatar.face)) return json({ error: "Buy that item in the Shop first." }, 403);
+      if (!["hat:" + avatar.hat, "face:" + avatar.face, "design:" + avatar.design, "back:" + avatar.back, "trail:" + avatar.trail].every((i) => owns(w, i))) return json({ error: "Buy that item in the Shop first." }, 403);
       await db.prepare("INSERT INTO avatars (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data").bind(me, JSON.stringify(avatar)).run();
       return json({ avatar });
     }
@@ -133,6 +147,16 @@ export async function onRequestPost({ request, env }) {
       const r = await db.prepare("UPDATE wallets SET nebux = nebux - ?, owned = ? WHERE user_id = ? AND nebux >= ?").bind(SHOP[item], JSON.stringify(owned), me, SHOP[item]).run();
       if (!r.meta || !r.meta.changes) return json({ error: "Not enough Stardust." }, 400);
       return json({ ok: true, nebux: w.nebux - SHOP[item], owned });
+    }
+    // A Nebulux game spends Stardust on something in the game (the app asks the player first).
+    if (body.action === "spend") {
+      if (!(await allow(`spend:${me}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
+      const game = String(body.game || ""), price = Math.floor(Number(body.price));
+      if (!SPEND_GAMES.includes(game)) return json({ error: "This game can't use Stardust." }, 403);
+      if (!(price >= 1 && price <= 5000)) return json({ error: "That price doesn't look right." }, 400);
+      const r = await db.prepare("UPDATE wallets SET nebux = nebux - ? WHERE user_id = ? AND nebux >= ?").bind(price, me, price).run();
+      if (!r.meta || !r.meta.changes) return json({ error: "Not enough Stardust.", stardust: (await wallet(db, me)).nebux }, 400);
+      return json({ ok: true, stardust: (await wallet(db, me)).nebux });
     }
     if (body.action === "add") {
       if (!(await allow(`friend-add:${me}`, 20, 3600))) return json({ error: TOO_MANY }, 429);
