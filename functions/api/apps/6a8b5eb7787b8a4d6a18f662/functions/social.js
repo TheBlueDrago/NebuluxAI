@@ -12,8 +12,15 @@ import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 
 export const DEFAULT_AVATAR = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile" };
-const HATS = ["none", "straw", "tricorn", "bandana", "helmet", "cap", "crown"];
+const HATS = ["none", "straw", "tricorn", "bandana", "helmet", "cap", "crown", "tophat", "viking", "wizard", "headphones", "halo"];
 const FACES = ["smile", "grin", "cool", "angry", "wink"];
+// The avatar shop. Prices are in Stardust, a free currency earned by playing (never bought with
+// money). Items not listed here (the basics) are free. Prices live here, on the server.
+export const SHOP = {
+  "hat:tricorn": 50, "hat:helmet": 50, "hat:tophat": 120, "hat:headphones": 150, "hat:viking": 200, "hat:wizard": 250, "hat:crown": 300, "hat:halo": 400,
+  "face:angry": 40, "face:wink": 60, "face:cool": 80,
+};
+const START_NEBUX = 100, DAILY_NEBUX = 25, PLAY_NEBUX = 2, PLAY_CAP = 60; // per ping (every 2 min in a game), per day
 const COLOR = /^#[0-9a-f]{6}$/i;
 const ONLINE_MS = 3 * 60000; // "playing" counts for 3 minutes after the last update
 
@@ -37,6 +44,7 @@ function ensure(db) {
         db.prepare("CREATE TABLE IF NOT EXISTS avatars (user_id TEXT PRIMARY KEY, data TEXT NOT NULL)"),
         db.prepare("CREATE TABLE IF NOT EXISTS friends (a TEXT NOT NULL, b TEXT NOT NULL, status TEXT NOT NULL, at INTEGER, PRIMARY KEY (a, b))"),
         db.prepare("CREATE TABLE IF NOT EXISTS presence (user_id TEXT PRIMARY KEY, game TEXT, at INTEGER)"),
+        db.prepare("CREATE TABLE IF NOT EXISTS wallets (user_id TEXT PRIMARY KEY, nebux INTEGER NOT NULL, owned TEXT NOT NULL, daily TEXT, play_day TEXT, play_earned INTEGER)"),
       ])
       .catch((e) => {
         ready = null;
@@ -50,6 +58,17 @@ const userName = async (db, id) => {
   const r = await db.prepare("SELECT json_extract(data, '$.full_name') AS n FROM rows WHERE entity = 'User' AND id = ?").bind(id).first().catch(() => null);
   return (r && r.n) || "Player";
 };
+
+const today = () => new Date().toISOString().slice(0, 10);
+async function wallet(db, id) {
+  let w = await db.prepare("SELECT * FROM wallets WHERE user_id = ?").bind(id).first();
+  if (!w) {
+    await db.prepare("INSERT OR IGNORE INTO wallets (user_id, nebux, owned, daily, play_day, play_earned) VALUES (?, ?, '[]', '', '', 0)").bind(id, START_NEBUX).run();
+    w = await db.prepare("SELECT * FROM wallets WHERE user_id = ?").bind(id).first();
+  }
+  return { nebux: w.nebux, owned: JSON.parse(w.owned || "[]"), daily: w.daily, playDay: w.play_day, playEarned: w.play_earned || 0 };
+}
+const owns = (w, item) => !(item in SHOP) || w.owned.includes(item);
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -76,6 +95,8 @@ export async function onRequestPost({ request, env }) {
     if (body.action === "setAvatar") {
       if (!(await allow(`avatar:${me}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
       const avatar = cleanAvatar(body.avatar);
+      const w = await wallet(db, me);
+      if (!owns(w, "hat:" + avatar.hat) || !owns(w, "face:" + avatar.face)) return json({ error: "Buy that item in the Shop first." }, 403);
       await db.prepare("INSERT INTO avatars (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data").bind(me, JSON.stringify(avatar)).run();
       return json({ avatar });
     }
@@ -83,7 +104,35 @@ export async function onRequestPost({ request, env }) {
       if (!(await allow(`playing:${me}`, 30, 3600))) return json({ ok: true });
       const game = String(body.game || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 63);
       await db.prepare("INSERT INTO presence (user_id, game, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET game = excluded.game, at = excluded.at").bind(me, game, Date.now()).run();
+      // Playing earns a little Stardust (PLAY_NEBUX a ping, up to PLAY_CAP a day).
+      if (game) {
+        const w = await wallet(db, me), d = today(), earned = w.playDay === d ? w.playEarned : 0;
+        if (earned < PLAY_CAP) await db.prepare("UPDATE wallets SET nebux = nebux + ?, play_day = ?, play_earned = ? WHERE user_id = ?").bind(PLAY_NEBUX, d, earned + PLAY_NEBUX, me).run();
+      }
       return json({ ok: true });
+    }
+    if (body.action === "shop") {
+      const w = await wallet(db, me);
+      return json({ nebux: w.nebux, owned: w.owned, prices: SHOP, dailyReady: w.daily !== today(), dailyAmount: DAILY_NEBUX, playLeft: Math.max(0, PLAY_CAP - (w.playDay === today() ? w.playEarned : 0)) });
+    }
+    if (body.action === "daily") {
+      const w = await wallet(db, me);
+      if (w.daily === today()) return json({ error: "Come back tomorrow for more Stardust." }, 400);
+      await db.prepare("UPDATE wallets SET nebux = nebux + ?, daily = ? WHERE user_id = ? AND (daily IS NULL OR daily != ?)").bind(DAILY_NEBUX, today(), me, today()).run();
+      return json({ ok: true, nebux: w.nebux + DAILY_NEBUX });
+    }
+    if (body.action === "buy") {
+      if (!(await allow(`buy:${me}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
+      const item = String(body.item || "");
+      if (!(item in SHOP)) return json({ error: "That item isn't in the shop." }, 400);
+      const w = await wallet(db, me);
+      if (w.owned.includes(item)) return json({ ok: true, nebux: w.nebux, owned: w.owned });
+      if (w.nebux < SHOP[item]) return json({ error: `You need ${SHOP[item] - w.nebux} more Stardust. Play games or claim your daily Stardust.` }, 400);
+      const owned = [...w.owned, item];
+      // Only takes the Stardust if the balance is still enough (two buys at once can't overspend).
+      const r = await db.prepare("UPDATE wallets SET nebux = nebux - ?, owned = ? WHERE user_id = ? AND nebux >= ?").bind(SHOP[item], JSON.stringify(owned), me, SHOP[item]).run();
+      if (!r.meta || !r.meta.changes) return json({ error: "Not enough Stardust." }, 400);
+      return json({ ok: true, nebux: w.nebux - SHOP[item], owned });
     }
     if (body.action === "add") {
       if (!(await allow(`friend-add:${me}`, 20, 3600))) return json({ error: TOO_MANY }, 429);

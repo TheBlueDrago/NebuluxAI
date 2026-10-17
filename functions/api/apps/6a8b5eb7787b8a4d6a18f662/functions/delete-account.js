@@ -22,7 +22,7 @@ export async function onRequestPost(context) {
     if (env.DB) await env.DB.prepare("DELETE FROM chats WHERE user_id = ?").bind(user.id).run().catch(() => {});
     // Their avatar, friends and what they were playing (social.js).
     if (env.DB) {
-      for (const sql of ["DELETE FROM avatars WHERE user_id = ?", "DELETE FROM presence WHERE user_id = ?", "DELETE FROM friends WHERE a = ?1 OR b = ?1"]) await env.DB.prepare(sql).bind(user.id).run().catch(() => {});
+      for (const sql of ["DELETE FROM avatars WHERE user_id = ?", "DELETE FROM presence WHERE user_id = ?", "DELETE FROM wallets WHERE user_id = ?", "DELETE FROM friends WHERE a = ?1 OR b = ?1"]) await env.DB.prepare(sql).bind(user.id).run().catch(() => {});
     }
     // Saved game progress (game-save.js), one key per game.
     const saves = await kv.list({ prefix: `gamesave:${user.id}:` }).catch(() => null);
