@@ -252,7 +252,7 @@ document.addEventListener("pointerlockchange", () => { locked = document.pointer
 cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; });
 addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
 cvs.addEventListener("contextmenu", (e) => e.preventDefault());
-addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= e.movementX * 0.005; cam.pitch = clamp(cam.pitch + e.movementY * 0.004, -0.3, 1.35); } });
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 5, 30); }, { passive: true });
 const joy = { x: 0, y: 0, id: null };
 if (matchMedia("(pointer: coarse)").matches) {
@@ -372,7 +372,7 @@ function tick() {
   // camera
   const head = P.pos.clone().setY(P.pos.y + 2.2);
   const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
-  camera.position.lerp(head.clone().add(off), Math.min(1, 16 * dt)); camera.lookAt(head);
+  camera.position.lerp(head.clone().add(off), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
   sun.position.copy(P.pos).add(V(30, 60, 20)); sun.target.position.copy(P.pos);
   // hud
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }

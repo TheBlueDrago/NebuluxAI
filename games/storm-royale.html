@@ -263,7 +263,7 @@ addEventListener("keyup", (e) => { keys[e.code] = false; });
 cvs.addEventListener("mousedown", (e) => { if (!started || over) return; if (!locked && !touch) { cvs.requestPointerLock?.(); return; } if (e.button === 0) mouseDown = true; });
 addEventListener("mouseup", () => (mouseDown = false));
 document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
-addEventListener("mousemove", (e) => { if (!locked || !me) return; me.yaw -= e.movementX * 0.0024; me.pitch = clamp(me.pitch - e.movementY * 0.0022, -0.9, 0.9); });
+addEventListener("mousemove", (e) => { if (!locked || !me) return; me.yaw -= clamp(e.movementX, -80, 80) * 0.0024; me.pitch = clamp(me.pitch - clamp(e.movementY, -80, 80) * 0.0022, -0.9, 0.9); });
 addEventListener("wheel", (e) => { if (started) setSlot((me.slot + (e.deltaY > 0 ? 1 : 2)) % 3); });
 const joy = { x: 0, y: 0, id: null };
 if (touch) {

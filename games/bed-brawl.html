@@ -215,7 +215,7 @@ addEventListener("mouseup", (e) => { if (e.button === 2 && rmb) { if (!locked &&
 cvs.addEventListener("contextmenu", (e) => e.preventDefault());
 addEventListener("mousemove", (e) => {
   mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1;
-  if ((rmb && !locked) || locked) { cam.yaw -= e.movementX * 0.005; cam.pitch = clamp(cam.pitch + e.movementY * 0.004, -0.4, 1.35); if (rmb) rmb.moved += Math.abs(e.movementX) + Math.abs(e.movementY); }
+  if ((rmb && !locked) || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.4, 1.35); if (rmb) rmb.moved += Math.abs(e.movementX) + Math.abs(e.movementY); }
 });
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.2, 4, 26); }, { passive: true });
 const joy = { x: 0, y: 0, id: null };
@@ -267,12 +267,15 @@ function primary() {
   if (P.atkCd > 0 || modalOpen) return;
   P.atkCd = 0.33; P.swing = 0.001;
   const dir = aimDir(); P.yaw = Math.atan2(dir.x, dir.z);
-  // hit a bot in front first
+  // hit the closest bot in front first (aim assist: anything roughly in front, and you turn to face it)
+  let target = null, best = 3.8;
   for (const bot of bots) {
     if (bot.dead) continue;
     const to = bot.pos.clone().sub(P.pos); to.y = 0;
-    if (to.length() < 3.4 && Math.abs(bot.pos.y - P.pos.y) < 2.5 && to.normalize().dot(dir) > 0.3) { hurtBot(bot, P.tool === 1 ? SWORDS[P.sword].dmg : 4, P.pos); return; }
+    const d = to.length();
+    if (d < best && Math.abs(bot.pos.y - P.pos.y) < 2.5 && to.normalize().dot(dir) > 0) { best = d; target = bot; }
   }
+  if (target) { const to = target.pos.clone().sub(P.pos); P.yaw = Math.atan2(to.x, to.z); hurtBot(target, P.tool === 1 ? SWORDS[P.sword].dmg : 4, P.pos); return; }
   // otherwise break the block you aim at (only placed blocks and beds)
   const h = aimHit(); if (!h) return; const b = h.object.userData.b;
   if (b.type === "wool" || b.type === "bed") {
@@ -497,8 +500,10 @@ function tick() {
   // camera
   const head = P.pos.clone().setY(P.pos.y + 2.2);
   const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
-  camera.position.lerp(head.clone().add(off), Math.min(1, 16 * dt));
-  if (locked || document.body.classList.contains("touch")) camera.position.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.2));
+  // Smooth toward the target, shoulder offset included, so the camera doesn't wobble.
+  const camWant = head.clone().add(off);
+  if (locked || document.body.classList.contains("touch")) camWant.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.2));
+  camera.position.lerp(camWant, 1 - Math.exp(-14 * dt));
   camera.lookAt(head.x + (aimCenter() ? Math.cos(cam.yaw) * 1.2 : 0), head.y, head.z - (aimCenter() ? Math.sin(cam.yaw) * 1.2 : 0));
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }
   uiT -= dt;

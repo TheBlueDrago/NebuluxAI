@@ -368,6 +368,7 @@ const nameTag = makeLabel(myName, "#ffffff", 768); nameTag.scale.set(6, 1, 1); s
 const cam = { yaw: Math.PI, pitch: 0.38, dist: 16 };
 function spawnPoint() { const isl = ISLANDS.find((i) => i.spawn && i.sea === S.sea); return V(isl.x, groundAt(isl.x, isl.z + 4) + 0.1, isl.z + 4); }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
+if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -518,6 +519,7 @@ function floatText(pos, text, color) {
   addFx(s, 0.9, (k, dt) => { s.position.y += 3 * dt; s.material.opacity = 1 - k * k; });
 }
 let shake = 0;
+const camBase = V(); let camReady = false;
 
 // ================= combat =================
 function hurtEnemy(e, dmg, from, fxo = {}) {
@@ -575,15 +577,36 @@ function aimPoint() {
   ray.setFromCamera(shiftLock ? { x: 0, y: 0 } : mouse, camera);
   const plane = new THREE.Plane(V(0, 1, 0), -(P.pos.y + 1.5)), p = V();
   if (!ray.ray.intersectPlane(plane, p) || p.distanceTo(P.pos) > 120) { const d = V(); camera.getWorldDirection(d); d.y = 0; p.copy(P.pos).addScaledVector(d.normalize(), 30); }
+  let near = null, nd = 6;
+  for (const e of enemies) { const dd = Math.hypot(e.pos.x - p.x, e.pos.z - p.z); if (dd < nd) { nd = dd; near = e; } }
+  if (near) p.set(near.pos.x, p.y, near.pos.z);
   return p;
 }
-function aimDir() { const d = aimPoint().sub(P.pos).setY(0); return d.lengthSq() ? d.normalize() : V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)); }
+// Aim assist: an attack turns toward the best enemy near where you aim. Melee looks close and
+// wide (anything in front of you), shots and fruit powers further and narrower.
+function assist(d, range, cone) {
+  let best = null, bs = -Infinity;
+  for (const e of enemies) {
+    const to = e.pos.clone().sub(P.pos).setY(0), dist = to.length();
+    if (dist < 0.01 || dist > range + (e.boss ? 2 : 0)) continue;
+    const c = to.normalize().dot(d);
+    if (c < cone) continue;
+    const score = c - dist / (range * 3);
+    if (score > bs) { bs = score; best = to; }
+  }
+  return best || d;
+}
+function aimDir(melee) {
+  const d0 = aimPoint().sub(P.pos).setY(0);
+  const d = d0.lengthSq() ? d0.normalize() : V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+  return melee ? assist(d, 6, 0.35) : assist(d, 40, 0.9);
+}
 function face(dir) { P.faceYaw = Math.atan2(dir.x, dir.z); }
 
 function basicAttack() {
   if (P.atkCd > 0 || P.boat) return;
   P.lastHit = T;
-  const dir = aimDir(); face(dir);
+  const dir = aimDir(!(P.tool === 3 && S.fruit)); face(dir);
   if (P.tool === 3 && S.fruit) { // fruit click: small fruit shot
     const f = FRUITS[S.fruit]; P.atkCd = 0.45; P.swing = 0.001;
     shoot({ color: f.color, size: 0.45, speed: 60, range: 30, dmg: 10 * mult("fruit") }, dir);
@@ -611,7 +634,7 @@ function shoot(o, dir) {
 }
 function explode(pos, r, dmg, color, fxo) {
   if (r >= 5) SFX.boom();
-  ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 12, 10); shake = Math.max(shake, 0.2);
+  ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 12, 10); shake = Math.max(shake, 0.06);
   for (const e of enemies.slice()) if (e.pos.distanceTo(pos) < r + (e.boss ? 2 : 0)) hurtEnemy(e, dmg, pos, fxo);
 }
 function useSkill(sk, statKey, color) {
@@ -705,7 +728,8 @@ addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
 cvs.addEventListener("contextmenu", (e) => e.preventDefault());
 addEventListener("mousemove", (e) => {
   mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1;
-  if (rmb || shiftLock) { cam.yaw -= e.movementX * 0.005; cam.pitch = clamp(cam.pitch + e.movementY * 0.004, -0.2, 1.35); }
+  const mx = clamp(e.movementX, -60, 60), my = clamp(e.movementY, -60, 60);
+  if (rmb || shiftLock) { cam.yaw -= mx * 0.005; cam.pitch = clamp(cam.pitch + my * 0.004, -0.2, 1.35); }
 });
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 6, 32); }, { passive: true });
 function jump() {
@@ -714,7 +738,29 @@ function jump() {
   if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 9 : 14; P.jumps = 1; P.onGround = false; }
   else if (P.jumps < 2) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 13; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
 }
-const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.boat;
+// Frost fruit: walking on the sea freezes tiles under your feet (they melt after a few seconds).
+const ICE = 2.4, iceTiles = new Map(), iceMat = new THREE.MeshLambertMaterial({ color: 0xbfefff, transparent: true, opacity: 0.85 });
+const iceKey = (x, z) => Math.floor(x / ICE) + "," + Math.floor(z / ICE);
+const iceAt = (x, z) => iceTiles.has(iceKey(x, z));
+function freezeAround(x, z) {
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const cx = Math.floor(x / ICE) + i, cz = Math.floor(z / ICE) + j, k = cx + "," + cz;
+    const wx = (cx + 0.5) * ICE, wz = (cz + 0.5) * ICE;
+    if (groundAt(wx, wz) >= 0) continue;
+    const old = iceTiles.get(k);
+    if (old) { old.t = 8; continue; }
+    const m = new THREE.Mesh(new THREE.BoxGeometry(ICE, 0.4, ICE), iceMat.clone()); m.position.set(wx, -0.15, wz); m.receiveShadow = true; scene.add(m);
+    iceTiles.set(k, { m, t: 8 });
+  }
+}
+function meltIce(dt) {
+  for (const [k, t] of iceTiles) {
+    t.t -= dt;
+    if (t.t < 1.5) t.m.material.opacity = Math.max(0, 0.85 * (t.t / 1.5));
+    if (t.t <= 0) { scene.remove(t.m); t.m.geometry.dispose(); t.m.material.dispose(); iceTiles.delete(k); }
+  }
+}
+const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.boat && !iceAt(P.pos.x, P.pos.z);
 function equip(n) { if ((n === 2 && !S.sword) || (n === 3 && !S.fruit)) return; P.tool = P.tool === n ? 0 : n; drawHot(); }
 // ---- phone controls: a joystick on the left, buttons on the right, drag anywhere else to look ----
 const joy = { x: 0, y: 0, id: null };
@@ -808,7 +854,7 @@ function openFruits() {
     if (S.fruit && !confirm(`Eat the ${n} Fruit? You will lose your ${S.fruit} Fruit.`)) return;
     S.inv.splice(i, 1); S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
     ring(P.pos, FRUITS[n].color, 6, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), FRUITS[n].color, 20);
-    show(`You ate the ${n} Fruit!\nYou can't swim any more`, 3);
+    show(n === "Frost" ? `You ate the Frost Fruit!\nYou can't swim, but the sea freezes where you walk` : `You ate the ${n} Fruit!\nYou can't swim any more`, 3);
   });
   $("mb").querySelectorAll("[data-drop]").forEach((b) => b.onclick = () => { S.inv.splice(+b.dataset.drop, 1); save(); openFruits(); });
 }
@@ -881,6 +927,7 @@ function tick() {
   const pa = seaGeo.attributes.position.array;
   for (let i = 0; i < pa.length; i += 3) { const wx = seaBase[i] + ocean.position.x, wz = seaBase[i + 2] + ocean.position.z; pa[i + 1] = Math.sin(wx * 0.07 + T * 1.4) * 0.3 + Math.cos(wz * 0.05 + T) * 0.3 - 0.3; }
   seaGeo.attributes.position.needsUpdate = true;
+  if (iceTiles.size) meltIce(dt);
 
   if (started && !dead && !modalOpen) {
     const g = groundAt(P.pos.x, P.pos.z);
@@ -905,8 +952,9 @@ function tick() {
       const g2 = groundAt(P.pos.x, P.pos.z);
       // can't walk up walls taller than a step: push back out
       if (P.pos.y < g2 - 1.6 && g2 > 0) { P.pos.x -= P.vel.x * dt; P.pos.z -= P.vel.z * dt; P.vel.x = P.vel.z = 0; }
-      const gNow = groundAt(P.pos.x, P.pos.z), floor = gNow < 0 ? -0.6 : gNow;
-      if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0; if (P.onGround) P.jumps = 0; } else P.onGround = false;
+      if (S.fruit === "Frost" && groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y < 2.5) freezeAround(P.pos.x, P.pos.z);
+      const gNow = groundAt(P.pos.x, P.pos.z), onIce = gNow < 0 && iceAt(P.pos.x, P.pos.z), floor = gNow < 0 ? (onIce ? 0.05 : -0.6) : gNow;
+      if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0 || onIce; if (P.onGround) P.jumps = 0; } else P.onGround = false;
       if (want.lengthSq() > 1 && !shiftLock && P.swing === 0) P.faceYaw = Math.atan2(want.x, want.z);
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
@@ -1007,9 +1055,11 @@ function tick() {
     const head = P.pos.clone().setY(P.pos.y + 3.2 - (inWater() ? 1.6 : 0));
     const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
     const cp = head.clone().add(off); cp.y = Math.max(cp.y, groundAt(cp.x, cp.z) + 1, 0.8);
-    camera.position.lerp(cp, Math.min(1, 18 * dt));
-    if (shiftLock) camera.position.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.6));
-    if (shake > 0) { shake -= dt; camera.position.add(V(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake)); }
+    if (shiftLock) cp.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.6));
+    if (!camReady) { camBase.copy(cp); camReady = true; }
+    camBase.lerp(cp, 1 - Math.exp(-14 * dt));
+    camera.position.copy(camBase);
+    if (shake > 0) { shake = Math.max(0, shake - dt); camera.position.add(V(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake * 0.6)); }
     camera.lookAt(head.x + (shiftLock ? Math.cos(cam.yaw) * 1.6 : 0), head.y, head.z - (shiftLock ? Math.sin(cam.yaw) * 1.6 : 0));
     sun.position.copy(P.pos).add(V(50, 90, 30)); sun.target.position.copy(P.pos);
   } else if (!started) {
@@ -1062,7 +1112,7 @@ function drawMini() {
   MM.restore();
 }
 function explodeEnemy(pos, r, dmg, color) {
-  ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 14, 10); shake = 0.35;
+  ring(pos, color, r, 0.4); cubes(pos.clone().setY(pos.y + 1), color, 14, 10); if (P.pos.distanceTo(pos) < r + 8) shake = Math.max(shake, 0.25);
   if (P.pos.distanceTo(pos) < r) hurtPlayer(dmg, pos);
 }
 tick();
