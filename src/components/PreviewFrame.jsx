@@ -19,16 +19,33 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
   const player = saveName ? (isAuthenticated && String(user?.full_name || "").trim()) || "Anonymous" : undefined;
   const saving = !!(saveName && isAuthenticated);
   const [save, setSave] = useState(null); // the player's saved progress, once loaded
+  const [avatar, setAvatar] = useState(undefined); // the player's avatar (functions/.../social.js)
   useEffect(() => {
     if (!saving) return;
     let alive = true;
     setSave(null);
+    setAvatar(undefined);
     base44.functions
       .invoke("game-save", { action: "get", name: saveName })
       .then((r) => alive && setSave(r?.data?.data || {}))
       .catch(() => alive && setSave({}));
+    base44.functions
+      .invoke("social", { action: "avatar" })
+      .then((r) => alive && setAvatar(r?.data?.avatar || null))
+      .catch(() => alive && setAvatar(null));
     return () => {
       alive = false;
+    };
+  }, [saving, saveName]);
+  // Friends see which game you're in ("playing"), refreshed every 2 minutes while it's open.
+  useEffect(() => {
+    if (!saving) return;
+    const tell = (game) => base44.functions.invoke("social", { action: "playing", game }).catch(() => {});
+    tell(saveName);
+    const t = setInterval(() => tell(saveName), 120000);
+    return () => {
+      clearInterval(t);
+      tell("");
     };
   }, [saving, saveName]);
   const ref = useRef(null);
@@ -126,11 +143,12 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
     setRound((r) => r + 1);
   };
 
-  if (saving && !save) return <div className="w-full h-full bg-black" />;
+  // Both are needed before the game starts (a change later would reload it).
+  if (saving && (!save || avatar === undefined)) return <div className="w-full h-full bg-black" />;
 
   return (
     <div className="relative w-full h-full">
-      <iframe key={round} ref={ref} srcDoc={withPreviewShim(html, saving || player !== undefined ? { ...(saving ? { save } : {}), player } : undefined)} title={title} sandbox={PREVIEW_SANDBOX} className={className} {...rest} />
+      <iframe key={round} ref={ref} srcDoc={withPreviewShim(html, saving || player !== undefined ? { ...(saving ? { save } : {}), player, avatar: avatar || null } : undefined)} title={title} sandbox={PREVIEW_SANDBOX} className={className} {...rest} />
       {stuck && (
         <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-slate-900/95 border border-white/10 px-4 py-2.5 shadow-2xl text-sm text-slate-200">

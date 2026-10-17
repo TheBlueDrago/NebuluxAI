@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { gameThumb } from "@/lib/gameThumbs";
+import SocialPanel from "@/components/games/SocialPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Menu, Search, Plus, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
+  Menu, Search, Plus, Shirt, Users, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
   Puzzle, Car, Trophy, Sword, Compass, Brain, Zap, Play, Home as HomeIcon, Loader2,
 } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
@@ -152,6 +153,7 @@ export default function GamesFront() {
   const [cat, setCat] = useState("home");
   const [q, setQ] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [social, setSocial] = useState(null); // "avatar" | "friends" panel
 
   const load = async () => {
     const builtIns = builtInGameEntities();
@@ -233,6 +235,16 @@ export default function GamesFront() {
             />
           </div>
         </div>
+        {shell.currentUser && (
+          <>
+            <button onClick={() => setSocial("avatar")} title="Your avatar" className="shrink-0 inline-flex items-center gap-1.5 px-2.5 h-9 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">
+              <Shirt className="w-4 h-4" /> <span className="hidden md:inline">Avatar</span>
+            </button>
+            <button onClick={() => setSocial("friends")} title="Friends" className="shrink-0 inline-flex items-center gap-1.5 px-2.5 h-9 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">
+              <Users className="w-4 h-4" /> <span className="hidden md:inline">Friends</span>
+            </button>
+          </>
+        )}
         <ThemeToggle light={lightMode} onToggle={toggleLight} />
         <button
           onClick={goGameDesigner}
@@ -370,6 +382,7 @@ export default function GamesFront() {
           )}
         </main>
       </div>
+      {social && <SocialPanel tab={social} onClose={() => setSocial(null)} onPlay={(name) => { setSocial(null); play(name); }} />}
     </div>
   );
 }

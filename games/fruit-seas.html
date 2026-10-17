@@ -299,14 +299,22 @@ function makeBody(o = {}) {
   const torso = box(1.6, 1.6, 0.8, o.shirt ?? 0x2f8cff); torso.position.y = 2.4; inner.add(torso);
   const head = box(1.1, 1.1, 1.1, skin); head.position.y = 3.75; inner.add(head);
   const eyes = box(0.6, 0.15, 0.05, 0x111111); eyes.position.set(0, 3.85, 0.56); inner.add(eyes);
+  // faces (from the player's avatar): a mouth, sunglasses, eyebrows or a wink
+  if (o.face === "cool") inner.add(box(0.95, 0.25, 0.06, 0x050505).translateY(3.86).translateZ(0.58));
+  if (o.face === "smile" || o.face === "wink" || o.face === "cool") inner.add(box(0.45, 0.08, 0.05, 0x5a2a1a).translateY(3.5).translateZ(0.56));
+  if (o.face === "grin") inner.add(box(0.6, 0.18, 0.05, 0xffffff).translateY(3.5).translateZ(0.56));
+  if (o.face === "angry") { inner.add(box(0.7, 0.08, 0.05, 0x111111).translateY(4.02).translateZ(0.57)); inner.add(box(0.4, 0.08, 0.05, 0x5a2a1a).translateY(3.45).translateZ(0.56)); }
+  if (o.face === "wink") inner.add(box(0.25, 0.16, 0.06, o.skin ?? 0xf5c99a).translateX(0.17).translateY(3.85).translateZ(0.58));
   const legs = [], arms = [];
   for (const sx of [-0.4, 0.4]) {
     const leg = new THREE.Group(); leg.position.set(sx, 1.6, 0); const l = box(0.78, 1.6, 0.78, o.pants ?? 0x2b2b4a); l.position.y = -0.8; leg.add(l); inner.add(leg); legs.push(leg);
     const arm = new THREE.Group(); arm.position.set(sx * 2.5, 3.1, 0); const a = box(0.75, 1.6, 0.75, o.sleeve ?? skin); a.position.y = -0.7; arm.add(a); inner.add(arm); arms.push(arm);
   }
-  if (o.hat === "straw") { inner.add(box(2.2, 0.15, 2.2, 0xe8c766).translateY(4.35)); inner.add(box(1.2, 0.5, 1.2, 0xe8c766).translateY(4.6)); inner.add(box(1.25, 0.18, 1.25, 0xd62828).translateY(4.45)); }
+  if (o.hat === "straw") { const hc = o.hatColor ?? 0xe8c766; inner.add(box(2.2, 0.15, 2.2, hc).translateY(4.35)); inner.add(box(1.2, 0.5, 1.2, hc).translateY(4.6)); inner.add(box(1.25, 0.18, 1.25, 0xd62828).translateY(4.45)); }
+  if (o.hat === "cap") { inner.add(box(1.2, 0.35, 1.2, o.hatColor ?? 0x1e88e5).translateY(4.45)); inner.add(box(1.0, 0.1, 0.6, o.hatColor ?? 0x1e88e5).translateY(4.3).translateZ(0.8)); }
+  if (o.hat === "crown") { inner.add(box(1.15, 0.35, 1.15, o.hatColor ?? 0xffd54f).translateY(4.48)); for (const cx of [-0.45, 0, 0.45]) inner.add(box(0.2, 0.3, 0.2, o.hatColor ?? 0xffd54f).translateX(cx).translateY(4.75).translateZ(0.48)); }
   if (o.hat === "bandana") inner.add(box(1.2, 0.4, 1.2, o.hatColor ?? 0xc0392b).translateY(4.25));
-  if (o.hat === "tricorn") { inner.add(box(2, 0.25, 1.6, 0x161616).translateY(4.4)); inner.add(box(1.2, 0.6, 1.2, 0x161616).translateY(4.7)); inner.add(box(0.4, 0.4, 0.05, 0xffffff).translateY(4.7).translateZ(0.62)); }
+  if (o.hat === "tricorn") { inner.add(box(2, 0.25, 1.6, o.hatColor ?? 0x161616).translateY(4.4)); inner.add(box(1.2, 0.6, 1.2, o.hatColor ?? 0x161616).translateY(4.7)); inner.add(box(0.4, 0.4, 0.05, 0xffffff).translateY(4.7).translateZ(0.62)); }
   if (o.hat === "helmet") inner.add(box(1.3, 0.6, 1.3, o.hatColor ?? 0x9aa0aa).translateY(4.4));
   // the sword in the right hand (shown when the sword is equipped)
   const sword = new THREE.Group(); sword.position.set(0, -1.5, 0.3);
@@ -370,7 +378,11 @@ const maxHp = () => 100 + (S.lvl - 1) * 8 + S.st.defense * 20;
 const maxEn = () => 100 + (S.lvl - 1) * 4 + S.st.energy * 15;
 const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
 const mult = (stat) => 1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02;
-const P = { body: makeBody({ shirt: 0xd62828, pants: 0x2a4a8a, hat: "straw" }), pos: V(), vel: V(), hp: 100, en: 100, onGround: false, jumps: 0, swing: 0, atkCd: 0, combo: 0, dashCd: 0, hurtT: 0, tool: 1, cds: {}, boat: null, faceYaw: 0, drownT: 0, lavaT: 0 };
+// The player wears their Nebulux avatar (Avatar on the Games page) when there is one.
+const AV = (window.nebulux && window.nebulux.avatar) || null;
+const hex = (c, d) => (/^#[0-9a-f]{6}$/i.test(String(c || "")) ? parseInt(String(c).slice(1), 16) : d);
+const myLook = AV ? { shirt: hex(AV.shirt, 0xd62828), pants: hex(AV.pants, 0x2a4a8a), skin: hex(AV.skin, 0xf5c99a), hat: AV.hat === "none" ? null : AV.hat, hatColor: hex(AV.hatColor, undefined), face: AV.face } : { shirt: 0xd62828, pants: 0x2a4a8a, hat: "straw", face: "smile" };
+const P = { body: makeBody(myLook), pos: V(), vel: V(), hp: 100, en: 100, onGround: false, jumps: 0, swing: 0, atkCd: 0, combo: 0, dashCd: 0, hurtT: 0, tool: 1, cds: {}, boat: null, faceYaw: 0, drownT: 0, lavaT: 0 };
 scene.add(P.body.g);
 // Your Nebulux AI username over your head (Nebulux Games passes it in; "You" elsewhere).
 const myName = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? window.nebulux.username : "You";
@@ -1096,6 +1108,12 @@ function netConnect() {
       if (e.pos.y < -40) e.pos.set(m.x, m.y, m.z);
       e.want.set(m.x, m.y, m.z); e.yaw = m.yaw; e.lvl = m.lvl | 0; e.hp = m.hp; e.maxHp = m.maxHp || 100; e.pvp = !!m.pvp; e.seen = T;
       if (m.swing && !e.swing) e.swing = 0.001;
+      // their avatar, once: rebuild their body in their colours
+      if (m.av && !e.avSet) {
+        e.avSet = true; scene.remove(e.b.g);
+        e.b = makeBody({ shirt: hex(m.av.shirt, 0x1e88e5), pants: hex(m.av.pants, 0x263238), skin: hex(m.av.skin, 0xf5c99a), hat: m.av.hat === "none" ? null : String(m.av.hat || ""), hatColor: hex(m.av.hatColor, undefined), face: String(m.av.face || "") });
+        e.b.sword.visible = true; scene.add(e.b.g);
+      }
       e.b.g.visible = !m.boat;
       return;
     }
@@ -1124,8 +1142,9 @@ function netTick(dt) {
   if (!NET.ok) return;
   NET.sendT -= dt;
   if (NET.sendT <= 0) {
-    NET.sendT = 0.1;
-    netSend({ t: "state", name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), swing: P.swing > 0 ? 1 : 0, boat: !!P.boat });
+    NET.sendT = 0.1; NET.avT = (NET.avT || 0) - 0.1;
+    const withAv = AV && NET.avT <= 0; if (withAv) NET.avT = 3;
+    netSend({ t: "state", ...(withAv ? { av: AV } : {}), name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), swing: P.swing > 0 ? 1 : 0, boat: !!P.boat });
   }
 }
 function updateRemote(e, dt) {
