@@ -10,6 +10,9 @@ const UPDATES = [
     date: "October 2026",
     items: [
       { icon: Gamepad2, text: "Five new 3D games on Nebulux Games, all playable on phones and computers: Fruit Seas (sail between islands, find fruits with powers, quests and bosses), Sky Obby (50 hard stages and a glass bridge), Bed Brawl (protect your bed, build bridges, break the others'), Brawl Blitz (3 vs 3 gem grab with five fighters) and Storm Royale (drop in, loot, and be the last one standing)." },
+      { icon: Gamepad2, text: "Fruit Seas got huge: 4 new islands with bosses up to Lv. 85, 4 new fruits (Sand, Magma, Dark and Dragon), the Frost fruit freezes the sea where you walk, other pirates and PvP from Lv. 5 (off for 20 minutes after you're beaten, and safe on the spawn islands), crewmates you can hire, a daily reward and you come back on the last island you were on." },
+      { icon: Gift, text: "Yearly plans: pay for a year and save 10% (Pro $162 a year, Team $216). Your credits still refill every month." },
+      { icon: Gamepad2, text: "Smoother 3rd-person games: the camera no longer shakes when you play with a mouse, and attacks aim at the enemy you're pointing at." },
       { icon: Gamepad2, text: "Remix the 3D games: on the game page, press Remix to copy Fruit Seas, Sky Obby, Bed Brawl, Brawl Blitz or Storm Royale into the Games Designer and change it by chatting." },
       { icon: Gift, text: "Pro and Team give much more when they open: Pro 300 Nebulux AI, 150 Galaxy, 100 Space and 75 Nebula credits a month and 10 websites; Team 500, 250, 150 and 100 and 10 websites. Games, ZIP downloads and GitHub are free on every plan." },
       { icon: Zap, text: "Press ? in the chat to see every keyboard shortcut." },
