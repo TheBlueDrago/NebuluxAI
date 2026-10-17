@@ -384,7 +384,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -564,6 +564,37 @@ Beat it for a huge reward (5 minutes)`, 5);
   setTimeout(() => { if (seaKing && seaKing.hp > 0) { scene.remove(seaKing.b.g, seaKing.bar, seaKing.label); enemies.splice(enemies.indexOf(seaKing), 1); show("The Sea King sank back into the sea", 3); } seaKing = null; }, 5 * 60000);
 }
 setInterval(seaKingEvent, 8 * 60000);
+
+// Wild fruits: every 10 minutes a random fruit grows on an island of your sea (rarer ones less
+// often). Walk into it to put it in your Fruits; it rots away after 10 minutes.
+const wildFruits = [];
+function spawnWildFruit() {
+  if (!started) return;
+  const isls = ISLANDS.filter((i) => i.sea === S.sea); const isl = pick(isls);
+  let total = 0; for (const n of FRUIT_NAMES) total += RAR_W[FRUITS[n].rar];
+  let r = rnd(0, total), name = FRUIT_NAMES[0];
+  for (const n of FRUIT_NAMES) { r -= RAR_W[FRUITS[n].rar]; if (r <= 0) { name = n; break; } }
+  const a = rnd(0, 7), d = rnd(4, isl.r - 6), x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d;
+  const g = new THREE.Group();
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10), new THREE.MeshLambertMaterial({ color: FRUITS[name].color, emissive: FRUITS[name].color, emissiveIntensity: 0.35 }));
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.6), new THREE.MeshLambertMaterial({ color: 0x2e7d32 })); leaf.position.y = 0.9;
+  g.add(ball, leaf); g.position.set(x, Math.max(0, groundAt(x, z)) + 1.2, z); scene.add(g);
+  const label = makeLabel(`${name} Fruit`, FRUITS[name].css, 768); label.scale.set(6, 1, 1); label.position.set(x, g.position.y + 2.2, z); scene.add(label);
+  const f = { g, label, name, isl }; wildFruits.push(f);
+  show(`A fruit is growing somewhere at ${isl.name}...`, 3);
+  setTimeout(() => { const i = wildFruits.indexOf(f); if (i >= 0) { scene.remove(g, label); wildFruits.splice(i, 1); } }, 10 * 60000);
+}
+function updateWildFruits() {
+  for (const f of wildFruits.slice()) {
+    f.g.rotation.y += 0.03; f.g.position.y += Math.sin(T * 3) * 0.005;
+    if (Math.hypot(f.g.position.x - P.pos.x, f.g.position.z - P.pos.z) < 2.5 && !P.boat) {
+      scene.remove(f.g, f.label); wildFruits.splice(wildFruits.indexOf(f), 1);
+      S.inv.push(f.name); save(); SFX.win(); show(`You found a ${f.name} Fruit! (${FRUITS[f.name].rar})
+Open Fruits to eat it`, 3.5);
+    }
+  }
+}
+setInterval(spawnWildFruit, 10 * 60000);
 
 // Crew: up to 2 crewmates you hire at the Crew Recruiter. They follow you and fight enemies near you.
 const allies = [];
@@ -1223,6 +1254,7 @@ function tick() {
     // Health only comes back slowly, after 6 seconds without fighting (attacking or being hit) (not in water or lava).
     if (P.onGround && !lavaAt(P.pos.x, P.pos.z) && T - (P.lastHit || -99) > 6) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.015 * dt);
     updateAllies(dt);
+    updateWildFruits();
 
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
