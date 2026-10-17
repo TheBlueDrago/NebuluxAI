@@ -380,7 +380,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -569,7 +569,7 @@ function updateAllies(dt) {
     // a target: the closest enemy near you (other pirates only while PvP is on)
     if (!a.target || a.target.hp <= 0 || a.target.pos.distanceTo(P.pos) > 22 || (a.target.rival && !pvpOn())) {
       a.target = null; let best = 18;
-      for (const e of enemies) { if (e.rival && !pvpOn()) continue; const d = e.pos.distanceTo(P.pos); if (d < best) { best = d; a.target = e; } }
+      for (const e of enemies) { if (e.rival && !pvpOn()) continue; if (e.remote && !e.pvp) continue; const d = e.pos.distanceTo(P.pos); if (d < best) { best = d; a.target = e; } }
     }
     const side = i === 0 ? 1 : -1;
     const goal = a.target ? a.target.pos : P.pos.clone().add(V(Math.sin(P.faceYaw + side * 2.3), 0, Math.cos(P.faceYaw + side * 2.3)).multiplyScalar(4));
@@ -622,6 +622,12 @@ const camBase = V(); let camReady = false;
 // ================= combat =================
 function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) return;
+  if (e.remote) {
+    if (!pvpOn() || !e.pvp || (islandAt(e.pos.x, e.pos.z) || {}).spawn) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(!pvpOn() ? "Turn PvP on to fight other players" : !e.pvp ? `${e.name} has PvP off` : "Spawn islands are safe zones", 1.5); } return; }
+    dmg = Math.round(dmg * rnd(0.9, 1.1)); SFX.hit(); floatText(e.pos, String(dmg), "#ff9e9e");
+    netSend({ t: "hitP", to: e.id, dmg });
+    return;
+  }
   if (e.rival && !pvpOn()) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(S.lvl < 5 ? "PvP unlocks at Lv. 5" : "PvP is off: you can't hurt other pirates", 1.5); } return; }
   dmg = Math.round(dmg * rnd(0.9, 1.1));
   SFX.hit();
@@ -688,6 +694,7 @@ function assist(d, range, cone) {
   let best = null, bs = -Infinity;
   for (const e of enemies) {
     if (e.rival && !pvpOn()) continue;
+    if (e.remote && !e.pvp) continue;
     const to = e.pos.clone().sub(P.pos).setY(0), dist = to.length();
     if (dist < 0.01 || dist > range + (e.boss ? 2 : 0)) continue;
     const c = to.normalize().dot(d);
@@ -989,9 +996,107 @@ function openTravel() {
     $("go").onclick = () => travel(0);
   }
 }
+// ================= online players =================
+// Real people in the same sea (workers/nebulux-multiplayer, ?game=fruit-seas). Each game sends its
+// own position 10 times a second. Other players are shown like enemies (so every attack can hit
+// them), but their health is their own: a hit is sent to them as "hitP", and they only take it if
+// their PvP is on and they're not on a safe spawn island. If the server isn't there (or is an
+// older one), the game stays single-player.
+const MP_TEST = location.search.includes("nxtest") && new URLSearchParams(location.search).get("mp"); // automated tests: a local server
+const MP_URL = MP_TEST || "wss://nebulux-multiplayer.thebluedragonstriker.workers.dev/play?game=fruit-seas";
+const NET = { ws: null, ok: false, you: null, room: null, sendT: 0, retry: 0 };
+const remotes = new Map(); // id -> enemy entry with remote: true
+const netName = () => String((window.nebulux && window.nebulux.username) || "").replace(/[^A-Za-z0-9 _]/g, "").slice(0, 24) || "Pirate" + Math.floor(rnd(100, 999));
+function addRemote(id, name) {
+  if (remotes.has(id)) return remotes.get(id);
+  const b = makeBody({ shirt: 0x1e88e5, pants: 0x263238, hat: "straw", hatColor: 0xf2c94c });
+  b.sword.visible = true; scene.add(b.g);
+  const bar = hpBar(); scene.add(bar);
+  const label = makeLabel(name, "#8fd3ff", 768); label.scale.set(7, 1.1, 1); scene.add(label);
+  const e = { remote: true, rival: true, id, name, b, pos: V(0, -50, 0), want: V(0, -50, 0), yaw: 0, isl: ISLANDS[0], boss: null, lvl: 1, hp: 100, maxHp: 100, pvp: false, bar, label, labelText: "", swing: 0, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, atkCd: 9, special: 9, wander: V(), speed: 0, dmg: 0, seen: 0 };
+  remotes.set(id, e); enemies.push(e);
+  return e;
+}
+function dropRemote(id) {
+  const e = remotes.get(id); if (!e) return;
+  scene.remove(e.b.g, e.bar, e.label); remotes.delete(id);
+  const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1);
+}
+function netSend(m) { try { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(m)); } catch { /* offline */ } }
+function netConnect() {
+  if (NET.ws || typeof WebSocket === "undefined") return;
+  let ws; try { ws = new WebSocket(MP_URL); } catch { return; }
+  NET.ws = ws; NET.ok = false;
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ t: "hello" }));
+    // An older server doesn't answer: stay single-player for this visit.
+    setTimeout(() => { if (!NET.ok && NET.ws === ws) { NET.retry = Infinity; try { ws.close(); } catch { /* closed */ } } }, 5000);
+  };
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.t === "hello") { if ((m.games || []).includes("fruit-seas")) { NET.ok = true; NET.room = "fs" + S.sea; ws.send(JSON.stringify({ t: "join", q: NET.room, name: netName() })); } return; }
+    if (m.t === "room") { NET.you = m.you; for (const pl of m.players || []) addRemote(pl.id, pl.name); if (remotes.size) show(`${remotes.size} other pirate${remotes.size === 1 ? " is" : "s are"} in this sea`, 2.5); return; }
+    if (m.t === "pjoin") { addRemote(m.id, m.name); show(`${m.name} sailed into this sea`, 2); return; }
+    if (m.t === "left") { dropRemote(m.from || m.id); return; }
+    if (m.t === "state") {
+      const e = remotes.get(m.from) || addRemote(m.from, m.name || "Pirate");
+      if (e.pos.y < -40) e.pos.set(m.x, m.y, m.z);
+      e.want.set(m.x, m.y, m.z); e.yaw = m.yaw; e.lvl = m.lvl | 0; e.hp = m.hp; e.maxHp = m.maxHp || 100; e.pvp = !!m.pvp; e.seen = T;
+      if (m.swing && !e.swing) e.swing = 0.001;
+      e.b.g.visible = !m.boat;
+      return;
+    }
+    if (m.t === "hitP" && m.to === NET.you) {
+      const from = remotes.get(m.from);
+      const safe = (islandAt(P.pos.x, P.pos.z) || {}).spawn;
+      if (!pvpOn() || safe || dead || !from || !from.pvp) return;
+      hurtPlayer(Math.max(1, Math.min(400, Number(m.dmg) || 0)), from.pos);
+      if (P.hp <= 0) netSend({ t: "dead", to: m.from });
+      return;
+    }
+    if (m.t === "dead" && m.to === NET.you) {
+      const e = remotes.get(m.from); const bounty = Math.max(1000, (e ? e.lvl : 5) * 600);
+      S.beli += bounty; save(); show(`You beat ${e ? e.name : "a pirate"}!\nBounty +${money(bounty)}`, 3);
+    }
+  };
+  ws.onclose = ws.onerror = () => {
+    if (NET.ws !== ws) return;
+    NET.ws = null; NET.ok = false; for (const id of [...remotes.keys()]) dropRemote(id);
+    if (NET.retry === Infinity) return; // an older server: single-player this visit
+    NET.retry = Math.min(60, (NET.retry || 2) * 2); setTimeout(netConnect, NET.retry * 1000);
+  };
+}
+function netSwitchSea() { if (NET.ok && NET.ws) { const old = NET.ws; NET.ws = null; for (const id of [...remotes.keys()]) dropRemote(id); try { old.close(); } catch { /* closed */ } NET.retry = 0; netConnect(); } }
+function netTick(dt) {
+  if (!NET.ok) return;
+  NET.sendT -= dt;
+  if (NET.sendT <= 0) {
+    NET.sendT = 0.1;
+    netSend({ t: "state", name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), swing: P.swing > 0 ? 1 : 0, boat: !!P.boat });
+  }
+}
+function updateRemote(e, dt) {
+  if (T - e.seen > 10) { dropRemote(e.id); return; }
+  const old = e.pos.clone();
+  e.pos.lerp(e.want, 1 - Math.exp(-12 * dt));
+  e.t += dt; e.b.g.position.copy(e.pos); e.b.g.rotation.y = e.yaw;
+  if (e.swing > 0) { e.swing += dt * 4; if (e.swing >= 1) e.swing = 0; }
+  animBody(e.b, old.distanceTo(e.pos) / Math.max(dt, 0.001), e.t, e.swing, false);
+  const both = pvpOn() && e.pvp, text = `${e.name} [Lv. ${e.lvl}]${both ? " ⚔" : ""}`;
+  if (text !== e.labelText) { scene.remove(e.label); e.label = makeLabel(text, both ? "#ff6b6b" : "#8fd3ff", 768); e.label.scale.set(7, 1.1, 1); scene.add(e.label); e.labelText = text; }
+  const vis = e.pos.distanceTo(P.pos) < 90 && e.b.g.visible;
+  e.bar.visible = e.label.visible = vis;
+  if (vis) {
+    e.bar.position.copy(e.pos).setY(e.pos.y + 5.2); e.bar.quaternion.copy(camera.quaternion);
+    const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k);
+    e.label.position.copy(e.pos).setY(e.pos.y + 6);
+  }
+}
+setTimeout(netConnect, 1500);
+
 function travel(sea) {
   closeModal(); if (P.boat) toggleBoat();
-  S.sea = sea; S.home = null; save(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
+  S.sea = sea; S.home = null; save(); netSwitchSea(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
 }
 $("bStats").onclick = () => started && openStats();
 $("bFruits").onclick = () => started && openFruits();
@@ -1093,7 +1198,9 @@ function tick() {
     if (isl && P.onGround && S.home !== isl.name) { S.home = isl.name; save(); }
 
     // enemies
+    netTick(dt);
     for (const e of enemies.slice()) {
+      if (e.remote) { updateRemote(e, dt); continue; }
       e.t += dt; e.atkCd -= dt; e.freeze -= dt; e.special -= dt; e.aggro = (e.aggro || 0) - dt;
       if (e.burn > 0) { const before = Math.ceil(e.burn * 2); e.burn -= dt; if (Math.ceil(e.burn * 2) !== before) { e.hp -= Math.ceil(e.maxHp * 0.015); if (e.hp <= 0) { killEnemy(e); continue; } } }
       const to = P.pos.clone().sub(e.pos); to.y = 0; const d = to.length();

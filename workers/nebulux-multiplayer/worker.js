@@ -23,6 +23,11 @@ const QUICK_COUNT = 12;
 // starts when anyone in the party presses Start, or when it's full; never on the timer.
 const PARTY = /^[A-Z0-9]{5}$/;
 const baseQ = (q) => String(q || "br").split("#")[0];
+// Fruit Seas (?game=fruit-seas): an open world, one room per sea ("fs0", "fs1"), up to FS_MAX
+// people each. Everyone in a room sees everyone else; each game sends its own position ("state")
+// and PvP hits ("hitP", only applied by the player who is hit, and only if their PvP is on).
+const FS_ROOM = /^fs[01]$/;
+const FS_MAX = 40;
 
 // Typed chat. Many players are kids, so every message is checked here before anyone sees it:
 // swear words are starred out, and anything that could share personal info or move people off
@@ -69,7 +74,7 @@ export default {
     const origin = request.headers.get("Origin") || "null";
     if (!ALLOWED_ORIGIN.test(origin)) return new Response("Forbidden", { status: 403 });
     const g = url.searchParams.get("game");
-    const id = env.ARENA.idFromName(g === "bedwars" || g === "balloon-siege" ? g : "storm-strike");
+    const id = env.ARENA.idFromName(g === "bedwars" || g === "balloon-siege" || g === "fruit-seas" ? g : "storm-strike");
     return env.ARENA.get(id).fetch(request);
   },
 };
@@ -117,6 +122,29 @@ export class Arena {
     }
     if (!m || typeof m.t !== "string") return;
 
+    // A game asks what this server can do before joining (older servers don't answer).
+    if (m.t === "hello") {
+      this.send(ws, { t: "hello", games: ["fruit-seas"] });
+      return;
+    }
+    if (m.t === "join" && !a.joined && FS_ROOM.test(String(m.q || ""))) {
+      a.joined = true;
+      a.name = String(m.name || "Pirate").replace(/[^A-Za-z0-9 _]/g, "").slice(0, 24) || "Pirate";
+      a.fig = 0;
+      a.match = "fruit:" + m.q;
+      const others = this.sockets().filter((x) => x.ws !== ws && x.a.match === a.match);
+      if (others.length >= FS_MAX) {
+        this.send(ws, { t: "full" });
+        a.joined = false;
+        a.match = null;
+        ws.serializeAttachment(a);
+        return;
+      }
+      ws.serializeAttachment(a);
+      for (const x of others) this.send(x.ws, { t: "pjoin", id: a.id, name: a.name });
+      this.send(ws, { t: "room", you: a.id, players: others.map((x) => ({ id: x.a.id, name: x.a.name })) });
+      return;
+    }
     if (m.t === "join" && !a.joined) {
       a.joined = true;
       a.name = String(m.name || "Player").replace(/[^A-Za-z0-9 ]/g, "").slice(0, 24) || "Player";
