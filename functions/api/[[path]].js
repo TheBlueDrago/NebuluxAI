@@ -15,6 +15,7 @@
 // or code guessing and repeated emails are refused with a 429 (cloudflare-lib/authlimit.js).
 // The entry.ts copy above predates this: if you restore from it, add the authLimit import
 // and call back (scripts/test-authlimit.mjs fails without them).
+import { alertOwner, placeOf } from "../../cloudflare-lib/ownerAlerts.js";
 import { authLimit } from "../../cloudflare-lib/authlimit.js";
 import { handleEntities } from "../../cloudflare-lib/db.js";
 import { handleAuth, sessionUser, logout, googleStart, googleCallback } from "../../cloudflare-lib/auth.js";
@@ -91,7 +92,13 @@ export async function onRequest(context) {
   }
 
   const limited = await authLimit(request, path);
-  if (limited) return limited;
+  if (limited) {
+    // Many sign-in or sign-up tries from one place: tell the owner (once an hour per address).
+    const ip = request.headers.get("cf-connecting-ip") || "unknown";
+    const job = alertOwner(context.env, { key: `auth-flood:${ip}`, subject: "Suspicious activity: too many sign-in tries", lines: [`What: ${path.split("/").slice(-1)[0]}`, `Internet address: ${ip}`, `From: ${placeOf(request)}`, `Device: ${String(request.headers.get("user-agent") || "?").slice(0, 160)}`, "They were stopped for a while automatically."] });
+    if (context.waitUntil) context.waitUntil(job);
+    return limited;
+  }
 
   // Nebulux's own database and sign-in (cloudflare-lib/db.js, auth.js) answer instead of Base44
   // once the DB binding (D1 "nebulux-db") is connected to this Pages project.

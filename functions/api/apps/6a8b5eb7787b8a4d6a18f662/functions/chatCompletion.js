@@ -25,6 +25,7 @@
 // credits (see cloudflare-lib/credits.js): 1 per started 10,000 characters of reply,
 // times the effort level. A reply that costs more than the user has left is cut off
 // at what their credits cover.
+import { alertOwner } from "../../../../../cloudflare-lib/ownerAlerts.js";
 import { HELP_RULES } from "../../../../../cloudflare-lib/helpguide.js";
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
@@ -422,6 +423,21 @@ const counted = (context, kind, model) => {
   if (model) context.waitUntil(countAi(context.env.DB, "model:" + model));
 };
 
+// A message the AI's safety filter refused: the owner gets an email with who sent it and the
+// end of what they wrote (the newest message is at the end of the prompt).
+function flagged(context, err, user, prompt) {
+  if (!(err instanceof GeminiError && err.status === 451)) return;
+  const said = String(prompt || "").slice(-500).trim();
+  const job = (
+    alertOwner(context.env, {
+      key: `flagged-msg:${(user && user.id) || "anon"}`,
+      subject: `Flagged message from ${(user && user.full_name) || "someone"}`,
+      lines: [`User: ${(user && user.full_name) || "(no name)"} <${(user && user.email) || "?"}>`, `User id: ${(user && user.id) || "?"}`, `Why: ${String(err.message).slice(0, 120)}`, "What they wrote (the end of it):", said],
+    })
+  );
+  if (context.waitUntil) context.waitUntil(job);
+}
+
 function failure(err) {
   const busy = err instanceof GeminiError && err.retryable;
   return {
@@ -557,6 +573,7 @@ export async function onRequestPost(context) {
         // 503 rather than 502: Cloudflare replaces 502 bodies on the custom domain with a
         // bare "error code: 502", which hid this message from users.
         counted(context, failKind(err));
+        flagged(context, err, user, prompt);
         return json(failure(err), 503);
       }
     }
@@ -585,6 +602,7 @@ export async function onRequestPost(context) {
           await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });
         } catch (err) {
           counted(context, failKind(err));
+          flagged(context, err, user, prompt);
           await send({ ...failure(err), status: 503 });
         } finally {
           await writer.close().catch(() => {});

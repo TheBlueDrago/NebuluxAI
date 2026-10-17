@@ -8,6 +8,7 @@
 // Base44 entity's `html` field holds a short URL to /published/<kind>/<name>.
 // Base44's get-site-html/get-game-html already fetch `html` when it's a URL, so
 // every reader (designer, browser, games front, subdomain Worker) keeps working.
+import { alertOwner, rudeText } from "./ownerAlerts.js";
 import { termsAccepted, TERMS_MESSAGE } from "./terms.js";
 import { findCredentialForm } from "./phishing.js";
 import { scanPage } from "./scan.js";
@@ -172,12 +173,17 @@ export async function publish(context, kind, { name, html: rawHtml, extra, check
     if (!name || !html) return json({ error: "name and html required" }, 400);
     const nameError = badName(kind, name);
     if (nameError) return json({ error: nameError }, 400);
+    const rudeName = rudeText(name);
+    if (rudeName) await alertOwner(env, { key: `rude-page:${kind}:${name}`, subject: `Inappropriate ${kind} name: ${name}`, lines: [`By: ${user.full_name || "(no name)"} <${user.email || "?"}>`, `Name: ${name}`, `Flagged word: ${rudeName}`, "It was published; you can take it down in Monitor."] });
     if (new TextEncoder().encode(html).length > MAX_BYTES) {
       return json({ error: `${label} is too large (over 5 MB). Make it smaller.` }, 413);
     }
 
     const phishing = findCredentialForm(html);
+    // What the owner is told when something is blocked (who, what and why).
+    const who = [`By: ${user.full_name || "(no name)"} <${user.email || "?"}>`, `${label}: ${name}`];
     if (phishing) {
+      await alertOwner(env, { key: `blocked:${kind}:${name}`, subject: `Blocked ${label.toLowerCase()}: possible password or card form`, lines: [...who, `Why: it has ${phishing}`] });
       return json(
         {
           error: `This ${label.toLowerCase()} has ${phishing}. Pages here can't send passwords or card numbers to other websites — remove that form (use Buy Now buttons for payments).`,
@@ -190,6 +196,7 @@ export async function publish(context, kind, { name, html: rawHtml, extra, check
     // Admins can still publish (e.g. to restore a false positive).
     const scan = scanPage(html);
     if (scan.block.length && user.role !== "admin") {
+      await alertOwner(env, { key: `blocked:${kind}:${name}`, subject: `Blocked ${label.toLowerCase()}: unsafe content`, lines: [...who, `Why: ${scan.block.join(", ")}`] });
       return json(
         {
           error: `This ${label.toLowerCase()} can't be published because it has ${scan.block.join(", ")}. Nebulux AI is used by kids, so pages must be safe for everyone — ask the AI to remove that part and try again.`,

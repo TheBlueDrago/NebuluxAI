@@ -13,6 +13,7 @@
 import { create, getRow, all } from "./db.js";
 import { passwordProblem } from "../src/lib/passwordCheck.js";
 import { turnstileOk, TURNSTILE_FAILED } from "./turnstile.js";
+import { alertOwner, placeOf, rudeText } from "./ownerAlerts.js";
 
 const SESSION_DAYS = 60;
 const enc = new TextEncoder();
@@ -240,6 +241,14 @@ async function verifyOtp(db, env, body, request) {
   if (!row) throw new AuthError(400, "Please sign up again.");
   await db.prepare("UPDATE logins SET verified = 1 WHERE email = ?").bind(email).run();
   if (!row.verified && env) await sendWelcome(env, email);
+  // Tell the owner about every new account (and flag a rude username).
+  if (!row.verified && env) {
+    const u = await getRow(db, "User", row.user_id).catch(() => null);
+    const name = String((u && u.full_name) || "").trim() || "(no name)";
+    const rude = rudeText(name);
+    await alertOwner(env, { subject: `New account: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `From: ${placeOf(request)}`] });
+    if (rude) await alertOwner(env, { key: `rude-name:${row.user_id}`, subject: `Inappropriate username: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `Flagged word: ${rude}`, "You can rename or ban them in Monitor."] });
+  }
   if (env) await noteDevice(db, env, request, row.user_id, email);
   return { access_token: await newSession(db, row.user_id), user: await getRow(db, "User", row.user_id) };
 }
@@ -404,6 +413,13 @@ export async function googleCallback(db, env, request) {
   else await db.prepare("INSERT INTO logins (email, user_id, pw_hash, pw_salt, verified) VALUES (?, ?, NULL, NULL, 1)").bind(email, userId).run();
   const user = await getRow(db, "User", userId);
   if (!user || user.removed === true) return fail("removed");
+  // A brand-new account made with Google: tell the owner (and flag a rude name).
+  if (!row && user) {
+    const name = String(user.full_name || "").trim() || "(no name)";
+    const rude = rudeText(name);
+    await alertOwner(env, { subject: `New account: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, "Signed up with: Google", `From: ${placeOf(request)}`] });
+    if (rude) await alertOwner(env, { key: `rude-name:${userId}`, subject: `Inappropriate username: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `Flagged word: ${rude}`, "You can rename or ban them in Monitor."] });
+  }
   // No password yet (new, or moved over from Base44): Google only confirms who they are. They're
   // emailed a link to choose a password, then log in with it on the page they came from.
   const pw = await db.prepare("SELECT pw_hash FROM logins WHERE email = ?").bind(email).first();

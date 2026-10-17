@@ -1,0 +1,24 @@
+// Owner alert emails (cloudflare-lib/ownerAlerts.js), with Resend and the database faked.
+const R = new URL("../", import.meta.url).pathname;
+let fails = 0;
+const ok = (c, m) => { console.log((c ? "ok " : "FAIL ") + m); if (!c) fails++; };
+const sent = [];
+globalThis.fetch = async (url, init) => { sent.push({ url: String(url), body: JSON.parse(init.body) }); return new Response("{}", { status: 200 }); };
+const cache = new Map();
+globalThis.caches = { default: { match: async (r) => (cache.has(r.url) ? new Response(cache.get(r.url)) : undefined), put: async (r, res) => cache.set(r.url, await res.text()) } };
+const { alertOwner, rudeText, ownerEmails } = await import(R + "cloudflare-lib/ownerAlerts.js");
+const db = { prepare: () => ({ all: async () => ({ results: [{ email: "owner@example.com" }, { email: "owner@example.com" }, { email: null }] }) }) };
+const env = { RESEND_API_KEY: "k", DB: db };
+ok((await ownerEmails(db)).join() === "owner@example.com", "owner emails come from the admin accounts, once each");
+ok(await alertOwner(env, { subject: "New account: Sam", lines: ["Username: Sam", "Email: sam@example.com"] }), "a new-account alert is sent");
+const m = sent[0] && sent[0].body;
+ok(m && m.to[0] === "owner@example.com" && m.subject === "[Nebulux] New account: Sam" && /Email: sam@example.com/.test(m.text) && /Time: /.test(m.text), "it says who, their email and the time");
+ok(!/<script/.test((await (async () => { await alertOwner(env, { subject: "x", lines: ["<script>alert(1)</script>"] }); return sent[1].body.html; })())), "names can't add HTML to the email");
+sent.length = 0;
+await alertOwner(env, { key: "same", subject: "A", lines: [] });
+await alertOwner(env, { key: "same", subject: "A", lines: [] });
+ok(sent.length === 1, "the same alert isn't sent twice within an hour");
+ok(!(await alertOwner({ DB: db }, { subject: "x", lines: [] })), "without an email key nothing is sent");
+ok(rudeText("sh1t lord") === "shit" && rudeText("Big Dick") === "dick", "rude names are caught, numbers for letters too");
+ok(!rudeText("Grape Fan") && !rudeText("Peacock99") && !rudeText("Mr Dickens") && !rudeText("Essex Kid"), "normal names that contain short rude words aren't");
+if (fails) process.exit(1);
