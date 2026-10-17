@@ -56,7 +56,7 @@ export default function PricingCards() {
                 <span className="text-4xl font-bold text-white">{y ? y.price : p.price}</span>
                 <span className="text-slate-400">{y ? y.period : p.period}</span>
               </p>
-              {y && <p className="mt-1 text-xs font-semibold text-emerald-300">{y.perMonth} a month, billed yearly · save {YEARLY_OFF}%</p>}
+              {y && <p className="mt-1 text-xs font-semibold text-emerald-300">{y.perMonth} a month, billed yearly · save {YEARLY_OFF}% · credits still refill every month</p>}
               <p className="mt-2 text-sm text-slate-400">{p.blurb}</p>
               <ul className="mt-5 space-y-2.5 flex-1">
                 {p.features.map((f) => (
