@@ -169,7 +169,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
 
   return (
     <div className="relative w-full h-full">
-      <iframe key={round} ref={ref} srcDoc={withPreviewShim(html, saving || player !== undefined ? { ...(saving ? { save } : {}), player, avatar: avatar || null } : undefined)} title={title} sandbox={PREVIEW_SANDBOX} className={className} {...rest} />
+      <iframe key={round} ref={ref} srcDoc={withPreviewShim(html, saving || player !== undefined ? { ...(saving ? { save } : {}), player, avatar: avatar || null, admin: user?.role === "admin" } : undefined)} title={title} sandbox={PREVIEW_SANDBOX} className={className} {...rest} />
       {stuck && (
         <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-slate-900/95 border border-white/10 px-4 py-2.5 shadow-2xl text-sm text-slate-200">

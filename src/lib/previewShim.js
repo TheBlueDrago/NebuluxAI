@@ -92,7 +92,7 @@ export function withPreviewShim(html, opts) {
     opts && opts.player !== undefined
       ? `(function(){var q={},n=0;addEventListener("message",function(e){var d=e.data;if(e.source!==parent||!d||(d.type!=="nebulux-top"&&d.type!=="nebulux-reply"))return;var f=q[d.id];if(f){delete q[d.id];f(d.type==="nebulux-top"?d.top||[]:d.data||{})}});` +
         `function ask(m,ms,none){if(none===undefined)none=[];return new Promise(function(r){var id=++n;q[id]=r;m.id=id;try{parent.postMessage(m,"*")}catch(_){delete q[id];r(none)}setTimeout(function(){if(q[id]){delete q[id];r(none)}},ms||10000)})}` +
-        `window.nebulux=Object.freeze({username:${JSON.stringify(String(opts.player || "Anonymous").slice(0, 24)).replace(/</g, "\\u003c")},avatar:${JSON.stringify(opts.avatar || null).replace(/</g, "\\u003c")},` +
+        `window.nebulux=Object.freeze({username:${JSON.stringify(String(opts.player || "Anonymous").slice(0, 24)).replace(/</g, "\\u003c")},avatar:${JSON.stringify(opts.avatar || null).replace(/</g, "\\u003c")},admin:${opts.admin ? "true" : "false"},` +
         `score:function(b,s){return ask({type:"nebulux-score",board:String(b),score:Number(s)})},top:function(b){return ask({type:"nebulux-top-get",board:String(b)})},` +
         `stardust:function(){return ask({type:"nebulux-stardust"},10000,{})},spend:function(w,p){return ask({type:"nebulux-spend",what:String(w).slice(0,60),price:Number(p)},120000,{})}})})();`
       : "";

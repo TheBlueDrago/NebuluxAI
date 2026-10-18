@@ -6,10 +6,12 @@
 // { action: "add", who }                      -> { ok } | { error }    (a friend code, or an exact username)
 // { action: "accept" | "remove", id }         -> { ok }
 // { action: "playing", game }                 -> { ok }                (the game you're in; "" when you leave)
+// { action: "send", to, text } / { action: "messages", with } -> chat with a friend (filtered)
 // { action: "playingCounts" }                  -> { counts: { game: n } } (no sign-in needed)
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
+import { cleanChat } from "../../../../../cloudflare-lib/chatFilter.js";
 
 export const DEFAULT_AVATAR = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none", walk: "normal" };
 const HATS = ["none", "straw", "tricorn", "bandana", "helmet", "cap", "crown", "tophat", "viking", "wizard", "headphones", "halo"];
@@ -61,6 +63,7 @@ function ensure(db) {
         db.prepare("CREATE TABLE IF NOT EXISTS avatars (user_id TEXT PRIMARY KEY, data TEXT NOT NULL)"),
         db.prepare("CREATE TABLE IF NOT EXISTS friends (a TEXT NOT NULL, b TEXT NOT NULL, status TEXT NOT NULL, at INTEGER, PRIMARY KEY (a, b))"),
         db.prepare("CREATE TABLE IF NOT EXISTS presence (user_id TEXT PRIMARY KEY, game TEXT, at INTEGER)"),
+        db.prepare("CREATE TABLE IF NOT EXISTS dms (id INTEGER PRIMARY KEY AUTOINCREMENT, a TEXT NOT NULL, b TEXT NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL, seen INTEGER DEFAULT 0)"),
         db.prepare("CREATE TABLE IF NOT EXISTS wallets (user_id TEXT PRIMARY KEY, nebux INTEGER NOT NULL, owned TEXT NOT NULL, daily TEXT, play_day TEXT, play_earned INTEGER)"),
       ])
       .catch((e) => {
@@ -113,6 +116,7 @@ export async function onRequestPost({ request, env }) {
       if (!(await allow(`avatar:${me}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
       const avatar = cleanAvatar(body.avatar);
       const w = await wallet(db, me);
+      if (user.role === "admin") w.owned = Object.keys(SHOP);
       if (!["hat:" + avatar.hat, "face:" + avatar.face, "design:" + avatar.design, "back:" + avatar.back, "trail:" + avatar.trail, "walk:" + avatar.walk].every((i) => owns(w, i))) return json({ error: "Buy that item in the Shop first." }, 403);
       await db.prepare("INSERT INTO avatars (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data").bind(me, JSON.stringify(avatar)).run();
       return json({ avatar });
@@ -130,7 +134,18 @@ export async function onRequestPost({ request, env }) {
     }
     if (body.action === "shop") {
       const w = await wallet(db, me);
+      // Admins (the owner) have unlimited Stardust and every item.
+      if (user.role === "admin") return json({ nebux: 999999999, owned: Object.keys(SHOP), prices: SHOP, dailyReady: false, dailyAmount: DAILY_NEBUX, playLeft: 0 });
       return json({ nebux: w.nebux, owned: w.owned, prices: SHOP, dailyReady: w.daily !== today(), dailyAmount: DAILY_NEBUX, playLeft: Math.max(0, PLAY_CAP - (w.playDay === today() ? w.playEarned : 0)) });
+    }
+    // Promo codes for the Stardust shop. NEBULUXAIISTUFF: unlimited Stardust (the owner's choice).
+    if (body.action === "promo") {
+      if (!(await allow(`promo-sd:${me}`, 10, 3600))) return json({ error: TOO_MANY }, 429);
+      const code = String(body.code || "").trim().toUpperCase();
+      if (code !== "NEBULUXAIISTUFF") return json({ error: "That code doesn't work." }, 400);
+      await wallet(db, me);
+      await db.prepare("UPDATE wallets SET nebux = 999999999 WHERE user_id = ?").bind(me).run();
+      return json({ ok: true, nebux: 999999999 });
     }
     if (body.action === "daily") {
       const w = await wallet(db, me);
@@ -157,9 +172,27 @@ export async function onRequestPost({ request, env }) {
       const game = String(body.game || ""), price = Math.floor(Number(body.price));
       if (!SPEND_GAMES.includes(game)) return json({ error: "This game can't use Stardust." }, 403);
       if (!(price >= 1 && price <= 5000)) return json({ error: "That price doesn't look right." }, 400);
+      if (user.role === "admin") return json({ ok: true, stardust: 999999999 });
       const r = await db.prepare("UPDATE wallets SET nebux = nebux - ? WHERE user_id = ? AND nebux >= ?").bind(price, me, price).run();
       if (!r.meta || !r.meta.changes) return json({ error: "Not enough Stardust.", stardust: (await wallet(db, me)).nebux }, 400);
       return json({ ok: true, stardust: (await wallet(db, me)).nebux });
+    }
+    // Messages between friends (only friends, every message filtered like the game chat).
+    if (body.action === "send") {
+      const them = String(body.to || "").slice(0, 100);
+      const ok = await db.prepare("SELECT 1 FROM friends WHERE a = ? AND b = ? AND status = 'friends'").bind(me, them).first();
+      if (!ok) return json({ error: "You can only message your friends." }, 403);
+      if (!(await allow(`dm:${me}`, 30, 60)) || !(await allow(`dm-day:${me}`, 500, 86400))) return json({ error: TOO_MANY }, 429);
+      const c = cleanChat(body.text);
+      if (!c.ok) return json({ error: c.why || "That message can't be sent." }, 400);
+      await db.prepare("INSERT INTO dms (a, b, text, at) VALUES (?, ?, ?, ?)").bind(me, them, c.text, Date.now()).run();
+      return json({ ok: true, text: c.text });
+    }
+    if (body.action === "messages") {
+      const them = String(body.with || "").slice(0, 100);
+      const r = await db.prepare("SELECT a, text, at FROM dms WHERE (a = ? AND b = ?) OR (a = ? AND b = ?) ORDER BY id DESC LIMIT 50").bind(me, them, them, me).all();
+      await db.prepare("UPDATE dms SET seen = 1 WHERE a = ? AND b = ? AND seen = 0").bind(them, me).run();
+      return json({ messages: (r.results || []).reverse().map((m) => ({ mine: m.a === me, text: m.text, at: m.at })) });
     }
     if (body.action === "add") {
       if (!(await allow(`friend-add:${me}`, 20, 3600))) return json({ error: TOO_MANY }, 429);
@@ -212,6 +245,8 @@ export async function onRequestPost({ request, env }) {
           out.avatar = cleanAvatar(av ? JSON.parse(av.data) : null);
           out.playing = p && p.game && Date.now() - p.at < ONLINE_MS ? p.game : "";
           out.online = !!(p && Date.now() - p.at < ONLINE_MS);
+          const u = await db.prepare("SELECT COUNT(*) AS n FROM dms WHERE a = ? AND b = ? AND seen = 0").bind(id, me).first();
+          out.unread = (u && u.n) || 0;
         }
         return out;
       };

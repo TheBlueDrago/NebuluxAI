@@ -290,12 +290,72 @@ function ShopTab() {
           );
         })}
       </div>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const code = e.currentTarget.code.value;
+          const r = await call("promo", { code }, "promo");
+          if (r?.ok) setNote("Code redeemed! ✨");
+        }}
+        className="flex gap-2 pt-2 border-t border-white/10"
+      >
+        <input name="code" placeholder="Promo code" maxLength={40} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 uppercase" />
+        <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">Redeem</button>
+      </form>
       <p className="text-[11px] text-slate-500">Stardust is free and only for avatar items. It can't be bought or traded.</p>
     </div>
   );
 }
 
+// Chat with one friend (functions/.../social.js "send"/"messages"): filtered like the game chat.
+function FriendChat({ friend, onBack }) {
+  const [msgs, setMsgs] = useState(null);
+  const [text, setText] = useState("");
+  const [note, setNote] = useState("");
+  const endRef = React.useRef(null);
+  const load = useCallback(() => base44.functions.invoke("social", { action: "messages", with: friend.id }).then((r) => setMsgs(r?.data?.messages || [])).catch(() => setMsgs([])), [friend.id]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, [load]);
+  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [msgs]);
+  const send = async (e) => {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t) return;
+    setText("");
+    const r = await base44.functions.invoke("social", { action: "send", to: friend.id, text: t }).catch((err) => err?.response || null);
+    setNote(r?.data?.error || "");
+    load();
+  };
+  return (
+    <div className="flex flex-col h-[420px]">
+      <div className="flex items-center gap-2 pb-3 border-b border-white/10">
+        <button onClick={onBack} className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-sm">← Back</button>
+        <span className="font-semibold text-white truncate">{friend.name}</span>
+        <span className={`w-2 h-2 rounded-full ${friend.online ? "bg-emerald-400" : "bg-slate-600"}`} />
+      </div>
+      <div className="flex-1 overflow-y-auto py-3 space-y-1.5">
+        {!msgs ? <div className="flex justify-center py-10 text-slate-500"><Loader2 className="w-5 h-5 animate-spin" /></div> : !msgs.length ? <p className="text-center text-sm text-slate-500 py-10">Say hi to {friend.name}!</p> : msgs.map((m, i) => (
+          <div key={i} className={`flex ${m.mine ? "justify-end" : "justify-start"}`}>
+            <span title={new Date(m.at).toLocaleString()} className={`max-w-[80%] px-3 py-1.5 rounded-2xl text-sm break-words ${m.mine ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-100"}`}>{m.text}</span>
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+      {note && <p className="text-xs text-amber-200 pb-1">{note}</p>}
+      <form onSubmit={send} className="flex gap-2">
+        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder={`Message ${friend.name}`} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500" />
+        <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white text-sm font-semibold">Send</button>
+      </form>
+      <p className="mt-2 text-[11px] text-slate-500">No links, phone numbers, emails or other personal info: those messages aren't sent.</p>
+    </div>
+  );
+}
+
 function FriendsTab({ onPlay }) {
+  const [chatWith, setChatWith] = useState(null);
   const [d, setD] = useState(null);
   const [who, setWho] = useState("");
   const [note, setNote] = useState("");
@@ -313,6 +373,7 @@ function FriendsTab({ onPlay }) {
     load();
   };
   if (!d) return <div className="flex justify-center py-16 text-slate-500"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (chatWith) return <FriendChat friend={chatWith} onBack={() => { setChatWith(null); load(); }} />;
   const playing = d.friends.filter((f) => f.playing);
   return (
     <div className="space-y-5">
@@ -384,6 +445,10 @@ function FriendsTab({ onPlay }) {
             <span className={`w-2.5 h-2.5 rounded-full ${f.online ? "bg-emerald-400" : "bg-slate-600"}`} title={f.online ? "Online" : "Offline"} />
             <span className="flex-1 min-w-0 truncate text-white">{f.name}</span>
             <span className="text-xs text-slate-400">{f.playing ? gameName(f.playing) : f.online ? "Online" : "Offline"}</span>
+            <button onClick={() => setChatWith(f)} title={`Chat with ${f.name}`} className="relative px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
+              💬 Chat
+              {f.unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">{f.unread}</span>}
+            </button>
             <button onClick={() => act("remove", { id: f.id })} title="Remove friend" aria-label={`Remove ${f.name}`} className="p-1 rounded text-slate-500 hover:text-red-300">
               <Trash2 className="w-4 h-4" />
             </button>

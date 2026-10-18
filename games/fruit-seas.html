@@ -1506,7 +1506,9 @@ function dailyReward() {
   setTimeout(() => { SFX.win(); show(`Daily reward! +${money(cash)}
 Day ${S.streak} in a row${S.streak % 7 === 0 ? " · FREE gacha spin!" : ""}`, 4); }, 3800);
 }
-$("play").onclick = () => { $("start").style.display = "none"; started = true; dailyReward(); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+// Nebulux admins (the owner) get every fruit as a permanent fruit.
+const isAdmin = !!(window.nebulux && window.nebulux.admin);
+$("play").onclick = () => { $("start").style.display = "none"; started = true; if (isAdmin) { S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
