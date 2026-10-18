@@ -640,8 +640,8 @@ function stepFighter(f, dt, want) {
 let T = 0, last = performance.now();
 const camBase = V(); let camReady = false;
 function loop(now) {
-  requestAnimationFrame(loop);
-  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (document.hidden) setTimeout(() => loop(performance.now()), 100); else requestAnimationFrame(loop); // keeps going in a hidden tab
+  let dt = Math.min(document.hidden ? 1 : 0.05, (now - last) / 1000); last = now;
   if (slowT > 0) { slowT -= dt; dt *= 0.35; }
   T += dt;
   if (started && me) {
