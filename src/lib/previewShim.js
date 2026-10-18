@@ -37,7 +37,8 @@ const BASE_SHIM = `<script>(function(){
   // Account saves (published games, see withPreviewShim's save option): the game's localStorage
   // starts with the player's saved progress, and every change is sent to the app to keep.
   if(window.__nxSave){try{var st=mem(),sv=window.__nxSave,tm=0;for(var sk in sv)st.setItem(sk,sv[sk]);
-    var send=function(){clearTimeout(tm);tm=setTimeout(function(){var o={};for(var i=0;i<st.length;i++){var kk=st.key(i);o[kk]=st.getItem(kk)}try{parent.postMessage({type:"nebulux-save",data:o},"*")}catch(_){}},800)};
+    var send=function(){if(tm)return;tm=setTimeout(function(){tm=0;var o={};for(var i=0;i<st.length;i++){var kk=st.key(i);o[kk]=st.getItem(kk)}try{parent.postMessage({type:"nebulux-save",data:o},"*")}catch(_){}},500)};
+    addEventListener("message",function(e){if(e.data&&e.data.type==="nebulux-save-now"){clearTimeout(tm);tm=1;var o={};for(var i=0;i<st.length;i++){var kk=st.key(i);o[kk]=st.getItem(kk)}tm=0;try{parent.postMessage({type:"nebulux-save",data:o,now:true},"*")}catch(_){}}});
     var s0=st.setItem,r0=st.removeItem,c0=st.clear;st.setItem=function(a,b){s0(a,b);send()};st.removeItem=function(a){r0(a);send()};st.clear=function(){c0();send()};
     Object.defineProperty(window,"localStorage",{value:st,configurable:true})}catch(_){}}
   try{document.cookie}catch(e){var jar={};try{Object.defineProperty(document,"cookie",{configurable:true,get:function(){return Object.keys(jar).map(function(k){return k+"="+jar[k]}).join("; ")},set:function(v){var p=String(v).split(";")[0],i=p.indexOf("=");if(i>0)jar[p.slice(0,i).trim()]=p.slice(i+1).trim()}})}catch(_){}}

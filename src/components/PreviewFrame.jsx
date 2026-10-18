@@ -96,7 +96,11 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
   // The in-game menu (components/GameMenu.jsx): save now, or open the game's own chat.
   useEffect(() => {
     const onCmd = (e) => {
-      if (e.detail === "save") flushRef.current();
+      // ask the game for its progress right now, then send it to the account
+      if (e.detail === "save") {
+        ref.current?.contentWindow?.postMessage({ type: "nebulux-save-now" }, "*");
+        setTimeout(() => flushRef.current(), 400);
+      }
       if (e.detail === "chat") ref.current?.contentWindow?.postMessage({ type: "nebulux-chat" }, "*");
     };
     window.addEventListener("nebulux-game-cmd", onCmd);
@@ -118,6 +122,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
       if (!d || !ref.current || e.source !== ref.current.contentWindow) return;
       if (d.type === "nebulux-save") {
         if (saveRef.current) queueSave(saveRef.current, d.data);
+        if (d.now) flushRef.current();
         return;
       }
       // Leaderboards (functions/.../game-board.js): the answer goes back to the game by id.

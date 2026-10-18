@@ -96,6 +96,8 @@
   <div id="quest" style="display:none;margin-top:8px;background:rgba(0,0,0,.55);border:2px solid #000;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:800"></div>
 </div>
 <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"></div>
+<div id="kenfx" style="position:fixed;inset:0;pointer-events:none;backdrop-filter:grayscale(1) brightness(.62) contrast(1.25);-webkit-backdrop-filter:grayscale(1) brightness(.62) contrast(1.25);background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 35%, rgba(0,0,0,.6));opacity:0;transition:opacity .4s;z-index:0"></div>
+<div id="kenTxt" class="sh" style="display:none;position:fixed;left:50%;top:70px;transform:translateX(-50%);font-weight:900;font-size:16px;color:#fff;z-index:5"></div>
 <div id="combo" style="position:fixed;right:24px;top:42%;font:900 40px Segoe UI,system-ui;color:#ffd23a;text-align:right;-webkit-text-stroke:2px #000;opacity:0;transition:opacity .3s,transform .08s;pointer-events:none;z-index:4"></div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
@@ -127,9 +129,9 @@
 <div id="start"><div class="center">
   <h1>FRUIT SEAS</h1>
   <p style="font-weight:700">Fight pirates, find and spin for Sea Fruits with amazing powers, level up your stats and conquer both seas.<br>Careful: once you eat a fruit, <b>the sea is your enemy</b>. You can't swim any more, so use a boat!</p>
-  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Q</kbd> dash · <kbd>Shift</kbd> shift lock<br>
+  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>Ctrl</kbd> mouse lock<br>
   <kbd>Right mouse</kbd> drag to turn the camera · <kbd>Wheel</kbd> zoom · <kbd>Click</kbd> attack (aims at your mouse)<br>
-  <kbd>1</kbd> Fists · <kbd>2</kbd> Sword · <kbd>3</kbd> Fruit · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> <kbd>V</kbd> <kbd>F</kbd> skills · <kbd>J</kbd> Aura (Buso) · <kbd>E</kbd> talk, or Observation (Ken) · <kbd>B</kbd> boat · <kbd>/</kbd> chat</div>
+  <kbd>1</kbd> Fists · <kbd>2</kbd> Sword · <kbd>3</kbd> Fruit · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> <kbd>V</kbd> <kbd>F</kbd> skills · <kbd>J</kbd> Aura (Buso) · <kbd>E</kbd> talk, or Instinct · <kbd>B</kbd> boat · <kbd>/</kbd> chat</div>
   <button class="big" id="play">PLAY</button>
 </div></div>
 <div id="dead"><div class="center"><h1 style="color:#ff4d4d">YOU DIED</h1><p style="font-weight:700">You respawn at the island of your sea. You keep your level, stats, money and fruit.</p><button class="big" id="again">RESPAWN</button></div></div>
@@ -496,11 +498,42 @@ const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
 const mult = (stat) => (1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02) * (P.buso ? 1.15 : 1);
 // ---- Haki, like Blox Fruits: J = Buso (Aura: arms turn black, +15% damage, uses a little energy);
 // E = Observation (Ken: for 6 seconds you dodge half of all hits; 25 s cooldown) ----
-function toggleBuso() { P.buso = !P.buso; show(P.buso ? "Aura ON (+15% damage)" : "Aura OFF", 1); SFX.skill(); paintBuso(); }
+// Haki is bought once from the Haki Teacher (both spawn islands): $1,500,000 for Aura and Observation.
+const HAKI_PRICE = 1500000;
+const KEN_PRICE = 5000000, KEN2_PRICE = 15000000;
+function openHaki() {
+  const row = (name, about, have, id, price) => `<div class="row"><div class="grow"><b>${name}</b><div style="font-size:12px;opacity:.85">${about}</div></div>${have ? '<b style="color:#7dff7d">Learned</b>' : `<button class="btn blue" id="${id}" ${S.beli < price ? "disabled" : ""}>${money(price)}</button>`}</div>`;
+  openModal("Haki Teacher", "<p>Learn Haki, like the strongest pirates.</p>" +
+    row("Aura (J)", "Arms turn black: +15% damage. Uses a little energy.", S.haki, "hakib", HAKI_PRICE) +
+    row("Instinct (E)", "The screen darkens and you see everyone's names on your island. You dodge hits until your dodges run out, then wait 90 seconds to use it again.", S.instinct, "kenb", KEN_PRICE) +
+    (S.instinct ? row("Instinct V2", "Twice the dodges and no waiting when they run out, but every third hit still gets through.", S.instinct2, "ken2b", KEN2_PRICE) : ""));
+  const b = $("hakib"); if (b) b.onclick = () => { if (S.beli < HAKI_PRICE) return; S.beli -= HAKI_PRICE; S.haki = true; save(); SFX.win(); show("Aura learned! Press J", 3); openHaki(); };
+  const k2 = $("ken2b"); if (k2) k2.onclick = () => { if (S.beli < KEN2_PRICE) return; S.beli -= KEN2_PRICE; S.instinct2 = true; save(); SFX.win(); show("Instinct V2 learned!", 3); openHaki(); };
+  const k = $("kenb"); if (k) k.onclick = () => { if (S.beli < KEN_PRICE) return; S.beli -= KEN_PRICE; S.instinct = true; save(); SFX.win(); show("Instinct learned! Press E", 3); openHaki(); };
+}
+const needHaki = () => { if (S.haki) return false; show("Learn Aura from the Haki Teacher first ($1,500,000)", 1.5); return true; };
+function toggleBuso() {
+  if (!P.buso && needHaki()) return; P.buso = !P.buso; show(P.buso ? "Aura ON (+15% damage)" : "Aura OFF", 1); SFX.skill(); paintBuso(); }
 function paintBuso() { for (const m of [].concat(P.body.arms || [])) if (m && m.traverse) m.traverse((c) => { if (c.material) { c.userData.base ??= c.material; c.material = P.buso ? mat(0x111111) : c.userData.base; } }); }
+// Instinct (Observation): E turns it on or off. While on, the screen darkens, you see the names of
+// enemies, bosses and players on your island from far away, and you dodge every hit until your dodges
+// run out (more with level). Running out turns it off for 90 seconds.
+const kenMax = () => (4 + Math.floor(S.lvl / 25)) * (S.instinct2 ? 2 : 1);
+function setKen(on) {
+  P.ken = on; $("kenfx").style.opacity = on ? 1 : 0;
+  // Blox Fruits look: the world goes grey and dark, everyone else glows white
+ $("kenTxt").style.display = on ? "block" : "none"; drawKen();
+}
+function drawKen() { $("kenTxt").textContent = `Instinct${S.instinct2 ? " V2" : ""} · ${P.kenLeft} dodge${P.kenLeft === 1 ? "" : "s"} left`; }
 function useKen() {
-  if ((P.kenCd || 0) > T) return show(`Observation in ${Math.ceil(P.kenCd - T)}s`, 0.8);
-  P.kenT = T + 6; P.kenCd = T + 25; SFX.skill(); ring(P.pos, 0xffffff, 6, 0.5); show("Observation ON: dodging!", 1.2);
+  if (!S.instinct) return show("Learn Instinct from the Haki Teacher first ($5,000,000)", 1.5);
+  if (P.ken) { setKen(false); return; }
+  if ((P.kenCd || 0) > T) return show(`Instinct is tired: ${Math.ceil(P.kenCd - T)}s`, 1);
+  P.kenLeft = kenMax(); SFX.skill(); ring(P.pos, 0xffffff, 8, 0.5); setKen(true);
+}
+function kenDodge() {
+  P.kenLeft--; floatText(P.pos, "Dodge!", "#ffffff"); SFX.dash?.(); P.hurtT = 0.35; drawKen();
+  if (P.kenLeft <= 0) { setKen(false); if (!S.instinct2) { P.kenCd = T + 90; show("Out of dodges! Instinct turned off (90s)", 2.5); } else show("Out of dodges! Press E to use Instinct again", 2); }
 }
 function toggleShiftLock() {
   shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.();
@@ -585,6 +618,7 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, -4, 10, "Fighting Style Teacher", 0xff7043, () => openStyles(), { hat: "bandana", hatColor: 0xbf360c });
   addNpc(isl, -12, -2, "Pirate Recruiter", 0x212121, () => chooseSide(false), { hat: "tricorn" });
   addNpc(isl, -12, 8, "Marine Recruiter", 0xeceff1, () => chooseSide(false), { hat: "helmet", hatColor: 0x1565c0 });
+  addNpc(isl, 12, -4, "Haki Teacher", 0x37474f, () => openHaki(), { hat: "headphones" });
   addNpc(isl, 12, 6, "Boat Dealer", 0x1565c0, () => openBoats(), { hat: "tricorn" });
   addNpc(isl, 4, 10, "Sky Jump Master", 0x90caf9, openSkyJumps, { hat: "halo" });
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
@@ -952,10 +986,13 @@ function addAlly() {
 // ---- real-player crews: invite someone in your sea; once they accept, the money and XP either
 // of you earns from enemies and quests goes to both of you, even in different seas. Up to 3. ----
 const crewMates = () => (S.crewMates = (S.crewMates || []).slice(0, 3));
+const bothMarines = (e) => S.side === "Marine" && e && e.side === "Marine";
+const marineMates = () => (S.side === "Marine" && typeof remotes !== "undefined" ? [...remotes.values()].filter((r) => r.side === "Marine" && r.name).map((r) => r.name) : []);
+const allMates = () => [...new Set([...crewMates(), ...marineMates()])];
 let crewPending = { xp: 0, cash: 0 };
 function crewSend(name, m) { if (typeof NET !== "undefined" && NET.ok) netSend({ t: "crew", toName: name, ...m }); }
-function shareGain(xp, cash) { if (!crewMates().length) return; crewPending.xp += xp; crewPending.cash += cash; }
-setInterval(() => { if (!crewPending.xp && !crewPending.cash) return; for (const n of crewMates()) crewSend(n, { k: "share", xp: Math.round(crewPending.xp), cash: Math.round(crewPending.cash) }); crewPending = { xp: 0, cash: 0 }; }, 2000);
+function shareGain(xp, cash) { if (!allMates().length) return; crewPending.xp += xp; crewPending.cash += cash; }
+setInterval(() => { if (!crewPending.xp && !crewPending.cash) return; for (const n of allMates()) crewSend(n, { k: "share", xp: Math.round(crewPending.xp), cash: Math.round(crewPending.cash) }); crewPending = { xp: 0, cash: 0 }; }, 2000);
 let crewHtml = "";
 function crewMessage(m) {
   const who = String(m.fromName || "").slice(0, 24); if (!who) return;
@@ -973,7 +1010,7 @@ function crewMessage(m) {
   if (m.k === "no") show(`${who} said no to joining your crew`, 2.5);
   if (m.k === "full") show(`${who}'s crew is full`, 2.5);
   if (m.k === "leave") { S.crewMates = crewMates().filter((n) => n !== who); save(); show(`${who} left your crew`, 2.5); }
-  if (m.k === "share" && crewMates().includes(who)) {
+  if (m.k === "share" && allMates().includes(who)) {
     const xp = Math.max(0, Math.min(500000, +m.xp || 0)), cash = Math.max(0, Math.min(5000000, +m.cash || 0));
     if (xp) gainXp(xp); S.beli += cash; save();
     floatText(P.pos, `+${xp} XP (crew)`, "#7fd1ff"); if (cash) floatText(P.pos, `+${money(cash)} (crew)`, "#7dff7d");
@@ -1145,6 +1182,7 @@ const camBase = V(); let camReady = false;
 function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) return;
   if (e.remote) {
+    if (bothMarines(e)) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show("Marines can't attack other Marines", 1.5); } return; }
     if (!pvpOn() || !e.pvp || (islandAt(e.pos.x, e.pos.z) || {}).spawn) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(!pvpOn() ? "Turn PvP on to fight other players" : !e.pvp ? `${e.name} has PvP off` : "Spawn islands are safe zones", 1.5); } return; }
     dmg = Math.round(dmg * rnd(0.9, 1.1)); SFX.hit(); dmgText(e.pos, dmg, "#ff4d4d"); addCombo(dmg);
     netSend({ t: "hitP", to: e.id, dmg });
@@ -1248,7 +1286,7 @@ addEventListener("blur", () => (awayFocus = true)); addEventListener("focus", ()
 const safeNow = () => modalOpen || document.hidden || awayFocus;
 function hurtPlayer(d, from) {
   if (P.hurtT > 0 || dead || safeNow()) return;
-  if ((P.kenT || 0) > T && Math.random() < 0.5) { floatText(P.pos, "Dodged!", "#ffffff"); P.hurtT = 0.3; return; }
+  if (P.ken && P.kenLeft > 0) { P.kenHits = (P.kenHits || 0) + 1; if (!(S.instinct2 && P.kenHits % 3 === 0)) { kenDodge(); return; } }
   P.hp -= Math.round(d); P.lastHurt = T; P.hurtT = 0.4; SFX.hurt(); P.lastHit = T; shake = 0.25;
   const away = P.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.01) P.vel.addScaledVector(away.normalize(), 8);
   if (P.hp <= 0) die();
@@ -1479,9 +1517,8 @@ addEventListener("keydown", (e) => {
   if (!started || dead || modalOpen) return;
   if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") equip(3);
   if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C"); if (e.code === "KeyV") trySkill("V"); if (e.code === "KeyF") trySkill("F");
-  if (e.code === "KeyQ") dash();
+  if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash();
   if (e.code === "KeyJ") toggleBuso();
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") toggleShiftLock();
   if (e.code === "KeyE") interact();
   if (e.code === "KeyB") toggleBoat();
   if (e.code === "Space") jump();
@@ -1738,7 +1775,7 @@ function netConnect() {
     if (m.t === "state") {
       const e = remotes.get(m.from) || addRemote(m.from, m.name || "Pirate");
       if (e.pos.y < -40) e.pos.set(m.x, m.y, m.z);
-      e.want.set(m.x, m.y, m.z); e.yaw = m.yaw; e.lvl = m.lvl | 0; e.hp = m.hp; e.maxHp = m.maxHp || 100; e.pvp = !!m.pvp; e.seen = T;
+      e.want.set(m.x, m.y, m.z); e.yaw = m.yaw; e.lvl = m.lvl | 0; e.hp = m.hp; e.maxHp = m.maxHp || 100; e.pvp = !!m.pvp; e.side = String(m.side || ""); e.seen = T;
       if (m.swing && !e.swing) e.swing = 0.001;
       // their avatar, once: rebuild their body in their colours
       if (m.av && !e.avSet) {
@@ -1752,7 +1789,7 @@ function netConnect() {
     if (m.t === "hitP" && m.to === NET.you) {
       const from = remotes.get(m.from);
       const safe = (islandAt(P.pos.x, P.pos.z) || {}).spawn;
-      if (!pvpOn() || safe || dead || !from || !from.pvp) return;
+      if (!pvpOn() || safe || dead || !from || !from.pvp || bothMarines(from)) return;
       hurtPlayer(Math.max(1, Math.min(400, Number(m.dmg) || 0)), from.pos);
       if (P.hp <= 0) netSend({ t: "dead", to: m.from });
       return;
@@ -1788,7 +1825,7 @@ function netTick(dt) {
   if (NET.sendT <= 0) {
     NET.sendT = 0.1; NET.avT = (NET.avT || 0) - 0.1;
     const withAv = AV && NET.avT <= 0; if (withAv) NET.avT = 3;
-    netSend({ t: "state", ...(withAv ? { av: AV } : {}), name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), swing: P.swing > 0 ? 1 : 0, boat: !!P.boat });
+    netSend({ t: "state", ...(withAv ? { av: AV } : {}), name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), side: S.side || "", swing: P.swing > 0 ? 1 : 0, boat: !!P.boat });
   }
 }
 function updateRemote(e, dt) {
@@ -1800,7 +1837,7 @@ function updateRemote(e, dt) {
   animBody(e.b, old.distanceTo(e.pos) / Math.max(dt, 0.001), e.t, e.swing, false, e.walk);
   const both = pvpOn() && e.pvp, text = `${e.name} [Lv. ${e.lvl}]${both ? " ⚔" : ""}`;
   if (text !== e.labelText) { scene.remove(e.label); e.label = makeLabel(text, both ? "#ff6b6b" : "#8fd3ff", 768); e.label.scale.set(7, 1.1, 1); scene.add(e.label); e.labelText = text; }
-  const vis = e.pos.distanceTo(P.pos) < 90 && e.b.g.visible;
+  const vis = (e.pos.distanceTo(P.pos) < 90 || (P.ken && lastIsl && islandAt(e.pos.x, e.pos.z) === lastIsl)) && e.b.g.visible;
   e.bar.visible = e.label.visible = vis;
   if (vis) {
     e.bar.position.copy(e.pos).setY(e.pos.y + 5.2); e.bar.quaternion.copy(camera.quaternion);
@@ -1987,9 +2024,9 @@ function tick() {
       if (aggro && e.freeze <= 0) e.b.g.rotation.y = Math.atan2(to.x, to.z); else if (mv.lengthSq() > 0.01) e.b.g.rotation.y = Math.atan2(mv.x, mv.z);
       if (e.swing > 0) { e.swing += dt * 4; if (e.swing >= 1) e.swing = 0; }
       animBody(e.b, mv.length() * sp, e.t, e.swing, false);
-      const tint = e.freeze > 0 ? 0x2a7aa0 : e.burn > 0 ? 0x803000 : 0;
+      const tint = P.ken ? 0x9a9a9a : e.freeze > 0 ? 0x2a7aa0 : e.burn > 0 ? 0x803000 : 0;
       e.b.inner.children.forEach((c) => { if (c.material && c.material.emissive && c.userData.tint !== tint) { c.material = c.material.clone(); c.material.emissive.setHex(tint); c.userData.tint = tint; } });
-      const top = e.boss ? 11 : 5.2, vis = d < 70;
+      const top = e.boss ? 11 : 5.2, vis = d < 70 || (P.ken && lastIsl && e.isl === lastIsl && d < 600);
       e.bar.visible = e.label.visible = vis;
       if (vis) {
         e.bar.position.copy(e.pos).setY(e.pos.y + top); e.bar.quaternion.copy(camera.quaternion);

@@ -39,16 +39,17 @@ export async function onRequestPost(context) {
 
     if (body.action === "get") return json({ data: (await kv.get(key, "json")) || {} });
     if (body.action === "set") {
-      // The app sends at most one save a minute (components/PreviewFrame.jsx); these limits stop
-      // one account from using up the site's shared KV writes (1,000 a day on the free plan).
-      if (!(await allow(`gamesave:${user.id}`, 6, 60))) return json({ error: TOO_MANY }, 429);
+      // The app sends a save at most every 15 seconds (components/PreviewFrame.jsx), plus "Save
+      // progress" in the game menu. Saves live in D1 (cloudflare-lib/hybridkv.js), which allows far
+      // more writes than KV; these limits still stop one account from flooding it.
+      if (!(await allow(`gamesave:${user.id}`, 20, 60))) return json({ error: TOO_MANY }, 429);
       const data = cleanSave(body.data);
       if (!data) return json({ error: "That save is too big (512 KB at most)." }, 413);
-      // KV writes are scarce on the free plan (1,000 a day); a read is cheap, so skip unchanged saves.
-      const json = JSON.stringify(data);
-      if ((await kv.get(key)) !== json) {
-        if (!(await allow(`gamesave-day:${user.id}`, 150, 86400))) return json({ error: "You've saved a lot today. Your progress saves again tomorrow." }, 429);
-        await kv.put(key, json);
+      // A read is cheap, so skip unchanged saves. (Not named "json": that would hide json() above.)
+      const text = JSON.stringify(data);
+      if ((await kv.get(key)) !== text) {
+        if (!(await allow(`gamesave-day:${user.id}`, 3000, 86400))) return json({ error: "You've saved a lot today. Your progress saves again tomorrow." }, 429);
+        await kv.put(key, text);
       }
       return json({ ok: true });
     }
