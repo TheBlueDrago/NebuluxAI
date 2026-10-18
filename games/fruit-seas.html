@@ -795,13 +795,18 @@ for (const sea of [0, 1]) for (let i = 0; i < 4; i++) spawnRival(sea);
 // World event: every 8 minutes a Sea King appears on a random island of your sea, around your
 // level. Beat it for a big reward; it sinks back into the sea after 5 minutes.
 let seaKing = null;
-function seaKingEvent() {
+// Online, one player (the "host": the lowest id in the sea) rolls the Sea King and wild fruits and
+// tells everyone, so all players see the same ones.
+const isHost = () => typeof NET === "undefined" || !NET.ok || !NET.you || [NET.you, ...remotes.keys()].sort()[0] === NET.you;
+function seaKingEvent(forcedIsl) {
   if (!started || seaKing) return;
+  if (forcedIsl == null && !isHost()) return;
   const isls = ISLANDS.filter((i) => i.sea === S.sea && !i.spawn); if (!isls.length) return;
-  const isl = pick(isls), lvl = Math.max(10, S.lvl + 5);
+  const isl = forcedIsl != null && ISLANDS[forcedIsl] ? ISLANDS[forcedIsl] : pick(isls), lvl = Math.max(10, S.lvl + 5);
+  if (forcedIsl == null && typeof netOn === "function" && netOn()) netSend({ t: "fx", k: "seaking", i: ISLANDS.indexOf(isl) });
   const boss = { name: "Sea King", lvl, hp: Math.round(2500 + lvl * lvl * 3), color: 0x00695c, event: true };
   const before = enemies.length; spawnEnemy(isl, boss); seaKing = enemies[before];
-  if (seaKing) seaKing.event = true;
+  if (seaKing) { seaKing.event = true; seaKing.slot = "sk"; }
   SFX.boom(); show(`A SEA KING appeared at ${isl.name}!
 Beat it for a huge reward (5 minutes)`, 5);
   setTimeout(() => { if (seaKing && seaKing.hp > 0) { scene.remove(seaKing.b.g, seaKing.bar, seaKing.label); enemies.splice(enemies.indexOf(seaKing), 1); show("The Sea King sank back into the sea", 3); } seaKing = null; }, 5 * 60000);
@@ -812,13 +817,15 @@ setInterval(seaKingEvent, 8 * 60000);
 // often). Walk into it to put it in your Fruits; it rots away after 10 minutes.
 const wildFruits = [];
 function spawnWildFruit() {
-  if (!started) return;
+  if (!started || !isHost()) return;
   const isls = ISLANDS.filter((i) => i.sea === S.sea); const isl = pick(isls);
   let total = 0; for (const n of FRUIT_NAMES) total += RAR_W[FRUITS[n].rar];
   let r = rnd(0, total), name = FRUIT_NAMES[0];
   for (const n of FRUIT_NAMES) { r -= RAR_W[FRUITS[n].rar]; if (r <= 0) { name = n; break; } }
   const a = rnd(0, 7), d = rnd(4, isl.r - 6), x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d;
-  placeFruit(name, x, z, null, `A fruit is growing somewhere at ${isl.name}...`, isl);
+  const id = Math.random().toString(36).slice(2, 10);
+  placeFruit(name, x, z, id, `A fruit is growing somewhere at ${isl.name}...`, isl);
+  if (typeof netOn === "function" && netOn()) netSend({ t: "fx", k: "wild", n: name, x: Math.round(x), z: Math.round(z), id, i: ISLANDS.indexOf(isl) });
 }
 // A fruit lying on the ground (grown, or dropped by a player). id: shared with the others online.
 function placeFruit(name, x, z, id, note, isl) {
@@ -1110,11 +1117,10 @@ function openCrew() {
     $("mb").querySelectorAll("[data-leave]").forEach((b) => (b.onclick = () => { const n = b.dataset.leave; crewSend(n, { k: "leave" }); S.crewMates = crewMates().filter((x) => x !== n); save(); openCrew(); }));
   }, 0);
   crewHtml = realHtml;
-  openModal("Crew Recruiter", `<p>Crewmates follow you everywhere and fight the enemies near you${pvpOn() ? " (and other pirates, while PvP is on)" : ""}.</p>
-    <p>Your crew: <b>${S.crew} / 2</b></p>
-    <div style="text-align:center;margin-top:10px">${full ? "<p>Your bot crew is full!</p>" : `<button class="btn blue" id="hire" ${S.beli < crewCost() ? "disabled" : ""}>Hire a crewmate for ${money(crewCost())}</button>`}</div>`);
+  openModal("Crew Recruiter", "<p>Recruit real players into your crew: you share money and XP, and can't hurt each other.</p>");
+
   $("mb").insertAdjacentHTML("beforeend", crewHtml);
-  const h = $("hire"); if (h) h.onclick = () => { if (S.beli < crewCost() || S.crew >= 2) return; S.beli -= crewCost(); S.crew++; save(); addAlly(); SFX.win(); show("A crewmate joined you!", 2); openCrew(); };
+
 }
 function updateAllies(dt) {
   allies.forEach((a, i) => {
@@ -1192,6 +1198,7 @@ const camBase = V(); let camReady = false;
 function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) return;
   if (e.remote) {
+    if (allMates().includes(e.name)) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(`${e.name} is in your crew`, 1.5); } return; }
     if (bothMarines(e)) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show("Marines can't attack other Marines", 1.5); } return; }
     if (!pvpOn() || !e.pvp || (islandAt(e.pos.x, e.pos.z) || {}).spawn) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(!pvpOn() ? "Turn PvP on to fight other players" : !e.pvp ? `${e.name} has PvP off` : "Spawn islands are safe zones", 1.5); } return; }
     dmg = Math.round(dmg * rnd(0.9, 1.1)); SFX.hit(); dmgText(e.pos, dmg, "#ff4d4d"); addCombo(dmg);
@@ -1210,7 +1217,7 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
 }
 // Online: tell the others in this sea which enemy was defeated (they remove the same one).
 const netOn = () => typeof NET !== "undefined" && NET.ok;
-function shareKill(e) { if (netOn() && !e.rival && !e.remote && (e.slot || e.beast)) netSend({ t: "fx", k: "kill", s: e.beast ? "beast" : e.slot, i: ISLANDS.indexOf(e.isl), n: e.name, x: Math.round(e.pos.x), z: Math.round(e.pos.z) }); }
+function shareKill(e) { if (netOn() && !e.rival && !e.remote && (e.slot || e.beast || e === seaKing)) netSend({ t: "fx", k: "kill", s: e.beast ? "beast" : e.slot, i: ISLANDS.indexOf(e.isl), n: e.name, x: Math.round(e.pos.x), z: Math.round(e.pos.z) }); }
 // Someone hit an enemy: show it here too (its health, where it is, and it fights them).
 let ehitT = 0;
 function shareHit(e) {
@@ -1230,6 +1237,8 @@ function sendWorld(to) {
   netSend({ t: "fx", k: "world", to,
     dead: [...deadSlots].map(([sl, at]) => [sl, Math.max(1000, at - now)]),
     hurt: enemies.filter((e) => e.slot && e.hp < e.maxHp).map((e) => [e.slot, +(e.hp / e.maxHp).toFixed(3), Math.round(e.pos.x), Math.round(e.pos.z)]),
+    sk: seaKing ? { i: ISLANDS.indexOf(seaKing.isl), f: +(seaKing.hp / seaKing.maxHp).toFixed(3) } : null,
+    wild: wildFruits.map((w) => [w.name, Math.round(w.g.position.x), Math.round(w.g.position.z), w.id, ISLANDS.indexOf(w.isl)]),
     beast: beast ? { x: Math.round(beast.pos.x), z: Math.round(beast.pos.z), f: +(beast.hp / beast.maxHp).toFixed(3) } : null });
 }
 function gotWorld(m) {
@@ -1238,10 +1247,13 @@ function gotWorld(m) {
     scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); respawnLater(e, Math.min(120000, +ms || 12000));
   }
   for (const [sl, f, x, z] of Array.isArray(m.hurt) ? m.hurt.slice(0, 300) : []) sharedHit({ s: sl, f, x, z, from: m.from });
+  if (m.sk && !seaKing) { seaKingEvent(+m.sk.i); if (seaKing) seaKing.hp = Math.max(1, Math.round(seaKing.maxHp * (+m.sk.f || 1))); }
+  for (const [n, x, z, id, i] of Array.isArray(m.wild) ? m.wild.slice(0, 20) : []) placeFruit(String(n), +x, +z, String(id), "", ISLANDS[+i]);
   if (m.beast && !beast) { spawnBeast(V(+m.beast.x || 0, 0, +m.beast.z || 0), "A Sea Beast is out here!", true); if (beast) beast.hp = Math.max(1, Math.round(beast.maxHp * (+m.beast.f || 1))); }
 }
 function removeShared(m) {
   if (m.s === "beast") { if (beast) { cubes(beast.pos.clone().setY(8), 0x40c4ff, 20); removeBeast(beast, "The Sea Beast was defeated!"); } return; }
+  if (m.s === "sk") { if (seaKing) { cubes(seaKing.pos.clone().setY(seaKing.pos.y + 2), 0xffd23a, 16); scene.remove(seaKing.b.g, seaKing.bar, seaKing.label); enemies.splice(enemies.indexOf(seaKing), 1); seaKing = null; show("The Sea King was defeated!", 3); } return; }
   if (m.s) { const e = enemies.find((x) => x.slot === m.s); if (e) { cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 10); scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); respawnLater(e, e.boss ? 90000 : 12000); } return; }
   const isl = ISLANDS[m.i]; if (!isl) return;
   let best = null, bd = 25;
@@ -1351,6 +1363,7 @@ function basicAttack() {
   P.en -= cost;
   P.lastHit = T;
   const dir = aimDir(!(P.tool === 3 && S.fruit)); face(dir);
+  if (P.tool === 3 && P.dragon) { const dir = aimDir(false); face(dir); P.atkCd = 0.35; shoot({ color: 0xff5722, size: 1.1, speed: 70, range: 60, dmg: 30 * mult("fruit") * 1.6, explode: 4, fxo: { burn: true } }, dir); return; }
   if (P.tool === 3 && S.fruit) { // fruit click: small fruit shot
     const f = FRUITS[S.fruit]; P.atkCd = 0.45; P.swing = 0.001;
     shoot({ color: f.color, size: 0.45, speed: 60, range: 30, dmg: 10 * mult("fruit") }, dir);
@@ -1391,6 +1404,7 @@ function useSkill(sk, statKey, color) {
   const dir = aimDir(); face(dir);
   const dmg = power * mult(statKey);
   const fxo = { burn: o.burn, freeze: o.freeze };
+  if (type === "transform") { setDragon(!P.dragon); return; }
   if (type === "fly") { P.flying = !P.flying; P.vel.y = P.flying ? 12 : P.vel.y; show(P.flying ? "Flying! Space: up · R: down · F: land" : "Landing", 2); return; }
   if (type === "proj") shoot({ ...o, color, dmg, fxo }, dir);
   else if (type === "aoe") {
@@ -1406,6 +1420,46 @@ function useSkill(sk, statKey, color) {
     const a = aimPoint();
     for (let i = 0; i < o.n; i++) setTimeout(() => { const p = a.clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))); p.y = Math.max(groundAt(p.x, p.z), 0); pillar(p, color, 1.2, 18, 0.4); explode(p, o.r, dmg, color, fxo); }, i * 140);
   }
+}
+// ---- Dragon Transformation: you become a huge flying dragon for 40 seconds (or until out of energy)
+let dragonModel = null;
+function buildDragon() {
+  const g = new THREE.Group(), red = 0xd32f2f, dark = 0x8e1b1b, belly = 0xffb74d;
+  const body = box(3.2, 3, 7, red); body.position.y = 0; g.add(body);
+  const bel = box(2.6, 0.6, 6, belly, false); bel.position.y = -1.5; g.add(bel);
+  const neck = box(1.8, 1.8, 3, red); neck.position.set(0, 1.4, 4.2); neck.rotation.x = -0.4; g.add(neck);
+  const head = box(2.4, 2, 3.2, red); head.position.set(0, 2.6, 6.4); g.add(head);
+  const jaw = box(2, 0.6, 2.4, dark); jaw.position.set(0, 1.5, 6.9); g.add(jaw);
+  for (const sx of [-1, 1]) {
+    const eye = box(0.5, 0.4, 0.2, 0xffeb3b, false); eye.position.set(sx * 0.8, 3, 8); g.add(eye);
+    const horn = box(0.35, 1.6, 0.35, 0xfff3e0, false); horn.position.set(sx * 0.8, 4, 5.6); horn.rotation.x = -0.6; g.add(horn);
+    const wing = new THREE.Group(); wing.position.set(sx * 1.6, 1.2, 0.5);
+    const w1 = box(6, 0.25, 4.5, dark); w1.position.x = sx * 3; wing.add(w1);
+    const w2 = box(4, 0.2, 3, 0xff7043); w2.position.set(sx * 7, 0, -0.6); wing.add(w2);
+    g.add(wing); g.userData[sx < 0 ? "wl" : "wr"] = wing;
+    for (const fz of [2, -2]) { const leg = box(0.8, 1.8, 0.8, dark); leg.position.set(sx * 1.2, -2.2, fz); g.add(leg); }
+  }
+  for (let i = 0; i < 4; i++) { const t = box(1.6 - i * 0.3, 1.4 - i * 0.25, 2.4, i % 2 ? dark : red); t.position.set(0, -0.2 + i * 0.2, -4.6 - i * 2.2); g.add(t); }
+  for (let i = 0; i < 5; i++) { const sp = box(0.3, 1, 0.8, 0xfff3e0, false); sp.position.set(0, 1.9, 2.5 - i * 1.6); g.add(sp); }
+  g.scale.setScalar(1.3); return g;
+}
+function setDragon(on) {
+  if (on === !!P.dragon) return;
+  P.dragon = on;
+  if (on) {
+    dragonModel = dragonModel || buildDragon(); scene.add(dragonModel); P.dragonEnd = performance.now() + 40000; P.flying = true; P.vel.y = 16;
+    SFX.boom?.(); shake = Math.max(shake, 0.5); ring(P.pos, 0xff5722, 12, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), 0xff5722, 30, 10);
+    show("DRAGON TRANSFORMATION! Space: up · R: down · G: turn back", 3);
+  } else { if (dragonModel) scene.remove(dragonModel); P.flying = false; cubes(P.pos.clone().setY(P.pos.y + 3), 0xff5722, 16, 6); show("You turned back", 1.5); }
+  P.body.g.visible = !on; drawSkills();
+}
+function updateDragon(dt) {
+  if (!P.dragon) return;
+  if (S.fruit !== "Dragon" || performance.now() > P.dragonEnd || P.en <= 0 || dead) { setDragon(false); return; }
+  P.flying = true; P.en -= 3 * dt;
+  const g = dragonModel; g.position.set(P.pos.x, P.pos.y + 3, P.pos.z); g.rotation.y = P.faceYaw;
+  const flap = Math.sin(performance.now() / 160) * 0.6; g.userData.wl.rotation.z = flap; g.userData.wr.rotation.z = -flap;
+  if (Math.random() < 0.4) cubes(P.pos.clone().setY(P.pos.y + 2), 0xff9800, 1, 3);
 }
 // ---- mastery: every fruit and sword has its own (0-600), earned by defeating enemies with it.
 // It adds damage (up to +30%) and unlocks moves: fruits V at 250 and F at 400, swords V at 300.
@@ -1431,11 +1485,21 @@ function extraFruitSkills(n) {
   const f = FRUITS[n], z = f.skills[0], c = f.skills[2];
   return [
     ["V", z[1].split(" ")[0] + " Barrage", z[2] * 2, z[3] + 10, z[4] * 2.2, "rain", { n: 8, r: 5, burn: z[6].burn, freeze: z[6].freeze }, 250],
+    ...(n === "Dragon" ? [["G", "Dragon Transformation", 40, 40, 0, "transform", {}, 600]] : []),
     n === "Dragon" ? ["F", "Dragon Flight", 2, 0, 0, "fly", {}, 400] : ["F", "Awakened " + c[1], c[2] * 1.8, c[3] + 20, c[4] * 2.6, "aoe", { ...c[6], r: (c[6].r || 10) * 1.5, self: true }, 400],
   ];
 }
 const SWORD_EXTRA = [["V", "Blade Storm", 12, 30, 70, "barrage", { n: 12, r: 6 }, 300]];
+const DRAGON_FORM = [
+  ["Z", "Fire Breath", 3, 10, 60, "barrage", { n: 10, r: 4, burn: true }],
+  ["X", "Meteor Shower", 9, 25, 90, "rain", { n: 18, r: 11, burn: true }],
+  ["C", "Dragon Dive", 7, 20, 110, "dash", { dist: 40, burn: true }],
+  ["V", "Inferno Roar", 12, 30, 120, "aoe", { r: 18, self: true, burn: true }],
+  ["F", "Draconic Blitz", 18, 45, 80, "rain", { n: 30, r: 16, burn: true }],
+  ["G", "Turn back", 1, 0, 0, "transform", {}],
+];
 function skillsFor(tool) {
+  if (tool === 3 && P.dragon) return { list: DRAGON_FORM, stat: "fruit", color: 0xff5722, power: 1.6 * (1 + mastery(3) * 0.0005) };
   const m = mastery(tool), open = (list) => list.filter((x) => (x[7] || 0) <= m);
   if (tool === 1) return { list: [...myStyle().skills, ...open([["V", "Fury Barrage", 14, 30, 110, "barrage", { n: 14, r: 6 }, 300]])], stat: "melee", color: myStyle().color, power: myStyle().mult * (1 + m * 0.0005) };
   if (tool === 2 && S.sword) return { list: [...SWORD_SK, ...open(SWORD_EXTRA)], stat: "sword", color: SWORDS[S.sword].color, power: SWORDS[S.sword].mult * (1 + m * 0.0005) };
@@ -1537,7 +1601,7 @@ addEventListener("keydown", (e) => {
   if (e.code === "Escape" && modalOpen) return closeModal();
   if (!started || dead || modalOpen) return;
   if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") equip(3);
-  if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C"); if (e.code === "KeyV") trySkill("V"); if (e.code === "KeyF") trySkill("F");
+  if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C"); if (e.code === "KeyV") trySkill("V"); if (e.code === "KeyF") trySkill("F"); if (e.code === "KeyG") trySkill("G");
   if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash();
   if (e.code === "KeyJ") toggleBuso();
   if (e.code === "KeyE") interact();
@@ -1775,6 +1839,7 @@ function addRemote(id, name) {
 }
 function dropRemote(id) {
   const e = remotes.get(id); if (!e) return;
+  if (e.ship) scene.remove(e.ship);
   scene.remove(e.b.g, e.bar, e.label); remotes.delete(id);
   const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1);
 }
@@ -1797,7 +1862,7 @@ function netConnect() {
     if (m.t === "state") {
       const e = remotes.get(m.from) || addRemote(m.from, m.name || "Pirate");
       if (e.pos.y < -40) e.pos.set(m.x, m.y, m.z);
-      e.want.set(m.x, m.y, m.z); e.yaw = m.yaw; e.lvl = m.lvl | 0; e.hp = m.hp; e.maxHp = m.maxHp || 100; e.pvp = !!m.pvp; e.side = String(m.side || ""); e.seen = T;
+      e.want.set(m.x, m.y, m.z); e.yaw = m.yaw; e.lvl = m.lvl | 0; e.hp = m.hp; e.maxHp = m.maxHp || 100; e.pvp = !!m.pvp; e.side = String(m.side || ""); e.seen = T; e.seenMs = performance.now();
       if (m.swing && !e.swing) e.swing = 0.001;
       // their avatar, once: rebuild their body in their colours
       if (m.av && !e.avSet) {
@@ -1805,13 +1870,17 @@ function netConnect() {
         e.b = makeBody({ shirt: hex(m.av.shirt, 0x1e88e5), pants: hex(m.av.pants, 0x263238), skin: hex(m.av.skin, 0xf5c99a), hat: m.av.hat === "none" ? null : String(m.av.hat || ""), hatColor: hex(m.av.hatColor, undefined), face: String(m.av.face || ""), design: String(m.av.design || ""), legs: String(m.av.legs || ""), back: String(m.av.back || "") });
         e.b.sword.visible = true; scene.add(e.b.g);
       }
-      e.b.g.visible = !m.boat;
+      // their ship
+      const bt = m.boat && BOATS[m.bt] ? m.bt : "";
+      if (bt !== (e.shipType || "")) { if (e.ship) scene.remove(e.ship); e.ship = null; e.shipType = bt; if (bt) { const b = BOATS[bt]; e.ship = buildBoat({ ...b, len: b.len * 1.8, w: b.w * 1.8 }); scene.add(e.ship); } }
+      if (e.ship) { e.ship.position.set(+m.bx || e.want.x, Math.sin(T * 2) * 0.15, +m.bz || e.want.z); e.ship.rotation.y = +m.by || 0; }
+      e.b.g.visible = true;
       return;
     }
     if (m.t === "hitP" && m.to === NET.you) {
       const from = remotes.get(m.from);
       const safe = (islandAt(P.pos.x, P.pos.z) || {}).spawn;
-      if (!pvpOn() || safe || dead || !from || !from.pvp || bothMarines(from)) return;
+      if (!pvpOn() || safe || dead || !from || !from.pvp || bothMarines(from) || allMates().includes(from.name)) return;
       hurtPlayer(Math.max(1, Math.min(400, Number(m.dmg) || 0)), from.pos);
       if (P.hp <= 0) netSend({ t: "dead", to: m.from });
       return;
@@ -1823,6 +1892,8 @@ function netConnect() {
       if (m.k === "kill") removeShared(m);
       if (m.k === "ehit") sharedHit(m);
       if (m.k === "world") gotWorld(m);
+      if (m.k === "seaking") seaKingEvent(+m.i);
+      if (m.k === "wild") { const isl = ISLANDS[+m.i]; placeFruit(String(m.n), +m.x, +m.z, String(m.id), isl ? `A fruit is growing somewhere at ${isl.name}...` : "", isl); }
       if (m.k === "beast" && !beast) { const who = remotes.get(m.from); spawnBeast(V(+m.x || 0, 0, +m.z || 0), `A SEA BEAST rose near ${who ? who.name : "another pirate"}!`, true); }
       if (m.k === "drop") { const who = remotes.get(m.from); placeFruit(String(m.n), +m.x, +m.z, String(m.id), `${who ? who.name : "Someone"} dropped a ${m.n} Fruit`); }
       if (m.k === "pick") { const f = wildFruits.find((w) => w.id === m.id); if (f) { scene.remove(f.g, f.label); wildFruits.splice(wildFruits.indexOf(f), 1); } }
@@ -1847,11 +1918,11 @@ function netTick(dt) {
   if (NET.sendT <= 0) {
     NET.sendT = 0.1; NET.avT = (NET.avT || 0) - 0.1;
     const withAv = AV && NET.avT <= 0; if (withAv) NET.avT = 3;
-    netSend({ t: "state", ...(withAv ? { av: AV } : {}), name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), side: S.side || "", swing: P.swing > 0 ? 1 : 0, boat: !!P.boat });
+    netSend({ t: "state", ...(withAv ? { av: AV } : {}), name: netName(), x: +P.pos.x.toFixed(2), y: +P.pos.y.toFixed(2), z: +P.pos.z.toFixed(2), yaw: +P.faceYaw.toFixed(2), lvl: S.lvl, hp: Math.round(P.hp), maxHp: Math.round(maxHp()), pvp: pvpOn(), side: S.side || "", swing: P.swing > 0 ? 1 : 0, boat: !!P.boat, bt: P.boat ? (S.boatType || "Rowboat") : "", by: P.boat ? +P.boat.yaw.toFixed(2) : 0, bx: P.boat ? +P.boat.g.position.x.toFixed(1) : 0, bz: P.boat ? +P.boat.g.position.z.toFixed(1) : 0, dr: sailing() ? 1 : 0 });
   }
 }
 function updateRemote(e, dt) {
-  if (T - e.seen > 10) { dropRemote(e.id); return; }
+  if (performance.now() - (e.seenMs || performance.now()) > 30000) { dropRemote(e.id); return; }
   const old = e.pos.clone();
   e.pos.lerp(e.want, 1 - Math.exp(-12 * dt));
   e.t += dt; e.b.g.position.copy(e.pos); e.b.g.rotation.y = e.yaw;
@@ -1905,15 +1976,33 @@ Day ${S.streak} in a row${S.streak % 7 === 0 ? " · FREE gacha spin!" : ""}`, 4)
 }
 // Nebulux admins (the owner) get every fruit as a permanent fruit.
 const isAdmin = !!(window.nebulux && window.nebulux.admin);
-$("play").onclick = () => { $("start").style.display = "none"; started = true; if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+// A gift added to a player's save by the team (e.g. to make up for lost progress): shown once.
+function claimGift() {
+  const g = S.gift; if (!g || typeof g !== "object") return;
+  S.beli += Math.max(0, +g.beli || 0);
+  S.mastery = S.mastery || {};
+  if (g.mastery) for (const n of [...Object.keys(STYLES).map((x) => "style:" + x), ...Object.keys(SWORDS).map((x) => "sword:" + x)]) S.mastery[n] = Math.max(S.mastery[n] || 0, Math.min(MAX_MASTERY, +g.mastery || 0));
+  delete S.gift; save(); SFX.win();
+  setTimeout(() => openModal("A gift for you", `<p style="font-size:16px"><b>${String(g.msg || "Thanks for playing!").replace(/</g, "")}</b></p>${g.beli ? `<p>+${money(g.beli)}</p>` : ""}${g.mastery ? `<p>Mastery ${g.mastery} on every fighting style and sword</p>` : ""}<p>Your levels and permanent fruits are back.</p>`), 800);
+}
+$("play").onclick = () => { $("start").style.display = "none"; started = true; claimGift(); if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); S.crew = 0; pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
 // ================= main loop =================
 const clock = new THREE.Clock();
 let T = 0, lastIsl = null, uiT = 0;
+// In a hidden tab the browser slows timers right down, so a tiny worker (not slowed) keeps the
+// game and multiplayer running 10 times a second; in view, it runs every frame as usual.
+let rafOn = false;
+const loopOn = () => { if (!rafOn && !document.hidden) { rafOn = true; requestAnimationFrame(() => { rafOn = false; tick(); }); } };
+try {
+  const wk = new Worker(URL.createObjectURL(new Blob(["setInterval(() => postMessage(0), 100)"], { type: "text/javascript" })));
+  wk.onmessage = () => { if (document.hidden) tick(); };
+} catch { setInterval(() => { if (document.hidden) tick(); }, 100); }
+document.addEventListener("visibilitychange", loopOn);
 function tick() {
-  if (document.hidden) setTimeout(tick, 100); else requestAnimationFrame(tick);
+  loopOn();
   const dt = Math.min(clock.getDelta(), document.hidden ? 1 : 0.05); T += dt;
   const sea = SEAS[S.sea];
   seaGround.forEach((m, i) => m && (m.visible = i === S.sea));
@@ -1951,7 +2040,7 @@ function tick() {
         // flying: no gravity, Space up / Ctrl down, uses a little energy, faster
         P.vel.y = (keys.Space ? 16 : 0) - (keys.KeyR ? 16 : 0);
         P.en -= 10 * dt; if (P.en <= 0) { P.en = 0; P.flying = false; show("Out of energy: landing", 1.5); }
-        P.vel.x *= 1.02; P.vel.z *= 1.02;
+        P.vel.x *= P.dragon ? 1.05 : 1.02; P.vel.z *= P.dragon ? 1.05 : 1.02;
         if (Math.random() < 0.3) cubes(P.pos.clone().setY(P.pos.y + 1.5), 0x00e676, 1, 2);
       } else { P.flying = false;
       P.vel.y = Math.max(P.vel.y - 90 * dt, -70); }
@@ -1986,6 +2075,7 @@ function tick() {
 
     // body
     const by = P.faceYaw; let dy = by - P.body.g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.body.g.rotation.y += dy * Math.min(1, 16 * dt);
+    updateDragon(dt); if (P.dragon) P.body.g.visible = false;
     P.body.g.position.copy(P.pos); if (inWater()) P.body.g.position.y -= 1.8; if (P.boat) P.body.g.position.y += 0.2; nameTag.position.copy(P.body.g.position).setY(P.body.g.position.y + 5.6);
     if (P.swing > 0) { P.swing += dt * 4; if (P.swing >= 1) P.swing = 0; }
     animBody(P.body, P.boat ? 0 : Math.hypot(P.vel.x, P.vel.z), T, P.swing, !P.onGround && !inWater(), AV && AV.walk);
