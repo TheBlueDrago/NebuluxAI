@@ -81,6 +81,13 @@
   <div class="chars" id="chars"></div>
   <p class="keys" style="font-size:13px;margin-top:12px"><kbd>WASD</kbd> move · <kbd>Click</kbd> combo · <kbd>1</kbd>-<kbd>4</kbd> moves · <kbd>G</kbd> super · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>F</kbd> block · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> turn camera · <kbd>Esc</kbd> or <kbd>Ctrl</kbd> lock mouse · <kbd>/</kbd> chat</p>
   <button class="big" id="play">FIGHT!</button>
+  <div style="margin-top:14px;font-weight:700">
+    <button class="pk" id="privNew" style="background:#7c4dff;color:#fff">🔒 Make a private server</button>
+    <span style="margin:0 6px">or</span>
+    <input id="privCode" maxlength="5" placeholder="CODE" style="width:90px;padding:10px;border-radius:10px;border:3px solid #000;font:inherit;font-weight:900;text-transform:uppercase;text-align:center">
+    <button class="pk" id="privJoin">Join</button>
+    <p style="font-size:12px;opacity:.8;margin:6px 0 0">Private servers are free: only you, the people you share the code with, and the dummy for practising combos. No bots.</p>
+  </div>
 </div></div>
 <div id="pick"><div class="c"><h2 class="sh" style="font-size:30px;margin:0">Choose your SUPER</h2><div id="pickBtns" style="margin-top:12px"></div><p style="opacity:.8">Press 1, 2 or 3</p></div></div>
 
@@ -252,6 +259,16 @@ const dummy = addFighter({ name: "Weakest Dummy", char: "hero", dummy: true, loo
 // damage: blocking cuts it a lot (except supers), knockback flies, combos stun
 function hurt(t, dmg, from, o = {}) {
   if (!t || t.dead || t.iframes > 0) return;
+  // Real players: only YOUR hits on them count here (sent to them; their game applies it).
+  // Their moves play on your screen just for show; their hits on you arrive with o.net.
+  if (from.remote && !o.net) return;
+  if (t.remote) {
+    if (from !== me) return;
+    const d0 = Math.round(dmg * (from.awake > 0 ? 1.35 : 1));
+    netSend({ t: "hitP", to: t.id, dmg: d0, kb: o.kb || 0, up: o.up || 0, stun: o.stun ?? 0.35, ub: !!o.unblockable });
+    SFX.hit(); floatText(t.pos, String(d0), o.color || "#fff"); from.ult = Math.min(100, from.ult + d0 * 0.6);
+    return;
+  }
   let d = dmg;
   const facing = V(Math.sin(t.yaw), 0, Math.cos(t.yaw)), toAtk = from.pos.clone().sub(t.pos).setY(0).normalize();
   if (t.block && !o.unblockable && facing.dot(toAtk) > -0.2) { d *= 0.15; SFX.block(); burst(t.pos.clone().setY(2.5), 0x90caf9, 6, 6, 0.25); if (o.kb) o = { ...o, kb: o.kb * 0.2 }; }
@@ -271,7 +288,7 @@ function ko(t, from) {
   burst(t.pos.clone().setY(2), t.ch.color === "#ffd54f" ? 0xffd54f : 0xff5252, 26, 12); SFX.ko();
   if (from && from !== t) { from.kills++; from.ult = Math.min(100, from.ult + 25); }
   feed(`${from && from !== t ? from.name : "???"} ⚔ ${t.name}`);
-  if (t === me) { show("You were knocked out!\nBack in 3 seconds", 2.5); }
+  if (t === me) { show("You were knocked out!\nBack in 3 seconds", 2.5); if (from && from.remote) netSend({ t: "dead", to: from.id }); }
   if (from === me) { bigText("K.O.!", 900); if (NX && NX.score) NX.score("kills", (+localStorage.getItem("vb-kills") || 0) + 1); try { localStorage.setItem("vb-kills", (+localStorage.getItem("vb-kills") || 0) + 1); } catch { /* no storage */ } }
 }
 function feed(t) { const d = document.createElement("div"); d.textContent = t; $("feed").prepend(d); setTimeout(() => d.remove(), 6000); while ($("feed").children.length > 6) $("feed").lastChild.remove(); }
@@ -282,6 +299,7 @@ const chest = (f) => f.pos.clone().setY(f.pos.y + 2.5);
 // ================= attacks =================
 function m1(f) {
   if (f.atkCd > 0 || f.stun > 0 || f.dead || f.block) return;
+  if (f === me) netSend({ t: "fx", k: "m1" });
   f.combo = f.comboT > 0 ? (f.combo + 1) % 4 : 0; f.comboT = 1.0; f.atkCd = f.combo === 3 ? 0.55 : 0.3; f.swing = 0.001; SFX.whoosh();
   const last = f.combo === 3;
   setTimeout(() => { for (const t of near(f, 4.2, 0.3)) hurt(t, last ? 9 : 5, f, last ? { kb: 22, up: 9, stun: 0.6 } : { stun: 0.4, kb: 2 }); }, 90);
@@ -293,6 +311,7 @@ function beamHit(f, len, width, dmg, o) { const dir = fwd(f); for (const t of fi
 function useMove(f, i) {
   if (f.dead || f.stun > 0 || f.cds[i] > 0) return;
   const [name, , cd, kind] = movesOf(f)[i];
+  if (f === me) netSend({ t: "fx", k: "move", i });
   f.cds[i] = cd * (f.awake > 0 ? 0.5 : 1); f.swing = 0.001; f.block = false;
   const dir = fwd(f), c = chest(f), col = new THREE.Color(f.ch.color).getHex(), aw = f.awake > 0;
   if (f === me) show(name, 0.8);
@@ -334,6 +353,7 @@ function shot(f, dir, o) {
 // supers
 function useSuper(f, which) {
   if (f.dead || f.ult < 100) return;
+  if (f === me) netSend({ t: "fx", k: "super", w: which ?? 0 });
   f.ult = 0; SFX.ult(); shake = Math.max(shake, f === me ? 0.4 : 0.1);
   if (f.ch.supers) {
     const [name, kind] = f.ch.supers[which ?? 0];
@@ -443,14 +463,68 @@ function netConnect() {
   ws.onopen = () => { ws.send(JSON.stringify({ t: "hello" })); setTimeout(() => { if (!NET.ok && NET.ws === ws) { NET.retry = Infinity; try { ws.close(); } catch { /* closed */ } } }, 5000); };
   ws.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.t === "hello") { if ((m.games || []).includes("villain-battlegrounds")) { NET.ok = true; ws.send(JSON.stringify({ t: "join", q: "vb", name: ME.replace(/[^A-Za-z0-9 _]/g, "").slice(0, 24) || "Player" })); } return; }
-    if (m.t === "room") { NET.people = 1 + (m.players || []).length; peopleLabel(); if (m.players && m.players.length) say("Server", `${m.players.length} other player${m.players.length === 1 ? " is" : "s are"} here. Say hi!`); return; }
+    if (m.t === "hello") { if ((m.games || []).includes("villain-battlegrounds")) { NET.ok = true; ws.send(JSON.stringify({ t: "join", q: PRIVATE ? "vb#" + PRIVATE : "vb", name: ME.replace(/[^A-Za-z0-9 _]/g, "").slice(0, 24) || "Player" })); } return; }
+    if (m.t === "room") { NET.you = m.you; NET.people = 1 + (m.players || []).length; peopleLabel(); if (m.players && m.players.length) say("Server", `${m.players.length} other player${m.players.length === 1 ? " is" : "s are"} here. Say hi!`); return; }
     if (m.t === "pjoin") { NET.people++; peopleLabel(); say("Server", `${m.name} joined`); return; }
-    if (m.t === "left") { NET.people = Math.max(1, NET.people - 1); peopleLabel(); return; }
+    if (m.t === "left") { NET.people = Math.max(1, NET.people - 1); peopleLabel(); dropRemote(m.from || m.id); return; }
+    if (netMessage(m)) return;
+    if (m.t === "room") { NET.you = m.you; }
     if (m.t === "chat") { say(m.mine ? ME : m.name, m.text, !!m.mine); return; }
     if (m.t === "chatno") { say("Server", m.why || "That message wasn't sent."); return; }
   };
   ws.onclose = ws.onerror = () => { if (NET.ws !== ws) return; NET.ws = null; NET.ok = false; if (NET.retry === Infinity) return; NET.retry = Math.min(60, (NET.retry || 2) * 2); setTimeout(netConnect, NET.retry * 1000); };
+}
+// Real players in the room are fighters with remote: true, moved by what their game sends.
+const remotes = new Map();
+function remoteFighter(id, name, char) {
+  let f = remotes.get(id);
+  if (f && f.char !== char && CHARS[char]) { scene.remove(f.b.g, f.bar, f.label); fighters.splice(fighters.indexOf(f), 1); remotes.delete(id); f = null; }
+  if (!f) { f = addFighter({ name: name || "Player", char: CHARS[char] ? char : "hero", pos: V(0, -50, 0) }); f.remote = true; f.id = id; f.want = f.pos.clone(); f.seen = T; remotes.set(id, f); f.label.material.map.dispose(); scene.remove(f.label); f.label = makeLabel(name || "Player", "#b9f6ca"); scene.add(f.label); }
+  return f;
+}
+function dropRemote(id) { const f = remotes.get(id); if (!f) return; scene.remove(f.b.g, f.bar, f.label); fighters.splice(fighters.indexOf(f), 1); remotes.delete(id); }
+function netState(dt) {
+  if (!NET.ok || !me) return;
+  NET.sendT = (NET.sendT || 0) - dt;
+  if (NET.sendT > 0) return;
+  NET.sendT = 0.1;
+  netSend({ t: "state", name: ME, c: chosen, x: +me.pos.x.toFixed(2), y: +me.pos.y.toFixed(2), z: +me.pos.z.toFixed(2), yaw: +me.yaw.toFixed(2), hp: Math.round(me.hp), aw: me.awake > 0 ? 1 : 0, b: me.block ? 1 : 0, d: me.dead ? 1 : 0, sw: me.swing > 0 ? 1 : 0 });
+}
+function netMessage(m) {
+  if (m.t === "state") {
+    const f = remoteFighter(m.from, m.name, m.c);
+    if (f.pos.y < -40) f.pos.set(m.x, m.y, m.z);
+    f.want.set(m.x, m.y, m.z); f.yaw = m.yaw; f.hp = m.hp; f.awake = m.aw ? 5 : 0; f.block = !!m.b; f.seen = T;
+    if (m.sw && !f.swing) f.swing = 0.001;
+    const deadNow = !!m.d; if (deadNow !== f.dead) { f.dead = deadNow; f.b.g.visible = f.label.visible = f.bar.visible = !deadNow; }
+    return true;
+  }
+  if (m.t === "fx") {
+    const f = remotes.get(m.from); if (!f || f.dead) return true;
+    if (m.k === "m1") { f.atkCd = 0; m1(f); }
+    if (m.k === "move" && m.i >= 0 && m.i < 4) { f.cds[m.i] = 0; f.stun = 0; useMove(f, m.i); }
+    if (m.k === "super") { f.ult = 100; useSuper(f, m.w); }
+    return true;
+  }
+  if (m.t === "hitP" && m.to === NET.you) {
+    const f = remotes.get(m.from); if (!f || !me || me.dead) return true;
+    hurt(me, Math.max(1, Math.min(120, Number(m.dmg) || 0)), f, { net: true, kb: clamp(+m.kb || 0, 0, 100), up: clamp(+m.up || 0, 0, 50), stun: clamp(+m.stun || 0.35, 0, 3), unblockable: !!m.ub });
+    return true;
+  }
+  if (m.t === "dead" && m.to === NET.you) { const f = remotes.get(m.from); me.kills++; me.ult = Math.min(100, me.ult + 25); bigText("K.O.!", 900); feed(`${ME} ⚔ ${f ? f.name : "a player"}`); if (NX && NX.score) NX.score("kills", (+localStorage.getItem("vb-kills") || 0) + 1); try { localStorage.setItem("vb-kills", (+localStorage.getItem("vb-kills") || 0) + 1); } catch { /* no storage */ } return true; }
+  if (m.t === "left") { dropRemote(m.from || m.id); return false; }
+  return false;
+}
+function stepRemote(f, dt) {
+  if (T - f.seen > 8) { dropRemote(f.id); return; }
+  const old = f.pos.clone(); f.pos.lerp(f.want, 1 - Math.exp(-12 * dt)); f.t += dt;
+  for (let i = 0; i < 4; i++) f.cds[i] = Math.max(0, f.cds[i] - dt);
+  if (f.swing > 0) { f.swing += dt * 4; if (f.swing >= 1) f.swing = 0; }
+  f.b.g.position.copy(f.pos); f.b.g.rotation.y = f.yaw;
+  animBody(f.b, old.distanceTo(f.pos) / Math.max(dt, 0.001), f.t, f.swing, f.pos.y > 0.3, f.block);
+  f.bar.position.copy(f.pos).setY(f.pos.y + 5.4); f.bar.quaternion.copy(camera.quaternion);
+  const kk = Math.max(0.001, f.hp / f.maxHp); f.bar.fg.scale.x = kk; f.bar.fg.position.x = -1.15 * (1 - kk);
+  f.label.position.copy(f.pos).setY(f.pos.y + 6.2);
 }
 function peopleLabel() { $("chatbtn").textContent = `💬 Chat (/) · ${NET.people} online`; }
 $("chatbtn").onclick = () => (chatting ? closeChat() : openChat());
@@ -463,7 +537,7 @@ function botThink(f, dt) {
   f.think -= dt;
   if (f.think <= 0) {
     f.think = rnd(0.3, 0.7);
-    const others = fighters.filter((o) => o !== f && !o.dead && !o.dummy);
+    const others = fighters.filter((o) => o !== f && !o.dead && !o.dummy && !o.remote);
     f.target = others.sort((a, b) => a.pos.distanceTo(f.pos) - b.pos.distanceTo(f.pos))[0] || null;
     if (f.target && Math.random() < 0.25) f.target = pick(others);
   }
@@ -517,7 +591,8 @@ function loop(now) {
     const want = me.stun > 0 || me.dead || chatting ? V() : moveDir();
     if (locked || TOUCH) me.yaw = cam.yaw + Math.PI; else if (want.lengthSq() > 0.01) me.yaw = Math.atan2(want.x, want.z);
     stepFighter(me, dt, want);
-    for (const f of fighters) if (f !== me) stepFighter(f, dt, f.bot && !f.dead ? botThink(f, dt) : V());
+    for (const f of fighters) if (f !== me) { if (f.remote) stepRemote(f, dt); else stepFighter(f, dt, f.bot && !f.dead ? botThink(f, dt) : V()); }
+    netState(dt);
   } else for (const f of fighters) { f.t += dt; animBody(f.b, 0, f.t, 0, false); }
   for (const s of shots.slice()) {
     s.m.position.addScaledVector(s.dir, s.o.speed * dt); s.m.rotation.y += dt * 20; s.left -= s.o.speed * dt;
@@ -547,6 +622,9 @@ function loop(now) {
 // ================= start =================
 $("chars").innerHTML = Object.entries(CHARS).map(([id, c]) => `<button class="ch${id === chosen ? " on" : ""}" data-c="${id}"><div class="sw" style="background:${c.color}"></div><h3>${c.name}</h3><p>${c.desc}</p><ul>${c.moves.map(([n], i) => `<li>${i + 1}: ${n}</li>`).join("")}<li>G: ${c.supers ? c.supers.map((s) => s[0]).join(" / ") : c.awaken + " Awakening: " + c.awakeMoves.map((m) => m[0]).join(", ")}</li></ul></button>`).join("");
 $("chars").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => { chosen = b.dataset.c; $("chars").querySelectorAll(".ch").forEach((x) => x.classList.toggle("on", x === b)); }));
+let PRIVATE = "";
+$("privNew").onclick = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; PRIVATE = Array.from({ length: 5 }, () => A[Math.floor(Math.random() * A.length)]).join(""); $("play").click(); };
+$("privJoin").onclick = () => { const c = $("privCode").value.toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length !== 5) { $("privCode").style.borderColor = "#ff5252"; return; } PRIVATE = c; $("play").click(); };
 $("play").onclick = () => {
   audio(); $("start").style.display = "none"; started = true;
   const ch = CHARS[chosen];
@@ -554,7 +632,8 @@ $("play").onclick = () => {
   const look = AV ? { ...ch.look, shirt: hex(AV.shirt, ch.look.shirt), pants: hex(AV.pants, ch.look.pants), skin: hex(AV.skin, ch.look.skin) } : ch.look;
   me = addFighter({ name: ME, char: chosen, look, pos: V(0, 0, 18) });
   const ids = Object.keys(CHARS);
-  BOT_NAMES.slice(0, 6).forEach((n) => addFighter({ name: n, char: pick(ids), bot: true, pos: spawnPos() }));
+  if (!PRIVATE) BOT_NAMES.slice(0, 6).forEach((n) => addFighter({ name: n, char: pick(ids), bot: true, pos: spawnPos() }));
+  if (PRIVATE) { say("Server", `Private server ${PRIVATE}: share this code with friends. No bots here; practise on the dummy!`); show(`Private server: ${PRIVATE}`, 4); }
   drawMoves(); show(`You are the ${ch.name}!\nTry your moves on the Weakest Dummy`, 3.5);
   say("Server", "Welcome to Villain Battlegrounds! Press / to chat.");
   netConnect();
