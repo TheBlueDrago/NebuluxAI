@@ -10,6 +10,8 @@ import { BoardList } from "@/components/GameBoards";
 // the people playing this game right now and Leave / Respawn / Save progress, and a Leaderboard
 // tab. Next to it, a chat button opens the game's own chat (games that have one listen for it).
 // Commands reach the game frame through a window event that PreviewFrame.jsx listens to.
+// Games with their own chat (they open it when told to); others get no chat button.
+const CHAT_GAMES = new Set(["fruit-seas", "villain-battlegrounds"]);
 export const gameCmd = (cmd) => window.dispatchEvent(new CustomEvent("nebulux-game-cmd", { detail: cmd }));
 
 export default function GameMenu({ name, onRespawn, leaveTo = "/chat/games" }) {
@@ -52,9 +54,9 @@ export default function GameMenu({ name, onRespawn, leaveTo = "/chat/games" }) {
         <button onClick={() => setOpen(true)} className="p-1 rounded-lg hover:bg-white/10 transition-colors" title="Menu" aria-label="Game menu">
           <BlackholeIcon className="w-8 h-8" />
         </button>
-        <button onClick={() => gameCmd("chat")} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition-colors" title="Chat (/)" aria-label="Chat">
+        {CHAT_GAMES.has(name) && <button onClick={() => gameCmd("chat")} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition-colors" title="Chat (/)" aria-label="Chat">
           <MessageSquare className="w-4 h-4" />
-        </button>
+        </button>}
       </div>
       {open && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-3" onPointerDown={(e) => e.target === e.currentTarget && setOpen(false)}>

@@ -96,6 +96,7 @@
   <div id="quest" style="display:none;margin-top:8px;background:rgba(0,0,0,.55);border:2px solid #000;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:800"></div>
 </div>
 <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"></div>
+<div id="combo" style="position:fixed;right:24px;top:42%;font:900 40px Segoe UI,system-ui;color:#ffd23a;text-align:right;-webkit-text-stroke:2px #000;opacity:0;transition:opacity .3s,transform .08s;pointer-events:none;z-index:4"></div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
   <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
@@ -104,8 +105,8 @@
   <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
 </div>
 <div id="hot"></div>
-<div id="side" class="sh" style="position:fixed;left:14px;top:150px;font-weight:900;font-size:13px"></div>
-<div id="mastery" class="sh" style="position:fixed;right:14px;bottom:150px;font-weight:900;font-size:13px;text-align:right"></div>
+<div id="faction" class="sh" style="position:fixed;right:14px;top:200px;text-align:right;font-weight:900;font-size:13px"></div>
+<div id="mastery" class="sh" style="position:fixed;right:14px;top:224px;font-weight:900;font-size:13px;text-align:right"></div>
 <div id="skills"></div>
 <div id="msg" class="sh"></div>
 <div id="prompt"></div>
@@ -126,9 +127,9 @@
 <div id="start"><div class="center">
   <h1>FRUIT SEAS</h1>
   <p style="font-weight:700">Fight pirates, find and spin for Sea Fruits with amazing powers, level up your stats and conquer both seas.<br>Careful: once you eat a fruit, <b>the sea is your enemy</b>. You can't swim any more, so use a boat!</p>
-  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>Ctrl</kbd> mouse lock<br>
+  <div class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump (twice in the air) · <kbd>Q</kbd> dash · <kbd>Shift</kbd> shift lock<br>
   <kbd>Right mouse</kbd> drag to turn the camera · <kbd>Wheel</kbd> zoom · <kbd>Click</kbd> attack (aims at your mouse)<br>
-  <kbd>1</kbd> Fists · <kbd>2</kbd> Sword · <kbd>3</kbd> Fruit · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> skills · <kbd>E</kbd> talk / open · <kbd>B</kbd> boat</div>
+  <kbd>1</kbd> Fists · <kbd>2</kbd> Sword · <kbd>3</kbd> Fruit · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> <kbd>V</kbd> <kbd>F</kbd> skills · <kbd>J</kbd> Aura (Buso) · <kbd>E</kbd> talk, or Observation (Ken) · <kbd>B</kbd> boat · <kbd>/</kbd> chat</div>
   <button class="big" id="play">PLAY</button>
 </div></div>
 <div id="dead"><div class="center"><h1 style="color:#ff4d4d">YOU DIED</h1><p style="font-weight:700">You respawn at the island of your sea. You keep your level, stats, money and fruit.</p><button class="big" id="again">RESPAWN</button></div></div>
@@ -245,7 +246,7 @@ const ISLANDS = [
   { sea: 2, x: 3110, z: -340, r: 32, h: 6, name: "Castle on the Sea", lvl: 135, n: 6, mob: "Castle Knight", top: "stone", boss: { name: "Rip Commander", lvl: 150, hp: 120000, color: 0xb71c1c } },
 ];
 // Islands are big: everything above is spread out and scaled up 2.6 times.
-const BIG = 2.6;
+const BIG = 3.2;
 for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG * (isl.sea ? 1.4 : 1)); isl.n = Math.round(isl.n * (isl.sea ? 2.3 : 1.8)); }
 const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
@@ -489,7 +490,19 @@ setInterval(save, 5000);
 const maxHp = () => 100 + (S.lvl - 1) * 8 + S.st.defense * 20;
 const maxEn = () => 100 + (S.lvl - 1) * 4 + S.st.energy * 15;
 const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
-const mult = (stat) => 1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02;
+const mult = (stat) => (1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02) * (P.buso ? 1.15 : 1);
+// ---- Haki, like Blox Fruits: J = Buso (Aura: arms turn black, +15% damage, uses a little energy);
+// E = Observation (Ken: for 6 seconds you dodge half of all hits; 25 s cooldown) ----
+function toggleBuso() { P.buso = !P.buso; show(P.buso ? "Aura ON (+15% damage)" : "Aura OFF", 1); SFX.skill(); paintBuso(); }
+function paintBuso() { for (const m of [].concat(P.body.arms || [])) if (m && m.traverse) m.traverse((c) => { if (c.material) { c.userData.base ??= c.material; c.material = P.buso ? mat(0x111111) : c.userData.base; } }); }
+function useKen() {
+  if ((P.kenCd || 0) > T) return show(`Observation in ${Math.ceil(P.kenCd - T)}s`, 0.8);
+  P.kenT = T + 6; P.kenCd = T + 25; SFX.skill(); ring(P.pos, 0xffffff, 6, 0.5); show("Observation ON: dodging!", 1.2);
+}
+function toggleShiftLock() {
+  shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.();
+  $("lockdot").style.display = shiftLock ? "block" : "none";
+}
 // The player wears their Nebulux avatar (Avatar on the Games page) when there is one.
 const AV = (window.nebulux && window.nebulux.avatar) || null;
 const hex = (c, d) => (/^#[0-9a-f]{6}$/i.test(String(c || "")) ? parseInt(String(c).slice(1), 16) : d);
@@ -606,7 +619,7 @@ function addFame(n, why) {
   drawSide();
 }
 function drawSide() {
-  const el = $("side"); if (!el || !S.side) return;
+  const el = $("faction"); if (!el || !S.side) return;
   el.textContent = S.side === "Marine" ? `⚓ Marine · Honor ${(S.honor || 0).toLocaleString()}` : `🏴‍☠️ Pirate · Bounty ${(S.bounty || 0).toLocaleString()}`;
   el.style.color = "#fff";
 }
@@ -1104,6 +1117,20 @@ function cubes(pos, color, n = 8, spd = 7) {
     addFx(m, 0.6, (k, dt) => { v.y -= 20 * dt; m.position.addScaledVector(v, dt); m.scale.setScalar(1 - k); });
   }
 }
+let comboDmg = 0, comboT = 0;
+function addCombo(n) {
+  comboDmg += n; comboT = 2.5; const el = $("combo"); if (!el) return;
+  el.innerHTML = `<div style="font-size:15px;opacity:.9">DAMAGE</div>${Math.round(comboDmg).toLocaleString()}`; el.style.opacity = 1;
+  el.style.transform = "scale(1.25)"; setTimeout(() => (el.style.transform = "scale(1)"), 80);
+}
+setInterval(() => { if (comboT > 0 && (comboT -= 0.1) <= 0) { comboDmg = 0; if ($("combo")) $("combo").style.opacity = 0; } }, 100);
+function dmgText(pos, n, color) {
+  // big, bold numbers that pop up and fall away (Blox Fruits style); crits are bigger and yellow
+  const big = n >= 1000, s = makeLabel(Math.round(n).toLocaleString(), color, 512);
+  const k = big ? 1.5 : 1.15; s.scale.set(4.4 * k, 1.1 * k, 1); s.position.copy(pos).add(V(rnd(-1.2, 1.2), 4.5, rnd(-1.2, 1.2)));
+  const v = V(rnd(-2, 2), 7, rnd(-2, 2));
+  addFx(s, 1.1, (t, dt) => { v.y -= 14 * dt; s.position.addScaledVector(v, dt); const pop = t < 0.12 ? 1 + (0.12 - t) * 5 : 1; s.scale.set(4.4 * k * pop, 1.1 * k * pop, 1); s.material.opacity = t > 0.6 ? 1 - (t - 0.6) / 0.4 : 1; });
+}
 function floatText(pos, text, color) {
   const s = makeLabel(text, color, 512); s.scale.set(3.2, 0.8, 1); s.position.copy(pos).add(V(rnd(-0.8, 0.8), 5, rnd(-0.8, 0.8)));
   addFx(s, 0.9, (k, dt) => { s.position.y += 3 * dt; s.material.opacity = 1 - k * k; });
@@ -1116,14 +1143,14 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) return;
   if (e.remote) {
     if (!pvpOn() || !e.pvp || (islandAt(e.pos.x, e.pos.z) || {}).spawn) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(!pvpOn() ? "Turn PvP on to fight other players" : !e.pvp ? `${e.name} has PvP off` : "Spawn islands are safe zones", 1.5); } return; }
-    dmg = Math.round(dmg * rnd(0.9, 1.1)); SFX.hit(); floatText(e.pos, String(dmg), "#ff9e9e");
+    dmg = Math.round(dmg * rnd(0.9, 1.1)); SFX.hit(); dmgText(e.pos, dmg, "#ff4d4d"); addCombo(dmg);
     netSend({ t: "hitP", to: e.id, dmg });
     return;
   }
   if (e.rival && !pvpOn()) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(S.lvl < 5 ? "PvP unlocks at Lv. 5" : "PvP is off: you can't hurt other pirates", 1.5); } return; }
   dmg = Math.round(dmg * rnd(0.9, 1.1));
   SFX.hit();
-  e.hp -= dmg; floatText(e.pos, String(dmg), fxo.freeze ? "#9fe8ff" : fxo.burn ? "#ffae5a" : "#ffffff");
+  e.hp -= dmg; dmgText(e.pos, dmg, fxo.freeze ? "#9fe8ff" : fxo.burn ? "#ffae5a" : dmg >= 1000 ? "#ffd23a" : "#ff4d4d"); addCombo(dmg);
   const away = e.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.001) e.kb.addScaledVector(away.normalize(), e.boss ? 2 : fxo.kb ?? 10);
   if (fxo.freeze) e.freeze = Math.max(e.freeze, fxo.freeze);
   if (fxo.burn) e.burn = 3;
@@ -1218,6 +1245,7 @@ addEventListener("blur", () => (awayFocus = true)); addEventListener("focus", ()
 const safeNow = () => modalOpen || document.hidden || awayFocus;
 function hurtPlayer(d, from) {
   if (P.hurtT > 0 || dead || safeNow()) return;
+  if ((P.kenT || 0) > T && Math.random() < 0.5) { floatText(P.pos, "Dodged!", "#ffffff"); P.hurtT = 0.3; return; }
   P.hp -= Math.round(d); P.lastHurt = T; P.hurtT = 0.4; SFX.hurt(); P.lastHit = T; shake = 0.25;
   const away = P.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.01) P.vel.addScaledVector(away.normalize(), 8);
   if (P.hp <= 0) die();
@@ -1440,11 +1468,14 @@ addEventListener("keydown", (e) => {
   if (!started || dead || modalOpen) return;
   if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") equip(3);
   if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C"); if (e.code === "KeyV") trySkill("V"); if (e.code === "KeyF") trySkill("F");
-  if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash();
+  if (e.code === "KeyQ") dash();
+  if (e.code === "KeyJ") toggleBuso();
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") toggleShiftLock();
   if (e.code === "KeyE") interact();
   if (e.code === "KeyB") toggleBoat();
   if (e.code === "Space") jump();
-  if (e.code === "ControlLeft" || e.code === "ControlRight") { e.preventDefault(); shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.(); $("lockdot").style.display = shiftLock ? "block" : "none"; }
+  if (e.code === "ControlLeft" || e.code === "ControlRight") { e.preventDefault(); toggleShiftLock(); }
+  if (false) { shiftLock = !shiftLock; if (shiftLock) cvs.requestPointerLock?.(); else document.exitPointerLock?.(); $("lockdot").style.display = shiftLock ? "block" : "none"; }
 });
 addEventListener("keyup", (e) => { keys[e.code] = false; });
 document.addEventListener("pointerlockchange", () => { if (!document.pointerLockElement && shiftLock) { shiftLock = false; $("lockdot").style.display = "none"; } });
@@ -1535,6 +1566,7 @@ function moveDir() {
 function interact() {
   const n = npcs.find((n) => Math.hypot(n.x - P.pos.x, n.z - P.pos.z) < 5);
   if (n) return n.open();
+  if (!chests.some((c) => Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 3.5)) return useKen();
   const c = chests.find((c) => Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 3.5);
   if (c) {
     const cash = Math.round(rnd(80, 200) * (c.isl.lvl + 2)); S.beli += cash; SFX.coin(); floatText(c.g.position, `+${money(cash)}`, "#7dff7d"); cubes(c.g.position.clone().setY(c.g.position.y + 1), 0xffc107, 12);
@@ -1863,7 +1895,7 @@ function tick() {
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
     // stay inside the sea
-    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 760) { so.setLength(760); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
+    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 940) { so.setLength(940); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
 
     // dash-skill hits
     if (P.dashHit) { P.dashHit.t -= dt; for (const e of enemies.slice()) if (!P.dashHit.set.has(e) && e.pos.distanceTo(P.pos) < (e.boss ? 5 : 3.5)) { P.dashHit.set.add(e); hurtEnemy(e, P.dashHit.dmg, P.pos, P.dashHit.fxo); } cubes(P.pos.clone().setY(P.pos.y + 2), P.dashHit.color, 1, 2); if (P.dashHit.t <= 0) P.dashHit = null; }
@@ -1884,7 +1916,8 @@ function tick() {
     P.body.inner.visible = P.hurtT <= 0 || Math.floor(T * 20) % 2 === 0;
     P.atkCd -= dt; P.dashCd -= dt; P.hurtT -= dt;
     for (const k in P.cds) P.cds[k] -= dt;
-    if (!P.flying) P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt); // no energy back while flying
+    if (!P.flying) P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt);
+    if (P.buso) { P.en -= 2 * dt; if (P.en <= 0) { P.en = 0; P.buso = false; paintBuso(); show("Out of energy: Aura OFF", 1.2); } } // no energy back while flying
     // Health only comes back slowly, after 6 seconds without fighting (attacking or being hit) (not in water or lava).
     if (P.onGround && !lavaAt(P.pos.x, P.pos.z) && T - (P.lastHit || -99) > 6) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.015 * dt);
     updateAllies(dt);
