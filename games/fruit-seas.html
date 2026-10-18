@@ -213,6 +213,7 @@ const CELL = 2;
 const SEAS = [
   { name: "First Sea", cx: 0, sky: 0xcfe8ff, water: 0x1e90ff },
   { name: "Second Sea", cx: 1600, sky: 0xbccaea, water: 0x1565c0 },
+  { name: "Third Sea", cx: 3200, sky: 0xffd9b8, water: 0x0d6e8a },
 ];
 const ISLANDS = [
   { sea: 0, x: 0, z: 0, r: 24, h: 3, name: "Starter Island", lvl: 1, n: 5, mob: "Bandit", top: "grass", spawn: true, boss: { name: "Bandit Leader", lvl: 6, hp: 450, color: 0x8d6e63 } },
@@ -228,13 +229,20 @@ const ISLANDS = [
   { sea: 0, x: 150, z: -150, r: 26, h: 5, name: "Marine Fortress", lvl: 21, n: 6, mob: "Marine Soldier", top: "stone", boss: { name: "Commodore Steel", lvl: 28, hp: 4200, color: 0x1565c0 } },
   { sea: 1, x: 1500, z: -330, r: 28, h: 5, name: "Sky Ruins", lvl: 60, n: 6, mob: "Ruin Guardian", top: "stone", hill: true, boss: { name: "Storm King", lvl: 70, hp: 16000, color: 0xffd54f } },
   { sea: 1, x: 1760, z: -300, r: 30, h: 4, name: "Dragon Lair", lvl: 72, n: 6, mob: "Dragon Cultist", top: "lava", hill: true, boss: { name: "Elder Dragon", lvl: 85, hp: 26000, color: 0x7b1fa2 } },
+  // Third Sea (Lv. 80+): reached from the Second Sea's Sea Traveler at Lv. 80 after beating the Elder Dragon.
+  { sea: 2, x: 3200, z: 0, r: 26, h: 3, name: "Port Haven", lvl: 80, n: 5, mob: "Port Pirate", top: "sand", spawn: true, boss: { name: "Captain Elephant", lvl: 90, hp: 30000, color: 0x8d6e63 } },
+  { sea: 2, x: 3330, z: -80, r: 32, h: 6, name: "Haunted Castle", lvl: 90, n: 6, mob: "Reborn Skeleton", top: "ghost", hill: true, boss: { name: "Soul Reaper", lvl: 100, hp: 40000, color: 0x4a148c } },
+  { sea: 2, x: 3070, z: -150, r: 32, h: 4, name: "Candy Land", lvl: 100, n: 6, mob: "Cookie Crafter", top: "candy", boss: { name: "Cake Queen", lvl: 110, hp: 52000, color: 0xff80ab } },
+  { sea: 2, x: 3260, z: -260, r: 34, h: 5, name: "Floating Turtle", lvl: 110, n: 6, mob: "Forest Pirate", top: "grass", hill: true, boss: { name: "Turtle Captain", lvl: 120, hp: 65000, color: 0x2e7d32 } },
+  { sea: 2, x: 3420, z: -200, r: 30, h: 5, name: "Hydra Island", lvl: 120, n: 6, mob: "Venom Warrior", top: "lava", hill: true, boss: { name: "Hydra Leader", lvl: 135, hp: 85000, color: 0x6a1b9a } },
+  { sea: 2, x: 3110, z: -340, r: 32, h: 6, name: "Castle on the Sea", lvl: 135, n: 6, mob: "Castle Knight", top: "stone", boss: { name: "Rip Commander", lvl: 150, hp: 120000, color: 0xb71c1c } },
 ];
 // Islands are big: everything above is spread out and scaled up 2.6 times.
 const BIG = 2.6;
 for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG); isl.n = Math.round(isl.n * 1.8); }
 const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
-  snow: [0xf4fbff, 0xe6f2fa, 0xffffff], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
+  snow: [0xf4fbff, 0xe6f2fa, 0xffffff], candy: [0xff9fc8, 0xffe0f0, 0xb3e5fc], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
 };
 const heights = new Map(); // "cx,cz" -> {y, lava}
 const key = (cx, cz) => cx + "," + cz;
@@ -294,6 +302,7 @@ for (const isl of ISLANDS) {
     if (isl.top === "grass") { g.add(box(1, 5, 1, 0x8b5a2b).translateY(2.5)); g.add(box(4, 2, 4, 0x2fa83a).translateY(5.2)); g.add(box(2.6, 1.6, 2.6, 0x38c046).translateY(6.8)); }
     else if (isl.top === "snow") { g.add(box(1, 3, 1, 0x6b4423).translateY(1.5)); [3.6, 2.6, 1.6].forEach((s, k) => g.add(box(s, 1.4, s, k % 2 ? 0xffffff : 0x2e7d4f).translateY(3 + k * 1.4))); }
     else if (isl.top === "sand") { g.add(box(1.2, 4, 1.2, 0x3e9b4f).translateY(2)); g.add(box(2.4, 1, 1, 0x3e9b4f).translateY(2.5).translateX(1)); g.add(box(1, 1.6, 1, 0x3e9b4f).translateY(3.4).translateX(1.7)); }
+    else if (isl.top === "candy") { g.add(box(0.5, 5, 0.5, 0xffffff).translateY(2.5)); const pop = box(2.6, 2.6, 0.8, pick([0xff4081, 0x7c4dff, 0x40c4ff, 0xffeb3b])); pop.position.y = 5.8; g.add(pop); }
     else if (isl.top === "ghost") { g.add(box(1, 4, 1, 0x3a3a46).translateY(2)); g.add(box(3, 0.6, 0.6, 0x3a3a46).translateY(3.6)); g.add(box(1.2, 1.2, 1.2, 0x8fffd0).translateY(4.6)); }
     else { g.add(box(rnd(2, 3.4), rnd(1.5, 3), rnd(2, 3.4), isl.top === "lava" ? 0x2b2220 : 0x6d6d75).translateY(1)); }
     scene.add(g); solids.push({ x, z, r: 1.3 });
@@ -437,6 +446,8 @@ const SWORDS = {
   "Dual Katana": { price: 120000, mult: 2.6, color: 0xff4d4d, sea: 0 },
   "Frost Blade": { price: 600000, mult: 4, color: 0x7fdcff, sea: 1 },
   "Shadow Edge": { price: 1500000, mult: 5.5, color: 0x6a2bbd, sea: 1 },
+  "Tushita": { price: 5000000, mult: 7.5, color: 0xffb300, sea: 2 },
+  "Yama": { price: 8000000, mult: 9, color: 0x880e4f, sea: 2 },
 };
 const COMBAT = [["Z", "Heavy Punch", 4, 10, 30, "aoe", { r: 4, front: true }], ["X", "Flying Kick", 6, 15, 26, "dash", { dist: 16 }]];
 const STYLES = {
@@ -619,7 +630,7 @@ function spawnEnemy(isl, boss, slot) {
   const lvl = boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4));
   let x, z;
   for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? (isl.spawn ? rnd(15, isl.r - 4) : rnd(0, 6)) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
-  const shirts = { grass: [0x8d6e63, 0x558b2f], sand: [0xd7a35a, 0xa1887f], stone: [0x546e7a, 0x37474f], snow: [0x90caf9, 0xeceff1], lava: [0xbf360c, 0x4e342e], ghost: [0x80cbc4, 0x4db6ac] }[isl.top];
+  const shirts = { grass: [0x8d6e63, 0x558b2f], sand: [0xd7a35a, 0xa1887f], stone: [0x546e7a, 0x37474f], snow: [0x90caf9, 0xeceff1], lava: [0xbf360c, 0x4e342e], ghost: [0x80cbc4, 0x4db6ac], candy: [0xf06292, 0xffffff] }[isl.top];
   const b = boss ? makeBody({ shirt: boss.color, pants: 0x222222, hat: "tricorn", scale: 2.2, skin: isl.top === "ghost" ? 0xbfe9ff : 0xd9a066 })
     : makeBody({ shirt: pick(shirts), pants: 0x333333, hat: pick(["bandana", "helmet", "bandana"]), hatColor: pick([0xc0392b, 0x2c3e50, 0x16a085, 0xf39c12]), skin: isl.top === "ghost" ? 0xbfe9ff : pick([0xf5c99a, 0xc68642, 0x8d5524]) });
   b.sword.visible = boss || Math.random() < 0.5;
@@ -763,13 +774,14 @@ function makeBeastBody(color) {
 let beast = null, ally = null;
 function spawnBeast(nearPos, why, exact) {
   if (beast) return;
-  const lvl = Math.max(40, S.lvl + 5), body = makeBeastBody(0x1e5aa8);
+  const levi = S.sea === 2, lvl = levi ? Math.max(160, S.lvl + 20) : Math.max(40, S.lvl + 5), body = makeBeastBody(levi ? 0x7b1010 : 0x1e5aa8);
+  if (levi) body.g.scale.setScalar(1.8);
   const a = rnd(0, 7), pos = exact ? nearPos.clone() : nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
   if (!exact && netOn()) netSend({ t: "fx", k: "beast", x: Math.round(pos.x), z: Math.round(pos.z) });
   body.g.position.copy(pos); scene.add(body.g);
   const bar = hpBar(); bar.scale.setScalar(3); scene.add(bar);
-  const label = makeLabel(`Sea Beast [Lv. ${lvl}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
-  const mhp = Math.round(6000 + lvl * lvl * 4);
+  const label = makeLabel(`${levi ? "LEVIATHAN" : "Sea Beast"} [Lv. ${lvl}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
+  const mhp = Math.round((6000 + lvl * lvl * 4) * (levi ? 3 : 1));
   beast = { beast: true, event: true, b: { g: body.g, segs: body.segs }, pos, home: pos.clone(), isl: ISLANDS.find((i) => i.sea === S.sea), boss: { name: "Sea Beast" }, name: "Sea Beast", lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: 3, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, swing: 0, until: T + 240 };
   enemies.push(beast);
   SFX.boom(); shake = Math.max(shake, 0.5); show(why || "A SEA BEAST rises from the deep!", 4);
@@ -1483,8 +1495,10 @@ function openTravel() {
       <div style="text-align:center;margin-top:10px"><button class="btn blue" id="go" ${ok ? "" : "disabled"}>Travel to the Second Sea</button></div>`);
     $("go").onclick = () => travel(1);
   } else {
-    openModal("Sea Traveler", `<p>Want to go back to the First Sea?</p><div style="text-align:center"><button class="btn blue" id="go">Travel to the First Sea</button></div>`);
-    $("go").onclick = () => travel(0);
+    const ok3 = !!(S.bosses || {})["Elder Dragon"] && S.lvl >= 80;
+    openModal("Sea Traveler", `<p>Where to?</p>
+      ${SEAS.map((x, i) => i === S.sea ? "" : `<div class="row"><div class="grow"><b>${x.name}</b>${i === 2 ? ` <div style="font-size:12px;opacity:.85">Needs Lv. 80 ${S.lvl >= 80 ? "✅" : "❌"} · defeat the Elder Dragon (Dragon Lair) ${(S.bosses || {})["Elder Dragon"] ? "✅" : "❌"}</div>` : ""}</div><button class="btn blue" data-sea="${i}" ${i === 2 && !ok3 ? "disabled" : ""}>Travel</button></div>`).join("")}`);
+    $("mb").querySelectorAll("[data-sea]").forEach((b) => (b.onclick = () => travel(+b.dataset.sea)));
   }
 }
 // ================= online players =================
@@ -1854,7 +1868,7 @@ const MM = $("mini").getContext("2d");
 function drawMini() {
   const W = 340, R = W / 2, scale = R / 80; // shows about 80 studs around you
   MM.clearRect(0, 0, W, W); MM.save(); MM.beginPath(); MM.arc(R, R, R, 0, 7); MM.clip();
-  MM.fillStyle = S.sea ? "#1565c0" : "#1e88e5"; MM.fillRect(0, 0, W, W);
+  MM.fillStyle = ["#1e88e5", "#1565c0", "#0d6e8a"][S.sea] || "#1565c0"; MM.fillRect(0, 0, W, W);
   const toMap = (x, z) => [R + (x - P.pos.x) * scale, R + (z - P.pos.z) * scale];
   for (const i of ISLANDS) {
     if (i.sea !== S.sea) continue;

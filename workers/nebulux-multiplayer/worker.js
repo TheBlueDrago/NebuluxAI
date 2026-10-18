@@ -28,7 +28,7 @@ const baseQ = (q) => String(q || "br").split("#")[0];
 // and PvP hits ("hitP", only applied by the player who is hit, and only if their PvP is on).
 // Villain Battlegrounds (?game=villain-battlegrounds) uses one room, "vb", the same way (chat and positions).
 // A 5-letter code makes it a private server ("vb#K7Q2M"): only people with the code are in it.
-const FS_ROOM = /^(fs[01]|vb)(#[A-Z0-9]{5})?$/;
+const FS_ROOM = /^(fs[0-2]|vb)(#[A-Z0-9]{5})?$/;
 const FS_MAX = 40;
 
 // Typed chat. Many players are kids, so every message is checked here before anyone sees it:
