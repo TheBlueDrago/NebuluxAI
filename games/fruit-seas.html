@@ -94,6 +94,7 @@
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
   <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
   <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
+  <button class="sb" id="bBeast" style="display:none"><em>🐉</em><span id="beastTxt">Beast</span></button>
   <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
 </div>
 <div id="hot"></div>
@@ -470,7 +471,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -682,6 +683,106 @@ Open Fruits to eat it`, 3.5);
 }
 setInterval(spawnWildFruit, 10 * 60000);
 
+// ================= sea beasts =================
+// A giant serpent of the sea. It rises if you stay in one spot out at sea for over a minute; at
+// Lv. 50 you can summon one to fight (it attacks you with water blasts); at Lv. 100 you summon a
+// friendly one that fights for you for 5 minutes. Summoning has an 8-minute cooldown.
+function makeBeastBody(color) {
+  const g = new THREE.Group(), segs = [];
+  for (let i = 0; i < 7; i++) {
+    const m = box(4 - i * 0.35, 4 - i * 0.35, 4 - i * 0.35, i % 2 ? color : new THREE.Color(color).multiplyScalar(0.8).getHex());
+    g.add(m); segs.push(m);
+  }
+  const head = segs[0];
+  for (const sx of [-1, 1]) { const eye = box(0.6, 0.6, 0.2, 0xffeb3b, false); eye.position.set(sx * 1.1, 0.8, 2.05); head.add(eye); }
+  const jaw = box(3.2, 0.8, 1.6, 0xb71c1c, false); jaw.position.set(0, -1.3, 1.4); head.add(jaw);
+  for (const sx of [-1, 1]) { const fin = box(0.3, 2.4, 1.6, 0xffffff, false); fin.position.set(sx * 1.6, 2.2, -0.4); fin.rotation.z = sx * 0.3; head.add(fin); }
+  return { g, segs };
+}
+let beast = null, ally = null;
+function spawnBeast(nearPos, why) {
+  if (beast) return;
+  const lvl = Math.max(40, S.lvl + 5), body = makeBeastBody(0x00796b);
+  const a = rnd(0, 7), pos = nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
+  body.g.position.copy(pos); scene.add(body.g);
+  const bar = hpBar(); bar.scale.setScalar(3); scene.add(bar);
+  const label = makeLabel(`Sea Beast [Lv. ${lvl}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
+  const mhp = Math.round(6000 + lvl * lvl * 4);
+  beast = { beast: true, event: true, b: { g: body.g, segs: body.segs }, pos, home: pos.clone(), isl: ISLANDS.find((i) => i.sea === S.sea), boss: { name: "Sea Beast" }, name: "Sea Beast", lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: 3, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, swing: 0, until: T + 240 };
+  enemies.push(beast);
+  SFX.boom(); shake = Math.max(shake, 0.5); show(why || "A SEA BEAST rises from the deep!", 4);
+}
+function updateBeast(e, dt) {
+  e.t += dt; e.atkCd -= dt;
+  if (T > e.until || e.pos.distanceTo(P.pos) > 260) { removeBeast(e, "The Sea Beast dived back into the deep"); return; }
+  // swim around its spot, facing you, its body waving behind it
+  const to = P.pos.clone().sub(e.pos).setY(0), d = to.length();
+  if (d > 18) e.pos.addScaledVector(to.normalize(), Math.min(d - 18, 8 * dt));
+  const yaw = Math.atan2(P.pos.x - e.pos.x, P.pos.z - e.pos.z);
+  e.b.segs.forEach((m, i) => { m.position.set(Math.sin(e.t * 2 + i * 0.8) * i * 0.5, 4 + Math.sin(e.t * 1.6 - i * 0.7) * 2 - i * 0.6, -i * 3.2); });
+  e.b.g.position.set(e.pos.x, Math.sin(e.t) * 0.6, e.pos.z); e.b.g.rotation.y = yaw;
+  // water blasts: a warning ring where you stand, then a splash
+  if (e.atkCd <= 0 && d < 70 && !dead) {
+    e.atkCd = 3.2; const at = P.pos.clone(); ring(at, 0x40c4ff, 1, 0.9);
+    setTimeout(() => { if (!beast || beast !== e) return; pillar(at, 0x40c4ff, 2.5, 16, 0.6); explodeEnemy(at, 6, 10 + e.lvl * 1.6, 0x40c4ff); }, 750);
+  }
+  const vis = d < 160; e.bar.visible = e.label.visible = vis;
+  if (vis) {
+    e.bar.position.set(e.pos.x, 14, e.pos.z); e.bar.quaternion.copy(camera.quaternion);
+    const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k);
+    e.label.position.set(e.pos.x, 16, e.pos.z);
+  }
+}
+function removeBeast(e, msg) {
+  scene.remove(e.b.g, e.bar, e.label); const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1);
+  if (beast === e) beast = null; if (msg) show(msg, 3);
+}
+// The friendly beast (Lv. 100): follows you and blasts enemies near you.
+function summonAlly() {
+  const body = makeBeastBody(0x1565c0);
+  body.g.position.copy(P.pos); scene.add(body.g);
+  const label = makeLabel("Your Sea Beast", "#7fd1ff", 768); label.scale.set(10, 1.6, 1); scene.add(label);
+  ally = { b: body, pos: P.pos.clone(), t: 0, cd: 1, until: T + 300 };
+  ally.label = label; SFX.win(); show("Your Sea Beast will fight for you for 5 minutes!", 3);
+}
+function updateAlly(dt) {
+  const a = ally; a.t += dt; a.cd -= dt;
+  if (T > a.until) { scene.remove(a.b.g, a.label); ally = null; show("Your Sea Beast went back to the deep", 2.5); return; }
+  // off to your side (behind you is where the camera is)
+  const want = P.pos.clone().add(V(Math.sin(P.faceYaw + 1.7) * 16, 0, Math.cos(P.faceYaw + 1.7) * 16));
+  a.pos.lerp(want, 1 - Math.exp(-2 * dt));
+  a.b.segs.forEach((m, i) => { m.position.set(Math.sin(a.t * 2 + i * 0.8) * i * 0.4, 6 + Math.sin(a.t * 1.6 - i * 0.7) * 1.5 - i * 0.5, -i * 3); });
+  a.b.g.position.set(a.pos.x, Math.max(groundAt(a.pos.x, a.pos.z), 0) + Math.sin(a.t) * 0.6, a.pos.z);
+  a.b.g.rotation.y = P.faceYaw;
+  a.label.position.set(a.pos.x, a.b.g.position.y + 13, a.pos.z);
+  if (a.cd <= 0) {
+    let target = null, best = 45;
+    for (const e of enemies) { if (e.remote || e.rival) continue; const d = e.pos.distanceTo(P.pos); if (d < best) { best = d; target = e; } }
+    if (target) { a.cd = 1.2; pillar(target.pos, 0x40c4ff, 2, 14, 0.5); hurtEnemy(target, 60 + S.lvl * 4, a.pos, { kb: 6 }); }
+  }
+}
+let camp = { pos: null, t: 0 };
+function beastTick(dt) {
+  // camping out at sea: over a minute within a small area (not on an island, not in a boat)
+  const atSea = groundAt(P.pos.x, P.pos.z) < 0 && !islandAt(P.pos.x, P.pos.z);
+  if (atSea && !beast) {
+    if (!camp.pos || camp.pos.distanceTo(P.pos) > 45) camp = { pos: P.pos.clone(), t: 0 };
+    camp.t += dt;
+    if (camp.t > 75) { camp.t = 0; spawnBeast(P.pos, "You stayed too long...\nA SEA BEAST rises from the deep!"); }
+  } else camp.t = 0;
+  if (ally) updateAlly(dt);
+  const btn = $("bBeast"); if (!btn) return;
+  btn.style.display = S.lvl >= 50 ? "" : "none";
+  const wait = Math.max(0, Math.ceil(((S.beastAt || 0) + 8 * 60000 - Date.now()) / 60000));
+  $("beastTxt").textContent = wait ? `${wait}m` : S.lvl >= 100 ? "Ally" : "Summon";
+}
+$("bBeast").onclick = () => {
+  if (!started || dead || S.lvl < 50) return;
+  if ((S.beastAt || 0) + 8 * 60000 > Date.now()) return show("Your sea beast horn needs time to recharge", 2);
+  if (S.lvl >= 100) { if (ally) return; S.beastAt = Date.now(); save(); summonAlly(); }
+  else { if (beast) return show("A Sea Beast is already here!", 2); S.beastAt = Date.now(); save(); spawnBeast(P.pos, "You blew the horn...\nA SEA BEAST answers! Defeat it!"); }
+};
+
 // Crew: up to 2 crewmates you hire at the Crew Recruiter. They follow you and fight enemies near you.
 const allies = [];
 const crewCost = () => 5000 * (S.crew + 1) * (S.crew + 1);
@@ -776,6 +877,7 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.hp <= 0) killEnemy(e);
 }
 function killEnemy(e) {
+  if (e.beast) { const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
   if (e.event) { const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
 +${money(big)} and a FREE gacha spin`, 5); }
   if (e.rival) { const bounty = e.lvl * 400; S.beli += bounty; floatText(e.pos, `Bounty +${money(bounty)}`, "#ffb74d"); setTimeout(() => spawnRival(e.isl.sea), 45000); }
@@ -1078,12 +1180,12 @@ const STAR_PRICE = { Common: 60, Uncommon: 120, Rare: 250, Legendary: 450, Mythi
 const canStar = () => !!(window.nebulux && window.nebulux.spend && window.nebulux.username !== "Anonymous");
 function openShop() {
   openModal("Fruit Dealer", `<p style="margin:0 0 6px;opacity:.85">Bought fruits go to your Fruits bag. Eat one from there.</p>` +
-    FRUIT_NAMES.map((n) => { const f = FRUITS[n]; return `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(f.rar)}<div style="font-size:12px;opacity:.8">${f.skills.map((s) => s[0] + ": " + s[1]).join(" · ")}</div></div><button class="btn" data-buy="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button>${canStar() ? `<button class="btn blue" data-star="${n}" style="margin-left:6px" title="Pay with Stardust">✨ ${STAR_PRICE[f.rar]}</button>` : ""}</div>`; }).join(""));
+    FRUIT_NAMES.map((n) => { const f = FRUITS[n]; return `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(f.rar)}<div style="font-size:12px;opacity:.8">${f.skills.map((s) => s[0] + ": " + s[1]).join(" · ")}</div></div><button class="btn" data-buy="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button>${(S.perm || []).includes(n) ? `<span style="margin-left:6px;font-size:12px;color:#ffd23a">✨ Permanent</span>` : canStar() ? `<button class="btn blue" data-star="${n}" style="margin-left:6px" title="Buy it forever with Stardust">✨ ${STAR_PRICE[f.rar]}</button>` : ""}</div>`; }).join(""));
   $("mb").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => { const n = b.dataset.buy; if (S.beli < FRUITS[n].price) return; S.beli -= FRUITS[n].price; S.inv.push(n); save(); show(`Bought ${n} Fruit!`, 1.5); openShop(); });
   $("mb").querySelectorAll("[data-star]").forEach((b) => b.onclick = async () => {
     const n = b.dataset.star; b.disabled = true;
     const r = await window.nebulux.spend(`${n} Fruit`, STAR_PRICE[FRUITS[n].rar]);
-    if (r && r.ok) { S.inv.push(n); save(); SFX.win(); show(`Bought ${n} Fruit with Stardust!`, 2); openShop(); }
+    if (r && r.ok) { S.perm = [...new Set([...(S.perm || []), n])]; S.fruit = n; save(); SFX.win(); P.tool = 3; drawHot(); show(`${n} Fruit is yours forever!\nSwitch to it any time in Fruits`, 3); openShop(); }
     else { b.disabled = false; if (r && r.error && r.error !== "Cancelled.") show(r.error, 2); }
   });
 }
@@ -1119,10 +1221,15 @@ function openGacha() {
 function openFruits() {
   const cur = S.fruit ? `<div class="row" style="border-color:#ffd23a">${fruitIcon(S.fruit)}<div class="grow"><b>Eaten: ${S.fruit} Fruit</b> ${rarTag(FRUITS[S.fruit].rar)}<div style="font-size:12px;opacity:.8">You can't swim. Use a boat (B).</div></div></div>` : `<p>You haven't eaten a fruit. You can still swim!</p>`;
   const bag = S.inv.length ? S.inv.map((n, i) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div><button class="btn" data-eat="${i}">Eat</button><button class="btn gray" data-drop="${i}">Drop</button></div>`).join("") : `<p style="opacity:.7">Your bag is empty. Buy fruits from the Fruit Dealer, spin the Gacha, or open chests.</p>`;
-  openModal("Fruits", cur + "<h3>Bag</h3>" + bag);
+  const perm = (S.perm || []).length ? `<h3>Permanent fruits ✨</h3><p style="font-size:12px;opacity:.8;margin:0 0 6px">Bought with Stardust: switch between them any time, free.</p>` + S.perm.map((n) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div>${S.fruit === n ? '<span style="font-size:12px;color:#ffd23a">Using</span>' : `<button class="btn blue" data-use="${n}">Use</button>`}</div>`).join("") : "";
+  openModal("Fruits", cur + perm + "<h3>Bag</h3>" + bag);
+  $("mb").querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
+    const n = b.dataset.use; S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
+    ring(P.pos, FRUITS[n].color, 6, 0.8); show(`Switched to the ${n} Fruit`, 2);
+  });
   $("mb").querySelectorAll("[data-eat]").forEach((b) => b.onclick = () => {
     const i = +b.dataset.eat, n = S.inv[i];
-    if (S.fruit && !confirm(`Eat the ${n} Fruit? You will lose your ${S.fruit} Fruit.`)) return;
+    if (S.fruit && !(S.perm || []).includes(S.fruit) && !confirm(`Eat the ${n} Fruit? You will lose your ${S.fruit} Fruit.`)) return;
     S.inv.splice(i, 1); S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
     ring(P.pos, FRUITS[n].color, 6, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), FRUITS[n].color, 20);
     show(n === "Frost" ? `You ate the Frost Fruit!\nYou can't swim, but the sea freezes where you walk` : `You ate the ${n} Fruit!\nYou can't swim any more`, 3);
@@ -1374,6 +1481,7 @@ function tick() {
     updateAllies(dt);
     updateTrail(dt);
     updateWildFruits();
+    beastTick(dt);
 
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
@@ -1385,6 +1493,7 @@ function tick() {
     netTick(dt);
     for (const e of enemies.slice()) {
       if (e.remote) { updateRemote(e, dt); continue; }
+      if (e.beast) { updateBeast(e, dt); continue; }
       e.t += dt; e.atkCd -= dt; e.freeze -= dt; e.special -= dt; e.aggro = (e.aggro || 0) - dt;
       if (e.burn > 0) { const before = Math.ceil(e.burn * 2); e.burn -= dt; if (Math.ceil(e.burn * 2) !== before) { e.hp -= Math.ceil(e.maxHp * 0.015); if (e.hp <= 0) { killEnemy(e); continue; } } }
       const to = P.pos.clone().sub(e.pos); to.y = 0; const d = to.length();
