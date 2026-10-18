@@ -15,7 +15,7 @@
   .bar span{position:absolute;inset:0;font-size:11px;font-weight:800;display:grid;place-items:center}
   #hp i{background:#3ad13a} #en i{background:#2f8cff} #xp i{background:#ffd23a}
   #beli{font-size:18px;font-weight:900;color:#7dff7d}
-  #side{position:fixed;left:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+  #side{z-index:6;position:fixed;left:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
   .sb{width:60px;height:60px;border-radius:10px;border:3px solid #000;background:#2b2b2b;color:#fff;font-weight:900;font-size:11px;cursor:pointer;display:grid;place-items:center;text-align:center;line-height:1.1}
   .sb:hover{background:#3d3d3d} .sb em{font-style:normal;font-size:22px;display:block}
   .sb.new{background:#e2a600}
@@ -247,11 +247,12 @@ const ISLANDS = [
 ];
 // Islands are big: everything above is spread out and scaled up 2.6 times.
 const BIG = 3.2;
-for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG * (isl.sea ? 1.4 : 1)); isl.n = Math.round(isl.n * (isl.sea ? 2.3 : 1.8)); }
+for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG * (isl.sea ? 1.8 : 1.5)); isl.n = Math.round(isl.n * (isl.sea ? 2.3 : 1.8)); }
 const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
   snow: [0xf4fbff, 0xe6f2fa, 0xffffff], candy: [0xff9fc8, 0xffe0f0, 0xb3e5fc], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
 };
+const seaGround = []; // the island blocks of each sea (only the sea you're in is drawn)
 const heights = new Map(); // "cx,cz" -> {y, lava}
 const key = (cx, cz) => cx + "," + cz;
 const solids = [];
@@ -274,7 +275,7 @@ const solids = [];
         else continue;
         if (heights.has(key(cx, cz))) continue;
         heights.set(key(cx, cz), { y, lava });
-        cells.push([wx, y, wz, col]);
+        cells.push([wx, y, wz, col, isl.sea]);
       }
   }
   // Roblox-style studs on top of every block: a small drawn texture (2 x 2 studs a block),
@@ -287,17 +288,19 @@ const solids = [];
   }
   sx.strokeStyle = "rgba(0,0,0,.12)"; sx.lineWidth = 2; sx.strokeRect(1, 1, 62, 62);
   const studs = new THREE.CanvasTexture(sc); studs.magFilter = THREE.LinearFilter; studs.anisotropy = 4;
-  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL, 1, CELL), new THREE.MeshStandardMaterial({ map: studs, roughness: 0.6, metalness: 0.02 }), cells.length);
+  const geo = new THREE.BoxGeometry(CELL, 1, CELL), gmat = new THREE.MeshStandardMaterial({ map: studs, roughness: 0.6, metalness: 0.02 });
   const m4 = new THREE.Matrix4(), c = new THREE.Color();
-  cells.forEach(([x, y, z, col], i) => {
-    const hgt = y + 6; m4.makeScale(1, hgt, 1); m4.setPosition(x, y - hgt / 2, z); im.setMatrixAt(i, m4); im.setColorAt(i, c.setHex(col));
+  SEAS.forEach((_, si) => {
+    const mine = cells.filter((x) => x[4] === si); if (!mine.length) return;
+    const im = new THREE.InstancedMesh(geo, gmat, mine.length);
+    mine.forEach(([x, y, z, col], i) => { const hgt = y + 6; m4.makeScale(1, hgt, 1); m4.setPosition(x, y - hgt / 2, z); im.setMatrixAt(i, m4); im.setColorAt(i, c.setHex(col)); });
+    im.receiveShadow = true; im.castShadow = true; scene.add(im); seaGround[si] = im;
   });
-  im.receiveShadow = true; im.castShadow = true; scene.add(im);
 }
 const groundAt = (x, z) => { const h = heights.get(key(Math.floor(x / CELL), Math.floor(z / CELL))); return h ? h.y : -1.1; };
 const lavaAt = (x, z) => { const h = heights.get(key(Math.floor(x / CELL), Math.floor(z / CELL))); return h && h.lava; };
 const islandAt = (x, z) => ISLANDS.find((i) => Math.hypot(x - i.x, z - i.z) < i.r + 4);
-const seaOf = (x) => (x > 800 ? 1 : 0);
+const seaOf = (x) => (x > 2400 ? 2 : x > 800 ? 1 : 0);
 
 // decorations: blocky trees, rocks, houses, crystals
 for (const isl of ISLANDS) {
@@ -1288,6 +1291,12 @@ function face(dir) { P.faceYaw = Math.atan2(dir.x, dir.z); }
 
 function basicAttack() {
   if (P.atkCd > 0) return;
+  if (P.boat && myBoat().cannons) {
+    // cannonball toward the mouse, from the side of the ship
+    P.atkCd = 0.8; P.lastHit = T; SFX.boom?.(); const dir = aimDir(false);
+    shoot({ color: 0x212121, size: 0.9, speed: 70, range: 90, dmg: (60 + S.lvl * 6) * (myBoat().len / 19), explode: 6 }, dir);
+    cubes(P.pos.clone().setY(P.pos.y + 1), 0x9e9e9e, 8, 4); shake = Math.max(shake, 0.15); return;
+  }
   // every attack uses a little energy: fists 3, sword 4, fruit shots 5
   const cost = P.tool === 3 && S.fruit ? 5 : P.tool === 2 ? 4 : 3;
   if (P.en < cost) { P.atkCd = 0.3; return show("Not enough energy", 0.6); }
@@ -1404,10 +1413,12 @@ const BOATS = {
   Sloop: { price: 40000, speed: 40, len: 10, w: 4.6, hull: 0x795548, sail: 0xfff3e0 },
   Brigantine: { price: 350000, speed: 50, len: 14, w: 6, hull: 0x5d4037, sail: 0xe53935 },
   Galleon: { price: 2000000, speed: 62, len: 19, w: 8, hull: 0x3e2723, sail: 0x212121, cannons: true },
+  "Swan Ship": { price: 5000000, speed: 74, len: 22, w: 9, hull: 0xfafafa, sail: 0xf48fb1, cannons: true, sea: 1 },
+  "Beast Hunter": { price: 12000000, speed: 86, len: 26, w: 10, hull: 0x263238, sail: 0xb71c1c, cannons: true, sea: 2 },
 };
 const myBoat = () => BOATS[S.boatType] || BOATS.Rowboat;
 function openBoats() {
-  openModal("Boat Dealer", "<p>Buy a boat, then press <b>B</b> next to the water to sail it. You steer from the wheel at the back.</p>" + Object.entries(BOATS).map(([n, b]) => {
+  openModal("Boat Dealer", "<p>Buy a boat, then press <b>B</b> next to the water to sail it. You steer from the wheel at the back. Ships with cannons fire when you click.</p>" + Object.entries(BOATS).filter(([, b]) => (b.sea || 0) <= S.sea).map(([n, b]) => {
     const own = n === "Rowboat" || (S.boats || []).includes(n);
     return `<div class="row"><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Speed ${b.speed} · ${b.len} studs long${b.cannons ? " · cannons" : ""}</div></div>${own ? ((S.boatType || "Rowboat") === n ? '<b style="color:#7dff7d">Using</b>' : `<button class="btn" data-bu="${n}">Use</button>`) : `<button class="btn blue" data-bb="${n}" ${S.beli < b.price ? "disabled" : ""}>${money(b.price)}</button>`}</div>`;
   }).join(""));
@@ -1846,6 +1857,7 @@ function tick() {
   if (document.hidden) setTimeout(tick, 100); else requestAnimationFrame(tick);
   const dt = Math.min(clock.getDelta(), document.hidden ? 1 : 0.05); T += dt;
   const sea = SEAS[S.sea];
+  seaGround.forEach((m, i) => m && (m.visible = i === S.sea));
   scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 160, 560); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
 
   // waves
@@ -1895,7 +1907,7 @@ function tick() {
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
     // stay inside the sea
-    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 940) { so.setLength(940); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
+    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 1060) { so.setLength(1060); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
 
     // dash-skill hits
     if (P.dashHit) { P.dashHit.t -= dt; for (const e of enemies.slice()) if (!P.dashHit.set.has(e) && e.pos.distanceTo(P.pos) < (e.boss ? 5 : 3.5)) { P.dashHit.set.add(e); hurtEnemy(e, P.dashHit.dmg, P.pos, P.dashHit.fxo); } cubes(P.pos.clone().setY(P.pos.y + 2), P.dashHit.color, 1, 2); if (P.dashHit.t <= 0) P.dashHit = null; }
