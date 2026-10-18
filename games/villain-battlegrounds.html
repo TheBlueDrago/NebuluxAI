@@ -72,6 +72,7 @@
   <button class="tb" id="tM1" style="right:24px;bottom:110px;width:78px;height:78px">HIT</button>
   <button class="tb" id="tJump" style="right:112px;bottom:30px">JUMP</button>
   <button class="tb" id="tDash" style="right:24px;bottom:30px">DASH</button>
+  <button class="tb" id="tSwap" style="right:24px;top:90px;width:54px;height:54px;font-size:20px">🔄</button>
   <button class="tb" id="tBlock" style="right:112px;bottom:112px">BLOCK</button>
 </div>
 
@@ -79,7 +80,7 @@
   <h1>VILLAIN<br>BATTLEGROUNDS</h1>
   <p style="font-weight:700;margin:10px 0 0">Pick a fighter and battle the bots in the arena. Practise on the <b>Weakest Dummy</b> in the middle; it never hits back.</p>
   <div class="chars" id="chars"></div>
-  <p class="keys" style="font-size:13px;margin-top:12px"><kbd>WASD</kbd> move · <kbd>Click</kbd> combo · <kbd>1</kbd>-<kbd>4</kbd> moves · <kbd>G</kbd> super · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>F</kbd> block · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> turn camera · <kbd>Esc</kbd> or <kbd>Ctrl</kbd> lock mouse · <kbd>/</kbd> chat</p>
+  <p class="keys" style="font-size:13px;margin-top:12px"><kbd>WASD</kbd> move · <kbd>Click</kbd> combo · <kbd>1</kbd>-<kbd>4</kbd> moves · <kbd>G</kbd> super · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>F</kbd> block · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> turn camera · <kbd>Esc</kbd> or <kbd>Ctrl</kbd> lock mouse · <kbd>/</kbd> chat · <kbd>T</kbd> switch fighter</p>
   <button class="big" id="play">FIGHT!</button>
   <div style="margin-top:14px;font-weight:700">
     <button class="pk" id="privNew" style="background:#7c4dff;color:#fff">🔒 Make a private server</button>
@@ -89,6 +90,7 @@
     <p style="font-size:12px;opacity:.8;margin:6px 0 0">Private servers are free: only you, the people you share the code with, and the dummy for practising combos. No bots.</p>
   </div>
 </div></div>
+<div id="swap" style="position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.65);z-index:7;overflow:auto"><div class="c"><h2 class="sh" style="font-size:30px;margin:0">Switch fighter</h2><p style="opacity:.85;margin:6px 0 0">Your super goes back to 0 when you switch.</p><div class="chars" id="swapChars"></div><button class="pk" id="swapClose" style="background:#555;color:#fff">Cancel</button></div></div>
 <div id="pick"><div class="c"><h2 class="sh" style="font-size:30px;margin:0">Choose your SUPER</h2><div id="pickBtns" style="margin-top:12px"></div><p style="opacity:.8">Press 1, 2 or 3</p></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -415,6 +417,7 @@ addEventListener("keydown", (e) => {
   if (pickOpen) { const n = +e.key; if (n >= 1 && n <= 3) choose(n - 1); return; }
   if (/^Digit[1-4]$/.test(e.code)) useMove(me, +e.code.slice(5) - 1);
   if (e.code === "KeyG") trySuper();
+  if (e.code === "KeyT") openSwap();
   if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash(me);
   if (e.code === "Space") jump(me);
   // Esc (or Ctrl) locks the mouse for shift-lock style aiming; Esc again unlocks it (the browser does that part).
@@ -451,7 +454,7 @@ if (TOUCH) {
   addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { const r = J.getBoundingClientRect(), x = t.clientX - r.left - 65, y = t.clientY - r.top - 65, l = Math.min(1, Math.hypot(x, y) / 55); const a = Math.atan2(y, x); joy.x = Math.cos(a) * l; joy.y = Math.sin(a) * l; K.style.left = 40 + joy.x * 45 + "px"; K.style.top = 40 + joy.y * 45 + "px"; } }, { passive: true });
   addEventListener("touchend", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.on = false; joy.x = joy.y = 0; K.style.left = K.style.top = "40px"; } });
   const tap = (id, fn) => $(id).addEventListener("touchstart", (e) => { e.preventDefault(); audio(); if (started) fn(); }, { passive: false });
-  tap("tM1", () => m1(me)); tap("tJump", () => jump(me)); tap("tDash", () => dash(me));
+  tap("tM1", () => m1(me)); tap("tSwap", () => openSwap()); tap("tJump", () => jump(me)); tap("tDash", () => dash(me));
   $("tBlock").addEventListener("touchstart", (e) => { e.preventDefault(); keys.KeyF = true; }, { passive: false }); $("tBlock").addEventListener("touchend", () => (keys.KeyF = false));
   let look = null;
   cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (t.clientX > innerWidth * 0.35) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
@@ -460,6 +463,26 @@ if (TOUCH) {
 }
 
 // ================= HUD: moves =================
+// Switching fighter mid-game: same spot and health, a fresh fighter; the super resets to 0.
+function openSwap() {
+  if (!started || !me) return;
+  if (document.pointerLockElement) document.exitPointerLock();
+  $("swapChars").innerHTML = Object.entries(CHARS).map(([id, c]) => `<button class="ch${id === chosen ? " on" : ""}" data-s="${id}"><div class="sw" style="background:${c.color}"></div><h3>${c.name}</h3><p>${c.desc}</p></button>`).join("");
+  $("swapChars").querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => switchTo(b.dataset.s)));
+  $("swap").style.display = "grid";
+}
+$("swapClose").onclick = () => ($("swap").style.display = "none");
+function switchTo(id) {
+  $("swap").style.display = "none";
+  if (id === chosen || !CHARS[id]) return;
+  const ch = CHARS[id], old = me;
+  const look = AV ? { ...ch.look, shirt: hex(AV.shirt, ch.look.shirt), pants: hex(AV.pants, ch.look.pants), skin: hex(AV.skin, ch.look.skin) } : ch.look;
+  scene.remove(old.b.g, old.bar, old.label); fighters.splice(fighters.indexOf(old), 1);
+  chosen = id;
+  me = addFighter({ name: ME, char: id, look, pos: old.pos.clone() });
+  me.hp = old.dead ? me.maxHp : old.hp; me.kills = old.kills; me.yaw = old.yaw; me.ult = 0; me.awake = 0;
+  hud.set = null; drawMoves(); ring(me.pos, new THREE.Color(ch.color).getHex(), 6, 0.6); show(`You switched to the ${ch.name}\nSuper reset to 0`, 2.5);
+}
 function drawMoves() {
   const ch = me.ch;
   $("moves").innerHTML = movesOf(me).map(([n, e], i) => `<div class="mv" data-i="${i}"><b>${i + 1}</b><em>${e}</em>${n}<div class="cd" style="display:none"></div></div>`).join("") + `<div class="mv ult" data-g="1"><b>G</b><em>⭐</em>${ch.supers ? "Choose super" : ch.awaken + " Awaken"}<div class="cd" style="display:none"></div></div>`;
