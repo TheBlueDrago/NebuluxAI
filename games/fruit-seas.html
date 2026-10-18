@@ -439,6 +439,23 @@ const SWORDS = {
   "Shadow Edge": { price: 1500000, mult: 5.5, color: 0x6a2bbd, sea: 1 },
 };
 const COMBAT = [["Z", "Heavy Punch", 4, 10, 30, "aoe", { r: 4, front: true }], ["X", "Flying Kick", 6, 15, 26, "dash", { dist: 16 }]];
+const STYLES = {
+  Combat: { price: 0, sea: 0, mult: 1, color: 0xffffff, skills: COMBAT },
+  "Black Leg": { price: 150000, sea: 0, mult: 1.3, color: 0xff7043, skills: [["Z", "Party Table Kick", 4, 12, 40, "aoe", { r: 5, self: true, burn: true }], ["X", "Concasse", 7, 18, 55, "dash", { dist: 18 }], ["C", "Diable Jambe", 12, 30, 70, "aoe", { r: 8, self: true, burn: true }]] },
+  Electro: { price: 500000, sea: 0, mult: 1.5, color: 0x40c4ff, skills: [["Z", "Electric Rush", 4, 12, 45, "dash", { dist: 24 }], ["X", "Thunder Clap", 7, 20, 60, "aoe", { r: 7, front: true }], ["C", "Lightning Bolt", 11, 28, 50, "proj", { size: 1, speed: 80, range: 60, explode: 5 }]] },
+  "Water Kung Fu": { price: 750000, sea: 0, mult: 1.6, color: 0x29b6f6, skills: [["Z", "Water Fist", 3, 12, 50, "proj", { size: 1, speed: 50, range: 40 }], ["X", "Shark Tide", 8, 22, 65, "aoe", { r: 9, self: true }], ["C", "Hydro Rain", 13, 32, 55, "rain", { n: 8, r: 6 }]] },
+  "Dragon Claw": { price: 1500000, sea: 1, mult: 1.9, color: 0xe53935, skills: [["Z", "Claw Swipe", 4, 14, 70, "aoe", { r: 6, front: true, burn: true }], ["X", "Dragon Rush", 7, 22, 80, "dash", { dist: 26 }], ["C", "Flame Claw", 12, 34, 75, "rain", { n: 10, r: 7, burn: true }]] },
+  Superhuman: { price: 3000000, sea: 1, mult: 2.3, color: 0xffd23a, skills: [["Z", "Ground Smash", 5, 16, 90, "aoe", { r: 8, self: true }], ["X", "Super Dash", 6, 20, 85, "dash", { dist: 30 }], ["C", "Final Punch", 14, 40, 140, "aoe", { r: 10, front: true }]] },
+};
+const myStyle = () => STYLES[S.style] || STYLES.Combat;
+function openStyles() {
+  openModal("Fighting Style Teacher", "<p>Learn a fighting style for your fists (1). Each has its own Z, X and C moves.</p>" + Object.entries(STYLES).filter(([, f]) => f.sea <= S.sea).map(([n, f]) => {
+    const own = n === "Combat" || (S.styles || []).includes(n);
+    return `<div class="row"><span class="fr" style="background:#${f.color.toString(16).padStart(6, "0")}"></span><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Damage x${f.mult} · ${f.skills.map((x) => x[0] + ": " + x[1]).join(" · ")}</div></div>${own ? ((S.style || "Combat") === n ? '<b style="color:#7dff7d">Using</b>' : `<button class="btn" data-use="${n}">Use</button>`) : `<button class="btn blue" data-learn="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button>`}</div>`;
+  }).join("") + (S.sea === 0 ? '<p style="font-size:12px;opacity:.7">Dragon Claw and Superhuman are taught in the Second Sea.</p>' : ""));
+  $("mb").querySelectorAll("[data-learn]").forEach((b) => (b.onclick = () => { const n = b.dataset.learn; if (S.beli < STYLES[n].price) return; S.beli -= STYLES[n].price; S.styles = [...(S.styles || []), n]; S.style = n; save(); SFX.win(); show(`Learned ${n}!`, 2); drawSkills(); openStyles(); }));
+  $("mb").querySelectorAll("[data-use]").forEach((b) => (b.onclick = () => { S.style = b.dataset.use; save(); drawSkills(); openStyles(); }));
+}
 const SWORD_SK = [["Z", "Spin Slash", 5, 12, 34, "aoe", { r: 6, self: true }], ["X", "Dash Slash", 7, 18, 42, "dash", { dist: 20 }]];
 const STATS = [["melee", "Melee", "Fists damage", 0xffffff], ["defense", "Health", "+20 max health each", 0], ["sword", "Sword", "Sword damage", 0], ["energy", "Energy", "+15 max energy each", 0], ["fruit", "Blox Fruit", "Fruit damage", 0]];
 
@@ -472,7 +489,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, sk: (t) => { try { return skillsFor(t).list.map((x) => x[0] + " " + x[1]).join(", "); } catch (e) { return "ERR " + e.message; } }, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -511,6 +528,13 @@ function makeBoard(title, show, color = "#ffd54f") {
 function loadBoard(b, name) { if (NX) NX.top(name).then((l) => b.draw(l)); }
 function sendScore(name, score, ...boards) { if (NX && Number.isFinite(score)) NX.score(name, score).then((l) => { for (const b of boards) b.draw(l); }); }
 // ================= NPCs =================
+// Sky Jump Master (both spawn islands): $1,500,000 for 10 extra air jumps (12 in all), forever.
+const SKY_PRICE = 1500000;
+function openSkyJumps() {
+  openModal("Sky Jump Master", S.skyJumps ? "<p>You already have <b>12 jumps</b>! Press Space again and again in the air.</p>"
+    : `<p>Learn Sky Walk: <b>10 extra jumps</b> in the air (12 in all), forever.</p><div style="text-align:center"><button class="btn blue" id="skyb" ${S.beli < SKY_PRICE ? "disabled" : ""}>Learn for ${money(SKY_PRICE)}</button></div>`);
+  const b = $("skyb"); if (b) b.onclick = () => { if (S.beli < SKY_PRICE) return; S.beli -= SKY_PRICE; S.skyJumps = true; save(); SFX.win(); show("Sky Walk learned! 12 jumps", 3); openSkyJumps(); };
+}
 const npcs = [];
 function addNpc(isl, ox, oz, name, color, open, opts = {}) {
   const b = makeBody({ shirt: color, pants: 0x333333, hat: opts.hat, hatColor: opts.hatColor, skin: opts.skin });
@@ -523,6 +547,8 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, 0, -9, "Fruit Gacha", 0x6a1b9a, openGacha, { hat: "tricorn" });
   addNpc(isl, 6, -6, "Sword Dealer", 0x455a64, openSwords, { hat: "helmet" });
   addNpc(isl, 9, 4, "Sea Traveler", 0x0d47a1, openTravel, { hat: "tricorn" });
+  addNpc(isl, -4, 10, "Fighting Style Teacher", 0xff7043, () => openStyles(), { hat: "bandana", hatColor: 0xbf360c });
+  addNpc(isl, 4, 10, "Sky Jump Master", 0x90caf9, openSkyJumps, { hat: "halo" });
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
 // The leaderboard of top levels stands next to the Sea Traveler on both spawn islands.
@@ -582,7 +608,7 @@ ISLANDS.forEach((i) => { spawnChest(i); spawnChest(i); });
 
 // ================= enemies =================
 const enemies = [];
-function spawnEnemy(isl, boss) {
+function spawnEnemy(isl, boss, slot) {
   const lvl = boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4));
   let x, z;
   for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? (isl.spawn ? rnd(15, isl.r - 4) : rnd(0, 6)) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
@@ -595,9 +621,12 @@ function spawnEnemy(isl, boss) {
   const name = boss ? boss.name : isl.mob;
   const label = makeLabel(`${name} [Lv. ${lvl}]`, boss ? "#ff4d4d" : "#ffffff", 768); label.scale.set(7, 1.1, 1); scene.add(label);
   const mhp = boss ? boss.hp : Math.round(40 + lvl * 22 + lvl * lvl * 0.6);
-  enemies.push({ b, pos, isl, boss, lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: rnd(0.5, 1.5), swing: 0, slow: 0, freeze: 0, burn: 0, kb: V(), t: rnd(0, 9), wander: pos.clone(), dmg: boss ? 12 + lvl * 1.4 : 4 + lvl * 1.1, speed: boss ? 9 : 10, special: 5, name });
+  enemies.push({ slot: slot == null ? null : ISLANDS.indexOf(isl) + ":" + slot, b, pos, isl, boss, lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: rnd(0.5, 1.5), swing: 0, slow: 0, freeze: 0, burn: 0, kb: V(), t: rnd(0, 9), wander: pos.clone(), dmg: boss ? 12 + lvl * 1.4 : 4 + lvl * 1.1, speed: boss ? 9 : 10, special: 5, name });
 }
-for (const isl of ISLANDS) { for (let i = 0; i < isl.n; i++) spawnEnemy(isl); if (isl.boss) spawnEnemy(isl, isl.boss); }
+// Spawn spots come from a seeded random, so every player's enemies start in the same places.
+{ let seed = 7; const mathRnd = Math.random; Math.random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (const isl of ISLANDS) { for (let i = 0; i < isl.n; i++) spawnEnemy(isl, null, i); if (isl.boss) spawnEnemy(isl, isl.boss, "boss"); }
+  Math.random = mathRnd; }
 
 // ================= bot players (PvP) and crew (allies) =================
 // Computer-controlled pirates with player names roam the islands. PvP unlocks at Lv. 5: while
@@ -725,10 +754,11 @@ function makeBeastBody(color) {
   return { g, segs };
 }
 let beast = null, ally = null;
-function spawnBeast(nearPos, why) {
+function spawnBeast(nearPos, why, exact) {
   if (beast) return;
   const lvl = Math.max(40, S.lvl + 5), body = makeBeastBody(0x1e5aa8);
-  const a = rnd(0, 7), pos = nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
+  const a = rnd(0, 7), pos = exact ? nearPos.clone() : nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
+  if (!exact && netOn()) netSend({ t: "fx", k: "beast", x: Math.round(pos.x), z: Math.round(pos.z) });
   body.g.position.copy(pos); scene.add(body.g);
   const bar = hpBar(); bar.scale.setScalar(3); scene.add(bar);
   const label = makeLabel(`Sea Beast [Lv. ${lvl}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
@@ -775,7 +805,7 @@ function beastHit(x, dmg) {
   if (x.hp > 0) return;
   scene.remove(x.b.g, x.bar, x.label); enemies.splice(enemies.indexOf(x), 1);
   if (x.rival) setTimeout(() => spawnRival(x.isl.sea), 45000);
-  else if (!x.event) setTimeout(() => spawnEnemy(x.isl, x.boss), x.boss ? 90000 : 12000);
+  else if (!x.event) setTimeout(() => spawnEnemy(x.isl, x.boss, x.slot && x.slot.split(":")[1]), x.boss ? 90000 : 12000);
 }
 function removeBeast(e, msg) {
   scene.remove(e.b.g, e.bar, e.label); const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1);
@@ -846,6 +876,7 @@ setInterval(() => { if (!crewPending.xp && !crewPending.cash) return; for (const
 let crewHtml = "";
 function crewMessage(m) {
   const who = String(m.fromName || "").slice(0, 24); if (!who) return;
+  if (m.k === "invite") { crewAsk(who); return; }
   if (m.k === "invite") {
     if (crewMates().includes(who)) return;
     if (crewMates().length >= 3) return crewSend(who, { k: "full" });
@@ -862,15 +893,30 @@ function crewMessage(m) {
     floatText(P.pos, `+${xp} XP (crew)`, "#7fd1ff"); if (cash) floatText(P.pos, `+${money(cash)} (crew)`, "#7dff7d");
   }
 }
+// An invite pops up in the game (not a browser dialog, which can be hidden behind the game).
+function crewAsk(who) {
+  if (crewMates().includes(who)) return crewSend(who, { k: "accept" });
+  if (crewMates().length >= 3) return crewSend(who, { k: "full" });
+  SFX.level();
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:60;background:#1b2330;color:#fff;border:3px solid #ffd23a;border-radius:10px;padding:14px 18px;font-weight:800;text-align:center;box-shadow:0 6px 0 #0006";
+  d.innerHTML = '<div style="margin-bottom:10px"></div><button class="btn blue">Join crew</button> <button class="btn gray">No thanks</button>';
+  d.firstChild.textContent = who + " wants you in their crew! You'll both get the money and XP either of you earns.";
+  const [yes, no] = d.querySelectorAll("button"), done = () => { d.remove(); clearTimeout(t); };
+  yes.onclick = () => { done(); S.crewMates = [...crewMates(), who]; save(); crewSend(who, { k: "accept" }); show("You joined " + who + "'s crew!", 3); };
+  no.onclick = () => { done(); crewSend(who, { k: "no" }); };
+  const t = setTimeout(() => { d.remove(); }, 30000);
+  document.body.appendChild(d); document.exitPointerLock?.();
+}
 function openCrew() {
   const full = S.crew >= 2;
-  const others = typeof remotes !== "undefined" ? [...remotes.values()].map((r) => r.name).filter((n) => n && !crewMates().includes(n)) : [];
+  const others = typeof remotes !== "undefined" ? [...remotes.entries()].map(([id, r]) => ({ id, n: r.name })).filter((o) => o.n && !crewMates().includes(o.n)) : [];
   const realHtml = `<h3 style="margin:14px 0 6px">Recruit real players</h3>
     <p style="font-size:12px;opacity:.85;margin:0 0 6px">Players in your sea. If they accept, you both get the money and XP either of you earns, even in different seas.</p>
-    ${others.length ? others.map((n) => `<div class="row"><div class="grow"><b>${n.replace(/</g, "")}</b></div><button class="btn blue" data-inv="${n.replace(/"/g, "")}">Invite</button></div>`).join("") : '<p style="font-size:13px;opacity:.7">Nobody else is in this sea right now.</p>'}
+    ${others.length ? others.map((o) => `<div class="row"><div class="grow"><b>${o.n.replace(/</g, "")}</b></div><button class="btn blue" data-inv="${String(o.id).replace(/"/g, "")}">Invite</button></div>`).join("") : '<p style="font-size:13px;opacity:.7">Nobody else is in this sea right now.</p>'}
     ${crewMates().length ? `<h3 style="margin:14px 0 6px">Your crew (${crewMates().length}/3)</h3>` + crewMates().map((n) => `<div class="row"><div class="grow"><b>${n.replace(/</g, "")}</b></div><button class="btn gray" data-leave="${n.replace(/"/g, "")}">Remove</button></div>`).join("") : ""}`;
   setTimeout(() => {
-    $("mb").querySelectorAll("[data-inv]").forEach((b) => (b.onclick = () => { crewSend(b.dataset.inv, { k: "invite" }); b.disabled = true; b.textContent = "Invited"; }));
+    $("mb").querySelectorAll("[data-inv]").forEach((b) => (b.onclick = () => { if (NET.ok) netSend({ t: "crew", toId: b.dataset.inv, k: "invite" }); show("Invite sent. They get a pop-up to join.", 2); b.disabled = true; b.textContent = "Invited"; }));
     $("mb").querySelectorAll("[data-leave]").forEach((b) => (b.onclick = () => { const n = b.dataset.leave; crewSend(n, { k: "leave" }); S.crewMates = crewMates().filter((x) => x !== n); save(); openCrew(); }));
   }, 0);
   crewHtml = realHtml;
@@ -955,18 +1001,34 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   if (fxo.freeze) e.freeze = Math.max(e.freeze, fxo.freeze);
   if (fxo.burn) e.burn = 3;
   e.aggro = 8;
-  if (e.hp <= 0) killEnemy(e);
+  if (e.hp <= 0) killEnemy(e); else shareHit(e);
 }
 // Online: tell the others in this sea which enemy was defeated (they remove the same one).
-function shareKill(e) { if (typeof NET !== "undefined" && NET.ok && !e.rival && !e.remote && !e.beast && !e.event) netSend({ t: "fx", k: "kill", i: ISLANDS.indexOf(e.isl), n: e.name, x: Math.round(e.pos.x), z: Math.round(e.pos.z) }); }
+const netOn = () => typeof NET !== "undefined" && NET.ok;
+function shareKill(e) { if (netOn() && !e.rival && !e.remote && (e.slot || e.beast)) netSend({ t: "fx", k: "kill", s: e.beast ? "beast" : e.slot, i: ISLANDS.indexOf(e.isl), n: e.name, x: Math.round(e.pos.x), z: Math.round(e.pos.z) }); }
+// Someone hit an enemy: show it here too (its health, where it is, and it fights them).
+let ehitT = 0;
+function shareHit(e) {
+  if (!netOn() || e.remote || e.rival || !(e.slot || e.beast) || e.hp <= 0) return;
+  if (T - (e.sentT || -9) < 0.25) return; e.sentT = T;
+  netSend({ t: "fx", k: "ehit", s: e.beast ? "beast" : e.slot, f: +(e.hp / e.maxHp).toFixed(3), x: +e.pos.x.toFixed(1), z: +e.pos.z.toFixed(1) });
+}
+function sharedHit(m) {
+  const e = m.s === "beast" ? beast : enemies.find((x) => x.slot === m.s); if (!e) return;
+  const hp = Math.max(1, Math.round(e.maxHp * Math.max(0, Math.min(1, +m.f || 0))));
+  if (hp < e.hp) { floatText(e.pos, String(e.hp - hp), "#8fd3ff"); e.hp = hp; }
+  if (!e.beast) { const at = V(+m.x || e.pos.x, e.pos.y, +m.z || e.pos.z); if (at.distanceTo(e.pos) > 2) e.pos.lerp(at, at.distanceTo(e.pos) > 12 ? 1 : 0.5); e.fightId = m.from; e.fightT = T; }
+}
 function removeShared(m) {
+  if (m.s === "beast") { if (beast) { cubes(beast.pos.clone().setY(8), 0x40c4ff, 20); removeBeast(beast, "The Sea Beast was defeated!"); } return; }
+  if (m.s) { const e = enemies.find((x) => x.slot === m.s); if (e) { cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 10); scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); setTimeout(() => spawnEnemy(e.isl, e.boss, e.slot.split(":")[1]), e.boss ? 90000 : 12000); } return; }
   const isl = ISLANDS[m.i]; if (!isl) return;
   let best = null, bd = 25;
   for (const e of enemies) if (!e.remote && !e.rival && !e.beast && e.isl === isl && e.name === m.n) { const d = Math.hypot(e.pos.x - m.x, e.pos.z - m.z); if (d < bd) { bd = d; best = e; } }
   if (!best) return;
   cubes(best.pos.clone().setY(best.pos.y + 2), 0xffd23a, 10);
   scene.remove(best.b.g, best.bar, best.label); enemies.splice(enemies.indexOf(best), 1);
-  setTimeout(() => spawnEnemy(best.isl, best.boss), best.boss ? 90000 : 12000);
+  setTimeout(() => spawnEnemy(best.isl, best.boss, best.slot && best.slot.split(":")[1]), best.boss ? 90000 : 12000);
 }
 function killEnemy(e) {
   shareKill(e);
@@ -977,7 +1039,7 @@ function killEnemy(e) {
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
   gainXp(xp); S.beli += cash; if (!e.rival) shareGain(xp, cash);
-  if (P.tool === 2 || P.tool === 3) { addMastery(P.tool, Math.max(1, Math.round(e.lvl / 2)) * (e.boss ? 5 : 1)); drawSkills(); } floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
+  if (P.tool >= 1) { addMastery(P.tool, Math.max(1, Math.round(e.lvl / 2)) * (e.boss ? 5 : 1)); drawSkills(); } floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
   const q = S.quest;
   if (q && !e.boss && e.name === q.mob) {
     q.have++;
@@ -993,7 +1055,7 @@ Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
     if (Math.random() < (bigBoss ? 0.35 : 0.1)) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`${e.name} dropped a ${f} Fruit!\nOpen Fruits to eat it.`, 4); }
   }
   enemies.splice(enemies.indexOf(e), 1); save();
-  if (!e.event) setTimeout(() => spawnEnemy(e.isl, e.boss), e.boss ? 90000 : 12000);
+  if (!e.event) setTimeout(() => spawnEnemy(e.isl, e.boss, e.slot && e.slot.split(":")[1]), e.boss ? 90000 : 12000);
 }
 function gainXp(x) {
   if (S.lvl >= 100) return;
@@ -1004,8 +1066,13 @@ function gainXp(x) {
   }
   if (S.lvl % 5 === 0 || S.lvl >= 100) sendLevel();
 }
+// Safe while a menu (shop etc.) is open, the tab is hidden or the game isn't focused (a Nebulux
+// pop-up, another window): nothing can hurt you and enemies stop chasing and go back home.
+let awayFocus = false;
+addEventListener("blur", () => (awayFocus = true)); addEventListener("focus", () => (awayFocus = false));
+const safeNow = () => modalOpen || document.hidden || awayFocus;
 function hurtPlayer(d, from) {
-  if (P.hurtT > 0 || dead) return;
+  if (P.hurtT > 0 || dead || safeNow()) return;
   P.hp -= Math.round(d); P.lastHurt = T; P.hurtT = 0.4; SFX.hurt(); P.lastHit = T; shake = 0.25;
   const away = P.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.01) P.vel.addScaledVector(away.normalize(), 8);
   if (P.hp <= 0) die();
@@ -1047,7 +1114,11 @@ function aimDir(melee) {
 function face(dir) { P.faceYaw = Math.atan2(dir.x, dir.z); }
 
 function basicAttack() {
-  if (P.atkCd > 0 || P.boat) return;
+  if (P.atkCd > 0) return;
+  // every attack uses a little energy: fists 3, sword 4, fruit shots 5
+  const cost = P.tool === 3 && S.fruit ? 5 : P.tool === 2 ? 4 : 3;
+  if (P.en < cost) { P.atkCd = 0.3; return show("Not enough energy", 0.6); }
+  P.en -= cost;
   P.lastHit = T;
   const dir = aimDir(!(P.tool === 3 && S.fruit)); face(dir);
   if (P.tool === 3 && S.fruit) { // fruit click: small fruit shot
@@ -1085,7 +1156,7 @@ function useSkill(sk, statKey, color) {
   const id = P.tool + k;
   if ((P.cds[id] || 0) > 0) return;
   if (P.en < energy) return show("Not enough energy", 0.8);
-  if (P.boat) return;
+  if (P.boat && type === "dash") return show("Can't dash-attack from a boat", 0.8);
   P.cds[id] = cd; P.en -= energy; P.lastHit = T; SFX.skill(); P.swing = 0.001;
   const dir = aimDir(); face(dir);
   const dmg = power * mult(statKey);
@@ -1107,29 +1178,36 @@ function useSkill(sk, statKey, color) {
   }
 }
 // ---- mastery: every fruit and sword has its own (0-600), earned by defeating enemies with it.
-// It adds damage (up to +30%) and unlocks moves: fruits V at 100 and F at 250, swords V at 150.
+// It adds damage (up to +30%) and unlocks moves: fruits V at 250 and F at 400, swords V at 300.
 const MAX_MASTERY = 600;
-const masteryKey = (tool) => (tool === 3 && S.fruit ? "fruit:" + S.fruit : tool === 2 && S.sword ? "sword:" + S.sword : "");
-const mastery = (tool) => ((S.mastery || {})[masteryKey(tool)] || 0);
+const masteryKey = (tool) => (tool === 1 ? "style:" + (S.style || "Combat") : tool === 3 && S.fruit ? "fruit:" + S.fruit : tool === 2 && S.sword ? "sword:" + S.sword : "");
+// Mastery works like levels and is hard: each kill gives mastery XP, and the next mastery level
+// needs 25 + level x 4 XP. Everyone starts at 50 in everything (the owner has 600 in all).
+const ownerMax = () => !!(window.nebulux && window.nebulux.admin);
+const mastery = (tool) => (ownerMax() ? MAX_MASTERY : (S.mastery || {})[masteryKey(tool)] ?? 50);
+const masteryNeed = (m) => 25 + Math.floor(m) * 4;
+if (!S.masteryV2) { S.mastery = {}; S.mxp = {}; S.masteryV2 = true; } // reset: everyone back to 50
 function addMastery(tool, n) {
-  const k = masteryKey(tool); if (!k) return;
-  S.mastery = S.mastery || {};
-  const before = S.mastery[k] || 0, after = Math.min(MAX_MASTERY, before + n);
-  S.mastery[k] = after;
-  for (const [need, what] of tool === 3 ? [[100, "V"], [250, "F"]] : [[150, "V"]]) if (before < need && after >= need) { SFX.level(); show(`Mastery ${need}!\nNew move unlocked: ${what}`, 3); drawSkills(); }
+  const k = masteryKey(tool); if (!k || ownerMax()) return;
+  S.mastery = S.mastery || {}; S.mxp = S.mxp || {};
+  const before = mastery(tool); let after = before, xp = (S.mxp[k] || 0) + n;
+  while (after < MAX_MASTERY && xp >= masteryNeed(after)) { xp -= masteryNeed(after); after++; }
+  S.mastery[k] = after; S.mxp[k] = after >= MAX_MASTERY ? 0 : xp;
+  if (after > before) floatText(P.pos, `Mastery ${after}!`, "#ffd23a");
+  for (const [need, what] of tool === 3 ? [[250, "V"], [400, "F"]] : [[300, "V"]]) if (before < need && after >= need) { SFX.level(); show(`Mastery ${need}!\nNew move unlocked: ${what}`, 3); drawSkills(); }
 }
 // extra moves made from a fruit's own moves (stronger), unlocked by mastery; Dragon's F is flying
 function extraFruitSkills(n) {
   const f = FRUITS[n], z = f.skills[0], c = f.skills[2];
   return [
-    ["V", z[1].split(" ")[0] + " Barrage", z[2] * 2, z[3] + 10, z[4] * 2.2, "rain", { n: 8, r: 5, burn: z[6].burn, freeze: z[6].freeze }, 100],
-    n === "Dragon" ? ["F", "Dragon Flight", 2, 0, 0, "fly", {}, 250] : ["F", "Awakened " + c[1], c[2] * 1.8, c[3] + 20, c[4] * 2.6, "aoe", { ...c[6], r: (c[6].r || 10) * 1.5, self: true }, 250],
+    ["V", z[1].split(" ")[0] + " Barrage", z[2] * 2, z[3] + 10, z[4] * 2.2, "rain", { n: 8, r: 5, burn: z[6].burn, freeze: z[6].freeze }, 250],
+    n === "Dragon" ? ["F", "Dragon Flight", 2, 0, 0, "fly", {}, 400] : ["F", "Awakened " + c[1], c[2] * 1.8, c[3] + 20, c[4] * 2.6, "aoe", { ...c[6], r: (c[6].r || 10) * 1.5, self: true }, 400],
   ];
 }
-const SWORD_EXTRA = [["V", "Blade Storm", 12, 30, 70, "barrage", { n: 12, r: 6 }, 150]];
+const SWORD_EXTRA = [["V", "Blade Storm", 12, 30, 70, "barrage", { n: 12, r: 6 }, 300]];
 function skillsFor(tool) {
   const m = mastery(tool), open = (list) => list.filter((x) => (x[7] || 0) <= m);
-  if (tool === 1) return { list: COMBAT, stat: "melee", color: 0xffffff };
+  if (tool === 1) return { list: [...myStyle().skills, ...open([["V", "Fury Barrage", 14, 30, 110, "barrage", { n: 14, r: 6 }, 300]])], stat: "melee", color: myStyle().color, power: myStyle().mult * (1 + m * 0.0005) };
   if (tool === 2 && S.sword) return { list: [...SWORD_SK, ...open(SWORD_EXTRA)], stat: "sword", color: SWORDS[S.sword].color, power: SWORDS[S.sword].mult * (1 + m * 0.0005) };
   if (tool === 3 && S.fruit) return { list: [...FRUITS[S.fruit].skills, ...open(extraFruitSkills(S.fruit))], stat: "fruit", color: FRUITS[S.fruit].color, power: 1 + m * 0.0005 };
   return { list: [], stat: "melee", color: 0xffffff };
@@ -1141,9 +1219,8 @@ function trySkill(k) {
 }
 function dash() {
   if (P.dashCd > 0 || P.boat) return;
-  if (P.en < 18) return show("Not enough energy", 0.6);
-  P.en -= 18;
-  P.dashCd = 0.9; SFX.dash(); const d = moveDir(); const dir = d.lengthSq() ? d : V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
+  // dashing is free and can be chained (just a tiny gap between dashes)
+  P.dashCd = 0.28; SFX.dash(); const d = moveDir(); const dir = d.lengthSq() ? d : V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
   // a long, quick dash: about 13 studs in a quarter of a second
   P.dashT = 0.25; P.dashVel = dir.clone().multiplyScalar(52); ring(P.pos, 0xffffff, 3.5, 0.3);
 }
@@ -1202,7 +1279,7 @@ function jump() {
   if (P.boat) return;
   // jumping uses energy (more for the jump in the air); with too little you can't
   if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 14 : 24; P.jumps = 1; P.onGround = false; }
-  else if (P.jumps < 2) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps = 2; ring(P.pos, 0xffffff, 2, 0.25); }
+  else if (P.jumps < (S.skyJumps ? 12 : 2)) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps++; ring(P.pos, 0xffffff, 2, 0.25); }
 }
 // Trail: little buddies that float after you (from your avatar; they don't do anything).
 const TRAIL_COLS = { rainbow: [0xff5252, 0xffd740, 0x69f0ae, 0x40c4ff, 0xe040fb], stars: [0xfff59d, 0xffe082, 0xfff9c4], bubbles: [0xb3e5fc, 0xe1f5fe, 0xb2ebf2] };
@@ -1454,6 +1531,8 @@ function netConnect() {
     if (m.t === "crew") { crewMessage(m); return; }
     if (m.t === "fx") {
       if (m.k === "kill") removeShared(m);
+      if (m.k === "ehit") sharedHit(m);
+      if (m.k === "beast" && !beast) { const who = remotes.get(m.from); spawnBeast(V(+m.x || 0, 0, +m.z || 0), `A SEA BEAST rose near ${who ? who.name : "another pirate"}!`, true); }
       if (m.k === "drop") { const who = remotes.get(m.from); placeFruit(String(m.n), +m.x, +m.z, String(m.id), `${who ? who.name : "Someone"} dropped a ${m.n} Fruit`); }
       if (m.k === "pick") { const f = wildFruits.find((w) => w.id === m.id); if (f) { scene.remove(f.g, f.label); wildFruits.splice(wildFruits.indexOf(f), 1); } }
       return;
@@ -1516,7 +1595,7 @@ function drawHot() {
 function drawSkills() {
   const s = skillsFor(P.tool);
   const mk = masteryKey(P.tool);
-  if ($("mastery")) $("mastery").textContent = mk ? `${mk.split(":")[1]} mastery ${Math.floor(mastery(P.tool))} / ${MAX_MASTERY}` : "";
+  if ($("mastery")) $("mastery").textContent = mk ? `${mk.split(":")[1]} mastery ${Math.floor(mastery(P.tool))} / ${MAX_MASTERY}` + (mastery(P.tool) < MAX_MASTERY ? ` (${Math.floor((S.mxp || {})[mk] || 0)} / ${masteryNeed(mastery(P.tool))} XP)` : "") : "";
   $("skills").innerHTML = s.list.map((sk) => { const left = Math.max(0, P.cds[P.tool + sk[0]] || 0); return `<div class="sk ${P.en < sk[3] ? "low" : ""}"><div class="cdv" style="width:${(left / sk[2]) * 100}%"></div><kbd>${sk[0]}</kbd>${sk[1]}${left > 0 ? ` <span style="margin-left:auto;opacity:.8">${left.toFixed(1)}</span>` : ""}</div>`; }).join("");
 }
 
@@ -1575,7 +1654,7 @@ function tick() {
       if (P.flying && S.fruit === "Dragon") {
         // flying: no gravity, Space up / Ctrl down, uses a little energy, faster
         P.vel.y = (keys.Space ? 16 : 0) - (keys.KeyR ? 16 : 0);
-        P.en -= 4 * dt; if (P.en <= 0) { P.flying = false; show("Out of energy: landing", 1.5); }
+        P.en -= 10 * dt; if (P.en <= 0) { P.en = 0; P.flying = false; show("Out of energy: landing", 1.5); }
         P.vel.x *= 1.02; P.vel.z *= 1.02;
         if (Math.random() < 0.3) cubes(P.pos.clone().setY(P.pos.y + 1.5), 0x00e676, 1, 2);
       } else { P.flying = false;
@@ -1614,7 +1693,7 @@ function tick() {
     P.body.inner.visible = P.hurtT <= 0 || Math.floor(T * 20) % 2 === 0;
     P.atkCd -= dt; P.dashCd -= dt; P.hurtT -= dt;
     for (const k in P.cds) P.cds[k] -= dt;
-    P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt);
+    if (!P.flying) P.en = Math.min(maxEn(), P.en + maxEn() * 0.06 * dt); // no energy back while flying
     // Health only comes back slowly, after 6 seconds without fighting (attacking or being hit) (not in water or lava).
     if (P.onGround && !lavaAt(P.pos.x, P.pos.z) && T - (P.lastHit || -99) > 6) P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.015 * dt);
     updateAllies(dt);
@@ -1642,9 +1721,15 @@ function tick() {
       if (!e.home) e.home = e.pos.clone();
       const farFromHome = e.pos.distanceTo(e.home) > 30;
       if (farFromHome) e.aggro = 0;
-      const aggro = !farFromHome && !modalOpen && playerOnIsl && (e.rival ? pvpOn() && !e.isl.spawn && (e.hostile || e.aggro > 0) && (d < 22 || e.aggro > 0) : d < (e.boss ? 30 : 20) || e.aggro > 0);
+      if (safeNow()) e.aggro = 0;
+      const aggro = !farFromHome && !safeNow() && playerOnIsl && (e.rival ? pvpOn() && !e.isl.spawn && (e.hostile || e.aggro > 0) && (d < 22 || e.aggro > 0) : d < (e.boss ? 30 : 20) || e.aggro > 0);
       let mv = V();
-      if (e.freeze > 0) { /* frozen */ } else if (aggro) {
+      const fighter = !aggro && e.fightId && T - e.fightT < 4 && remotes.get(e.fightId);
+      if (fighter && e.freeze <= 0) {
+        const tf = fighter.pos.clone().sub(e.pos).setY(0), df = tf.length();
+        if (df > 2.8 && df < 40) mv = tf.normalize(); else if (df <= 2.8 && e.atkCd <= 0) { e.atkCd = 1; e.swing = 0.001; }
+        e.b.g.rotation.y = Math.atan2(tf.x, tf.z);
+      } else if (e.freeze > 0) { /* frozen */ } else if (aggro) {
         if (d > (e.boss ? 4.5 : 2.8)) mv = to.clone().normalize();
         else if (e.atkCd <= 0) { e.atkCd = e.boss ? 1.1 : 1.0; e.swing = 0.001; setTimeout(() => { if (e.hp > 0 && e.pos.distanceTo(P.pos) < (e.boss ? 6.5 : 4)) hurtPlayer(e.dmg, e.pos); }, 180); }
         if (e.boss && e.special <= 0 && d < 24) {

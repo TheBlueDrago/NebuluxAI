@@ -431,7 +431,7 @@ addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
 cvs.addEventListener("contextmenu", (e) => e.preventDefault());
 addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.2, 1.3); } });
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 7, 30); }, { passive: true });
-function dash(f) { if (f.dashCd > 0 || f.stun > 0 || f.dead) return; f.dashCd = 1.6; const d = f === me ? moveDir() : fwd(f); f.vel.addScaledVector(d.lengthSq() ? d : fwd(f), 48); f.iframes = 0.2; ring(f.pos, 0xffffff, 3, 0.25); if (f === me) SFX.whoosh(); }
+function dash(f) { if (f.dashCd > 0 || f.stun > 0 || f.dead) return; f.dashCd = f === me ? 0.25 : 1.6; const d = f === me ? moveDir() : fwd(f); f.vel.addScaledVector(d.lengthSq() ? d : fwd(f), 48); f.iframes = 0.2; ring(f.pos, 0xffffff, 3, 0.25); if (f === me) SFX.whoosh(); }
 function jump(f) { if (!f.onGround || f.stun > 0) return; f.vel.y = 24; f.onGround = false; if (f === me) SFX.jump(); }
 let pickOpen = false;
 function trySuper() {
