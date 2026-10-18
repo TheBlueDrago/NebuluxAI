@@ -26,7 +26,8 @@ const baseQ = (q) => String(q || "br").split("#")[0];
 // Fruit Seas (?game=fruit-seas): an open world, one room per sea ("fs0", "fs1"), up to FS_MAX
 // people each. Everyone in a room sees everyone else; each game sends its own position ("state")
 // and PvP hits ("hitP", only applied by the player who is hit, and only if their PvP is on).
-const FS_ROOM = /^fs[01]$/;
+// Villain Battlegrounds (?game=villain-battlegrounds) uses one room, "vb", the same way (chat and positions).
+const FS_ROOM = /^(fs[01]|vb)$/;
 const FS_MAX = 40;
 
 // Typed chat. Many players are kids, so every message is checked here before anyone sees it:
@@ -74,7 +75,7 @@ export default {
     const origin = request.headers.get("Origin") || "null";
     if (!ALLOWED_ORIGIN.test(origin)) return new Response("Forbidden", { status: 403 });
     const g = url.searchParams.get("game");
-    const id = env.ARENA.idFromName(g === "bedwars" || g === "balloon-siege" || g === "fruit-seas" ? g : "storm-strike");
+    const id = env.ARENA.idFromName(g === "bedwars" || g === "balloon-siege" || g === "fruit-seas" || g === "villain-battlegrounds" ? g : "storm-strike");
     return env.ARENA.get(id).fetch(request);
   },
 };
@@ -124,7 +125,7 @@ export class Arena {
 
     // A game asks what this server can do before joining (older servers don't answer).
     if (m.t === "hello") {
-      this.send(ws, { t: "hello", games: ["fruit-seas"] });
+      this.send(ws, { t: "hello", games: ["fruit-seas", "villain-battlegrounds"] });
       return;
     }
     if (m.t === "join" && !a.joined && FS_ROOM.test(String(m.q || ""))) {

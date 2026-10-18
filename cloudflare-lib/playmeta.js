@@ -4,7 +4,7 @@
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 // Games with a screenshot in public/game-thumbs/<name>.jpg (480x360) show it as the preview picture.
-export const GAME_THUMBS = new Set(["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale"]);
+export const GAME_THUMBS = new Set(["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale", "villain-battlegrounds"]);
 
 export function withGameMeta(html, { title, genre, name: slug }) {
   const name = String(title || "").trim().slice(0, 80);

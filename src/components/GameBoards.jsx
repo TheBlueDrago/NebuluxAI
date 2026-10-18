@@ -11,6 +11,7 @@ const BOARDS = {
   "bed-brawl": [["wins", "Most wins", String]],
   "brawl-blitz": [["wins", "Most wins", String]],
   "storm-royale": [["wins", "Most wins", String]],
+  "villain-battlegrounds": [["kills", "Most K.O.s", String]],
 };
 
 export default function GameBoards({ name }) {

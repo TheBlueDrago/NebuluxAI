@@ -31,7 +31,7 @@ export const SHOP = {
 };
 // Games that may spend a player's Stardust (always after the player confirms in the app):
 // only Nebulux's own games, never ones people publish.
-export const SPEND_GAMES = ["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale"];
+export const SPEND_GAMES = ["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale", "villain-battlegrounds"];
 const START_NEBUX = 100, DAILY_NEBUX = 25, PLAY_NEBUX = 2, PLAY_CAP = 60; // per ping (every 2 min in a game), per day
 const COLOR = /^#[0-9a-f]{6}$/i;
 const ONLINE_MS = 3 * 60000; // "playing" counts for 3 minutes after the last update

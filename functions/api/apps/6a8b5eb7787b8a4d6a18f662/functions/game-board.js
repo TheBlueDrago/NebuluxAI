@@ -19,6 +19,7 @@ export const BOARDS = {
   "bed-brawl": ["wins"],
   "brawl-blitz": ["wins"],
   "storm-royale": ["wins"],
+  "villain-battlegrounds": ["kills"],
 };
 const MAX_SCORE = 1e9;
 
