@@ -103,7 +103,8 @@
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
   <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
   <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
-  <button class="sb" id="bBeast" style="display:none"><em>🐉</em><span id="beastTxt">Beast</span></button>
+  <button class="sb" id="bBeast" style="display:none" title="Summon a Sea Beast to defeat for prizes"><em>🐉</em><span id="beastTxt">Beast</span></button>
+  <button class="sb" id="bAlly" style="display:none" title="Summon a Sea Beast that fights for you"><em>🐲</em><span id="allyTxt">Ally</span></button>
   <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
 </div>
 <div id="hot"></div>
@@ -981,14 +982,21 @@ function beastTick(dt) {
   if (ally) updateAlly(dt);
   const btn = $("bBeast"); if (!btn) return;
   btn.style.display = S.lvl >= 50 ? "" : "none";
-  const wait = Math.max(0, Math.ceil(((S.beastAt || 0) + 8 * 60000 - Date.now()) / 60000));
-  $("beastTxt").textContent = wait ? `${wait}m` : S.lvl >= 100 ? "Ally" : "Summon";
+  const wait = 0; // no recharge for the beast you fight
+  $("beastTxt").textContent = wait ? `${wait}m` : "Fight";
+  // Lv. 100: a second button, a Sea Beast that fights for you (its own 1-minute recharge)
+  $("bAlly").style.display = S.lvl >= 100 ? "" : "none";
+  const aw = Math.max(0, Math.ceil(((S.allyAt || 0) + 60000 - Date.now()) / 1000));
+  $("allyTxt").textContent = ally ? "Active" : aw ? `${aw}s` : "Ally";
 }
+$("bAlly").onclick = () => {
+  if (!started || dead || S.lvl < 100 || ally) return;
+  if ((S.allyAt || 0) + 60000 > Date.now()) return show("Your ally can be called again in a minute", 2);
+  S.allyAt = Date.now(); save(); summonAlly();
+};
 $("bBeast").onclick = () => {
   if (!started || dead || S.lvl < 50) return;
-  if ((S.beastAt || 0) + 8 * 60000 > Date.now()) return show("Your sea beast horn needs time to recharge", 2);
-  if (S.lvl >= 100) { if (ally) return; S.beastAt = Date.now(); save(); summonAlly(); }
-  else { if (beast) return show("A Sea Beast is already here!", 2); S.beastAt = Date.now(); save(); spawnBeast(P.pos, "You blew the horn...\nA SEA BEAST answers! Defeat it!"); }
+  { if (beast) return show("A Sea Beast is already here!", 2); S.beastAt = Date.now(); save(); spawnBeast(P.pos, "You blew the horn...\nA SEA BEAST answers! Defeat it!"); }
 };
 
 // Crew: up to 2 crewmates you hire at the Crew Recruiter. They follow you and fight enemies near you.
