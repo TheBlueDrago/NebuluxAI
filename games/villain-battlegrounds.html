@@ -79,7 +79,7 @@
   <h1>VILLAIN<br>BATTLEGROUNDS</h1>
   <p style="font-weight:700;margin:10px 0 0">Pick a fighter and battle the bots in the arena. Practise on the <b>Weakest Dummy</b> in the middle; it never hits back.</p>
   <div class="chars" id="chars"></div>
-  <p class="keys" style="font-size:13px;margin-top:12px"><kbd>WASD</kbd> move · <kbd>Click</kbd> combo · <kbd>1</kbd>-<kbd>4</kbd> moves · <kbd>G</kbd> super · <kbd>Q</kbd> dash · <kbd>F</kbd> block · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> turn camera · <kbd>Esc</kbd> or <kbd>Ctrl</kbd> lock mouse · <kbd>/</kbd> chat</p>
+  <p class="keys" style="font-size:13px;margin-top:12px"><kbd>WASD</kbd> move · <kbd>Click</kbd> combo · <kbd>1</kbd>-<kbd>4</kbd> moves · <kbd>G</kbd> super · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>F</kbd> block · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> turn camera · <kbd>Esc</kbd> or <kbd>Ctrl</kbd> lock mouse · <kbd>/</kbd> chat</p>
   <button class="big" id="play">FIGHT!</button>
 </div></div>
 <div id="pick"><div class="c"><h2 class="sh" style="font-size:30px;margin:0">Choose your SUPER</h2><div id="pickBtns" style="margin-top:12px"></div><p style="opacity:.8">Press 1, 2 or 3</p></div></div>
@@ -361,7 +361,7 @@ addEventListener("keydown", (e) => {
   if (pickOpen) { const n = +e.key; if (n >= 1 && n <= 3) choose(n - 1); return; }
   if (/^Digit[1-4]$/.test(e.code)) useMove(me, +e.code.slice(5) - 1);
   if (e.code === "KeyG") trySuper();
-  if (e.code === "KeyQ") dash(me);
+  if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash(me);
   if (e.code === "Space") jump(me);
   // Esc (or Ctrl) locks the mouse for shift-lock style aiming; Esc again unlocks it (the browser does that part).
   if (e.code === "Escape" && !document.pointerLockElement) { cvs.requestPointerLock && cvs.requestPointerLock(); return; }
