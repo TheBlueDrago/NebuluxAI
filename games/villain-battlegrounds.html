@@ -114,17 +114,17 @@ document.body.appendChild(renderer.domElement);
 const cvs = renderer.domElement;
 const scene = new THREE.Scene();
 const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.6, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
-scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 120, 330);
-const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 600);
+scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 160, 480);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 900);
 addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x556655, 1.05));
 const sun = new THREE.DirectionalLight(0xfff4e0, 1.05); sun.position.set(40, 90, 30); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, far: 260 }); scene.add(sun);
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, far: 260 }); scene.add(sun, sun.target);
 const mats = {};
 const mat = (c) => mats[c] || (mats[c] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.02 }));
 const box = (w, h, d, c, cast = true) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.castShadow = cast; m.receiveShadow = true; return m; };
 // studded baseplate
-const ARENA = 90; // half size
+const ARENA = 160; // half size (a big map)
 {
   const sc = document.createElement("canvas"); sc.width = sc.height = 64; const sx = sc.getContext("2d");
   sx.fillStyle = "#ffffff"; sx.fillRect(0, 0, 64, 64);
@@ -133,13 +133,13 @@ const ARENA = 90; // half size
   const ground = new THREE.Mesh(new THREE.BoxGeometry(ARENA * 2, 2, ARENA * 2), new THREE.MeshStandardMaterial({ map: t, color: 0x6aa84f, roughness: 0.6 }));
   ground.position.y = -1; ground.receiveShadow = true; scene.add(ground);
   // a ring of rocks, some pillars and walls of the city ruins
-  for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, r = ARENA - 4 + rnd(-2, 2), s = rnd(4, 9); const rock = box(s, rnd(4, 12), s, pick([0x8a8a92, 0x7b7b83, 0x6d6d75])); rock.position.set(Math.cos(a) * r, 2, Math.sin(a) * r); rock.rotation.y = rnd(0, 3); scene.add(rock); }
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.3, r = rnd(35, 60); const p = box(4, rnd(10, 20), 4, 0x9e9e9e); p.position.set(Math.cos(a) * r, 5, Math.sin(a) * r); scene.add(p); }
+  for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2, r = ARENA - 4 + rnd(-2, 2), s = rnd(4, 9); const rock = box(s, rnd(4, 12), s, pick([0x8a8a92, 0x7b7b83, 0x6d6d75])); rock.position.set(Math.cos(a) * r, 2, Math.sin(a) * r); rock.rotation.y = rnd(0, 3); scene.add(rock); }
+  for (let i = 0; i < 22; i++) { const a = i / 22 * Math.PI * 2 + 0.3, r = rnd(35, 130); const p = box(4, rnd(10, 20), 4, 0x9e9e9e); p.position.set(Math.cos(a) * r, 5, Math.sin(a) * r); scene.add(p); }
   // the dummy's square in the middle
   const pad = box(14, 0.2, 14, 0xffd54f, false); pad.position.y = 0.05; scene.add(pad);
 }
 const solids = []; // pillars: {x,z,r}
-scene.children.forEach((m) => { if (m.isMesh && m.geometry.parameters && m.geometry.parameters.height >= 10 && Math.hypot(m.position.x, m.position.z) < 70) solids.push({ x: m.position.x, z: m.position.z, r: 2.6 }); });
+scene.children.forEach((m) => { if (m.isMesh && m.geometry.parameters && m.geometry.parameters.height >= 10 && Math.hypot(m.position.x, m.position.z) < 140) solids.push({ x: m.position.x, z: m.position.z, r: 2.6 }); });
 
 // ================= characters =================
 // Each fighter: 4 moves (1-4) and a super (G). The Caped Hero picks one super; the others
@@ -245,7 +245,7 @@ function addFighter({ name, char, bot, dummy, look, pos }) {
   if (dummy) f.maxHp = f.hp = 400;
   fighters.push(f); return f;
 }
-const spawnPos = () => { const a = rnd(0, 7), r = rnd(25, 60); return V(Math.cos(a) * r, 0, Math.sin(a) * r); };
+const spawnPos = () => { const a = rnd(0, 7), r = rnd(25, 120); return V(Math.cos(a) * r, 0, Math.sin(a) * r); };
 let me = null, chosen = "hero";
 const dummy = addFighter({ name: "Weakest Dummy", char: "hero", dummy: true, look: { shirt: 0xbcaaa4, pants: 0x8d6e63, skin: 0xd7ccc8 }, pos: V(0, 0, 0) });
 
@@ -537,6 +537,8 @@ function loop(now) {
   camBase.lerp(cp, 1 - Math.exp(-14 * dt)); camera.position.copy(camBase);
   if (shake > 0) { shake = Math.max(0, shake - dt); camera.position.add(V(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake * 0.6)); }
   camera.lookAt(head);
+  // the sun (and its shadows) follows you around the big map
+  sun.position.copy(tgt).add(V(40, 90, 30)); sun.target.position.copy(tgt);
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }
   if (started) hud();
   renderer.render(scene, camera);
