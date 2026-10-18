@@ -239,7 +239,7 @@ const ISLANDS = [
 ];
 // Islands are big: everything above is spread out and scaled up 2.6 times.
 const BIG = 2.6;
-for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG); isl.n = Math.round(isl.n * 1.8); }
+for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG * (isl.sea ? 1.4 : 1)); isl.n = Math.round(isl.n * (isl.sea ? 2.3 : 1.8)); }
 const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
   snow: [0xf4fbff, 0xe6f2fa, 0xffffff], candy: [0xff9fc8, 0xffe0f0, 0xb3e5fc], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
@@ -559,6 +559,7 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, 6, -6, "Sword Dealer", 0x455a64, openSwords, { hat: "helmet" });
   addNpc(isl, 9, 4, "Sea Traveler", 0x0d47a1, openTravel, { hat: "tricorn" });
   addNpc(isl, -4, 10, "Fighting Style Teacher", 0xff7043, () => openStyles(), { hat: "bandana", hatColor: 0xbf360c });
+  addNpc(isl, 12, 6, "Boat Dealer", 0x1565c0, () => openBoats(), { hat: "tricorn" });
   addNpc(isl, 4, 10, "Sky Jump Master", 0x90caf9, openSkyJumps, { hat: "halo" });
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
@@ -1261,6 +1262,38 @@ function dash() {
 }
 
 // ================= boat =================
+const BOATS = {
+  Rowboat: { price: 0, speed: 30, len: 7, w: 3.4, hull: 0x8b5a2b, sail: 0xffffff },
+  Sloop: { price: 40000, speed: 40, len: 10, w: 4.6, hull: 0x795548, sail: 0xfff3e0 },
+  Brigantine: { price: 350000, speed: 50, len: 14, w: 6, hull: 0x5d4037, sail: 0xe53935 },
+  Galleon: { price: 2000000, speed: 62, len: 19, w: 8, hull: 0x3e2723, sail: 0x212121, cannons: true },
+};
+const myBoat = () => BOATS[S.boatType] || BOATS.Rowboat;
+function openBoats() {
+  openModal("Boat Dealer", "<p>Buy a boat, then press <b>B</b> next to the water to sail it. You steer from the wheel at the back.</p>" + Object.entries(BOATS).map(([n, b]) => {
+    const own = n === "Rowboat" || (S.boats || []).includes(n);
+    return `<div class="row"><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Speed ${b.speed} · ${b.len} studs long${b.cannons ? " · cannons" : ""}</div></div>${own ? ((S.boatType || "Rowboat") === n ? '<b style="color:#7dff7d">Using</b>' : `<button class="btn" data-bu="${n}">Use</button>`) : `<button class="btn blue" data-bb="${n}" ${S.beli < b.price ? "disabled" : ""}>${money(b.price)}</button>`}</div>`;
+  }).join(""));
+  $("mb").querySelectorAll("[data-bb]").forEach((x) => (x.onclick = () => { const n = x.dataset.bb; if (S.beli < BOATS[n].price) return; S.beli -= BOATS[n].price; S.boats = [...(S.boats || []), n]; S.boatType = n; save(); SFX.win(); show(`Bought a ${n}!`, 2); openBoats(); }));
+  $("mb").querySelectorAll("[data-bu]").forEach((x) => (x.onclick = () => { S.boatType = x.dataset.bu; save(); if (P.boat) { toggleBoat(); } openBoats(); }));
+}
+function buildBoat(t) {
+  // a Roblox-style ship made of parts; the group's origin is the wheel at the back (where you stand)
+  const g = new THREE.Group(), L = t.len, W = t.w, ship = new THREE.Group(); ship.position.z = L / 2 - 1.6; g.add(ship);
+  ship.add(box(W, 1.4, L, t.hull).translateY(0.3));
+  ship.add(box(W + 0.3, 0.4, L + 0.2, 0x6b4423).translateY(1.1));
+  const bow = box(W * 0.7, 1.2, 2, t.hull); bow.position.set(0, 0.6, L / 2 + 0.8); bow.rotation.x = -0.25; ship.add(bow);
+  for (const sx of [-1, 1]) { const rail = box(0.3, 0.8, L, 0x4e342e); rail.position.set(sx * (W / 2), 1.7, 0); ship.add(rail); }
+  const deck = box(W, 1.2, 3, 0x6b4423); deck.position.set(0, 1.6, -L / 2 + 1.5); ship.add(deck); // raised back deck
+  const mast = box(0.4, 6 + L * 0.35, 0.4, 0x4e342e); mast.position.set(0, 3.5 + L * 0.17, 0.5); ship.add(mast);
+  const sail = box(W * 1.1, 2.4 + L * 0.2, 0.15, t.sail); sail.position.set(0, 4.5 + L * 0.2, 0.6); ship.add(sail);
+  const flag = box(1.2, 0.8, 0.05, 0x111111); flag.position.set(0.6, 6.6 + L * 0.35, 0.5); ship.add(flag);
+  if (t.cannons) for (const sx of [-1, 1]) for (let k = -1; k <= 1; k++) { const c = box(1.4, 0.6, 0.6, 0x212121); c.position.set(sx * (W / 2 + 0.4), 1.4, k * L * 0.25); ship.add(c); }
+  // the steering wheel just in front of you
+  const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.12, 6, 12), mat(0x8d6e63)); wheel.position.set(0, 3.6, 1); g.add(wheel);
+  const post = box(0.25, 1.4, 0.25, 0x5d4037); post.position.set(0, 2.9, 1); g.add(post);
+  g.userData.wheel = wheel; return g;
+}
 function toggleBoat() {
   if (dead) return;
   if (P.boat) { // get off
@@ -1274,11 +1307,7 @@ function toggleBoat() {
     const p = P.pos.clone().addScaledVector(dir, d); if (groundAt(p.x, p.z) < 0) spot = p;
   }
   if (!spot) return show("Walk closer to the water to call your boat", 1.5);
-  const g = new THREE.Group();
-  g.add(box(3.4, 1.2, 7, 0x8b5a2b).translateY(0.3)); g.add(box(3.6, 0.5, 7.2, 0x6b4423).translateY(1));
-  const mast = box(0.35, 7, 0.35, 0x6b4423); mast.position.set(0, 4, -0.5); g.add(mast);
-  const sail = box(4, 3.6, 0.15, 0xffffff); sail.position.set(0, 5, -0.4); g.add(sail);
-  const flag = box(1.1, 0.7, 0.05, 0x111111); flag.position.set(0.6, 7.6, -0.5); g.add(flag);
+  const g = buildBoat(myBoat());
   g.position.copy(spot).setY(0); scene.add(g);
   P.boat = { g, speed: 0, yaw: P.faceYaw }; P.pos.set(spot.x, 0.8, spot.z); P.vel.set(0, 0, 0);
 }
@@ -1677,10 +1706,12 @@ function tick() {
     if (P.boat) {
       // sail: W/S throttle, A/D steer, camera-relative like walking
       const md = moveDir(); const b = P.boat;
-      if (md.lengthSq()) { const ty = Math.atan2(md.x, md.z); let d = ty - b.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); b.yaw += d * Math.min(1, 2.5 * dt); b.speed = Math.min(30, b.speed + 30 * dt); } else b.speed = Math.max(0, b.speed - 20 * dt);
+      if (md.lengthSq()) { const ty = Math.atan2(md.x, md.z); let d = ty - b.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); b.yaw += d * Math.min(1, 2.5 * dt); b.speed = Math.min(myBoat().speed, b.speed + 30 * dt); if (b.g.userData.wheel) b.g.userData.wheel.rotation.z += d * 4 * dt; } else b.speed = Math.max(0, b.speed - 20 * dt);
       const nx = P.pos.x + Math.sin(b.yaw) * b.speed * dt, nz = P.pos.z + Math.cos(b.yaw) * b.speed * dt;
-      if (groundAt(nx, nz) < 0) { P.pos.x = nx; P.pos.z = nz; } else { b.speed = 0; scene.remove(b.g); P.boat = null; P.pos.set(nx, groundAt(nx, nz) + 0.2, nz); show("Landed", 1); }
-      if (P.boat) { P.pos.y = 0.9 + Math.sin(T * 2) * 0.15; b.g.position.set(P.pos.x, Math.sin(T * 2) * 0.15, P.pos.z); b.g.rotation.y = b.yaw; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; P.faceYaw = b.yaw; }
+      const bowL = myBoat().len, fx = nx + Math.sin(b.yaw) * bowL, fz = nz + Math.cos(b.yaw) * bowL;
+      if (groundAt(nx, nz) < 0 && groundAt(fx, fz) >= 0) { b.speed = 0; scene.remove(b.g); P.boat = null; P.pos.set(fx, groundAt(fx, fz) + 0.2, fz); show("Landed", 1); }
+      else if (groundAt(nx, nz) < 0) { P.pos.x = nx; P.pos.z = nz; } else { b.speed = 0; scene.remove(b.g); P.boat = null; P.pos.set(nx, groundAt(nx, nz) + 0.2, nz); show("Landed", 1); }
+      if (P.boat) { P.pos.y = 2.3 + Math.sin(T * 2) * 0.15; b.g.position.set(P.pos.x, Math.sin(T * 2) * 0.15, P.pos.z); b.g.rotation.y = b.yaw; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; P.faceYaw = b.yaw; }
       P.vel.set(0, 0, 0); P.onGround = true;
     } else {
       const want = moveDir().multiplyScalar(inWater() ? 9 : 16);
@@ -1826,7 +1857,7 @@ function tick() {
 
     // camera: Roblox-style orbit
     const head = P.pos.clone().setY(P.pos.y + 3.2 - (inWater() ? 1.6 : 0));
-    const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist);
+    const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist + (P.boat ? myBoat().len * 1.2 : 0)); if (P.boat) off.y += myBoat().len * 0.5; // further back and up on a ship, over the sail
     const cp = head.clone().add(off); cp.y = Math.max(cp.y, groundAt(cp.x, cp.z) + 1, 0.8);
     if (shiftLock) cp.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.6));
     if (!camReady) { camBase.copy(cp); camReady = true; }
