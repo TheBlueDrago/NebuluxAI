@@ -624,6 +624,16 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
 buildCafe(ISLANDS.find((i) => i.name === "Harbor Town"));
+// A Home Point on every island (a glowing pad with a keeper): set it to come back there when you die.
+for (const isl of ISLANDS) {
+  const ox = 0, oz = 20, x = isl.x + ox, z = isl.z + oz, y = groundAt(x, z);
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.3, 20), new THREE.MeshBasicMaterial({ color: 0x7dff7d, transparent: true, opacity: 0.7 }));
+  pad.position.set(x + 3, y + 0.2, z); scene.add(pad);
+  addNpc(isl, ox, oz, "Home Point", 0x2e7d32, () => {
+    if (S.home === isl.name) return openModal("Home Point", `<p>Your home point is already <b>${isl.name}</b>. You come back here when you're defeated.</p>`);
+    S.home = isl.name; save(); SFX.win(); ring(P.pos, 0x7dff7d, 6, 0.6); show(`Home point set: ${isl.name}`, 2.5);
+  }, { hat: "cap", hatColor: 0x2e7d32 });
+}
 // The leaderboard of top levels stands next to the Sea Traveler on both spawn islands.
 const lvlBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
   const b = makeBoard("Top levels", (v) => `Lv. ${v}`); const x = isl.x + 14, z = isl.z - 1;
@@ -1283,7 +1293,7 @@ function gainXp(x) {
 // pop-up, another window): nothing can hurt you and enemies stop chasing and go back home.
 let awayFocus = false;
 addEventListener("blur", () => (awayFocus = true)); addEventListener("focus", () => (awayFocus = false));
-const safeNow = () => modalOpen || document.hidden || awayFocus;
+const safeNow = () => false; // nothing pauses: enemies keep fighting while menus are open or the tab is hidden
 function hurtPlayer(d, from) {
   if (P.hurtT > 0 || dead || safeNow()) return;
   if (P.ken && P.kenLeft > 0) { P.kenHits = (P.kenHits || 0) + 1; if (!(S.instinct2 && P.kenHits % 3 === 0)) { kenDodge(); return; } }
@@ -1332,7 +1342,7 @@ function basicAttack() {
   if (P.boat && myBoat().cannons) {
     // cannonball toward the mouse, from the side of the ship
     P.atkCd = 0.8; P.lastHit = T; SFX.boom?.(); const dir = aimDir(false);
-    shoot({ color: 0x212121, size: 0.9, speed: 70, range: 90, dmg: (60 + S.lvl * 6) * (myBoat().len / 19), explode: 6 }, dir);
+    shoot({ color: 0x212121, size: 0.9, speed: 70, range: 90, dmg: (60 + S.lvl * 6) * (myBoat().len / 34), explode: 6 }, dir);
     cubes(P.pos.clone().setY(P.pos.y + 1), 0x9e9e9e, 8, 4); shake = Math.max(shake, 0.15); return;
   }
   // every attack uses a little energy: fists 3, sword 4, fruit shots 5
@@ -1438,7 +1448,7 @@ function trySkill(k) {
   useSkill(scaled, s.stat, s.color);
 }
 function dash() {
-  if (P.dashCd > 0 || P.boat) return;
+  if (P.dashCd > 0 || sailing()) return;
   // dashing is free and can be chained (just a tiny gap between dashes)
   P.dashCd = 0.28; SFX.dash(); const d = moveDir(); const dir = d.lengthSq() ? d : V(Math.sin(P.faceYaw), 0, Math.cos(P.faceYaw));
   // a long, quick dash: about 13 studs in a quarter of a second
@@ -1454,11 +1464,11 @@ const BOATS = {
   "Swan Ship": { price: 5000000, speed: 74, len: 22, w: 9, hull: 0xfafafa, sail: 0xf48fb1, cannons: true, sea: 1 },
   "Beast Hunter": { price: 12000000, speed: 86, len: 26, w: 10, hull: 0x263238, sail: 0xb71c1c, cannons: true, sea: 2 },
 };
-const myBoat = () => BOATS[S.boatType] || BOATS.Rowboat;
+const myBoat = () => { const b = BOATS[S.boatType] || BOATS.Rowboat; return { ...b, len: b.len * 1.8, w: b.w * 1.8 }; };
 function openBoats() {
   openModal("Boat Dealer", "<p>Buy a boat, then press <b>B</b> next to the water to sail it. You steer from the wheel at the back. Ships with cannons fire when you click.</p>" + Object.entries(BOATS).filter(([, b]) => (b.sea || 0) <= S.sea).map(([n, b]) => {
     const own = n === "Rowboat" || (S.boats || []).includes(n);
-    return `<div class="row"><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Speed ${b.speed} · ${b.len} studs long${b.cannons ? " · cannons" : ""}</div></div>${own ? ((S.boatType || "Rowboat") === n ? '<b style="color:#7dff7d">Using</b>' : `<button class="btn" data-bu="${n}">Use</button>`) : `<button class="btn blue" data-bb="${n}" ${S.beli < b.price ? "disabled" : ""}>${money(b.price)}</button>`}</div>`;
+    return `<div class="row"><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Speed ${b.speed} · ${Math.round(b.len * 1.8)} studs long${b.cannons ? " · cannons" : ""}</div></div>${own ? ((S.boatType || "Rowboat") === n ? '<b style="color:#7dff7d">Using</b>' : `<button class="btn" data-bu="${n}">Use</button>`) : `<button class="btn blue" data-bb="${n}" ${S.beli < b.price ? "disabled" : ""}>${money(b.price)}</button>`}</div>`;
   }).join(""));
   $("mb").querySelectorAll("[data-bb]").forEach((x) => (x.onclick = () => { const n = x.dataset.bb; if (S.beli < BOATS[n].price) return; S.beli -= BOATS[n].price; S.boats = [...(S.boats || []), n]; S.boatType = n; save(); SFX.win(); show(`Bought a ${n}!`, 2); openBoats(); }));
   $("mb").querySelectorAll("[data-bu]").forEach((x) => (x.onclick = () => { S.boatType = x.dataset.bu; save(); if (P.boat) { toggleBoat(); } openBoats(); }));
@@ -1480,6 +1490,17 @@ function buildBoat(t) {
   const post = box(0.25, 1.4, 0.25, 0x5d4037); post.position.set(0, 2.9, 1); g.add(post);
   g.userData.wheel = wheel; return g;
 }
+// Walking on your ship: jump to leave the wheel, walk the deck (fight from it), walk back into the
+// wheel to steer again. deckAt gives the deck's height under a point, or null when it's off the ship.
+const sailing = () => !!(P.boat && P.boat.driving);
+function shipLocal(pos) {
+  const b = P.boat, dx = pos.x - b.g.position.x, dz = pos.z - b.g.position.z, c = Math.cos(b.yaw), sn = Math.sin(b.yaw);
+  return { x: dx * c - dz * sn, z: dx * sn + dz * c };
+}
+function deckAt(pos) {
+  if (!P.boat) return null; const t = myBoat(), l = shipLocal(pos);
+  return l.z > -1.6 && l.z < t.len - 1.6 && Math.abs(l.x) < t.w / 2 ? P.boat.g.position.y + 1.35 : null;
+}
 function toggleBoat() {
   if (dead) return;
   if (P.boat) { // get off
@@ -1495,7 +1516,7 @@ function toggleBoat() {
   if (!spot) return show("Walk closer to the water to call your boat", 1.5);
   const g = buildBoat(myBoat());
   g.position.copy(spot).setY(0); scene.add(g);
-  P.boat = { g, speed: 0, yaw: P.faceYaw }; P.pos.set(spot.x, 0.8, spot.z); P.vel.set(0, 0, 0);
+  P.boat = { g, speed: 0, yaw: P.faceYaw, driving: true, sat: performance.now() }; P.pos.set(spot.x, 0.8, spot.z); P.vel.set(0, 0, 0);
 }
 
 // ================= input (Blox Fruits style) =================
@@ -1537,7 +1558,7 @@ addEventListener("mousemove", (e) => {
 });
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 6, 32); }, { passive: true });
 function jump() {
-  if (P.boat) return;
+  if (sailing()) return;
   // jumping uses energy (more for the jump in the air); with too little you can't
   if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 14 : 24; P.jumps = 1; P.onGround = false; }
   else if (P.jumps < (S.skyJumps ? 12 : 2)) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps++; ring(P.pos, 0xffffff, 2, 0.25); }
@@ -1581,7 +1602,7 @@ function meltIce(dt) {
     if (t.t <= 0) { scene.remove(t.m); t.m.geometry.dispose(); t.m.material.dispose(); iceTiles.delete(k); }
   }
 }
-const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !P.boat && !iceAt(P.pos.x, P.pos.z);
+const inWater = () => groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y <= -0.6 && !sailing() && deckAt(P.pos) == null && !iceAt(P.pos.x, P.pos.z);
 function equip(n) { if ((n === 2 && !S.sword) || (n === 3 && !S.fruit)) return; P.tool = P.tool === n ? 0 : n; drawHot(); }
 // ---- phone controls: a joystick on the left, buttons on the right, drag anywhere else to look ----
 const joy = { x: 0, y: 0, id: null };
@@ -1606,6 +1627,7 @@ if (matchMedia("(pointer: coarse)").matches) { // phones and tablets (not laptop
   cvs.addEventListener("touchend", endLook); cvs.addEventListener("touchcancel", endLook);
 }
 function moveDir() {
+  if (modalOpen || (typeof chatting !== "undefined" && chatting)) return V();
   const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
   if (keys.KeyW) d.add(f); if (keys.KeyS) d.sub(f); if (keys.KeyD) d.add(r); if (keys.KeyA) d.sub(r);
   if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
@@ -1626,7 +1648,7 @@ function interact() {
 // ================= UI =================
 let msgT = 0;
 function show(t, s = 2) { $("msg").innerText = t; $("msg").style.opacity = 1; msgT = s; }
-function openModal(title, html) { modalOpen = true; rmb = false; $("mt").textContent = title; $("mb").innerHTML = html; $("modal").style.display = "grid"; document.exitPointerLock?.(); }
+function openModal(title, html) { for (const k in keys) keys[k] = false; modalOpen = true; rmb = false; $("mt").textContent = title; $("mb").innerHTML = html; $("modal").style.display = "grid"; document.exitPointerLock?.(); }
 function closeModal() { modalOpen = false; $("modal").style.display = "none"; }
 $("mx").onclick = closeModal;
 $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
@@ -1883,7 +1905,7 @@ Day ${S.streak} in a row${S.streak % 7 === 0 ? " · FREE gacha spin!" : ""}`, 4)
 }
 // Nebulux admins (the owner) get every fruit as a permanent fruit.
 const isAdmin = !!(window.nebulux && window.nebulux.admin);
-$("play").onclick = () => { $("start").style.display = "none"; started = true; if (isAdmin) { S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
@@ -1904,9 +1926,11 @@ function tick() {
   seaGeo.attributes.position.needsUpdate = true;
   if (iceTiles.size) meltIce(dt);
 
-  if (started && !dead && !modalOpen) {
+  if (started && !dead) { // the world never pauses (menus, other tabs); only your controls stop in a menu
     const g = groundAt(P.pos.x, P.pos.z);
-    if (P.boat) {
+    if (sailing() && keys.Space && !modalOpen && performance.now() - P.boat.sat > 600) { P.boat.driving = false; P.boat.speed = 0; P.vel.set(0, 22, 0); P.onGround = false; show("You left the wheel. Walk back into it to steer", 2); }
+    if (P.boat && !P.boat.driving) { const b = P.boat; b.g.position.y = Math.sin(T * 2) * 0.15; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; }
+    if (sailing()) {
       // sail: W/S throttle, A/D steer, camera-relative like walking
       const md = moveDir(); const b = P.boat;
       if (md.lengthSq()) { const ty = Math.atan2(md.x, md.z); let d = ty - b.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); b.yaw += d * Math.min(1, 2.5 * dt); b.speed = Math.min(myBoat().speed, b.speed + 30 * dt); if (b.g.userData.wheel) b.g.userData.wheel.rotation.z += d * 4 * dt; } else b.speed = Math.max(0, b.speed - 20 * dt);
@@ -1921,7 +1945,7 @@ function tick() {
       const k = P.onGround ? 30 : inWater() ? 14 : 9; // start and stop almost at once, like Roblox
       if (P.dashT > 0) { P.dashT -= dt; P.vel.x = P.dashVel.x; P.vel.z = P.dashVel.z; P.vel.y = Math.max(P.vel.y, 0); cubes(P.pos.clone().setY(P.pos.y + 2), 0xffffff, 1, 2); }
       else { P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt); }
-      if (keys.Space && P.onGround) jump();
+      if (keys.Space && P.onGround && !modalOpen) jump();
       // Roblox-style: strong gravity and a quick jump (snappy, not floaty).
       if (P.flying && S.fruit === "Dragon") {
         // flying: no gravity, Space up / Ctrl down, uses a little energy, faster
@@ -1938,8 +1962,11 @@ function tick() {
       // can't walk up walls taller than a step: push back out
       if (P.pos.y < g2 - 1.6 && g2 > 0) { P.pos.x -= P.vel.x * dt; P.pos.z -= P.vel.z * dt; P.vel.x = P.vel.z = 0; }
       if ((S.fruit === "Frost" || S.fruit === "Magma") && groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y < 2.5) { freezeAround(P.pos.x, P.pos.z, S.fruit === "Magma"); if (S.fruit === "Magma" && Math.random() < 0.15) cubes(P.pos.clone().setY(0.3), 0xff6d00, 1, 3); }
-      const gNow = groundAt(P.pos.x, P.pos.z), onIce = gNow < 0 && iceAt(P.pos.x, P.pos.z), floor = gNow < 0 ? (onIce ? 0.05 : -0.6) : gNow;
-      if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0 || onIce; if (P.onGround) P.jumps = 0; } else P.onGround = false;
+      const gNow = groundAt(P.pos.x, P.pos.z), onIce = gNow < 0 && iceAt(P.pos.x, P.pos.z), deckY = deckAt(P.pos), onDeck = deckY != null && P.pos.y > deckY - 1.2;
+      const floor = onDeck ? deckY : gNow < 0 ? (onIce ? 0.05 : -0.6) : gNow;
+      // walking into the wheel takes the helm again
+      if (onDeck && P.boat && !P.boat.driving && P.vel.y <= 0) { const l = shipLocal(P.pos); if (l.z < 1.8 && Math.abs(l.x) < 1.6) { P.boat.driving = true; P.boat.sat = performance.now(); P.pos.set(P.boat.g.position.x, 2.3, P.boat.g.position.z); show("Steering", 1); } }
+      if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0 || onIce || onDeck; if (P.onGround) P.jumps = 0; } else P.onGround = false;
       if (want.lengthSq() > 1 && !shiftLock && P.swing === 0) P.faceYaw = Math.atan2(want.x, want.z);
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
@@ -1978,7 +2005,7 @@ function tick() {
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
     lastIsl = isl;
     // remember the island you are standing on, to come back to it next time
-    if (isl && P.onGround && S.home !== isl.name) { S.home = isl.name; save(); }
+
 
     // enemies
     netTick(dt);
@@ -2061,7 +2088,7 @@ function tick() {
 
     // camera: Roblox-style orbit
     const head = P.pos.clone().setY(P.pos.y + 3.2 - (inWater() ? 1.6 : 0));
-    const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist + (P.boat ? myBoat().len * 1.2 : 0)); if (P.boat) off.y += myBoat().len * 0.5; // further back and up on a ship, over the sail
+    const off = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)).multiplyScalar(cam.dist + (sailing() ? myBoat().len * 1.2 : 0)); if (sailing()) off.y += myBoat().len * 0.5; // further back and up on a ship, over the sail
     const cp = head.clone().add(off); cp.y = Math.max(cp.y, groundAt(cp.x, cp.z) + 1, 0.8);
     if (shiftLock) cp.add(V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw)).multiplyScalar(1.6));
     if (!camReady) { camBase.copy(cp); camReady = true; }
