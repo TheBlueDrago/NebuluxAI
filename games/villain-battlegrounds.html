@@ -149,11 +149,14 @@ const CHARS = {
     moves: [["Normal Punches", "👊", 4, "barrage"], ["Shove", "🖐️", 5, "shove"], ["Uppercut", "⬆️", 7, "uppercut"], ["Jump Slam", "💥", 9, "slam"]],
     supers: [["Serious Punch", "beam"], ["Table Flip", "flip"], ["Omni Punch", "omni"]] },
   sorcerer: { name: "Sorcerer", color: "#7c4dff", look: { shirt: 0x1a237e, pants: 0x1a237e, skin: 0xf5c99a, hair: 0xffffff, blindfold: true }, desc: "Cursed energy: pull, blast and trap. G: Awaken (all moves stronger).",
-    moves: [["Cursed Strike", "🟣", 4, "dashhit"], ["Blue Pull", "🔵", 6, "pull"], ["Red Blast", "🔴", 7, "blast"], ["Void Trap", "🌀", 10, "trap"]], awaken: "Purple" },
+    moves: [["Cursed Strike", "🟣", 4, "dashhit"], ["Blue Pull", "🔵", 6, "pull"], ["Red Blast", "🔴", 7, "blast"], ["Void Trap", "🌀", 10, "trap"]], awaken: "Purple",
+    awakeMoves: [["Violet Hollow", "💜", 7, "violet"], ["Infinite Wall", "🛡️", 8, "wall"], ["Endless Domain", "🌌", 12, "domain"], ["Black Flash", "⚡", 5, "blackflash"]] },
   ninja: { name: "Ninja", color: "#26a69a", look: { shirt: 0x263238, pants: 0x263238, skin: 0xf5c99a, mask: 0x263238, band: 0xd32f2f }, desc: "Fast: shurikens, blinks and blade rain. G: Awaken.",
-    moves: [["Shuriken", "✴️", 3, "shuriken"], ["Shadow Step", "💨", 5, "blink"], ["Kunai Rain", "🗡️", 8, "rain"], ["Smoke Bomb", "🌫️", 9, "smoke"]], awaken: "Shadow" },
+    moves: [["Shuriken", "✴️", 3, "shuriken"], ["Shadow Step", "💨", 5, "blink"], ["Kunai Rain", "🗡️", 8, "rain"], ["Smoke Bomb", "🌫️", 9, "smoke"]], awaken: "Shadow",
+    awakeMoves: [["Shadow Clones", "👥", 7, "clones"], ["Fire Dragon", "🐉", 8, "firebreath"], ["Thousand Blades", "🗡️", 6, "blades"], ["Phantom Strike", "👻", 5, "phantom"]] },
   cyborg: { name: "Cyborg", color: "#ff7043", look: { shirt: 0x37474f, pants: 0x212121, skin: 0xffcc80, arms: 0x90a4ae, visor: 0xff5722 }, desc: "Fire and rockets. G: Awaken.",
-    moves: [["Flamethrower", "🔥", 5, "flame"], ["Machine Blows", "🤖", 6, "barrage"], ["Rocket Kick", "🚀", 7, "rocket"], ["Incinerate", "☄️", 10, "incinerate"]], awaken: "Overdrive" },
+    moves: [["Flamethrower", "🔥", 5, "flame"], ["Machine Blows", "🤖", 6, "barrage"], ["Rocket Kick", "🚀", 7, "rocket"], ["Incinerate", "☄️", 10, "incinerate"]], awaken: "Overdrive",
+    awakeMoves: [["Overdrive Cannon", "💠", 7, "cannon"], ["Jet Barrage", "🤖", 6, "barrage"], ["Nuke Punch", "☢️", 9, "nuke"], ["Missile Swarm", "🚀", 8, "missiles"]] },
 };
 
 function makeBody(look) {
@@ -284,9 +287,12 @@ function m1(f) {
   setTimeout(() => { for (const t of near(f, 4.2, 0.3)) hurt(t, last ? 9 : 5, f, last ? { kb: 22, up: 9, stun: 0.6 } : { stun: 0.4, kb: 2 }); }, 90);
   f.vel.addScaledVector(fwd(f), 4);
 }
+const movesOf = (f) => (f.awake > 0 && f.ch.awakeMoves ? f.ch.awakeMoves : f.ch.moves);
+// a straight beam: hits everyone in a line in front
+function beamHit(f, len, width, dmg, o) { const dir = fwd(f); for (const t of fighters) if (t !== f && !t.dead) { const rel = t.pos.clone().sub(f.pos).setY(0); const along = rel.dot(dir); if (along > 0 && along < len && rel.clone().addScaledVector(dir, -along).length() < width) hurt(t, dmg, f, o); } }
 function useMove(f, i) {
   if (f.dead || f.stun > 0 || f.cds[i] > 0) return;
-  const [name, , cd, kind] = f.ch.moves[i];
+  const [name, , cd, kind] = movesOf(f)[i];
   f.cds[i] = cd * (f.awake > 0 ? 0.5 : 1); f.swing = 0.001; f.block = false;
   const dir = fwd(f), c = chest(f), col = new THREE.Color(f.ch.color).getHex(), aw = f.awake > 0;
   if (f === me) show(name, 0.8);
@@ -305,6 +311,18 @@ function useMove(f, i) {
     case "smoke": sphereFx(f.pos.clone().setY(2), 0x9e9e9e, 9, 1.4); f.iframes = 1.2; for (const t of near(f, 9, null)) hurt(t, aw ? 9 : 6, f, { stun: 1.2 }); break;
     case "flame": { let n = 0; const iv = setInterval(() => { if (f.dead) return clearInterval(iv); const d = fwd(f); for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshBasicMaterial({ color: pick([0xff5722, 0xffab00, 0xffeb3b]) })); m.position.copy(chest(f)).addScaledVector(d, 1.5); const v = d.clone().multiplyScalar(26).add(V(rnd(-3, 3), rnd(-1, 2), rnd(-3, 3))); addFx(m, 0.4, (kk, dt) => { m.position.addScaledVector(v, dt); m.scale.setScalar(1 + kk * 2); }); } for (const t of near(f, 10, 0.6)) hurt(t, aw ? 3 : 2, f, { stun: 0.25, color: "#ffab40" }); if (++n >= 14) clearInterval(iv); }, 80); break; }
     case "rocket": f.vel.addScaledVector(dir, 60); f.vel.y = 8; f.dashHit = { dmg: aw ? 18 : 12, col: 0xff7043, t: 0.35, hit: new Set(), kb: 35 }; burst(f.pos.clone().setY(1), 0xff7043, 12, 8); SFX.heavy(); break;
+    // ---- awakened moves ----
+    case "violet": { slowT = 0.35; if (f === me || f.pos.distanceTo(me.pos) < 60) bigText("VIOLET HOLLOW!", 1000); const red = c.clone().addScaledVector(dir, 3).add(V(2, 1, 0)), blue = c.clone().addScaledVector(dir, 3).add(V(-2, 1, 0)); sphereFx(red, 0xff1744, 2, 0.6); sphereFx(blue, 0x2979ff, 2, 0.6); setTimeout(() => { sphereFx(c.clone().addScaledVector(fwd(f), 4), 0xaa00ff, 6, 0.6); beamFx(chest(f), fwd(f), 70, 0xd500f9, 5, 1.0); beamFx(chest(f), fwd(f), 70, 0xffffff, 2, 0.8); beamHit(f, 70, 7, 45, { kb: 70, up: 22, unblockable: true, color: "#ea80fc" }); shake = Math.max(shake, 0.6); SFX.ult(); }, 550); break; }
+    case "wall": f.iframes = 2.5; sphereFx(chest(f), 0x82b1ff, 4, 2.5); for (const t of near(f, 8, null)) hurt(t, 6, f, { kb: 35, up: 6 }); tone(700, 0.5, "sine", 0.05, 900); break;
+    case "domain": { if (f === me || f.pos.distanceTo(me.pos) < 60) bigText("ENDLESS DOMAIN", 1300); const dm = new THREE.Mesh(new THREE.SphereGeometry(24, 28, 18), new THREE.MeshBasicMaterial({ color: 0x0d0221, transparent: true, opacity: 0.55, side: THREE.BackSide, depthWrite: false })); dm.position.copy(f.pos); addFx(dm, 3, (k) => { dm.material.opacity = 0.55 * (k < 0.85 ? 1 : (1 - k) / 0.15); }); for (const t of fighters) if (t !== f && !t.dead && t.pos.distanceTo(f.pos) < 24) hurt(t, 20, f, { stun: 3, unblockable: true, color: "#b388ff" }); break; }
+    case "blackflash": f.vel.addScaledVector(dir, 55); setTimeout(() => { const t = near(f, 5, 0.2)[0]; if (t) { burst(chest(t), 0x000000, 14, 10); burst(chest(t), 0xff1744, 10, 12); hurt(t, 32, f, { kb: 55, up: 16, color: "#ff5252" }); if (f === me) bigText("BLACK FLASH!", 700); shake = Math.max(shake, 0.4); SFX.heavy(); } }, 150); break;
+    case "clones": for (let k = 0; k < 3; k++) { const a = (k / 3) * Math.PI * 2, cl = makeBody(f.ch.look); cl.g.position.copy(f.pos).add(V(Math.cos(a) * 4, 0, Math.sin(a) * 4)); cl.g.traverse((m) => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.55; } }); addFx(cl.g, 2.5, (kk, dt) => { const tg = near(f, 30, null)[0]; if (tg) { cl.g.position.lerp(tg.pos, dt * 3); if (cl.g.position.distanceTo(tg.pos) < 3 && Math.random() < 0.08) hurt(tg, 5, f, { stun: 0.4 }); } }); } break;
+    case "firebreath": { let n = 0; const iv = setInterval(() => { if (f.dead) return clearInterval(iv); for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: pick([0xff1744, 0xff9100, 0xffea00]) })); m.position.copy(chest(f)).addScaledVector(fwd(f), 2); const v = fwd(f).multiplyScalar(34).add(V(rnd(-5, 5), rnd(-2, 3), rnd(-5, 5))); addFx(m, 0.5, (kk, dt) => { m.position.addScaledVector(v, dt); m.scale.setScalar(1 + kk * 3); }); } for (const t of near(f, 16, 0.55)) hurt(t, 4, f, { stun: 0.3, color: "#ffab40" }); if (++n >= 16) clearInterval(iv); }, 70); break; }
+    case "blades": for (let k = 0; k < 24; k++) shot(f, V(Math.sin(k / 24 * Math.PI * 2), 0, Math.cos(k / 24 * Math.PI * 2)), { color: 0xb0bec5, size: 0.4, speed: 60, dmg: 6, kb: 8 }); SFX.whoosh(); break;
+    case "phantom": { const ts = near(f, 35, null).slice(0, 4); ts.forEach((t, k) => setTimeout(() => { if (t.dead || f.dead) return; ring(f.pos, 0x26a69a, 3); f.pos.copy(t.pos.clone().add(V(rnd(-2, 2), 0, rnd(-2, 2)))); hurt(t, 14, f, { kb: 20, up: 10, unblockable: true }); burst(chest(t), 0x26a69a, 10, 10); }, k * 180)); break; }
+    case "cannon": slowT = 0.3; setTimeout(() => { beamFx(chest(f), fwd(f), 75, 0x00e5ff, 3.5, 0.8); beamFx(chest(f), fwd(f), 75, 0xffffff, 1.4, 0.6); beamHit(f, 75, 5, 40, { kb: 60, up: 18, unblockable: true, color: "#84ffff" }); shake = Math.max(shake, 0.5); SFX.ult(); }, 400); break;
+    case "nuke": f.vel.addScaledVector(dir, 40); setTimeout(() => { const at = f.pos.clone().addScaledVector(fwd(f), 3); sphereFx(at.clone().setY(2), 0xffea00, 16, 0.9); burst(at.clone().setY(2), 0xff6d00, 40, 18); ring(at, 0xffffff, 20, 0.7); for (const t of fighters) if (t !== f && !t.dead && t.pos.distanceTo(at) < 14) hurt(t, 38, f, { kb: 65, up: 25, unblockable: true }); shake = Math.max(shake, 0.7); SFX.heavy(); }, 250); break;
+    case "missiles": { const ts = near(f, 50, null); for (let k = 0; k < 8; k++) setTimeout(() => { const t = ts.length ? ts[k % ts.length] : null; const at = t ? t.pos.clone() : f.pos.clone().addScaledVector(fwd(f), 12).add(V(rnd(-6, 6), 0, rnd(-6, 6))); beamFx(at.clone().setY(20), V(0, -1, 0), 20, 0xff7043, 0.3, 0.3); setTimeout(() => { sphereFx(at.clone().setY(1), 0xff3d00, 5, 0.5); for (const x of fighters) if (x !== f && !x.dead && x.pos.distanceTo(at) < 5) hurt(x, 9, f, { kb: 18, up: 10 }); }, 250); }, k * 120); break; }
     case "incinerate": { const at = f.pos.clone().addScaledVector(dir, 8); ring(at, 0xff3d00, 1, 0.7); setTimeout(() => { sphereFx(at.clone().setY(1), 0xff3d00, 10, 0.7); burst(at.clone().setY(1), 0xff9100, 24, 14); for (const t of fighters) if (t !== f && !t.dead && t.pos.distanceTo(at) < 9) hurt(t, aw ? 24 : 16, f, { kb: 38, up: 14, color: "#ff9e80" }); SFX.heavy(); }, 500); break; }
   }
 }
@@ -392,12 +410,14 @@ if (TOUCH) {
 // ================= HUD: moves =================
 function drawMoves() {
   const ch = me.ch;
-  $("moves").innerHTML = ch.moves.map(([n, e], i) => `<div class="mv" data-i="${i}"><b>${i + 1}</b><em>${e}</em>${n}<div class="cd" style="display:none"></div></div>`).join("") + `<div class="mv ult" data-g="1"><b>G</b><em>⭐</em>${ch.supers ? "Choose super" : ch.awaken + " Awaken"}<div class="cd" style="display:none"></div></div>`;
+  $("moves").innerHTML = movesOf(me).map(([n, e], i) => `<div class="mv" data-i="${i}"><b>${i + 1}</b><em>${e}</em>${n}<div class="cd" style="display:none"></div></div>`).join("") + `<div class="mv ult" data-g="1"><b>G</b><em>⭐</em>${ch.supers ? "Choose super" : ch.awaken + " Awaken"}<div class="cd" style="display:none"></div></div>`;
   $("moves").querySelectorAll("[data-i]").forEach((el) => el.addEventListener("pointerdown", (e) => { e.preventDefault(); useMove(me, +el.dataset.i); }));
   $("moves").querySelector("[data-g]").addEventListener("pointerdown", (e) => { e.preventDefault(); trySuper(); });
 }
 function hud() {
   if (!me) return;
+  const set = me.awake > 0 && me.ch.awakeMoves ? "awake" : "normal";
+  if (set !== hud.set) { hud.set = set; drawMoves(); }
   $("who").textContent = `${ME} · ${me.ch.name}`;
   $("hp").firstChild.style.width = Math.max(0, me.hp / me.maxHp * 100) + "%"; $("hp").lastChild.textContent = `${Math.max(0, Math.ceil(me.hp))} / ${me.maxHp}`;
   $("ult").firstChild.style.width = me.ult + "%"; $("ult").classList.toggle("full", me.ult >= 100);
@@ -453,7 +473,7 @@ function botThink(f, dt) {
   const to = t.pos.clone().sub(f.pos).setY(0), d = to.length(); f.yaw = Math.atan2(to.x, to.z); f.run = d > 20;
   f.block = d < 6 && t.swing > 0 && Math.random() < 0.02 ? true : f.block && Math.random() < 0.97;
   if (f.ult >= 100 && d < 14) useSuper(f, Math.floor(rnd(0, 3)));
-  if (d < 14 && Math.random() < 0.025) { const i = Math.floor(rnd(0, 4)); if (f.cds[i] <= 0) useMove(f, i); }
+  if (d < (f.awake > 0 ? 30 : 14) && Math.random() < 0.025) { const i = Math.floor(rnd(0, 4)); if (f.cds[i] <= 0) useMove(f, i); }
   if (d < 4) { if (!f.block) m1(f); return V(); }
   if (d > 20 && Math.random() < 0.004) dash(f);
   return to.normalize();
@@ -525,7 +545,7 @@ function loop(now) {
 }
 
 // ================= start =================
-$("chars").innerHTML = Object.entries(CHARS).map(([id, c]) => `<button class="ch${id === chosen ? " on" : ""}" data-c="${id}"><div class="sw" style="background:${c.color}"></div><h3>${c.name}</h3><p>${c.desc}</p><ul>${c.moves.map(([n], i) => `<li>${i + 1}: ${n}</li>`).join("")}<li>G: ${c.supers ? c.supers.map((s) => s[0]).join(" / ") : c.awaken + " Awakening"}</li></ul></button>`).join("");
+$("chars").innerHTML = Object.entries(CHARS).map(([id, c]) => `<button class="ch${id === chosen ? " on" : ""}" data-c="${id}"><div class="sw" style="background:${c.color}"></div><h3>${c.name}</h3><p>${c.desc}</p><ul>${c.moves.map(([n], i) => `<li>${i + 1}: ${n}</li>`).join("")}<li>G: ${c.supers ? c.supers.map((s) => s[0]).join(" / ") : c.awaken + " Awakening: " + c.awakeMoves.map((m) => m[0]).join(", ")}</li></ul></button>`).join("");
 $("chars").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => { chosen = b.dataset.c; $("chars").querySelectorAll(".ch").forEach((x) => x.classList.toggle("on", x === b)); }));
 $("play").onclick = () => {
   audio(); $("start").style.display = "none"; started = true;
