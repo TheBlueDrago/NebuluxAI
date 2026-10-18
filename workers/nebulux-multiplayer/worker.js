@@ -260,6 +260,13 @@ export class Arena {
       }
       return;
     }
+    // Fruit Seas crews: a message to a crewmate by name, in either sea (both seas live in this room).
+    if (m.t === "crew" && a.match && a.match.startsWith("fruit:")) {
+      const toName = String(m.toName || "");
+      const out = JSON.stringify({ ...m, t: "crew", fromName: a.name, from: a.id });
+      for (const s of this.sockets()) if (s.ws !== ws && s.a.match && s.a.match.startsWith("fruit:") && s.a.name === toName) try { s.ws.send(out); } catch {}
+      return;
+    }
     if (!a.match || !RELAY.has(m.t)) return;
     m.from = a.id;
     const out = JSON.stringify(m);

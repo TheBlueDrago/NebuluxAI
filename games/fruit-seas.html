@@ -835,11 +835,48 @@ function addAlly() {
   const label = makeLabel(`Crewmate ${allies.length + 1}`, "#7fd1ff", 768); label.scale.set(6, 1, 1); scene.add(label);
   allies.push({ b, label, pos: P.pos.clone(), t: rnd(0, 9), atkCd: 1, swing: 0, target: null });
 }
+// ---- real-player crews: invite someone in your sea; once they accept, the money and XP either
+// of you earns from enemies and quests goes to both of you, even in different seas. Up to 3. ----
+const crewMates = () => (S.crewMates = (S.crewMates || []).slice(0, 3));
+let crewPending = { xp: 0, cash: 0 };
+function crewSend(name, m) { if (typeof NET !== "undefined" && NET.ok) netSend({ t: "crew", toName: name, ...m }); }
+function shareGain(xp, cash) { if (!crewMates().length) return; crewPending.xp += xp; crewPending.cash += cash; }
+setInterval(() => { if (!crewPending.xp && !crewPending.cash) return; for (const n of crewMates()) crewSend(n, { k: "share", xp: Math.round(crewPending.xp), cash: Math.round(crewPending.cash) }); crewPending = { xp: 0, cash: 0 }; }, 2000);
+let crewHtml = "";
+function crewMessage(m) {
+  const who = String(m.fromName || "").slice(0, 24); if (!who) return;
+  if (m.k === "invite") {
+    if (crewMates().includes(who)) return;
+    if (crewMates().length >= 3) return crewSend(who, { k: "full" });
+    if (confirm(`${who} wants you in their crew!\nYou'll both get the money and XP either of you earns. Join?`)) { S.crewMates = [...crewMates(), who]; save(); crewSend(who, { k: "accept" }); show(`You joined ${who}'s crew!`, 3); }
+    else crewSend(who, { k: "no" });
+  }
+  if (m.k === "accept") { if (!crewMates().includes(who)) S.crewMates = [...crewMates(), who]; save(); SFX.win(); show(`${who} joined your crew!`, 3); }
+  if (m.k === "no") show(`${who} said no to joining your crew`, 2.5);
+  if (m.k === "full") show(`${who}'s crew is full`, 2.5);
+  if (m.k === "leave") { S.crewMates = crewMates().filter((n) => n !== who); save(); show(`${who} left your crew`, 2.5); }
+  if (m.k === "share" && crewMates().includes(who)) {
+    const xp = Math.max(0, Math.min(500000, +m.xp || 0)), cash = Math.max(0, Math.min(5000000, +m.cash || 0));
+    if (xp) gainXp(xp); S.beli += cash; save();
+    floatText(P.pos, `+${xp} XP (crew)`, "#7fd1ff"); if (cash) floatText(P.pos, `+${money(cash)} (crew)`, "#7dff7d");
+  }
+}
 function openCrew() {
   const full = S.crew >= 2;
+  const others = typeof remotes !== "undefined" ? [...remotes.values()].map((r) => r.name).filter((n) => n && !crewMates().includes(n)) : [];
+  const realHtml = `<h3 style="margin:14px 0 6px">Recruit real players</h3>
+    <p style="font-size:12px;opacity:.85;margin:0 0 6px">Players in your sea. If they accept, you both get the money and XP either of you earns, even in different seas.</p>
+    ${others.length ? others.map((n) => `<div class="row"><div class="grow"><b>${n.replace(/</g, "")}</b></div><button class="btn blue" data-inv="${n.replace(/"/g, "")}">Invite</button></div>`).join("") : '<p style="font-size:13px;opacity:.7">Nobody else is in this sea right now.</p>'}
+    ${crewMates().length ? `<h3 style="margin:14px 0 6px">Your crew (${crewMates().length}/3)</h3>` + crewMates().map((n) => `<div class="row"><div class="grow"><b>${n.replace(/</g, "")}</b></div><button class="btn gray" data-leave="${n.replace(/"/g, "")}">Remove</button></div>`).join("") : ""}`;
+  setTimeout(() => {
+    $("mb").querySelectorAll("[data-inv]").forEach((b) => (b.onclick = () => { crewSend(b.dataset.inv, { k: "invite" }); b.disabled = true; b.textContent = "Invited"; }));
+    $("mb").querySelectorAll("[data-leave]").forEach((b) => (b.onclick = () => { const n = b.dataset.leave; crewSend(n, { k: "leave" }); S.crewMates = crewMates().filter((x) => x !== n); save(); openCrew(); }));
+  }, 0);
+  crewHtml = realHtml;
   openModal("Crew Recruiter", `<p>Crewmates follow you everywhere and fight the enemies near you${pvpOn() ? " (and other pirates, while PvP is on)" : ""}.</p>
     <p>Your crew: <b>${S.crew} / 2</b></p>
-    <div style="text-align:center;margin-top:10px">${full ? "<p>Your crew is full!</p>" : `<button class="btn blue" id="hire" ${S.beli < crewCost() ? "disabled" : ""}>Hire a crewmate for ${money(crewCost())}</button>`}</div>`);
+    <div style="text-align:center;margin-top:10px">${full ? "<p>Your bot crew is full!</p>" : `<button class="btn blue" id="hire" ${S.beli < crewCost() ? "disabled" : ""}>Hire a crewmate for ${money(crewCost())}</button>`}</div>`);
+  $("mb").insertAdjacentHTML("beforeend", crewHtml);
   const h = $("hire"); if (h) h.onclick = () => { if (S.beli < crewCost() || S.crew >= 2) return; S.beli -= crewCost(); S.crew++; save(); addAlly(); SFX.win(); show("A crewmate joined you!", 2); openCrew(); };
 }
 function updateAllies(dt) {
@@ -938,11 +975,11 @@ function killEnemy(e) {
   if (e.rival) { const bounty = e.lvl * 400; S.beli += bounty; floatText(e.pos, `Bounty +${money(bounty)}`, "#ffb74d"); setTimeout(() => spawnRival(e.isl.sea), 45000); }
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
-  gainXp(xp); S.beli += cash; floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
+  gainXp(xp); S.beli += cash; if (!e.rival) shareGain(xp, cash); floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
   const q = S.quest;
   if (q && !e.boss && e.name === q.mob) {
     q.have++;
-    if (q.have >= q.need) { SFX.win(); S.quest = null; const lv = S.lvl; gainXp(q.xp); S.beli += q.cash; show(`Quest complete!
+    if (q.have >= q.need) { SFX.win(); S.quest = null; const lv = S.lvl; gainXp(q.xp); S.beli += q.cash; shareGain(q.xp, q.cash); show(`Quest complete!
 +${q.xp.toLocaleString()} XP  +${money(q.cash)}${S.lvl > lv ? `
 Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
   }
@@ -1389,6 +1426,7 @@ function netConnect() {
       if (P.hp <= 0) netSend({ t: "dead", to: m.from });
       return;
     }
+    if (m.t === "crew") { crewMessage(m); return; }
     if (m.t === "fx") {
       if (m.k === "kill") removeShared(m);
       if (m.k === "drop") { const who = remotes.get(m.from); placeFruit(String(m.n), +m.x, +m.z, String(m.id), `${who ? who.name : "Someone"} dropped a ${m.n} Fruit`); }
