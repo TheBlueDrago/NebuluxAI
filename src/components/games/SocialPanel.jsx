@@ -22,6 +22,7 @@ const DESIGNS = [["plain", "Plain"], ["stripes", "Stripes"], ["star", "Star"], [
 const LEGS = [["pants", "Pants"], ["shorts", "Shorts"]];
 const BACKS = [["none", "Nothing"], ["backpack", "Backpack"], ["cape", "Cape"], ["jetpack", "Jetpack"], ["wings", "Wings"]];
 const TRAILS = [["none", "No trail"], ["bubbles", "Bubble buddies"], ["stars", "Star buddies"], ["rainbow", "Rainbow buddies"]];
+const WALKS = [["normal", "Normal walk"], ["robot", "Robot"], ["zombie", "Zombie"], ["ninja", "Ninja run"], ["levitate", "Levitate"]];
 const FACES = [
   ["smile", "🙂"],
   ["grin", "😁"],
@@ -115,7 +116,7 @@ export function AvatarFigure({ a, size = 1 }) {
   );
 }
 
-const DEFAULT_LOOK = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none" };
+const DEFAULT_LOOK = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none", walk: "normal" };
 // The Stardust shop (prices from the server): { stardust, owned, prices, dailyReady, dailyAmount, playLeft }
 function useShop() {
   const [shop, setShop] = useState(null);
@@ -147,7 +148,7 @@ function AvatarTab({ goShop }) {
     setA((x) => ({ ...x, [k]: v }));
     setSaved("");
   };
-  const needs = ["hat:" + a.hat, "face:" + a.face, "design:" + (a.design || "plain"), "back:" + (a.back || "none"), "trail:" + (a.trail || "none")].filter((i) => locked(shop, i));
+  const needs = ["hat:" + a.hat, "face:" + a.face, "design:" + (a.design || "plain"), "back:" + (a.back || "none"), "trail:" + (a.trail || "none"), "walk:" + (a.walk || "normal")].filter((i) => locked(shop, i));
   const save = async () => {
     if (needs.length) return;
     setSaved("saving");
@@ -188,7 +189,7 @@ function AvatarTab({ goShop }) {
           </div>
         </div>
         {a.hat !== "none" && <Row k="hatColor" label="Hat colour" />}
-        {[["design", "Shirt design", DESIGNS], ["legs", "Legs", LEGS], ["back", "Back bling", BACKS], ["trail", "Trail", TRAILS]].map(([k, label, list]) => (
+        {[["design", "Shirt design", DESIGNS], ["legs", "Legs", LEGS], ["back", "Back bling", BACKS], ["trail", "Trail", TRAILS], ["walk", "Walking style", WALKS]].map(([k, label, list]) => (
           <div key={k}>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -226,7 +227,7 @@ function AvatarTab({ goShop }) {
   );
 }
 
-const ITEM_NAMES = Object.fromEntries([...HATS.map(([id, l]) => ["hat:" + id, l]), ...DESIGNS.map(([id, l]) => ["design:" + id, l + " shirt"]), ...BACKS.map(([id, l]) => ["back:" + id, l]), ...TRAILS.map(([id, l]) => ["trail:" + id, l]), ...FACES.map(([id, e]) => ["face:" + id, `${e} ${id.charAt(0).toUpperCase() + id.slice(1)} face`])]);
+const ITEM_NAMES = Object.fromEntries([...HATS.map(([id, l]) => ["hat:" + id, l]), ...DESIGNS.map(([id, l]) => ["design:" + id, l + " shirt"]), ...BACKS.map(([id, l]) => ["back:" + id, l]), ...TRAILS.map(([id, l]) => ["trail:" + id, l]), ...WALKS.map(([id, l]) => ["walk:" + id, l + " (walking style)"]), ...FACES.map(([id, e]) => ["face:" + id, `${e} ${id.charAt(0).toUpperCase() + id.slice(1)} face`])]);
 function ShopTab() {
   const [shop, load] = useShop();
   const [busy, setBusy] = useState("");

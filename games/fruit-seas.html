@@ -373,8 +373,32 @@ function makeBody(o = {}) {
   if (o.scale) g.scale.setScalar(o.scale);
   return { g, inner, legs, arms, sword };
 }
-function animBody(b, speed, t, swing, air) {
-  const s = Math.sin(t * 11) * Math.min(speed / 10, 1) * 0.9;
+function animBody(b, speed, t, swing, air, walk) {
+  // Walking styles (from the avatar, bought with Stardust): levitate, ninja, zombie, robot.
+  b.inner.position.y = 0; b.inner.rotation.x = 0; b.arms[0].rotation.z = 0;
+  if (walk === "levitate" && !swing) {
+    b.inner.position.y = 0.7 + Math.sin(t * 2.2) * 0.25;
+    b.legs[0].rotation.x = 0.15; b.legs[1].rotation.x = 0.05;
+    b.arms[0].rotation.x = -0.25; b.arms[1].rotation.x = -0.25; b.arms[0].rotation.z = -0.35; b.arms[1].rotation.z = 0.35;
+    return;
+  }
+  const mv = Math.min(speed / 10, 1);
+  if (walk === "zombie" && !swing) {
+    const s = Math.sin(t * 7) * mv * 0.5;
+    b.legs[0].rotation.x = s; b.legs[1].rotation.x = -s; b.arms[0].rotation.x = -1.5 + s * 0.2; b.arms[1].rotation.x = -1.5 - s * 0.2; b.arms[1].rotation.z = 0;
+    return;
+  }
+  if (walk === "robot" && !swing) {
+    const s = (Math.sin(t * 9) > 0 ? 0.45 : -0.45) * mv;
+    b.legs[0].rotation.x = s; b.legs[1].rotation.x = -s; b.arms[0].rotation.x = -s; b.arms[1].rotation.x = s; b.arms[1].rotation.z = 0;
+    return;
+  }
+  if (walk === "ninja" && !swing && !air && mv > 0.2) {
+    const s = Math.sin(t * 14) * mv * 1.1;
+    b.inner.rotation.x = 0.35 * mv; b.legs[0].rotation.x = s; b.legs[1].rotation.x = -s; b.arms[0].rotation.x = 1.2; b.arms[1].rotation.x = 1.2; b.arms[1].rotation.z = 0;
+    return;
+  }
+  const s = Math.sin(t * 11) * mv * 0.9;
   b.legs[0].rotation.x = air ? -0.5 : s; b.legs[1].rotation.x = air ? 0.3 : -s;
   b.arms[0].rotation.x = air ? -0.6 : -s;
   b.arms[1].rotation.x = swing > 0 ? -Math.PI / 2 - Math.sin(swing * Math.PI) * 0.8 : air ? -0.6 : s;
@@ -1184,7 +1208,7 @@ function netConnect() {
       if (m.swing && !e.swing) e.swing = 0.001;
       // their avatar, once: rebuild their body in their colours
       if (m.av && !e.avSet) {
-        e.avSet = true; scene.remove(e.b.g);
+        e.avSet = true; e.walk = String(m.av.walk || ""); scene.remove(e.b.g);
         e.b = makeBody({ shirt: hex(m.av.shirt, 0x1e88e5), pants: hex(m.av.pants, 0x263238), skin: hex(m.av.skin, 0xf5c99a), hat: m.av.hat === "none" ? null : String(m.av.hat || ""), hatColor: hex(m.av.hatColor, undefined), face: String(m.av.face || ""), design: String(m.av.design || ""), legs: String(m.av.legs || ""), back: String(m.av.back || "") });
         e.b.sword.visible = true; scene.add(e.b.g);
       }
@@ -1227,7 +1251,7 @@ function updateRemote(e, dt) {
   e.pos.lerp(e.want, 1 - Math.exp(-12 * dt));
   e.t += dt; e.b.g.position.copy(e.pos); e.b.g.rotation.y = e.yaw;
   if (e.swing > 0) { e.swing += dt * 4; if (e.swing >= 1) e.swing = 0; }
-  animBody(e.b, old.distanceTo(e.pos) / Math.max(dt, 0.001), e.t, e.swing, false);
+  animBody(e.b, old.distanceTo(e.pos) / Math.max(dt, 0.001), e.t, e.swing, false, e.walk);
   const both = pvpOn() && e.pvp, text = `${e.name} [Lv. ${e.lvl}]${both ? " ⚔" : ""}`;
   if (text !== e.labelText) { scene.remove(e.label); e.label = makeLabel(text, both ? "#ff6b6b" : "#8fd3ff", 768); e.label.scale.set(7, 1.1, 1); scene.add(e.label); e.labelText = text; }
   const vis = e.pos.distanceTo(P.pos) < 90 && e.b.g.visible;
@@ -1340,7 +1364,7 @@ function tick() {
     const by = P.faceYaw; let dy = by - P.body.g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.body.g.rotation.y += dy * Math.min(1, 16 * dt);
     P.body.g.position.copy(P.pos); if (inWater()) P.body.g.position.y -= 1.8; if (P.boat) P.body.g.position.y += 0.2; nameTag.position.copy(P.body.g.position).setY(P.body.g.position.y + 5.6);
     if (P.swing > 0) { P.swing += dt * 4; if (P.swing >= 1) P.swing = 0; }
-    animBody(P.body, P.boat ? 0 : Math.hypot(P.vel.x, P.vel.z), T, P.swing, !P.onGround && !inWater());
+    animBody(P.body, P.boat ? 0 : Math.hypot(P.vel.x, P.vel.z), T, P.swing, !P.onGround && !inWater(), AV && AV.walk);
     P.body.inner.visible = P.hurtT <= 0 || Math.floor(T * 20) % 2 === 0;
     P.atkCd -= dt; P.dashCd -= dt; P.hurtT -= dt;
     for (const k in P.cds) P.cds[k] -= dt;

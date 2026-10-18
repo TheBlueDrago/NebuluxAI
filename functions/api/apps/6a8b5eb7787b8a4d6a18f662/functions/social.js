@@ -11,13 +11,14 @@ import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 
-export const DEFAULT_AVATAR = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none" };
+export const DEFAULT_AVATAR = { skin: "#f5c99a", shirt: "#d62828", pants: "#2a4a8a", hat: "straw", hatColor: "#f2c94c", face: "smile", design: "plain", legs: "pants", back: "none", trail: "none", walk: "normal" };
 const HATS = ["none", "straw", "tricorn", "bandana", "helmet", "cap", "crown", "tophat", "viking", "wizard", "headphones", "halo"];
 const FACES = ["smile", "grin", "cool", "angry", "wink"];
 const DESIGNS = ["plain", "stripes", "star", "flame", "galaxy"]; // shirt designs
 const LEGS = ["pants", "shorts"];
 const BACKS = ["none", "backpack", "cape", "wings", "jetpack"]; // back bling
-const TRAILS = ["none", "rainbow", "stars", "bubbles"]; // little buddies that follow you (just for looks)
+const TRAILS = ["none", "rainbow", "stars", "bubbles"];
+const WALKS = ["normal", "robot", "zombie", "ninja", "levitate"]; // walking styles // little buddies that follow you (just for looks)
 // The avatar shop. Prices are in Stardust, a free currency earned by playing (never bought with
 // money). Items not listed here (the basics) are free. Prices live here, on the server.
 export const SHOP = {
@@ -25,6 +26,7 @@ export const SHOP = {
   "face:angry": 40, "face:wink": 60, "face:cool": 80,
   "design:stripes": 40, "design:star": 80, "design:flame": 150, "design:galaxy": 300,
   "back:backpack": 80, "back:cape": 150, "back:jetpack": 250, "back:wings": 400,
+  "walk:robot": 150, "walk:zombie": 150, "walk:ninja": 250, "walk:levitate": 450,
   "trail:bubbles": 120, "trail:stars": 250, "trail:rainbow": 500,
 };
 // Games that may spend a player's Stardust (always after the player confirms in the app):
@@ -44,6 +46,7 @@ export function cleanAvatar(a) {
   if (LEGS.includes(a.legs)) o.legs = a.legs;
   if (BACKS.includes(a.back)) o.back = a.back;
   if (TRAILS.includes(a.trail)) o.trail = a.trail;
+  if (WALKS.includes(a.walk)) o.walk = a.walk;
   return o;
 }
 // A short code to share instead of an email: the END of the account id (ids start with a
@@ -110,7 +113,7 @@ export async function onRequestPost({ request, env }) {
       if (!(await allow(`avatar:${me}`, 30, 3600))) return json({ error: TOO_MANY }, 429);
       const avatar = cleanAvatar(body.avatar);
       const w = await wallet(db, me);
-      if (!["hat:" + avatar.hat, "face:" + avatar.face, "design:" + avatar.design, "back:" + avatar.back, "trail:" + avatar.trail].every((i) => owns(w, i))) return json({ error: "Buy that item in the Shop first." }, 403);
+      if (!["hat:" + avatar.hat, "face:" + avatar.face, "design:" + avatar.design, "back:" + avatar.back, "trail:" + avatar.trail, "walk:" + avatar.walk].every((i) => owns(w, i))) return json({ error: "Buy that item in the Shop first." }, 403);
       await db.prepare("INSERT INTO avatars (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data").bind(me, JSON.stringify(avatar)).run();
       return json({ avatar });
     }

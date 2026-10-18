@@ -4,7 +4,7 @@ import SocialPanel from "@/components/games/SocialPanel";
 import FriendsRow from "@/components/games/FriendsRow";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Menu, Search, Plus, Shirt, Users, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
+  Menu, Search, Plus, Shirt, Users, ShoppingBag, Settings, Gamepad2, Flame, Sparkles, Ghost, Crosshair,
   Puzzle, Car, Trophy, Sword, Compass, Brain, Zap, Play, Home as HomeIcon, Loader2,
 } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
@@ -155,6 +155,12 @@ export default function GamesFront() {
   const [q, setQ] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [social, setSocial] = useState(null);
+  // Your Stardust, shown in the top bar (refreshed when the Avatar/Shop/Friends panel closes).
+  const [stardust, setStardust] = useState(null);
+  useEffect(() => {
+    if (!shell.currentUser || social) return;
+    base44.functions.invoke("social", { action: "shop" }).then((r) => setStardust(r?.data?.nebux ?? null)).catch(() => {});
+  }, [shell.currentUser, social]);
   // How many people are in each game right now (functions/.../social.js), shown on the tiles.
   const [nowPlaying, setNowPlaying] = useState({});
   useEffect(() => {
@@ -219,11 +225,11 @@ export default function GamesFront() {
   const showTop = cat === "home";
   const play = (name) => navigate(`/chat/game/${name}`);
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden relative">
+    <div className="games-home h-screen flex flex-col bg-[#232527] text-slate-100 overflow-hidden relative">
       {sidebarOpen && <Sidebar />}
 
       {/* Top bar */}
-      <header className="h-14 shrink-0 flex items-center gap-3 px-4 border-b border-white/10 bg-slate-950/90 backdrop-blur z-30">
+      <header className="h-14 shrink-0 flex items-center gap-3 px-4 border-b border-black/40 bg-[#191b1d] z-30">
         <button onClick={() => setSidebarOpen((o) => !o)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Menu" aria-label="Menu: chats and tools">
           <Menu className="w-5 h-5" />
         </button>
@@ -246,6 +252,11 @@ export default function GamesFront() {
             />
           </div>
         </div>
+        {shell.currentUser && stardust !== null && (
+          <button onClick={() => setSocial("shop")} title="Stardust: open the Shop" className="shrink-0 inline-flex items-center gap-1.5 px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold">
+            <span aria-hidden="true">✨</span> {stardust.toLocaleString()}
+          </button>
+        )}
         {shell.currentUser && (
           <>
             <button onClick={() => setSocial("avatar")} title="Your avatar" className="shrink-0 inline-flex items-center gap-1.5 px-2.5 h-9 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">
@@ -295,7 +306,21 @@ export default function GamesFront() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left rail */}
-        <nav className="w-16 sm:w-52 shrink-0 border-r border-white/10 bg-slate-950 overflow-y-auto sidebar-scroll py-2">
+        <nav className="w-16 sm:w-52 shrink-0 border-r border-black/40 bg-[#191b1d] overflow-y-auto sidebar-scroll py-2">
+          {shell.currentUser && (
+            <div className="pb-2 mb-2 border-b border-white/10">
+              {[
+                ["avatar", "Avatar", Shirt],
+                ["shop", "Shop", ShoppingBag],
+                ["friends", "Friends", Users],
+              ].map(([id, label, Icon]) => (
+                <button key={id} onClick={() => setSocial(id)} title={label} aria-label={label} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+                  <Icon className="w-5 h-5 shrink-0" />
+                  <span className="hidden sm:inline font-medium">{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {RAILS.map((r) => {
             const Icon = r.icon;
             const active = cat === r.id;
