@@ -608,7 +608,14 @@ ISLANDS.forEach((i) => { spawnChest(i); spawnChest(i); });
 
 // ================= enemies =================
 const enemies = [];
+const deadSlots = new Map(); // slot -> time (ms) it comes back
+function respawnLater(e, ms) {
+  const sl = e.slot && e.slot.split(":")[1];
+  if (e.slot) deadSlots.set(e.slot, Date.now() + ms);
+  setTimeout(() => { if (e.slot && enemies.some((x) => x.slot === e.slot)) return; spawnEnemy(e.isl, e.boss, sl); }, ms);
+}
 function spawnEnemy(isl, boss, slot) {
+  if (slot != null) deadSlots.delete(ISLANDS.indexOf(isl) + ":" + slot);
   const lvl = boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4));
   let x, z;
   for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? (isl.spawn ? rnd(15, isl.r - 4) : rnd(0, 6)) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
@@ -805,7 +812,7 @@ function beastHit(x, dmg) {
   if (x.hp > 0) return;
   scene.remove(x.b.g, x.bar, x.label); enemies.splice(enemies.indexOf(x), 1);
   if (x.rival) setTimeout(() => spawnRival(x.isl.sea), 45000);
-  else if (!x.event) setTimeout(() => spawnEnemy(x.isl, x.boss, x.slot && x.slot.split(":")[1]), x.boss ? 90000 : 12000);
+  else if (!x.event) respawnLater(x, x.boss ? 90000 : 12000);
 }
 function removeBeast(e, msg) {
   scene.remove(e.b.g, e.bar, e.label); const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1);
@@ -1019,16 +1026,32 @@ function sharedHit(m) {
   if (hp < e.hp) { floatText(e.pos, String(e.hp - hp), "#8fd3ff"); e.hp = hp; }
   if (!e.beast) { const at = V(+m.x || e.pos.x, e.pos.y, +m.z || e.pos.z); if (at.distanceTo(e.pos) > 2) e.pos.lerp(at, at.distanceTo(e.pos) > 12 ? 1 : 0.5); e.fightId = m.from; e.fightT = T; }
 }
+function sendWorld(to) {
+  if (!netOn()) return;
+  const now = Date.now();
+  netSend({ t: "fx", k: "world", to,
+    dead: [...deadSlots].map(([sl, at]) => [sl, Math.max(1000, at - now)]),
+    hurt: enemies.filter((e) => e.slot && e.hp < e.maxHp).map((e) => [e.slot, +(e.hp / e.maxHp).toFixed(3), Math.round(e.pos.x), Math.round(e.pos.z)]),
+    beast: beast ? { x: Math.round(beast.pos.x), z: Math.round(beast.pos.z), f: +(beast.hp / beast.maxHp).toFixed(3) } : null });
+}
+function gotWorld(m) {
+  for (const [sl, ms] of Array.isArray(m.dead) ? m.dead.slice(0, 300) : []) {
+    const e = enemies.find((x) => x.slot === sl); if (!e) continue;
+    scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); respawnLater(e, Math.min(120000, +ms || 12000));
+  }
+  for (const [sl, f, x, z] of Array.isArray(m.hurt) ? m.hurt.slice(0, 300) : []) sharedHit({ s: sl, f, x, z, from: m.from });
+  if (m.beast && !beast) { spawnBeast(V(+m.beast.x || 0, 0, +m.beast.z || 0), "A Sea Beast is out here!", true); if (beast) beast.hp = Math.max(1, Math.round(beast.maxHp * (+m.beast.f || 1))); }
+}
 function removeShared(m) {
   if (m.s === "beast") { if (beast) { cubes(beast.pos.clone().setY(8), 0x40c4ff, 20); removeBeast(beast, "The Sea Beast was defeated!"); } return; }
-  if (m.s) { const e = enemies.find((x) => x.slot === m.s); if (e) { cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 10); scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); setTimeout(() => spawnEnemy(e.isl, e.boss, e.slot.split(":")[1]), e.boss ? 90000 : 12000); } return; }
+  if (m.s) { const e = enemies.find((x) => x.slot === m.s); if (e) { cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 10); scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); respawnLater(e, e.boss ? 90000 : 12000); } return; }
   const isl = ISLANDS[m.i]; if (!isl) return;
   let best = null, bd = 25;
   for (const e of enemies) if (!e.remote && !e.rival && !e.beast && e.isl === isl && e.name === m.n) { const d = Math.hypot(e.pos.x - m.x, e.pos.z - m.z); if (d < bd) { bd = d; best = e; } }
   if (!best) return;
   cubes(best.pos.clone().setY(best.pos.y + 2), 0xffd23a, 10);
   scene.remove(best.b.g, best.bar, best.label); enemies.splice(enemies.indexOf(best), 1);
-  setTimeout(() => spawnEnemy(best.isl, best.boss, best.slot && best.slot.split(":")[1]), best.boss ? 90000 : 12000);
+  respawnLater(best, best.boss ? 90000 : 12000);
 }
 function killEnemy(e) {
   shareKill(e);
@@ -1055,7 +1078,7 @@ Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
     if (Math.random() < (bigBoss ? 0.35 : 0.1)) { const f = pick(FRUIT_NAMES); S.inv.push(f); show(`${e.name} dropped a ${f} Fruit!\nOpen Fruits to eat it.`, 4); }
   }
   enemies.splice(enemies.indexOf(e), 1); save();
-  if (!e.event) setTimeout(() => spawnEnemy(e.isl, e.boss, e.slot && e.slot.split(":")[1]), e.boss ? 90000 : 12000);
+  if (!e.event) respawnLater(e, e.boss ? 90000 : 12000);
 }
 function gainXp(x) {
   if (S.lvl >= 100) return;
@@ -1504,7 +1527,7 @@ function netConnect() {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.t === "hello") { if ((m.games || []).includes("fruit-seas")) { NET.ok = true; NET.room = "fs" + S.sea; ws.send(JSON.stringify({ t: "join", q: NET.room, name: netName() })); } return; }
     if (m.t === "room") { NET.you = m.you; for (const pl of m.players || []) addRemote(pl.id, pl.name); if (remotes.size) show(`${remotes.size} other pirate${remotes.size === 1 ? " is" : "s are"} in this sea`, 2.5); return; }
-    if (m.t === "pjoin") { addRemote(m.id, m.name); show(`${m.name} sailed into this sea`, 2); return; }
+    if (m.t === "pjoin") { addRemote(m.id, m.name); setTimeout(() => sendWorld(m.id), 800); show(`${m.name} sailed into this sea`, 2); return; }
     if (m.t === "left") { dropRemote(m.from || m.id); return; }
     if (m.t === "state") {
       const e = remotes.get(m.from) || addRemote(m.from, m.name || "Pirate");
@@ -1532,6 +1555,7 @@ function netConnect() {
     if (m.t === "fx") {
       if (m.k === "kill") removeShared(m);
       if (m.k === "ehit") sharedHit(m);
+      if (m.k === "world") gotWorld(m);
       if (m.k === "beast" && !beast) { const who = remotes.get(m.from); spawnBeast(V(+m.x || 0, 0, +m.z || 0), `A SEA BEAST rose near ${who ? who.name : "another pirate"}!`, true); }
       if (m.k === "drop") { const who = remotes.get(m.from); placeFruit(String(m.n), +m.x, +m.z, String(m.id), `${who ? who.name : "Someone"} dropped a ${m.n} Fruit`); }
       if (m.k === "pick") { const f = wildFruits.find((w) => w.id === m.id); if (f) { scene.remove(f.g, f.label); wildFruits.splice(wildFruits.indexOf(f), 1); } }
@@ -1622,8 +1646,8 @@ const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz
 const clock = new THREE.Clock();
 let T = 0, lastIsl = null, uiT = 0;
 function tick() {
-  requestAnimationFrame(tick);
-  const dt = Math.min(clock.getDelta(), 0.05); T += dt;
+  if (document.hidden) setTimeout(tick, 100); else requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), document.hidden ? 1 : 0.05); T += dt;
   const sea = SEAS[S.sea];
   scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 160, 560); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
 
