@@ -558,7 +558,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, sk: (t) => { try { return skillsFor(t).list.map((x) => x[0] + " " + x[1]).join(", "); } catch (e) { return "ERR " + e.message; } }, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, get mo() { return modalOpen; }, get dd() { return dead; }, get st() { return started; }, get keys() { return keys; }, get sailing() { return sailing(); }, sk: (t) => { try { return skillsFor(t).list.map((x) => x[0] + " " + x[1]).join(", "); } catch (e) { return "ERR " + e.message; } }, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -889,16 +889,17 @@ function makeBeastBody(color) {
 }
 let beast = null, ally = null;
 function spawnBeast(nearPos, why, exact) {
+  if (beast && (!enemies.includes(beast) || beast.hp <= 0)) beast = null; // a leftover from an earlier beast
   if (beast) return;
-  const levi = S.sea === 2, lvl = levi ? Math.max(160, S.lvl + 20) : Math.max(40, S.lvl + 5), body = makeBeastBody(levi ? 0x7b1010 : 0x1e5aa8);
+  const levi = S.sea === 2, lvl = levi ? 300 + 50 * (S.leviKills || 0) : Math.max(40, S.lvl + 5) /* Leviathans: Lv. 300, then 50 more for each one you beat */, body = makeBeastBody(levi ? 0x7b1010 : 0x1e5aa8);
   if (levi) body.g.scale.setScalar(1.8);
   const a = rnd(0, 7), pos = exact ? nearPos.clone() : nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
   if (!exact && netOn()) netSend({ t: "fx", k: "beast", x: Math.round(pos.x), z: Math.round(pos.z) });
   body.g.position.copy(pos); scene.add(body.g);
   const bar = hpBar(); bar.scale.setScalar(3); scene.add(bar);
   const label = makeLabel(`${levi ? "LEVIATHAN" : "Sea Beast"} [Lv. ${lvl}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
-  const mhp = Math.round((6000 + lvl * lvl * 4) * (levi ? 3 : 1));
-  beast = { beast: true, event: true, b: { g: body.g, segs: body.segs }, pos, home: pos.clone(), isl: ISLANDS.find((i) => i.sea === S.sea), boss: { name: "Sea Beast" }, name: "Sea Beast", lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: 3, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, swing: 0, until: T + 240 };
+  const mhp = Math.round(6000 + lvl * lvl * 4);
+  beast = { levi, beast: true, event: true, b: { g: body.g, segs: body.segs }, pos, home: pos.clone(), isl: ISLANDS.find((i) => i.sea === S.sea), boss: { name: "Sea Beast" }, name: "Sea Beast", lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: 3, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, swing: 0, until: T + 240 };
   enemies.push(beast);
   SFX.boom(); shake = Math.max(shake, 0.5); show(why || "A SEA BEAST rises from the deep!", 4);
 }
@@ -1300,7 +1301,7 @@ function removeShared(m) {
 }
 function killEnemy(e) {
   shareKill(e);
-  if (e.beast) { const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
+  if (e.beast) { if (e.levi) { S.leviKills = (S.leviKills || 0) + 1; show(`LEVIATHAN DEFEATED! The next one is Lv. ${300 + 50 * S.leviKills}`, 4); } const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
   if (e.event) { const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
 +${money(big)} and a FREE gacha spin`, 5); }
   if (e.boss) addFame(e.lvl * 40);
@@ -1328,9 +1329,9 @@ Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
   if (!e.event) respawnLater(e, e.boss ? 90000 : 12000);
 }
 function gainXp(x) {
-  if (S.lvl >= 100) return;
+  // no level cap: level up forever
   S.xp += x;
-  while (S.xp >= xpNeed() && S.lvl < 100) {
+  while (S.xp >= xpNeed()) {
     S.xp -= xpNeed(); S.lvl++; S.pts += 3; P.hp += 8;
     show(`LEVEL UP!  Lv. ${S.lvl}\n+3 stat points`, 2.5); ring(P.pos, 0xffd23a, 8, 0.8); $("bStats").classList.add("new"); SFX.level();
   }
@@ -1596,9 +1597,19 @@ function shipLocal(pos) {
   const b = P.boat, dx = pos.x - b.g.position.x, dz = pos.z - b.g.position.z, c = Math.cos(b.yaw), sn = Math.sin(b.yaw);
   return { x: dx * c - dz * sn, z: dx * sn + dz * c };
 }
+function onShip(g, yaw, len, w, pos) {
+  const dx = pos.x - g.position.x, dz = pos.z - g.position.z, c = Math.cos(yaw), sn = Math.sin(yaw);
+  const lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+  return lz > -1.6 && lz < len - 1.6 && Math.abs(lx) < w / 2;
+}
+let rideShip = null; // another player's ship you're standing on (you move with it)
 function deckAt(pos) {
-  if (!P.boat) return null; const t = myBoat(), l = shipLocal(pos);
-  return l.z > -1.6 && l.z < t.len - 1.6 && Math.abs(l.x) < t.w / 2 ? P.boat.g.position.y + 1.35 : null;
+  rideShip = null;
+  if (P.boat) { const t = myBoat(); if (onShip(P.boat.g, P.boat.yaw, t.len, t.w, pos)) return P.boat.g.position.y + 1.35; }
+  if (typeof remotes !== "undefined") for (const e of remotes.values()) {
+    const g = e.ship; if (g && onShip(g, g.rotation.y, g.userData.len, g.userData.w, pos)) { rideShip = g; return g.position.y + 1.35; }
+  }
+  return null;
 }
 function toggleBoat() {
   if (dead) return;
@@ -1656,8 +1667,13 @@ addEventListener("mousemove", (e) => {
   if (rmb || shiftLock) { cam.yaw -= mx * 0.005; cam.pitch = clamp(cam.pitch + my * 0.004, -0.2, 1.35); }
 });
 cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, 6, 32); }, { passive: true });
+function leaveWheel() {
+  if (!sailing() || performance.now() - P.boat.sat < 600) return;
+  P.boat.driving = false; P.boat.leftWheel = false; P.boat.speed = 0; P.vel.set(0, 22, 0); P.onGround = false;
+  show("You left the wheel. Walk back into it to steer", 2);
+}
 function jump() {
-  if (sailing()) return;
+  if (sailing()) return leaveWheel();
   // jumping uses energy (more for the jump in the air); with too little you can't
   if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 14 : 24; P.jumps = 1; P.onGround = false; }
   else if (P.jumps < (S.skyJumps ? 12 : 2)) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps++; ring(P.pos, 0xffffff, 2, 0.25); }
@@ -1907,7 +1923,7 @@ function netConnect() {
       }
       // their ship
       const bt = m.boat && BOATS[m.bt] ? m.bt : "";
-      if (bt !== (e.shipType || "")) { if (e.ship) scene.remove(e.ship); e.ship = null; e.shipType = bt; if (bt) { const b = BOATS[bt]; e.ship = buildBoat({ ...b, len: b.len * 1.8, w: b.w * 1.8 }); scene.add(e.ship); } }
+      if (bt !== (e.shipType || "")) { if (e.ship) scene.remove(e.ship); e.ship = null; e.shipType = bt; if (bt) { const b = BOATS[bt]; e.ship = buildBoat({ ...b, len: b.len * 1.8, w: b.w * 1.8 }); e.ship.userData.len = b.len * 1.8; e.ship.userData.w = b.w * 1.8; scene.add(e.ship); } }
       if (e.ship) { e.ship.position.set(+m.bx || e.want.x, Math.sin(T * 2) * 0.15, +m.bz || e.want.z); e.ship.rotation.y = +m.by || 0; }
       e.b.g.visible = true;
       return;
@@ -2052,7 +2068,6 @@ function tick() {
 
   if (started && !dead) { // the world never pauses (menus, other tabs); only your controls stop in a menu
     const g = groundAt(P.pos.x, P.pos.z);
-    if (sailing() && keys.Space && !modalOpen && performance.now() - P.boat.sat > 600) { P.boat.driving = false; P.boat.speed = 0; P.vel.set(0, 22, 0); P.onGround = false; show("You left the wheel. Walk back into it to steer", 2); }
     if (P.boat && !P.boat.driving) { const b = P.boat; b.g.position.y = Math.sin(T * 2) * 0.15; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; }
     if (sailing()) {
       // sail: W/S throttle, A/D steer, camera-relative like walking
@@ -2086,10 +2101,12 @@ function tick() {
       // can't walk up walls taller than a step: push back out
       if (P.pos.y < g2 - 1.6 && g2 > 0) { P.pos.x -= P.vel.x * dt; P.pos.z -= P.vel.z * dt; P.vel.x = P.vel.z = 0; }
       if ((S.fruit === "Frost" || S.fruit === "Magma") && groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y < 2.5) { freezeAround(P.pos.x, P.pos.z, S.fruit === "Magma"); if (S.fruit === "Magma" && Math.random() < 0.15) cubes(P.pos.clone().setY(0.3), 0xff6d00, 1, 3); }
-      const gNow = groundAt(P.pos.x, P.pos.z), onIce = gNow < 0 && iceAt(P.pos.x, P.pos.z), deckY = deckAt(P.pos), onDeck = deckY != null && P.pos.y > deckY - 1.2;
+      const gNow = groundAt(P.pos.x, P.pos.z), onIce = gNow < 0 && iceAt(P.pos.x, P.pos.z), deckY = deckAt(P.pos), onDeck = deckY != null && P.pos.y > deckY - 2.5; // also climbs aboard from the water
+      if (onDeck && rideShip) { const lp = rideShip.userData.lastPos; if (lp && P.lastRide === rideShip) { P.pos.x += rideShip.position.x - lp.x; P.pos.z += rideShip.position.z - lp.z; } P.lastRide = rideShip; } else P.lastRide = null;
+      for (const e of remotes.values()) if (e.ship) e.ship.userData.lastPos = e.ship.position.clone();
       const floor = onDeck ? deckY : gNow < 0 ? (onIce ? 0.05 : -0.6) : gNow;
       // walking into the wheel takes the helm again
-      if (onDeck && P.boat && !P.boat.driving && P.vel.y <= 0) { const l = shipLocal(P.pos); if (l.z < 1.8 && Math.abs(l.x) < 1.6) { P.boat.driving = true; P.boat.sat = performance.now(); P.pos.set(P.boat.g.position.x, 2.3, P.boat.g.position.z); show("Steering", 1); } }
+      if (onDeck && P.boat && !P.boat.driving && P.vel.y <= 0) { const l = shipLocal(P.pos); const inWheel = l.z < 1.8 && Math.abs(l.x) < 1.6; if (!inWheel) P.boat.leftWheel = true; if (inWheel && P.boat.leftWheel) { P.boat.leftWheel = false; P.boat.driving = true; P.boat.sat = performance.now(); P.pos.set(P.boat.g.position.x, 2.3, P.boat.g.position.z); show("Steering", 1); } }
       if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0 || onIce || onDeck; if (P.onGround) P.jumps = 0; } else P.onGround = false;
       if (want.lengthSq() > 1 && !shiftLock && P.swing === 0) P.faceYaw = Math.atan2(want.x, want.z);
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
