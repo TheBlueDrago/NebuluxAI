@@ -5,24 +5,22 @@ import { useAuth } from "@/lib/AuthContext";
 
 // The leaderboards a game keeps (functions/.../game-board.js), shown from the game page's header
 // so people can see them without playing. Only games listed here have boards.
-const BOARDS = {
+export const BOARDS = {
   "sky-obby": [["stage", "Highest stage", (v) => `Stage ${v}`], ["time", "Fastest finish", (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")}`]],
-  "fruit-seas": [["level", "Top levels", (v) => `Lv. ${v}`]],
+  "fruit-seas": [["level", "Top levels", (v) => `Lv. ${v}`], ["money", "Richest", (v) => "$" + Number(v).toLocaleString()], ["bounty", "Bounty / honor", (v) => Number(v).toLocaleString()]],
   "bed-brawl": [["wins", "Most wins", String]],
   "brawl-blitz": [["wins", "Most wins", String]],
   "storm-royale": [["wins", "Most wins", String]],
   "villain-battlegrounds": [["kills", "Most K.O.s", String]],
 };
 
-export default function GameBoards({ name }) {
+// The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).
+export function BoardList({ name, open = true }) {
   const boards = BOARDS[name];
   const { user } = useAuth();
   const me = String(user?.full_name || "").trim();
-  const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0);
   const [lists, setLists] = useState({});
-  const box = useRef(null);
-
   useEffect(() => {
     if (!open || !boards) return;
     const [board] = boards[tab];
@@ -35,43 +33,11 @@ export default function GameBoards({ name }) {
       alive = false;
     };
   }, [open, tab, name, boards]);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => {
-      if (e.key === "Escape" || (e.type === "pointerdown" && box.current && !box.current.contains(e.target))) setOpen(false);
-    };
-    document.addEventListener("keydown", close);
-    document.addEventListener("pointerdown", close);
-    return () => {
-      document.removeEventListener("keydown", close);
-      document.removeEventListener("pointerdown", close);
-    };
-  }, [open]);
-
-  if (!boards) return null;
+  if (!boards) return <p className="py-8 text-center text-sm text-slate-400">This game has no leaderboard.</p>;
   const [board, , show] = boards[tab];
   const list = lists[board];
   return (
-    <div ref={box} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`p-2 rounded-lg transition-colors ${open ? "bg-amber-400/20 text-amber-300" : "text-slate-400 hover:bg-white/10 hover:text-amber-300"}`}
-        title="Leaderboard"
-        aria-label="Leaderboard"
-        aria-expanded={open}
-      >
-        <Trophy className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-24px)] rounded-2xl bg-slate-900/95 backdrop-blur border border-amber-400/30 shadow-2xl shadow-black/50 p-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-300" />
-            <span className="flex-1 font-semibold text-white">Leaderboard</span>
-            <button onClick={() => setOpen(false)} className="p-1 rounded text-slate-400 hover:text-white" aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+    <>
           {boards.length > 1 && (
             <div className="mt-3 flex gap-1 rounded-lg bg-white/5 p-1">
               {boards.map(([b, label], i) => (
@@ -98,7 +64,51 @@ export default function GameBoards({ name }) {
               </ol>
             )}
           </div>
-          <p className="mt-3 text-[11px] text-slate-500 text-center">{user ? "Play to get on the board." : "Sign in to get on the board."}</p>
+      <p className="mt-3 text-[11px] text-slate-500 text-center">{user ? "Play to get on the board." : "Sign in to get on the board."}</p>
+    </>
+  );
+}
+
+export default function GameBoards({ name }) {
+  const boards = BOARDS[name];
+  const [open, setOpen] = useState(false);
+  const box = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (e.key === "Escape" || (e.type === "pointerdown" && box.current && !box.current.contains(e.target))) setOpen(false);
+    };
+    document.addEventListener("keydown", close);
+    document.addEventListener("pointerdown", close);
+    return () => {
+      document.removeEventListener("keydown", close);
+      document.removeEventListener("pointerdown", close);
+    };
+  }, [open]);
+
+  if (!boards) return null;
+  return (
+    <div ref={box} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`p-2 rounded-lg transition-colors ${open ? "bg-amber-400/20 text-amber-300" : "text-slate-400 hover:bg-white/10 hover:text-amber-300"}`}
+        title="Leaderboard"
+        aria-label="Leaderboard"
+        aria-expanded={open}
+      >
+        <Trophy className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-24px)] rounded-2xl bg-slate-900/95 backdrop-blur border border-amber-400/30 shadow-2xl shadow-black/50 p-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-300" />
+            <span className="flex-1 font-semibold text-white">Leaderboard</span>
+            <button onClick={() => setOpen(false)} className="p-1 rounded text-slate-400 hover:text-white" aria-label="Close">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <BoardList name={name} open={open} />
         </div>
       )}
     </div>

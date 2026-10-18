@@ -93,6 +93,15 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
       flushRef.current();
     };
   }, []);
+  // The in-game menu (components/GameMenu.jsx): save now, or open the game's own chat.
+  useEffect(() => {
+    const onCmd = (e) => {
+      if (e.detail === "save") flushRef.current();
+      if (e.detail === "chat") ref.current?.contentWindow?.postMessage({ type: "nebulux-chat" }, "*");
+    };
+    window.addEventListener("nebulux-game-cmd", onCmd);
+    return () => window.removeEventListener("nebulux-game-cmd", onCmd);
+  }, []);
   // The save loaded from the account counts as already sent.
   useEffect(() => {
     if (save) lastSent.current = JSON.stringify(save);

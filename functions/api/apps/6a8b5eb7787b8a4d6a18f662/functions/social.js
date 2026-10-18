@@ -7,6 +7,7 @@
 // { action: "accept" | "remove", id }         -> { ok }
 // { action: "playing", game }                 -> { ok }                (the game you're in; "" when you leave)
 // { action: "send", to, text } / { action: "messages", with } -> chat with a friend (filtered)
+// { action: "players", game }                  -> { players: [name] } (no sign-in needed)
 // { action: "playingCounts" }                  -> { counts: { game: n } } (no sign-in needed)
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
@@ -102,6 +103,15 @@ export async function onRequestPost({ request, env }) {
       const counts = {};
       for (const x of r.results || []) counts[x.game] = x.n;
       return json({ counts });
+    }
+    // Who is playing a game right now (the in-game menu's player list): up to 30 names.
+    if (body.action === "players") {
+      await ensure(db);
+      const game = String(body.game || "").slice(0, 64);
+      const r = await db.prepare("SELECT user_id FROM presence WHERE game = ? AND at > ? ORDER BY at DESC LIMIT 30").bind(game, Date.now() - ONLINE_MS).all();
+      const names = [];
+      for (const x of r.results || []) names.push(await userName(db, x.user_id));
+      return json({ players: names });
     }
     const user = await currentUser(request);
     if (!user) return json({ error: "Sign in to use friends and avatars." }, 401);

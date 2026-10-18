@@ -585,6 +585,7 @@ function stepRemote(f, dt) {
 }
 function peopleLabel() { $("chatbtn").textContent = `💬 Chat (/) · ${NET.people} online`; }
 $("chatbtn").onclick = () => (chatting ? closeChat() : openChat());
+addEventListener("message", (e) => { if (e.data && e.data.type === "nebulux-chat") chatting ? closeChat() : openChat(); });
 const BOT_LINES = ["gg", "nice combo", "ez", "come here!", "1v1 me", "that super was crazy", "lol", "watch this", "not the dummy again 😂", "who wants to fight?"];
 function botReply(t) { if (Math.random() < 0.6) setTimeout(() => { const b = pick(fighters.filter((f) => f.bot && !f.dead)); if (b) say(b.name, /hi|hello|hey/i.test(t) ? "hey!" : /gg/i.test(t) ? "gg!" : pick(BOT_LINES)); }, rnd(700, 2000)); }
 setInterval(() => { if (started && Math.random() < 0.35) { const b = pick(fighters.filter((f) => f.bot && !f.dead)); if (b) say(b.name, pick(BOT_LINES)); } }, 9000);

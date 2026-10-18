@@ -78,6 +78,11 @@
     body.touch #side{top:auto;bottom:190px;left:14px}
     body.touch #hot{bottom:300px} body.touch #mini{bottom:360px}
   }
+  #chat{position:fixed;left:14px;bottom:110px;width:300px;font-size:13px;font-weight:700;z-index:5;color:#fff}
+  #chatlog{max-height:150px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
+  #chatlog div{background:rgba(0,0,0,.45);padding:2px 7px;border-radius:5px;word-break:break-word}
+  #chatlog b{color:#80d8ff}
+  #chatin{display:none;width:100%;box-sizing:border-box;margin-top:4px;padding:7px 9px;border-radius:7px;border:2px solid #000;background:rgba(0,0,0,.75);color:#fff;font:inherit;outline:none}
 </style>
 </head>
 <body>
@@ -90,6 +95,7 @@
   <div id="where" style="font-size:13px;font-weight:800"></div>
   <div id="quest" style="display:none;margin-top:8px;background:rgba(0,0,0,.55);border:2px solid #000;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:800"></div>
 </div>
+<div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"></div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
   <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
@@ -1357,7 +1363,16 @@ function toggleBoat() {
 // ================= input (Blox Fruits style) =================
 const keys = {};
 let started = false, dead = false, shiftLock = false, rmb = false, modalOpen = false;
+// ---- chat with the players in your sea (Enter or /), filtered by the server ----
+let chatting = false;
+function say(name, text, mine) { const d = document.createElement("div"), b = document.createElement("b"); b.textContent = name + ": "; if (mine) b.style.color = "#ffd54f"; d.append(b, document.createTextNode(String(text).slice(0, 80))); $("chatlog").append(d); while ($("chatlog").children.length > 8) $("chatlog").firstChild.remove(); setTimeout(() => d.remove(), 30000); }
+function openChat() { if (!started) return; chatting = true; for (const k in keys) keys[k] = false; $("chatin").style.display = "block"; $("chatin").focus(); document.exitPointerLock?.(); }
+function closeChat() { chatting = false; $("chatin").style.display = "none"; $("chatin").value = ""; $("chatin").blur(); }
+$("chatin").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Escape") closeChat(); if (e.key === "Enter") { const t = $("chatin").value.trim(); if (t) { if (typeof NET !== "undefined" && NET.ok) netSend({ t: "chat", text: t }); else say(myName, t, true); } closeChat(); e.preventDefault(); } });
+addEventListener("message", (e) => { if (e.data && e.data.type === "nebulux-chat") chatting ? closeChat() : openChat(); });
 addEventListener("keydown", (e) => {
+  if (chatting) return;
+  if ((e.key === "/" || e.key === "Enter") && started && !modalOpen) { e.preventDefault(); openChat(); return; }
   if (e.repeat && e.code !== "Space") return;
   keys[e.code] = true;
   if (e.code === "Escape" && modalOpen) return closeModal();
@@ -1639,6 +1654,8 @@ function netConnect() {
       return;
     }
     if (m.t === "crew") { crewMessage(m); return; }
+    if (m.t === "chat") { say(m.mine ? myName : m.name, m.text, !!m.mine); return; }
+    if (m.t === "chatno") { say("Server", m.why || "That message wasn't sent."); return; }
     if (m.t === "fx") {
       if (m.k === "kill") removeShared(m);
       if (m.k === "ehit") sharedHit(m);

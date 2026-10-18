@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Gamepad2, Flag, Wand2, Trash2 } from "lucide-react";
+import { Loader2, Gamepad2, Flag, Wand2, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { askConfirm } from "@/lib/dialogs";
 import { loadGame } from "@/lib/loadGame";
 import { useAppShell } from "@/components/AppShellContext";
 import { findBuiltInGame } from "@/lib/builtInGames";
 import PreviewFrame from "@/components/PreviewFrame";
+import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
 import { GAME_THUMBS } from "@/lib/gameThumbs";
@@ -61,13 +62,7 @@ export default function GameView() {
   return (
     <div className="h-screen flex flex-col bg-slate-950">
       <header className="h-12 shrink-0 flex items-center gap-3 px-4 border-b border-white/10">
-        <button
-          onClick={() => navigate("/chat/games")}
-          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          title="Back"
-        >
-          <ArrowLeft className="w-5 h-5 text-slate-200" />
-        </button>
+        <GameMenu name={name} onRespawn={() => setResetKey((k) => k + 1)} />
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className="font-semibold text-slate-100 truncate">{title}</span>
           {genre && <span className="text-xs text-slate-400 capitalize shrink-0">· {genre}</span>}

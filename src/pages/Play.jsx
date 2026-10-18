@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { loadGame } from "@/lib/loadGame";
 import { findBuiltInGame } from "@/lib/builtInGames";
 import PreviewFrame from "@/components/PreviewFrame";
-import BlackholeIcon from "@/components/BlackholeIcon";
+import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
 import { GAME_THUMBS } from "@/lib/gameThumbs";
@@ -58,9 +58,7 @@ export default function Play() {
   return (
     <div className="h-[100dvh] flex flex-col bg-slate-950 text-slate-100">
       <header className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-white/10">
-        <Link to="/" className="shrink-0 w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center" title="Nebulux AI">
-          <BlackholeIcon className="w-full h-full" />
-        </Link>
+        <GameMenu name={name} leaveTo="/" onRespawn={() => setResetKey((k) => k + 1)} />
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className="font-semibold truncate">{game?.title || name}</span>
           {game?.genre && <span className="hidden sm:inline text-xs text-slate-400 capitalize shrink-0">· {game.genre}</span>}
