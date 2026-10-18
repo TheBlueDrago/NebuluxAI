@@ -688,21 +688,31 @@ setInterval(spawnWildFruit, 10 * 60000);
 // Lv. 50 you can summon one to fight (it attacks you with water blasts); at Lv. 100 you summon a
 // friendly one that fights for you for 5 minutes. Summoning has an 8-minute cooldown.
 function makeBeastBody(color) {
+  // A huge sea serpent: big blocky segments with a pale belly and spikes along the back, and a
+  // wide head with glowing eyes and a jaw full of teeth.
   const g = new THREE.Group(), segs = [];
-  for (let i = 0; i < 7; i++) {
-    const m = box(4 - i * 0.35, 4 - i * 0.35, 4 - i * 0.35, i % 2 ? color : new THREE.Color(color).multiplyScalar(0.8).getHex());
-    g.add(m); segs.push(m);
+  const belly = new THREE.Color(color).lerp(new THREE.Color(0xe0f7fa), 0.6).getHex();
+  for (let i = 0; i < 9; i++) {
+    const k = 1 - i * 0.07, seg = new THREE.Group();
+    const body = box(6 * k, 5.5 * k, 6 * k, i % 2 ? color : new THREE.Color(color).multiplyScalar(0.82).getHex());
+    const under = box(5.2 * k, 1.2 * k, 5.4 * k, belly, false); under.position.y = -2.6 * k;
+    const spike = box(0.6 * k, 2.6 * k, 2.2 * k, 0x80deea, false); spike.position.y = 3.9 * k; spike.rotation.x = -0.35;
+    seg.add(body, under, spike); g.add(seg); segs.push(seg);
   }
   const head = segs[0];
-  for (const sx of [-1, 1]) { const eye = box(0.6, 0.6, 0.2, 0xffeb3b, false); eye.position.set(sx * 1.1, 0.8, 2.05); head.add(eye); }
-  const jaw = box(3.2, 0.8, 1.6, 0xb71c1c, false); jaw.position.set(0, -1.3, 1.4); head.add(jaw);
-  for (const sx of [-1, 1]) { const fin = box(0.3, 2.4, 1.6, 0xffffff, false); fin.position.set(sx * 1.6, 2.2, -0.4); fin.rotation.z = sx * 0.3; head.add(fin); }
+  for (const sx of [-1, 1]) {
+    const eye = box(1.1, 0.9, 0.3, 0xffeb3b, false); eye.position.set(sx * 1.8, 1.2, 3.05); head.add(eye);
+    const fin = box(0.4, 3.6, 2.4, 0x80deea, false); fin.position.set(sx * 3.2, 2.6, -0.6); fin.rotation.z = sx * 0.45; head.add(fin);
+  }
+  const jaw = box(5.2, 1.4, 3.2, new THREE.Color(color).multiplyScalar(0.7).getHex(), false); jaw.position.set(0, -2.6, 3.2); head.add(jaw);
+  const mouth = box(4.6, 0.6, 2.6, 0x8e0000, false); mouth.position.set(0, -1.7, 3.3); head.add(mouth);
+  for (let t = -2; t <= 2; t++) { const tooth = box(0.4, 0.7, 0.4, 0xffffff, false); tooth.position.set(t * 0.9, -1.25, 4.4); head.add(tooth); }
   return { g, segs };
 }
 let beast = null, ally = null;
 function spawnBeast(nearPos, why) {
   if (beast) return;
-  const lvl = Math.max(40, S.lvl + 5), body = makeBeastBody(0x00796b);
+  const lvl = Math.max(40, S.lvl + 5), body = makeBeastBody(0x1e5aa8);
   const a = rnd(0, 7), pos = nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
   body.g.position.copy(pos); scene.add(body.g);
   const bar = hpBar(); bar.scale.setScalar(3); scene.add(bar);
@@ -719,19 +729,38 @@ function updateBeast(e, dt) {
   const to = P.pos.clone().sub(e.pos).setY(0), d = to.length();
   if (d > 18) e.pos.addScaledVector(to.normalize(), Math.min(d - 18, 8 * dt));
   const yaw = Math.atan2(P.pos.x - e.pos.x, P.pos.z - e.pos.z);
-  e.b.segs.forEach((m, i) => { m.position.set(Math.sin(e.t * 2 + i * 0.8) * i * 0.5, 4 + Math.sin(e.t * 1.6 - i * 0.7) * 2 - i * 0.6, -i * 3.2); });
+  e.b.segs.forEach((m, i) => { m.position.set(Math.sin(e.t * 2 + i * 0.8) * i * 0.6, 7 + Math.sin(e.t * 1.6 - i * 0.7) * 3.5 - i * 1.1, -i * 4.6); m.rotation.x = Math.cos(e.t * 1.6 - i * 0.7) * 0.25; });
   e.b.g.position.set(e.pos.x, Math.sin(e.t) * 0.6, e.pos.z); e.b.g.rotation.y = yaw;
   // water blasts: a warning ring where you stand, then a splash
-  if (e.atkCd <= 0 && d < 70 && !dead) {
-    e.atkCd = 3.2; const at = P.pos.clone(); ring(at, 0x40c4ff, 1, 0.9);
-    setTimeout(() => { if (!beast || beast !== e) return; pillar(at, 0x40c4ff, 2.5, 16, 0.6); explodeEnemy(at, 6, 10 + e.lvl * 1.6, 0x40c4ff); }, 750);
+  // It fights everyone near it: you, the island enemies and the other pirates, picked at random.
+  if (e.atkCd <= 0) {
+    const near = enemies.filter((x) => !x.beast && !x.remote && x.pos.distanceTo(e.pos) < 70);
+    const pickYou = !dead && d < 70 && (!near.length || Math.random() < 0.5);
+    const target = pickYou ? null : pick(near);
+    if (pickYou || target) {
+      e.atkCd = 2.6; const at = (pickYou ? P.pos : target.pos).clone(); ring(at, 0x40c4ff, 1, 0.9);
+      setTimeout(() => {
+        if (!beast || beast !== e) return;
+        pillar(at, 0x40c4ff, 2.5, 16, 0.6); explodeEnemy(at, 6, 10 + e.lvl * 1.6, 0x40c4ff);
+        for (const x of enemies.slice()) if (!x.beast && !x.remote && x.pos.distanceTo(at) < 6) beastHit(x, 40 + e.lvl * 6);
+      }, 750);
+    }
   }
   const vis = d < 160; e.bar.visible = e.label.visible = vis;
   if (vis) {
-    e.bar.position.set(e.pos.x, 14, e.pos.z); e.bar.quaternion.copy(camera.quaternion);
+    e.bar.position.set(e.pos.x, 20, e.pos.z); e.bar.quaternion.copy(camera.quaternion);
     const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k);
-    e.label.position.set(e.pos.x, 16, e.pos.z);
+    e.label.position.set(e.pos.x, 22.5, e.pos.z);
   }
+}
+// The beast hurting an enemy or a bot pirate (no reward for you; they come back later as usual).
+function beastHit(x, dmg) {
+  if (x.hp <= 0) return;
+  x.hp -= dmg; floatText(x.pos, String(Math.round(dmg)), "#7fdcff");
+  if (x.hp > 0) return;
+  scene.remove(x.b.g, x.bar, x.label); enemies.splice(enemies.indexOf(x), 1);
+  if (x.rival) setTimeout(() => spawnRival(x.isl.sea), 45000);
+  else if (!x.event) setTimeout(() => spawnEnemy(x.isl, x.boss), x.boss ? 90000 : 12000);
 }
 function removeBeast(e, msg) {
   scene.remove(e.b.g, e.bar, e.label); const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1);
