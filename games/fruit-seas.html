@@ -98,6 +98,7 @@
   <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
 </div>
 <div id="hot"></div>
+<div id="side" class="sh" style="position:fixed;left:14px;top:150px;font-weight:900;font-size:13px"></div>
 <div id="mastery" class="sh" style="position:fixed;right:14px;bottom:150px;font-weight:900;font-size:13px;text-align:right"></div>
 <div id="skills"></div>
 <div id="msg" class="sh"></div>
@@ -475,6 +476,7 @@ const DEF = { lvl: 1, xp: 0, beli: 250, pts: 0, st: { melee: 0, defense: 0, swor
 let S = DEF;
 try { const s = JSON.parse(localStorage.getItem("fruitseas-save") || "null"); if (s && s.lvl) S = { ...DEF, ...s, st: { ...DEF.st, ...s.st } }; } catch { /* no storage */ }
 const save = () => { try { localStorage.setItem("fruitseas-save", JSON.stringify(S)); } catch { /* ignore */ } };
+setInterval(() => { if (started) save(); }, 500); // saved on this device every half second (to your account every 15 seconds)
 setInterval(save, 5000);
 
 // ================= player =================
@@ -559,6 +561,8 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, 6, -6, "Sword Dealer", 0x455a64, openSwords, { hat: "helmet" });
   addNpc(isl, 9, 4, "Sea Traveler", 0x0d47a1, openTravel, { hat: "tricorn" });
   addNpc(isl, -4, 10, "Fighting Style Teacher", 0xff7043, () => openStyles(), { hat: "bandana", hatColor: 0xbf360c });
+  addNpc(isl, -12, -2, "Pirate Recruiter", 0x212121, () => chooseSide(false), { hat: "tricorn" });
+  addNpc(isl, -12, 8, "Marine Recruiter", 0xeceff1, () => chooseSide(false), { hat: "helmet", hatColor: 0x1565c0 });
   addNpc(isl, 12, 6, "Boat Dealer", 0x1565c0, () => openBoats(), { hat: "tricorn" });
   addNpc(isl, 4, 10, "Sky Jump Master", 0x90caf9, openSkyJumps, { hat: "halo" });
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
@@ -569,6 +573,42 @@ const lvlBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
   b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-14, 1); b.g.scale.setScalar(1.3); scene.add(b.g);
   solids.push({ x, z, r: 2 }); loadBoard(b, "level"); return b;
 });
+const moneyBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
+  const b = makeBoard("Richest", (v) => money(v), "#7dff7d"); const x = isl.x + 14, z = isl.z + 9;
+  b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-14, -9); b.g.scale.setScalar(1.3); scene.add(b.g);
+  solids.push({ x, z, r: 2 }); loadBoard(b, "money"); return b;
+});
+const bountyBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
+  const b = makeBoard("Top bounty / honor", (v) => money(v).slice(1), "#ff8a65"); const x = isl.x + 14, z = isl.z - 11;
+  b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-14, 11); b.g.scale.setScalar(1.3); scene.add(b.g);
+  solids.push({ x, z, r: 2 }); loadBoard(b, "bounty"); return b;
+});
+// money and bounty are sent at most every 3 minutes, only when higher (saves the free database's writes)
+let sentMoney = 0, sentBounty = 0;
+setInterval(() => {
+  if (!started) return;
+  if (S.beli > sentMoney * 1.05 + 1000) { sentMoney = S.beli; sendScore("money", Math.floor(S.beli), ...moneyBoards); }
+  const bh = Math.floor(S.side === "Marine" ? S.honor || 0 : S.bounty || 0);
+  if (bh > sentBounty) { sentBounty = bh; sendScore("bounty", bh, ...bountyBoards); }
+}, 180000);
+// Pirates earn bounty, Marines earn honor (chosen when you start; switch at a recruiter).
+function addFame(n, why) {
+  n = Math.round(n); if (!S.side || n <= 0) return;
+  if (S.side === "Marine") S.honor = (S.honor || 0) + n; else S.bounty = (S.bounty || 0) + n;
+  floatText(P.pos, `+${n.toLocaleString()} ${S.side === "Marine" ? "honor" : "bounty"}`, S.side === "Marine" ? "#90caf9" : "#ff8a65");
+  drawSide();
+}
+function drawSide() {
+  const el = $("side"); if (!el || !S.side) return;
+  el.textContent = S.side === "Marine" ? `⚓ Marine · Honor ${(S.honor || 0).toLocaleString()}` : `🏴‍☠️ Pirate · Bounty ${(S.bounty || 0).toLocaleString()}`;
+  el.style.color = "#fff";
+}
+function chooseSide(first) {
+  openModal(first ? "Choose your side" : "Recruiter", `<p>${first ? "Are you a Pirate or a Marine?" : "Switch sides? (You keep your bounty and honor.)"}</p>
+    <div class="row"><div class="grow"><b>🏴‍☠️ Pirate</b><div style="font-size:12px;opacity:.85">Earn <b>bounty</b> by defeating bosses and other players.</div></div><button class="btn" data-side="Pirate">${S.side === "Pirate" ? "You're a Pirate" : "Be a Pirate"}</button></div>
+    <div class="row"><div class="grow"><b>⚓ Marine</b><div style="font-size:12px;opacity:.85">Earn <b>honor</b> by defeating bosses, bandit pirates and other players.</div></div><button class="btn blue" data-side="Marine">${S.side === "Marine" ? "You're a Marine" : "Be a Marine"}</button></div>`);
+  $("mb").querySelectorAll("[data-side]").forEach((b) => (b.onclick = () => { S.side = b.dataset.side; save(); drawSide(); closeModal(); show(`You're a ${S.side} now!`, 2.5); }));
+}
 let sentLvl = 0;
 const sendLevel = () => { if (S.lvl > sentLvl) { sentLvl = S.lvl; sendScore("level", S.lvl, ...lvlBoards); } };
 // A Quest Giver on every island: defeat that island's enemies for a big reward.
@@ -1071,6 +1111,8 @@ function killEnemy(e) {
   if (e.beast) { const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
   if (e.event) { const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
 +${money(big)} and a FREE gacha spin`, 5); }
+  if (e.boss) addFame(e.lvl * 40);
+  if (e.rival) addFame(e.lvl * (S.side === "Marine" ? 30 : 15));
   if (e.rival) { const bounty = e.lvl * 400; S.beli += bounty; floatText(e.pos, `Bounty +${money(bounty)}`, "#ffb74d"); setTimeout(() => spawnRival(e.isl.sea), 45000); }
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
@@ -1364,14 +1406,16 @@ function updateTrail(dt) {
 const ICE = 2.4, iceTiles = new Map(), iceMat = new THREE.MeshLambertMaterial({ color: 0xbfefff, transparent: true, opacity: 0.85 });
 const iceKey = (x, z) => Math.floor(x / ICE) + "," + Math.floor(z / ICE);
 const iceAt = (x, z) => iceTiles.has(iceKey(x, z));
-function freezeAround(x, z) {
+// Magma fruit does the same with cooling magma rock.
+const magmaMat = new THREE.MeshLambertMaterial({ color: 0xff5a1a, emissive: 0x7a1a00, transparent: true, opacity: 0.95 });
+function freezeAround(x, z, magma) {
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
     const cx = Math.floor(x / ICE) + i, cz = Math.floor(z / ICE) + j, k = cx + "," + cz;
     const wx = (cx + 0.5) * ICE, wz = (cz + 0.5) * ICE;
     if (groundAt(wx, wz) >= 0) continue;
     const old = iceTiles.get(k);
     if (old) { old.t = 8; continue; }
-    const m = new THREE.Mesh(new THREE.BoxGeometry(ICE, 0.4, ICE), iceMat.clone()); m.position.set(wx, -0.15, wz); m.receiveShadow = true; scene.add(m);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(ICE, 0.4, ICE), (magma ? magmaMat : iceMat).clone()); m.position.set(wx, -0.15, wz); m.receiveShadow = true; scene.add(m);
     iceTiles.set(k, { m, t: 8 });
   }
 }
@@ -1606,7 +1650,7 @@ function netConnect() {
     }
     if (m.t === "dead" && m.to === NET.you) {
       const e = remotes.get(m.from); const bounty = Math.max(1000, (e ? e.lvl : 5) * 600);
-      S.beli += bounty; save(); show(`You beat ${e ? e.name : "a pirate"}!\nBounty +${money(bounty)}`, 3);
+      S.beli += bounty; addFame((e ? e.lvl : 5) * 100); save(); show(`You beat ${e ? e.name : "a pirate"}!\nBounty +${money(bounty)}`, 3);
     }
   };
   ws.onclose = ws.onerror = () => {
@@ -1681,7 +1725,7 @@ Day ${S.streak} in a row${S.streak % 7 === 0 ? " · FREE gacha spin!" : ""}`, 4)
 }
 // Nebulux admins (the owner) get every fruit as a permanent fruit.
 const isAdmin = !!(window.nebulux && window.nebulux.admin);
-$("play").onclick = () => { $("start").style.display = "none"; started = true; if (isAdmin) { S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; if (isAdmin) { S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); while (allies.length < S.crew) addAlly(); pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
@@ -1734,7 +1778,7 @@ function tick() {
       const g2 = groundAt(P.pos.x, P.pos.z);
       // can't walk up walls taller than a step: push back out
       if (P.pos.y < g2 - 1.6 && g2 > 0) { P.pos.x -= P.vel.x * dt; P.pos.z -= P.vel.z * dt; P.vel.x = P.vel.z = 0; }
-      if (S.fruit === "Frost" && groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y < 2.5) freezeAround(P.pos.x, P.pos.z);
+      if ((S.fruit === "Frost" || S.fruit === "Magma") && groundAt(P.pos.x, P.pos.z) < 0 && P.pos.y < 2.5) { freezeAround(P.pos.x, P.pos.z, S.fruit === "Magma"); if (S.fruit === "Magma" && Math.random() < 0.15) cubes(P.pos.clone().setY(0.3), 0xff6d00, 1, 3); }
       const gNow = groundAt(P.pos.x, P.pos.z), onIce = gNow < 0 && iceAt(P.pos.x, P.pos.z), floor = gNow < 0 ? (onIce ? 0.05 : -0.6) : gNow;
       if (P.pos.y <= floor) { P.pos.y = floor; P.vel.y = Math.max(0, P.vel.y); P.onGround = gNow >= 0 || onIce; if (P.onGround) P.jumps = 0; } else P.onGround = false;
       if (want.lengthSq() > 1 && !shiftLock && P.swing === 0) P.faceYaw = Math.atan2(want.x, want.z);

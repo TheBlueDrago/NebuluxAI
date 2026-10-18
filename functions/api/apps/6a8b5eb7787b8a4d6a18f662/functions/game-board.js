@@ -15,7 +15,7 @@ const SIZE = 10;
 // Only these games' boards exist, so nobody can make up names to fill KV.
 export const BOARDS = {
   "sky-obby": ["stage", "time"],
-  "fruit-seas": ["level"],
+  "fruit-seas": ["level", "money", "bounty"],
   "bed-brawl": ["wins"],
   "brawl-blitz": ["wins"],
   "storm-royale": ["wins"],

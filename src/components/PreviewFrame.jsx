@@ -62,7 +62,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
 
   // Saves are stored in Cloudflare KV, whose free plan allows only 1,000 writes a day for the
   // whole site, and games save often (some every few seconds). So a save is sent at most once
-  // every minute, only when it changed, and right away when the player leaves the page.
+  // every 15 seconds, only when it changed, and right away when the player leaves the page.
   const pending = useRef(null); // { name, data } waiting to be sent
   const lastSent = useRef("");
   const saveTimer = useRef(0);
@@ -81,7 +81,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
   flushRef.current = flushSave;
   const queueSave = (name, data) => {
     pending.current = { name, data };
-    if (!saveTimer.current) saveTimer.current = setTimeout(() => flushRef.current(), 60000);
+    if (!saveTimer.current) saveTimer.current = setTimeout(() => flushRef.current(), 15000);
   };
   useEffect(() => {
     const away = () => document.visibilityState === "hidden" && flushRef.current();
