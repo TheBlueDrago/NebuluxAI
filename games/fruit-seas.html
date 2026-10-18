@@ -662,20 +662,34 @@ function spawnWildFruit() {
   let r = rnd(0, total), name = FRUIT_NAMES[0];
   for (const n of FRUIT_NAMES) { r -= RAR_W[FRUITS[n].rar]; if (r <= 0) { name = n; break; } }
   const a = rnd(0, 7), d = rnd(4, isl.r - 6), x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d;
+  placeFruit(name, x, z, null, `A fruit is growing somewhere at ${isl.name}...`, isl);
+}
+// A fruit lying on the ground (grown, or dropped by a player). id: shared with the others online.
+function placeFruit(name, x, z, id, note, isl) {
+  if (!FRUITS[name]) return;
+  id = id || Math.random().toString(36).slice(2, 10);
+  if (wildFruits.some((w) => w.id === id)) return;
   const g = new THREE.Group();
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10), new THREE.MeshLambertMaterial({ color: FRUITS[name].color, emissive: FRUITS[name].color, emissiveIntensity: 0.35 }));
   const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.6), new THREE.MeshLambertMaterial({ color: 0x2e7d32 })); leaf.position.y = 0.9;
   g.add(ball, leaf); g.position.set(x, Math.max(0, groundAt(x, z)) + 1.2, z); scene.add(g);
   const label = makeLabel(`${name} Fruit`, FRUITS[name].css, 768); label.scale.set(6, 1, 1); label.position.set(x, g.position.y + 2.2, z); scene.add(label);
-  const f = { g, label, name, isl }; wildFruits.push(f);
-  show(`A fruit is growing somewhere at ${isl.name}...`, 3);
+  const f = { g, label, name, isl, id }; wildFruits.push(f);
+  if (note) show(note, 3);
   setTimeout(() => { const i = wildFruits.indexOf(f); if (i >= 0) { scene.remove(g, label); wildFruits.splice(i, 1); } }, 10 * 60000);
+}
+// Drop a fruit in front of you: it lies on the ground for everyone in this sea.
+function dropFruit(n) {
+  const x = P.pos.x + Math.sin(P.faceYaw) * 3, z = P.pos.z + Math.cos(P.faceYaw) * 3, id = Math.random().toString(36).slice(2, 10);
+  placeFruit(n, x, z, id, `You dropped the ${n} Fruit`);
+  if (typeof NET !== "undefined" && NET.ok) netSend({ t: "fx", k: "drop", n, x: +x.toFixed(1), z: +z.toFixed(1), id });
 }
 function updateWildFruits() {
   for (const f of wildFruits.slice()) {
     f.g.rotation.y += 0.03; f.g.position.y += Math.sin(T * 3) * 0.005;
     if (Math.hypot(f.g.position.x - P.pos.x, f.g.position.z - P.pos.z) < 2.5 && !P.boat) {
       scene.remove(f.g, f.label); wildFruits.splice(wildFruits.indexOf(f), 1);
+      if (typeof NET !== "undefined" && NET.ok) netSend({ t: "fx", k: "pick", id: f.id });
       S.inv.push(f.name); save(); SFX.win(); show(`You found a ${f.name} Fruit! (${FRUITS[f.name].rar})
 Open Fruits to eat it`, 3.5);
     }
@@ -905,7 +919,19 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   e.aggro = 8;
   if (e.hp <= 0) killEnemy(e);
 }
+// Online: tell the others in this sea which enemy was defeated (they remove the same one).
+function shareKill(e) { if (typeof NET !== "undefined" && NET.ok && !e.rival && !e.remote && !e.beast && !e.event) netSend({ t: "fx", k: "kill", i: ISLANDS.indexOf(e.isl), n: e.name, x: Math.round(e.pos.x), z: Math.round(e.pos.z) }); }
+function removeShared(m) {
+  const isl = ISLANDS[m.i]; if (!isl) return;
+  let best = null, bd = 25;
+  for (const e of enemies) if (!e.remote && !e.rival && !e.beast && e.isl === isl && e.name === m.n) { const d = Math.hypot(e.pos.x - m.x, e.pos.z - m.z); if (d < bd) { bd = d; best = e; } }
+  if (!best) return;
+  cubes(best.pos.clone().setY(best.pos.y + 2), 0xffd23a, 10);
+  scene.remove(best.b.g, best.bar, best.label); enemies.splice(enemies.indexOf(best), 1);
+  setTimeout(() => spawnEnemy(best.isl, best.boss), best.boss ? 90000 : 12000);
+}
 function killEnemy(e) {
+  shareKill(e);
   if (e.beast) { const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
   if (e.event) { const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
 +${money(big)} and a FREE gacha spin`, 5); }
@@ -1250,7 +1276,7 @@ function openGacha() {
 function openFruits() {
   const cur = S.fruit ? `<div class="row" style="border-color:#ffd23a">${fruitIcon(S.fruit)}<div class="grow"><b>Eaten: ${S.fruit} Fruit</b> ${rarTag(FRUITS[S.fruit].rar)}<div style="font-size:12px;opacity:.8">You can't swim. Use a boat (B).</div></div></div>` : `<p>You haven't eaten a fruit. You can still swim!</p>`;
   const bag = S.inv.length ? S.inv.map((n, i) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div><button class="btn" data-eat="${i}">Eat</button><button class="btn gray" data-drop="${i}">Drop</button></div>`).join("") : `<p style="opacity:.7">Your bag is empty. Buy fruits from the Fruit Dealer, spin the Gacha, or open chests.</p>`;
-  const perm = (S.perm || []).length ? `<h3>Permanent fruits ✨</h3><p style="font-size:12px;opacity:.8;margin:0 0 6px">Bought with Stardust: switch between them any time, free.</p>` + S.perm.map((n) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div>${S.fruit === n ? '<span style="font-size:12px;color:#ffd23a">Using</span>' : `<button class="btn blue" data-use="${n}">Use</button>`}</div>`).join("") : "";
+  const perm = (S.perm || []).length ? `<h3>Permanent fruits ✨</h3><p style="font-size:12px;opacity:.8;margin:0 0 6px">Bought with Stardust: switch between them any time, free.</p>` + S.perm.map((n) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div>${S.fruit === n ? '<span style="font-size:12px;color:#ffd23a">Using</span>' : `<button class="btn blue" data-use="${n}">Use</button>`}<button class="btn gray" data-pdrop="${n}" style="margin-left:6px">Drop</button></div>`).join("") : "";
   openModal("Fruits", cur + perm + "<h3>Bag</h3>" + bag);
   $("mb").querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
     const n = b.dataset.use; S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
@@ -1263,7 +1289,11 @@ function openFruits() {
     ring(P.pos, FRUITS[n].color, 6, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), FRUITS[n].color, 20);
     show(n === "Frost" ? `You ate the Frost Fruit!\nYou can't swim, but the sea freezes where you walk` : `You ate the ${n} Fruit!\nYou can't swim any more`, 3);
   });
-  $("mb").querySelectorAll("[data-drop]").forEach((b) => b.onclick = () => { S.inv.splice(+b.dataset.drop, 1); save(); openFruits(); });
+  $("mb").querySelectorAll("[data-drop]").forEach((b) => b.onclick = () => { const n = S.inv.splice(+b.dataset.drop, 1)[0]; save(); dropFruit(n); openFruits(); });
+  $("mb").querySelectorAll("[data-pdrop]").forEach((b) => b.onclick = () => {
+    const n = b.dataset.pdrop; if (!confirm(`Drop your permanent ${n} Fruit? Anyone can pick it up, and you'll lose it.`)) return;
+    S.perm = (S.perm || []).filter((x) => x !== n); if (S.fruit === n) S.fruit = null; save(); drawHot(); dropFruit(n); openFruits();
+  });
 }
 function openStats() {
   $("bStats").classList.remove("new");
@@ -1357,6 +1387,12 @@ function netConnect() {
       if (!pvpOn() || safe || dead || !from || !from.pvp) return;
       hurtPlayer(Math.max(1, Math.min(400, Number(m.dmg) || 0)), from.pos);
       if (P.hp <= 0) netSend({ t: "dead", to: m.from });
+      return;
+    }
+    if (m.t === "fx") {
+      if (m.k === "kill") removeShared(m);
+      if (m.k === "drop") { const who = remotes.get(m.from); placeFruit(String(m.n), +m.x, +m.z, String(m.id), `${who ? who.name : "Someone"} dropped a ${m.n} Fruit`); }
+      if (m.k === "pick") { const f = wildFruits.find((w) => w.id === m.id); if (f) { scene.remove(f.g, f.label); wildFruits.splice(wildFruits.indexOf(f), 1); } }
       return;
     }
     if (m.t === "dead" && m.to === NET.you) {
@@ -1527,7 +1563,12 @@ function tick() {
       if (e.burn > 0) { const before = Math.ceil(e.burn * 2); e.burn -= dt; if (Math.ceil(e.burn * 2) !== before) { e.hp -= Math.ceil(e.maxHp * 0.015); if (e.hp <= 0) { killEnemy(e); continue; } } }
       const to = P.pos.clone().sub(e.pos); to.y = 0; const d = to.length();
       const playerOnIsl = Math.hypot(P.pos.x - e.isl.x, P.pos.z - e.isl.z) < e.isl.r + 8 && !P.boat;
-      const aggro = playerOnIsl && (e.rival ? pvpOn() && !e.isl.spawn && (e.hostile || e.aggro > 0) && (d < 22 || e.aggro > 0) : d < (e.boss ? 30 : 20) || e.aggro > 0);
+      // Enemies stay near their spot (e.home) until you come close or hit them, and give up and walk
+      // back if you lead them more than 30 studs away from it.
+      if (!e.home) e.home = e.pos.clone();
+      const farFromHome = e.pos.distanceTo(e.home) > 30;
+      if (farFromHome) e.aggro = 0;
+      const aggro = !farFromHome && !modalOpen && playerOnIsl && (e.rival ? pvpOn() && !e.isl.spawn && (e.hostile || e.aggro > 0) && (d < 22 || e.aggro > 0) : d < (e.boss ? 30 : 20) || e.aggro > 0);
       let mv = V();
       if (e.freeze > 0) { /* frozen */ } else if (aggro) {
         if (d > (e.boss ? 4.5 : 2.8)) mv = to.clone().normalize();
@@ -1537,8 +1578,10 @@ function tick() {
           setTimeout(() => { if (e.hp <= 0) return; explodeEnemy(c, 10, e.dmg * 1.8, e.boss.color === 0x9fd8ff ? 0x9fe8ff : 0xff3030); }, 700);
         }
       } else {
-        if (e.wander.distanceTo(e.pos) < 1.5 || Math.random() < 0.003) { const a = rnd(0, 7), r = rnd(0, e.isl.r - 4); e.wander.set(e.isl.x + Math.cos(a) * r, 0, e.isl.z + Math.sin(a) * r); }
-        mv = e.wander.clone().sub(e.pos).setY(0); mv = mv.lengthSq() > 2 ? mv.normalize().multiplyScalar(0.35) : V();
+        // idle: back home if pulled away, otherwise stand around it (a few steps now and then)
+        if (e.pos.distanceTo(e.home) > 6) e.wander.copy(e.home);
+        else if (e.wander.distanceTo(e.pos) < 1.5 && Math.random() < 0.004) { const a = rnd(0, 7), r = rnd(0, 4); e.wander.set(e.home.x + Math.cos(a) * r, 0, e.home.z + Math.sin(a) * r); }
+        mv = e.wander.clone().sub(e.pos).setY(0); mv = mv.lengthSq() > 2 ? mv.normalize().multiplyScalar(e.pos.distanceTo(e.home) > 6 ? 0.8 : 0.3) : V();
       }
       const sp = e.freeze > 0 ? 0 : e.speed;
       e.pos.addScaledVector(mv, sp * dt).addScaledVector(e.kb, dt); e.kb.multiplyScalar(Math.max(0, 1 - 7 * dt));
