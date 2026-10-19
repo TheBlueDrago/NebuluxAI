@@ -19,7 +19,8 @@ import AboutMeButton from "@/components/chat/AboutMeButton";
 import StudyModeButton from "@/components/chat/StudyModeButton";
 import { studyModeOn, studyBlock } from "@/lib/studyMode";
 import ReportReply from "@/components/chat/ReportReply";
-import { Plus, RotateCcw, Pencil, ImagePlus } from "lucide-react";
+import { Plus, RotateCcw, Pencil, ImagePlus, Globe, X as XIcon } from "lucide-react";
+import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import AttachedFile from "@/components/chat/AttachedFile";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import AiChooser from "@/components/AiChooser";
@@ -157,6 +158,17 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     return () => setViewing(null);
   }, [conversation?.id]);
 
+  // The Nebulux Browser side panel (computers only), the same one Nebulux Code has.
+  const [browserOpen, setBrowserOpen] = useState(false);
+  const browserRef = useRef(null);
+  // While it's open, the whole page makes room for it on the right (so the chat isn't covered).
+  useEffect(() => {
+    if (!browserOpen || window.innerWidth < 768) return;
+    document.body.style.paddingRight = "min(46vw, 760px)";
+    return () => {
+      document.body.style.paddingRight = "";
+    };
+  }, [browserOpen]);
   // `before`: how many of the chat's messages come before this question (Try again leaves out
   // the answer it replaces); by default all of them.
   const runPrompt = async (text, ai, before = messages.length) => {
@@ -195,7 +207,12 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // No modes: answer normally, write code only when asked (owner, 2026-10-12).
     const modeNote = ai !== "ai" ? ANSWER_OR_CODE + "\n\n" : "";
     const cardNote = ai !== "ai" ? "" : wantsFlashcards(text) ? FLASHCARD_NOTE : wantsQuiz(text) ? QUIZ_NOTE : "";
-    const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${history}${text}${fileNote}`;
+    // The Nebulux Browser (when open): the page on screen goes to the AI as text to read. The AI can't
+    // click, type, sign in or change anything there, on GitHub or any other site: it only reads.
+    let pageNote = "";
+    const cur = browserRef.current?.current?.();
+    if (cur?.type === "page" && cur.text) pageNote = `The person has this web page open in the Nebulux Browser (${cur.url}). It is read-only for you: you can read it and talk about it, but you can't click, type, sign in, edit, commit, push or change anything on it or on any site (GitHub included); if they ask you to change something there, explain how they can do it themselves.\n${cur.text.slice(0, 8000)}\n\n`;
+    const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${history}${pageNote}${text}${fileNote}`;
     if (reqIdRef.current !== myId) return;
     try {
       const eff = effortFor(effort, text, { build: ai !== "ai" && intent.build });
@@ -682,6 +699,15 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <AiChooser value={selectedAi} onChange={setSelectedAi} plan={plan} allowFable={true} labels={{ code: "Galaxy" }} />
             <EffortPicker value={effort} onChange={setEffort} />
             <AboutMeButton userId={shell?.currentUser?.id} />
+            <button
+              type="button"
+              onClick={() => setBrowserOpen((o) => !o)}
+              className={`hidden md:inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs ${browserOpen ? "bg-indigo-500/20 text-indigo-200" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
+              title="Open the Nebulux Browser: the AI can read the page you have open (it can't change anything there)"
+              aria-pressed={browserOpen}
+            >
+              <Globe className="w-3.5 h-3.5" /> Browser
+            </button>
             {selectedAi === "ai" && <StudyModeButton />}
           </div>
           </div>
@@ -712,6 +738,19 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
           <p className={claude ? `text-center text-[11.5px] text-[var(--cl-faint)] mt-2 ${empty ? "hidden" : ""}` : "text-center text-xs text-slate-600 mt-2"}>Nebulux AI can make mistakes. Check important info, and never share passwords or card numbers with it.</p>
         </div>
       </div>
+      {browserOpen && (
+        <aside className="hidden md:flex fixed right-0 top-0 z-40 h-full w-[46%] max-w-[760px] flex-col bg-[var(--cl-side,#0f172a)] border-l border-white/10 shadow-2xl">
+          <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-white/10">
+            <Globe className="w-4 h-4 text-slate-400" />
+            <span className="text-[14px] font-medium flex-1">Nebulux Browser</span>
+            <span className="text-[11px] text-slate-400">The AI can read this page, not change it</span>
+            <button onClick={() => setBrowserOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400" aria-label="Close the browser">
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+          <NebuluxBrowser ref={browserRef} />
+        </aside>
+      )}
     </div>
   );
 }

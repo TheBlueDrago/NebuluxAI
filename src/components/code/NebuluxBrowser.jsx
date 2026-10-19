@@ -201,7 +201,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
                 <input name="q" autoFocus placeholder="Search the web" className="w-full rounded-full bg-[var(--cl-card)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] pl-10 pr-4 py-2.5 text-[14px] text-[var(--cl-text)] outline-none placeholder:text-[var(--cl-faint)] shadow-lg" />
               </div>
             </form>
-            <p className="mt-4 max-w-sm text-[12px] text-[var(--cl-faint)]">While the browser is open, the AI can see and use what's open here and looks up your questions on the web.</p>
+            <p className="mt-4 max-w-sm text-[12px] text-[var(--cl-faint)]">While the browser is open, the AI can read the page you have open here. It can't click, type or change anything on any site.</p>
           </div>
         )}
         {entry.type === "search" && (
