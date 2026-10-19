@@ -1474,6 +1474,7 @@ function aimDir(melee) {
 }
 function face(dir) { P.faceYaw = Math.atan2(dir.x, dir.z); }
 
+const FRUIT_M1 = { Frost: "sword", Flame: "burn", Magma: "burn", Light: "shot", Rumble: "shot", Phoenix: "burn", Kitsune: "burn", Dough: "shot", Spirit: "shot", Dark: "shot", Dragon: "burn" };
 function basicAttack() {
   if (P.atkCd > 0) return;
   if (P.boat && myBoat().cannons) {
@@ -1488,10 +1489,20 @@ function basicAttack() {
   P.en -= cost;
   P.lastHit = T;
   const dir = aimDir(!(P.tool === 3 && S.fruit)); face(dir);
-  if (P.tool === 3 && P.dragon) { const dir = aimDir(false); face(dir); P.atkCd = 0.35; shoot({ color: 0xff5722, size: 1.1, speed: 70, range: 60, dmg: 30 * mult("fruit") * 1.6, explode: 4, fxo: { burn: true } }, dir); return; }
-  if (P.tool === 3 && S.fruit) { // fruit click: small fruit shot
-    const f = FRUITS[S.fruit]; P.atkCd = 0.45; P.swing = 0.001;
-    shoot({ color: f.color, size: 0.45, speed: 60, range: 30, dmg: 10 * mult("fruit") }, dir);
+  if (P.tool === 3 && P.dragon) { const dir = aimDir(false); face(dir); P.atkCd = 0.35; shoot({ color: (FORMS[P.dragon] || FORMS.Dragon).color, size: 1.1, speed: 70, range: 60, dmg: 30 * mult("fruit") * 1.6, explode: 4, fxo: { burn: true } }, dir); return; }
+  if (P.tool === 3 && S.fruit) {
+    // Like Blox Fruits, only some fruits have a click attack (M1): Frost swings an ice sword, the
+    // elemental ones shoot, and the rest have none (use Z X C V F).
+    const f = FRUITS[S.fruit], m1 = FRUIT_M1[S.fruit];
+    if (!m1) { P.en += cost; P.atkCd = 0.3; if (T - (P.m1Note || -9) > 4) { P.m1Note = T; show(`${S.fruit} has no click attack: use its moves (Z X C V F)`, 1.5); } return; }
+    if (m1 === "sword") {
+      P.atkCd = 0.38; P.swing = 0.001; SFX.swing(); const d2 = aimDir(true); face(d2);
+      const at = P.pos.clone().addScaledVector(d2, 3); cubes(at.clone().setY(at.y + 2), 0x9fe8ff, 6, 4);
+      for (const e of enemies.slice()) if (e.pos.distanceTo(at) < (e.boss ? 5.5 : 4)) hurtEnemy(e, 22 * mult("fruit"), P.pos, { freeze: 0.5, kb: 6 });
+      return;
+    }
+    P.atkCd = 0.45; P.swing = 0.001;
+    shoot({ color: f.color, size: 0.55, speed: 65, range: 35, dmg: 14 * mult("fruit"), fxo: m1 === "burn" ? { burn: true } : {} }, dir);
     return;
   }
   const sword = P.tool === 2;
@@ -1619,23 +1630,68 @@ function buildDragon() {
   for (let i = 0; i < 5; i++) { const sp = box(0.3, 1, 0.8, 0xfff3e0, false); sp.position.set(0, 1.9, 2.5 - i * 1.6); g.add(sp); }
   g.scale.setScalar(1.3); return g;
 }
+// More beasts to become (G at 600 mastery). Flying ones use Space/R like the dragon; the others run fast.
+function buildBird(color, glow) {
+  const g = new THREE.Group();
+  g.add(box(2.4, 2.2, 5, color)); const head = box(1.8, 1.8, 2, color); head.position.set(0, 1.4, 3); g.add(head);
+  const beak = box(0.6, 0.5, 1.4, 0xffca28, false); beak.position.set(0, 1.2, 4.6); g.add(beak);
+  for (const sx of [-1, 1]) {
+    const w = new THREE.Group(); w.position.set(sx * 1.2, 0.8, 0); const a = box(7, 0.25, 3.4, color); a.position.x = sx * 3.5; w.add(a);
+    const tip = box(4, 0.2, 2.2, glow); tip.position.set(sx * 8, 0, -0.6); w.add(tip); g.add(w); g.userData[sx < 0 ? "wl" : "wr"] = w;
+    const eye = box(0.35, 0.35, 0.2, 0x111111, false); eye.position.set(sx * 0.6, 1.8, 4); g.add(eye);
+  }
+  for (let i = 0; i < 3; i++) { const t = box(0.6 + i * 0.4, 0.2, 3, glow); t.position.set((i - 1) * 0.9, 0.2, -3.6); t.rotation.y = (i - 1) * 0.35; g.add(t); }
+  g.scale.setScalar(1.4); return g;
+}
+function buildCat() {
+  const g = new THREE.Group(), y = 0xffb300, sp = 0x5d4037;
+  g.add(box(3, 2.6, 6.4, y)); const head = box(2.6, 2.4, 2.4, y); head.position.set(0, 1.2, 4); g.add(head);
+  for (const sx of [-1, 1]) { const ear = box(0.7, 0.9, 0.4, y); ear.position.set(sx * 0.9, 2.7, 3.8); g.add(ear); const eye = box(0.4, 0.4, 0.2, 0x76ff03, false); eye.position.set(sx * 0.6, 1.6, 5.25); g.add(eye); }
+  for (const [lx, lz] of [[-1, 2], [1, 2], [-1, -2], [1, -2]]) { const leg = box(0.9, 2.6, 0.9, y); leg.position.set(lx * 1.1, -2.2, lz); g.add(leg); g.userData.legs = (g.userData.legs || []).concat(leg); }
+  for (let i = 0; i < 9; i++) { const spot = box(0.6, 0.1, 0.6, sp, false); spot.position.set(((i * 7) % 5 - 2) * 0.55, 1.32, ((i * 3) % 7 - 3) * 0.8); g.add(spot); }
+  const tail = box(0.5, 0.5, 4, y); tail.position.set(0, 0.8, -5); tail.rotation.x = 0.4; g.add(tail);
+  g.scale.setScalar(1.25); return g;
+}
+function buildFox() {
+  const g = buildBird(0x1e88e5, 0x82b1ff);
+  for (let i = 0; i < 9; i++) { const t = box(0.5, 0.5, 4.5, i % 2 ? 0x82b1ff : 0xe3f2fd); t.position.set((i - 4) * 0.55, 0.6 + Math.abs(i - 4) * 0.15, -5); t.rotation.y = (i - 4) * 0.18; t.rotation.x = 0.5; g.add(t); }
+  return g;
+}
+function buildHydra() {
+  const g = new THREE.Group(), c = 0x8e24aa;
+  g.add(box(5, 3, 5, c)); for (let i = -1; i <= 1; i++) { const n = box(1.2, 5, 1.2, c); n.position.set(i * 1.8, 3.2, 1.6); n.rotation.x = 0.3; n.rotation.z = -i * 0.3; g.add(n); const h = box(2, 1.6, 2.4, 0x6a1b9a); h.position.set(i * 2.6, 5.8, 2.6); g.add(h); const e = box(0.5, 0.3, 0.2, 0x76ff03, false); e.position.set(i * 2.6, 6.1, 3.85); g.add(e); }
+  for (const [lx, lz] of [[-1.6, 1.6], [1.6, 1.6], [-1.6, -1.6], [1.6, -1.6]]) { const leg = box(1, 2, 1, c); leg.position.set(lx, -2.3, lz); g.add(leg); }
+  g.scale.setScalar(1.2); return g;
+}
+const FORMS = {
+  Dragon: { name: "Dragon", fly: true, color: 0xff5722, power: 1.6, build: () => buildDragon(), moves: () => DRAGON_FORM },
+  Phoenix: { name: "Phoenix", fly: true, color: 0x29b6f6, power: 1.5, build: () => buildBird(0x29b6f6, 0xffca28), moves: () => [["Z", "Blue Flame Talons", 3, 10, 70, "barrage", { n: 8, r: 4, burn: true }], ["X", "Phoenix Dive", 6, 20, 110, "dash", { dist: 40, burn: true }], ["C", "Healing Flames", 14, 30, 80, "aoe", { r: 14, self: true, burn: true }], ["V", "Blue Meteor", 12, 30, 100, "rain", { n: 16, r: 10, burn: true }], ["G", "Turn back", 1, 0, 0, "transform", {}]] },
+  Kitsune: { name: "Kitsune", fly: true, color: 0x42a5f5, power: 1.7, build: () => buildFox(), moves: () => [["Z", "Fox Flame", 3, 10, 80, "barrage", { n: 10, r: 4, burn: true }], ["X", "Spirit Rush", 6, 20, 120, "dash", { dist: 44, burn: true }], ["C", "Nine-Tail Storm", 12, 30, 110, "rain", { n: 22, r: 12, burn: true }], ["V", "Azure Inferno", 16, 40, 140, "aoe", { r: 18, self: true, burn: true }], ["G", "Turn back", 1, 0, 0, "transform", {}]] },
+  Leopard: { name: "Leopard", fly: false, speed: 1.8, color: 0xffb300, power: 1.7, build: () => buildCat(), moves: () => [["Z", "Spinning Claw", 2.5, 10, 100, "aoe", { r: 7, self: true }], ["X", "Pounce", 4, 15, 120, "dash", { dist: 40 }], ["C", "Shadow Flicker", 10, 30, 110, "barrage", { n: 14, r: 7 }], ["V", "Afterimage Assault", 14, 40, 150, "aoe", { r: 12, front: true }], ["G", "Turn back", 1, 0, 0, "transform", {}]] },
+  Venom: { name: "Venom", fly: false, speed: 1.2, color: 0x8e24aa, power: 1.6, build: () => buildHydra(), moves: () => [["Z", "Poison Bite", 2.5, 10, 90, "aoe", { r: 7, front: true, burn: true }], ["X", "Toxic Rain", 8, 25, 90, "rain", { n: 16, r: 11, burn: true }], ["C", "Hydra Rush", 6, 20, 110, "dash", { dist: 30, burn: true }], ["V", "Venom Flood", 14, 40, 130, "aoe", { r: 16, self: true, burn: true }], ["G", "Turn back", 1, 0, 0, "transform", {}]] },
+};
+const formModels = {};
 function setDragon(on) {
   if (on === !!P.dragon) return;
-  P.dragon = on;
+  const F = FORMS[on ? S.fruit : P.dragon]; if (!F) return;
+  P.dragon = on ? S.fruit : false;
+  const m = formModels[F.name] || (formModels[F.name] = F.build());
   if (on) {
-    dragonModel = dragonModel || buildDragon(); scene.add(dragonModel); P.dragonEnd = performance.now() + 40000; P.flying = true; P.vel.y = 16;
-    SFX.boom?.(); shake = Math.max(shake, 0.5); ring(P.pos, 0xff5722, 12, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), 0xff5722, 30, 10);
-    show("DRAGON TRANSFORMATION! Space: up · R: down · G: turn back", 3);
-  } else { if (dragonModel) scene.remove(dragonModel); P.flying = false; cubes(P.pos.clone().setY(P.pos.y + 3), 0xff5722, 16, 6); show("You turned back", 1.5); }
+    scene.add(m); P.dragonEnd = performance.now() + 40000; if (F.fly) { P.flying = true; P.vel.y = 16; }
+    SFX.boom?.(); shake = Math.max(shake, 0.5); ring(P.pos, F.color, 12, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), F.color, 30, 10);
+    show(`${F.name.toUpperCase()} TRANSFORMATION! ${F.fly ? "Space: up · R: down · " : ""}G: turn back`, 3);
+  } else { scene.remove(m); P.flying = false; cubes(P.pos.clone().setY(P.pos.y + 3), F.color, 16, 6); show("You turned back", 1.5); }
   P.body.g.visible = !on; drawSkills();
 }
 function updateDragon(dt) {
   if (!P.dragon) return;
-  if (S.fruit !== "Dragon" || performance.now() > P.dragonEnd || P.en <= 0 || dead) { setDragon(false); return; }
-  P.flying = true; P.en -= 3 * dt;
-  const g = dragonModel; g.position.set(P.pos.x, P.pos.y + 3, P.pos.z); g.rotation.y = P.faceYaw;
-  const flap = Math.sin(performance.now() / 160) * 0.6; g.userData.wl.rotation.z = flap; g.userData.wr.rotation.z = -flap;
-  if (Math.random() < 0.4) cubes(P.pos.clone().setY(P.pos.y + 2), 0xff9800, 1, 3);
+  const F = FORMS[P.dragon];
+  if (!F || S.fruit !== P.dragon || performance.now() > P.dragonEnd || P.en <= 0 || dead) { setDragon(false); return; }
+  if (F.fly) P.flying = true; P.en -= 3 * dt;
+  const g = formModels[F.name]; g.position.set(P.pos.x, P.pos.y + (F.fly ? 3 : 2.6), P.pos.z); g.rotation.y = P.faceYaw;
+  const flap = Math.sin(performance.now() / 160) * 0.6; if (g.userData.wl) { g.userData.wl.rotation.z = flap; g.userData.wr.rotation.z = -flap; }
+  if (g.userData.legs) g.userData.legs.forEach((l, i) => (l.rotation.x = Math.sin(performance.now() / 90 + i * 1.6) * 0.6 * Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 10)));
+  if (Math.random() < 0.4) cubes(P.pos.clone().setY(P.pos.y + 2), F.color, 1, 3);
 }
 // ---- mastery: every fruit and sword has its own (0-600), earned by defeating enemies with it.
 // It adds damage (up to +30%) and unlocks moves: fruits V at 250 and F at 400, swords V at 300.
@@ -1661,7 +1717,7 @@ function extraFruitSkills(n) {
   const f = FRUITS[n], z = f.skills[0], c = f.skills[2];
   return [
     ["V", z[1].split(" ")[0] + " Barrage", z[2] * 2, z[3] + 10, z[4] * 2.2, "rain", { n: 8, r: 5, burn: z[6].burn, freeze: z[6].freeze }, 250],
-    ...(n === "Dragon" ? [["G", "Dragon Transformation", 40, 40, 0, "transform", {}, 600]] : []),
+    ...(FORMS[n] ? [["G", `${n} Transformation`, 40, 40, 0, "transform", {}, 600]] : []),
     n === "Dragon" ? ["F", "Dragon Flight", 2, 0, 0, "fly", {}, 400] : ["F", "Awakened " + c[1], c[2] * 1.8, c[3] + 20, c[4] * 2.6, "aoe", { ...c[6], r: (c[6].r || 10) * 1.5, self: true }, 400],
   ];
 }
@@ -1675,7 +1731,7 @@ const DRAGON_FORM = [
   ["G", "Turn back", 1, 0, 0, "transform", {}],
 ];
 function skillsFor(tool) {
-  if (tool === 3 && P.dragon) return { list: DRAGON_FORM, stat: "fruit", color: 0xff5722, power: 1.6 * (1 + mastery(3) * 0.0005) };
+  if (tool === 3 && P.dragon && FORMS[P.dragon]) { const F = FORMS[P.dragon]; return { list: F.moves(), stat: "fruit", color: F.color, power: F.power * (1 + mastery(3) * 0.0005) }; }
   const m = mastery(tool), open = (list) => list.filter((x) => (x[7] || 0) <= m);
   if (tool === 1) return { list: [...myStyle().skills, ...open([["V", "Fury Barrage", 14, 30, 110, "barrage", { n: 14, r: 6 }, 300]])], stat: "melee", color: myStyle().color, power: myStyle().mult * (1 + m * 0.0005) };
   if (tool === 2 && S.sword) return { list: [...SWORD_SK, ...open(SWORD_EXTRA)], stat: "sword", color: SWORDS[S.sword].color, power: SWORDS[S.sword].mult * (1 + m * 0.0005) };
@@ -2238,13 +2294,13 @@ function tick() {
       if (P.boat) { P.pos.y = 2.3 + Math.sin(T * 2) * 0.15; b.g.position.set(P.pos.x, Math.sin(T * 2) * 0.15, P.pos.z); b.g.rotation.y = b.yaw; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; P.faceYaw = b.yaw; }
       P.vel.set(0, 0, 0); P.onGround = true;
     } else {
-      const want = moveDir().multiplyScalar((inWater() ? (S.race === "Shark" ? 18 : 9) : 16) * (S.race === "Rabbit" ? 1.15 : 1) * (P.raceAwake ? 1.2 : 1));
+      const want = moveDir().multiplyScalar((inWater() ? (S.race === "Shark" ? 18 : 9) : 16) * (S.race === "Rabbit" ? 1.15 : 1) * (P.raceAwake ? 1.2 : 1) * (P.dragon && FORMS[P.dragon] && !FORMS[P.dragon].fly ? FORMS[P.dragon].speed : 1));
       const k = P.onGround ? 30 : inWater() ? 14 : 9; // start and stop almost at once, like Roblox
       if (P.dashT > 0) { P.dashT -= dt; P.vel.x = P.dashVel.x; P.vel.z = P.dashVel.z; P.vel.y = Math.max(P.vel.y, 0); cubes(P.pos.clone().setY(P.pos.y + 2), 0xffffff, 1, 2); }
       else { P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt); }
       if (keys.Space && P.onGround && !modalOpen) jump();
       // Roblox-style: strong gravity and a quick jump (snappy, not floaty).
-      if (P.flying && S.fruit === "Dragon") {
+      if (P.flying && (S.fruit === "Dragon" || (P.dragon && FORMS[P.dragon] && FORMS[P.dragon].fly))) {
         // flying: no gravity, Space up / Ctrl down, uses a little energy, faster
         P.vel.y = (keys.Space ? 16 : 0) - (keys.KeyR ? 16 : 0);
         P.en -= 10 * dt; if (P.en <= 0) { P.en = 0; P.flying = false; show("Out of energy: landing", 1.5); }
