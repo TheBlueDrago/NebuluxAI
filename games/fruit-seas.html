@@ -527,8 +527,8 @@ const RACES = {
 if (!S.race || !RACES[S.race]) { S.race = Object.keys(RACES)[Math.floor(Math.random() * 6)]; S.raceV = 1; }
 const raceV = () => S.raceV || 1;
 const raceBoost = () => 1 + (raceV() - 1) * 0.06 + (typeof P !== "undefined" && P.raceAwake ? 0.4 : 0);
-const maxHp = () => (100 + (S.lvl - 1) * 8 + S.st.defense * 20) * (1 + (raceV() - 1) * 0.05);
-const maxEn = () => (100 + (S.lvl - 1) * 4 + S.st.energy * 15) * (S.race === "Cyborg" ? 1.25 : 1);
+const maxHp = () => Math.round((100 + (S.lvl - 1) * 8 + S.st.defense * 20) * (1 + (raceV() - 1) * 0.05));
+const maxEn = () => Math.round((100 + (S.lvl - 1) * 4 + S.st.energy * 15) * (S.race === "Cyborg" ? 1.25 : 1));
 const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
 const mult = (stat) => (1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02) * (P.buso ? 1.15 : 1) * (S.race === "Human" ? 1.08 : 1) * raceBoost() * (stat === "fruit" && (S.awakened || []).includes(S.fruit) ? 1.25 : 1);
 // ---- Haki, like Blox Fruits: J = Buso (Aura: arms turn black, +15% damage, uses a little energy);
@@ -2519,8 +2519,8 @@ function tick() {
   if (uiT <= 0) {
     uiT = 0.1;
     $("lvl").textContent = `Lv. ${S.lvl}` + (S.pts ? `  (+${S.pts} points)` : "");
-    const hp = Math.max(0, P.hp); $("hp").firstChild.style.width = `${clamp(hp / maxHp(), 0, 1) * 100}%`; $("hp").lastChild.textContent = `${Math.ceil(hp)} / ${maxHp()}`;
-    $("en").firstChild.style.width = `${clamp(P.en / maxEn(), 0, 1) * 100}%`; $("en").lastChild.textContent = `${Math.floor(P.en)} / ${maxEn()}`;
+    const hp = Math.max(0, P.hp); $("hp").firstChild.style.width = `${clamp(hp / maxHp(), 0, 1) * 100}%`; $("hp").lastChild.textContent = `${Math.ceil(hp).toLocaleString()} / ${maxHp().toLocaleString()}`;
+    $("en").firstChild.style.width = `${clamp(P.en / maxEn(), 0, 1) * 100}%`; $("en").lastChild.textContent = `${Math.floor(P.en).toLocaleString()} / ${maxEn().toLocaleString()}`;
     $("xp").firstChild.style.width = `${(S.xp / xpNeed()) * 100}%`;
     $("beli").textContent = money(S.beli);
     const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
