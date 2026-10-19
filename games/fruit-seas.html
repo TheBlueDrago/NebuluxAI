@@ -645,7 +645,7 @@ function addNpc(isl, ox, oz, name, color, open, opts = {}) {
   const b = makeBody({ shirt: color, pants: 0x333333, hat: opts.hat, hatColor: opts.hatColor, skin: opts.skin });
   const x = isl.x + ox, z = isl.z + oz; b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-ox, -oz); scene.add(b.g);
   const l = makeLabel(opts.secret ? "???" : name, opts.secret ? "#b39ddb" : "#7dff7d", 768); l.scale.set(8, 1.3, 1); l.position.set(x, groundAt(x, z) + 5.6, z); scene.add(l);
-  npcs.push({ b, x, z, name, open }); solids.push({ x, z, r: 1.2 });
+  npcs.push({ b, l, x, z, name, open }); solids.push({ x, z, r: 1.2 });
 }
 for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, -6, -6, "Fruit Dealer", 0x2e7d32, openShop, { hat: "bandana", hatColor: 0x1b5e20 });
@@ -704,7 +704,7 @@ for (const isl of ISLANDS) { const f = new THREE.Mesh(new THREE.RingGeometry(isl
 const legendNpc = (() => { addNpc(ISLANDS[0], 0, 0, "Legendary Sword Dealer", 0xd4af37, openLegendDealer, { hat: "crown", secret: true, exact: true }); return npcs[npcs.length - 1]; })();
 function moveLegend() {
   const k = Math.floor(Date.now() / (15 * 60000)), isl = ISLANDS[(k * 7) % ISLANDS.length], a = (k * 2.39) % 6.28, d = isl.r * 0.5;
-  const x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d; legendNpc.x = x; legendNpc.z = z; legendNpc.b.g.position.set(x, groundAt(x, z), z);
+  const x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d; legendNpc.x = x; legendNpc.z = z; legendNpc.b.g.position.set(x, groundAt(x, z), z); legendNpc.l.position.set(x, groundAt(x, z) + 5.6, z); // his ??? tag moves with him
 }
 moveLegend(); setInterval(moveLegend, 60000);
 // A Home Point on every island (a glowing pad with a keeper): set it to come back there when you die.
