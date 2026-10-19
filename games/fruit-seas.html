@@ -83,6 +83,17 @@
   #chatlog div{background:rgba(0,0,0,.45);padding:2px 7px;border-radius:5px;word-break:break-word}
   #chatlog b{color:#80d8ff}
   #chatin{display:none;width:100%;box-sizing:border-box;margin-top:4px;padding:7px 9px;border-radius:7px;border:2px solid #000;background:rgba(0,0,0,.75);color:#fff;font:inherit;outline:none}
+  .invtabs{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+  .invtabs button{flex:1;min-width:70px;padding:8px 6px;border-radius:8px;border:2px solid #000;background:#3a3a3a;color:#fff;font-weight:900;cursor:pointer}
+  .invtabs button.on{background:#ffd23a;color:#000}
+  .invgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+  .tile{background:#2b2b2b;border:3px solid #000;border-radius:10px;padding:10px 6px 8px;text-align:center;font-weight:800;font-size:12px;cursor:pointer;position:relative;box-shadow:inset 0 -4px 0 rgba(0,0,0,.35)}
+  .tile:hover{transform:translateY(-2px)} .tile.on{border-color:#ffd23a;box-shadow:0 0 0 2px #ffd23a}
+  .tile .ic{width:46px;height:46px;margin:0 auto 6px;border-radius:12px;display:grid;place-items:center;font-size:26px;border:2px solid #000}
+  .tile .rt{position:absolute;top:4px;right:6px;font-size:10px;opacity:.9}
+  .tile .sub{font-size:10px;opacity:.75;margin-top:2px}
+  .stat2{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .stat2 div{background:#2b2b2b;border:3px solid #000;border-radius:10px;padding:10px;font-weight:900} .stat2 small{display:block;opacity:.7;font-size:11px;font-weight:700}
 </style>
 </head>
 <body>
@@ -101,7 +112,7 @@
 <div id="combo" style="position:fixed;right:24px;top:42%;font:900 40px Segoe UI,system-ui;color:#ffd23a;text-align:right;-webkit-text-stroke:2px #000;opacity:0;transition:opacity .3s,transform .08s;pointer-events:none;z-index:4"></div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
-  <button class="sb" id="bFruits"><em>🍎</em>Fruits</button>
+  <button class="sb" id="bFruits"><em>🎒</em>Inventory</button>
   <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
   <button class="sb" id="bBeast" style="display:none" title="Summon a Sea Beast to defeat for prizes"><em>🐉</em><span id="beastTxt">Beast</span></button>
   <button class="sb" id="bAlly" style="display:none" title="Summon a Sea Beast that fights for you"><em>🐲</em><span id="allyTxt">Ally</span></button>
@@ -2056,11 +2067,39 @@ function openGacha() {
     requestAnimationFrame(step);
   };
 }
+// Inventory like Blox Fruits: tabs (Fruits, Swords, Styles, Items) with item tiles in a grid.
+let invTab = "fruits";
+function openInventory(tab) {
+  invTab = tab || "fruits";
+  const tabs = [["fruits", "🍎 Fruits"], ["swords", "🗡️ Swords"], ["styles", "👊 Styles"], ["items", "💎 Items"]];
+  const bar = `<div class="invtabs">${tabs.map(([id, l]) => `<button data-tab="${id}" class="${id === invTab ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  const hexc = (c) => "#" + c.toString(16).padStart(6, "0");
+  if (invTab === "fruits") { openFruits(); return; }
+  else if (invTab === "swords") {
+    const list = S.swords || [];
+    openModal("Inventory", list.length ? `<div class="invgrid">${list.map((n) => { const w = SWORDS[n] || { color: 0xcccccc, mult: 1 }; return `<div class="tile ${S.sword === n ? "on" : ""}" data-sw="${n}"><div class="ic" style="background:${hexc(w.color)}">🗡️</div>${n}<div class="sub">x${w.mult} damage${S.sword === n ? " · equipped" : ""}</div></div>`; }).join("")}</div>` : "<p>No swords yet. Buy one from the Sword Dealer.</p>");
+  } else if (invTab === "styles") {
+    const list = ["Combat", ...(S.styles || []).filter((n) => STYLES[n])];
+    openModal("Inventory", `<div class="invgrid">${list.map((n) => { const st = STYLES[n], m = Math.floor((S.mastery || {})["style:" + n] ?? 50); return `<div class="tile ${(S.style || "Combat") === n ? "on" : ""}" data-st="${n}"><div class="ic" style="background:${hexc(st.color)}">👊</div>${n}<div class="sub">x${st.mult} · mastery ${m}</div></div>`; }).join("")}</div>`);
+  } else {
+    const it = [["💎 Fragments", (S.frags || 0).toLocaleString(), "From raids, sea beasts and the Sea King"], ["💰 Money", money(S.beli), "Beli"], [S.side === "Marine" ? "⚓ Honor" : "🏴‍☠️ Bounty", (S.side === "Marine" ? S.honor || 0 : S.bounty || 0).toLocaleString(), S.side || "No side yet"],
+      ["🧬 Race", `${S.race} V${raceV()}`, RACES[S.race] ? RACES[S.race].perk : ""], ["✊ Aura", S.haki ? "Learned" : "Not yet", "Haki Teacher"], ["👁️ Instinct", S.instinct2 ? "V2" : S.instinct ? "V1" : "Not yet", "Haki Teacher"],
+      ["🐉 Leviathans beaten", String(S.leviKills || 0), `Next one: Lv. ${300 + 50 * (S.leviKills || 0)}`], ["👑 Sea Kings beaten", String(S.seaKings || 0), ""], ["✨ Awakened fruits", (S.awakened || []).join(", ") || "None", "Awakening Expert"],
+      ["⛵ Boats", String((S.boats || []).length + 1), S.boatType || "Rowboat"], ["🦘 Jumps", String((S.skyJumps ? 12 : 2) + (S.race === "Angel" ? 1 : 0)), ""], ["🌊 Sea", seaTitle(), ""]];
+    openModal("Inventory", `<div class="stat2">${it.map(([a, b, c]) => `<div><small>${a}</small>${b}${c ? `<small>${c}</small>` : ""}</div>`).join("")}</div>`);
+  }
+  $("mb").insertAdjacentHTML("afterbegin", bar); $("mt").textContent = "Inventory";
+  $("mb").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => openInventory(b.dataset.tab)));
+  $("mb").querySelectorAll("[data-sw]").forEach((b) => (b.onclick = () => { S.sword = b.dataset.sw; save(); P.tool = 2; drawHot(); drawSkills(); show(`Equipped ${S.sword}`, 1.5); openInventory("swords"); }));
+  $("mb").querySelectorAll("[data-st]").forEach((b) => (b.onclick = () => { S.style = b.dataset.st; save(); P.tool = 1; drawHot(); drawSkills(); show(`Fighting style: ${S.style}`, 1.5); openInventory("styles"); }));
+}
 function openFruits() {
   const cur = S.fruit ? `<div class="row" style="border-color:#ffd23a">${fruitIcon(S.fruit)}<div class="grow"><b>Eaten: ${S.fruit} Fruit</b> ${rarTag(FRUITS[S.fruit].rar)}<div style="font-size:12px;opacity:.8">You can't swim. Use a boat (B).</div></div></div>` : `<p>You haven't eaten a fruit. You can still swim!</p>`;
   const bag = S.inv.length ? S.inv.map((n, i) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div><button class="btn" data-eat="${i}">Eat</button><button class="btn gray" data-drop="${i}">Drop</button></div>`).join("") : `<p style="opacity:.7">Your bag is empty. Buy fruits from the Fruit Dealer, spin the Gacha, or open chests.</p>`;
   const perm = (S.perm || []).length ? `<h3>Permanent fruits ✨</h3><p style="font-size:12px;opacity:.8;margin:0 0 6px">Bought with Stardust: switch between them any time, free.</p>` + S.perm.map((n) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div>${S.fruit === n ? '<span style="font-size:12px;color:#ffd23a">Using</span>' : `<button class="btn blue" data-use="${n}">Use</button>`}<button class="btn gray" data-pdrop="${n}" style="margin-left:6px">Drop</button></div>`).join("") : "";
-  openModal("Fruits", cur + perm + "<h3>Bag</h3>" + bag);
+  openModal("Inventory", cur + perm + "<h3>Bag</h3>" + bag); if (invTab !== "fruits") invTab = "fruits";
+  $("mb").insertAdjacentHTML("afterbegin", `<div class="invtabs">${[["fruits", "🍎 Fruits"], ["swords", "🗡️ Swords"], ["styles", "👊 Styles"], ["items", "💎 Items"]].map(([id, l]) => `<button data-tab="${id}" class="${id === "fruits" ? "on" : ""}">${l}</button>`).join("")}</div>`);
+  $("mb").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => openInventory(b.dataset.tab)));
   $("mb").querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
     const n = b.dataset.use; S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
     ring(P.pos, FRUITS[n].color, 6, 0.8); show(`Switched to the ${n} Fruit`, 2);
@@ -2256,7 +2295,7 @@ function travel(sea) {
   S.sea = sea; S.home = null; if (sea !== 2) S.deep = 0; save(); netSwitchSea(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
 }
 $("bStats").onclick = () => started && openStats();
-$("bFruits").onclick = () => started && openFruits();
+$("bFruits").onclick = () => started && openInventory(invTab);
 $("bBoat").onclick = () => started && toggleBoat();
 
 function drawHot() {
