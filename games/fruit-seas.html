@@ -471,6 +471,10 @@ const SWORDS = {
   "Dual Katana": { price: 120000, mult: 2.6, color: 0xff4d4d, sea: 0 },
   "Frost Blade": { price: 600000, mult: 4, color: 0x7fdcff, sea: 1 },
   "Shadow Edge": { price: 1500000, mult: 5.5, color: 0x6a2bbd, sea: 1 },
+  "Ember Blade": { price: 2000000, mult: 6.5, color: 0xff7043, sea: 99 },
+  "Tide Blade": { price: 2000000, mult: 6.5, color: 0x4fc3f7, sea: 99 },
+  "Storm Blade": { price: 2000000, mult: 6.5, color: 0xfff176, sea: 99 },
+  "True Triple Katana": { price: 0, mult: 12, color: 0xe0e0e0, sea: 99 },
   "Tushita": { price: 5000000, mult: 7.5, color: 0xffb300, sea: 2 },
   "Yama": { price: 8000000, mult: 9, color: 0x880e4f, sea: 2 },
 };
@@ -481,11 +485,12 @@ const STYLES = {
   Electro: { price: 500000, sea: 0, mult: 1.5, color: 0x40c4ff, skills: [["Z", "Electric Rush", 4, 12, 45, "dash", { dist: 24 }], ["X", "Thunder Clap", 7, 20, 60, "aoe", { r: 7, front: true }], ["C", "Lightning Bolt", 11, 28, 50, "proj", { size: 1, speed: 80, range: 60, explode: 5 }]] },
   "Water Kung Fu": { price: 750000, sea: 0, mult: 1.6, color: 0x29b6f6, skills: [["Z", "Water Fist", 3, 12, 50, "proj", { size: 1, speed: 50, range: 40 }], ["X", "Shark Tide", 8, 22, 65, "aoe", { r: 9, self: true }], ["C", "Hydro Rain", 13, 32, 55, "rain", { n: 8, r: 6 }]] },
   "Dragon Claw": { price: 1500000, sea: 1, mult: 1.9, color: 0xe53935, skills: [["Z", "Claw Swipe", 4, 14, 70, "aoe", { r: 6, front: true, burn: true }], ["X", "Dragon Rush", 7, 22, 80, "dash", { dist: 26 }], ["C", "Flame Claw", 12, 34, 75, "rain", { n: 10, r: 7, burn: true }]] },
+  "God Human": { price: 0, sea: 99, secret: true, mult: 3.2, color: 0xe1bee7, skills: [["Z", "Heavenly Punch", 4, 18, 140, "aoe", { r: 9, front: true }], ["X", "Divine Rush", 6, 22, 130, "dash", { dist: 36 }], ["C", "Thousand Fists", 12, 40, 110, "barrage", { n: 18, r: 7 }], ["V", "God's Judgement", 18, 55, 200, "rain", { n: 20, r: 12 }]] },
   Superhuman: { price: 3000000, sea: 1, mult: 2.3, color: 0xffd23a, skills: [["Z", "Ground Smash", 5, 16, 90, "aoe", { r: 8, self: true }], ["X", "Super Dash", 6, 20, 85, "dash", { dist: 30 }], ["C", "Final Punch", 14, 40, 140, "aoe", { r: 10, front: true }]] },
 };
 const myStyle = () => STYLES[S.style] || STYLES.Combat;
 function openStyles() {
-  openModal("Fighting Style Teacher", "<p>Learn a fighting style for your fists (1). Each has its own Z, X and C moves.</p>" + Object.entries(STYLES).filter(([, f]) => f.sea <= S.sea).map(([n, f]) => {
+  openModal("Fighting Style Teacher", "<p>Learn a fighting style for your fists (1). Each has its own Z, X and C moves.</p>" + Object.entries(STYLES).filter(([n, f]) => (f.secret ? (S.styles || []).includes(n) : f.sea <= S.sea)).map(([n, f]) => {
     const own = n === "Combat" || (S.styles || []).includes(n);
     return `<div class="row"><span class="fr" style="background:#${f.color.toString(16).padStart(6, "0")}"></span><div class="grow"><b>${n}</b><div style="font-size:12px;opacity:.8">Damage x${f.mult} · ${f.skills.map((x) => x[0] + ": " + x[1]).join(" · ")}</div></div>${own ? ((S.style || "Combat") === n ? '<b style="color:#7dff7d">Using</b>' : `<button class="btn" data-use="${n}">Use</button>`) : `<button class="btn blue" data-learn="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button>`}</div>`;
   }).join("") + (S.sea === 0 ? '<p style="font-size:12px;opacity:.7">Dragon Claw and Superhuman are taught in the Second Sea.</p>' : ""));
@@ -504,10 +509,23 @@ setInterval(() => { if (started) save(); }, 500); // saved on this device every 
 setInterval(save, 5000);
 
 // ================= player =================
-const maxHp = () => 100 + (S.lvl - 1) * 8 + S.st.defense * 20;
-const maxEn = () => 100 + (S.lvl - 1) * 4 + S.st.energy * 15;
+// Races (rolled the first time you play; a secret Race Reroller can change it). Each race has a
+// perk; awakening it (V2, V3, V4, all secrets) makes it stronger, and V4 adds a T transformation.
+const RACES = {
+  Human: { color: 0xffffff, perk: "+8% damage" },
+  Shark: { color: 0x26c6da, perk: "Swim fast" },
+  Angel: { color: 0xfff59d, perk: "One extra air jump" },
+  Rabbit: { color: 0xffcc80, perk: "Run 15% faster" },
+  Cyborg: { color: 0x90a4ae, perk: "+25% energy" },
+  Ghoul: { color: 0x7e57c2, perk: "Heal a little when you defeat an enemy" },
+};
+if (!S.race || !RACES[S.race]) { S.race = Object.keys(RACES)[Math.floor(Math.random() * 6)]; S.raceV = 1; }
+const raceV = () => S.raceV || 1;
+const raceBoost = () => 1 + (raceV() - 1) * 0.06 + (typeof P !== "undefined" && P.raceAwake ? 0.4 : 0);
+const maxHp = () => (100 + (S.lvl - 1) * 8 + S.st.defense * 20) * (1 + (raceV() - 1) * 0.05);
+const maxEn = () => (100 + (S.lvl - 1) * 4 + S.st.energy * 15) * (S.race === "Cyborg" ? 1.25 : 1);
 const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
-const mult = (stat) => (1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02) * (P.buso ? 1.15 : 1);
+const mult = (stat) => (1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02) * (P.buso ? 1.15 : 1) * (S.race === "Human" ? 1.08 : 1) * raceBoost() * (stat === "fruit" && (S.awakened || []).includes(S.fruit) ? 1.25 : 1);
 // ---- Haki, like Blox Fruits: J = Buso (Aura: arms turn black, +15% damage, uses a little energy);
 // E = Observation (Ken: for 6 seconds you dodge half of all hits; 25 s cooldown) ----
 // Haki is bought once from the Haki Teacher (both spawn islands): $1,500,000 for Aura and Observation.
@@ -621,7 +639,7 @@ function addNpc(isl, ox, oz, name, color, open, opts = {}) {
   if (isl.spawn && !opts.exact) { ox *= 2.8; oz *= 2.8; }
   const b = makeBody({ shirt: color, pants: 0x333333, hat: opts.hat, hatColor: opts.hatColor, skin: opts.skin });
   const x = isl.x + ox, z = isl.z + oz; b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-ox, -oz); scene.add(b.g);
-  const l = makeLabel(name, "#7dff7d", 768); l.scale.set(8, 1.3, 1); l.position.set(x, groundAt(x, z) + 5.6, z); scene.add(l);
+  const l = makeLabel(opts.secret ? "???" : name, opts.secret ? "#b39ddb" : "#7dff7d", 768); l.scale.set(8, 1.3, 1); l.position.set(x, groundAt(x, z) + 5.6, z); scene.add(l);
   npcs.push({ b, x, z, name, open }); solids.push({ x, z, r: 1.2 });
 }
 for (const isl of ISLANDS.filter((i) => i.spawn)) {
@@ -668,6 +686,21 @@ buildCafe(ISLANDS.find((i) => i.name === "Harbor Town"));
   for (let x = -15; x <= 15; x += 2.5) for (let z = -7; z <= 19; z += 2.5) if (Math.abs(x) > 13 || (z < -5 && Math.abs(x) > 4) || z > 17) solids.push({ x: cx + x, z: cz + z, r: 1.4 });
   for (const [tx, tz] of [[-R, -R], [R, -R], [-R, R], [R, R]]) solids.push({ x: cx + tx, z: cz + tz, r: 6 });
 })(ISLANDS.find((i) => i.name === "Castle on the Sea"));
+{
+  const at = (name) => ISLANDS.find((i) => i.name === name);
+  const hide = (isl, fx, fz, name, color, open, hat) => isl && addNpc(isl, isl.r * fx, isl.r * fz, name, color, open, { hat, secret: true, exact: true });
+  hide(at("Snow Village"), -0.7, -0.55, "Mysterious Scientist", 0x00897b, openRacer, "wizard");
+  hide(at("Haunted Castle"), 0.62, 0.6, "Awakening Expert", 0x6a1b9a, openAwakener, "wizard");
+  hide(at("Floating Turtle"), -0.66, 0.58, "Sword Master", 0x37474f, openSwordMaster, "helmet");
+  hide(at("Floating Turtle"), 0.7, -0.5, "Ancient Monk", 0xffb300, openMonk, "halo");
+}
+// The Legendary Sword Dealer moves to a random island (any sea) every 15 minutes.
+const legendNpc = (() => { addNpc(ISLANDS[0], 0, 0, "Legendary Sword Dealer", 0xd4af37, openLegendDealer, { hat: "crown", secret: true, exact: true }); return npcs[npcs.length - 1]; })();
+function moveLegend() {
+  const k = Math.floor(Date.now() / (15 * 60000)), isl = ISLANDS[(k * 7) % ISLANDS.length], a = (k * 2.39) % 6.28, d = isl.r * 0.5;
+  const x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d; legendNpc.x = x; legendNpc.z = z; legendNpc.b.g.position.set(x, groundAt(x, z), z);
+}
+moveLegend(); setInterval(moveLegend, 60000);
 // A Home Point on every island (a glowing pad with a keeper): set it to come back there when you die.
 for (const isl of ISLANDS) {
   const ox = 0, oz = 20, x = isl.x + ox, z = isl.z + oz, y = groundAt(x, z);
@@ -711,7 +744,7 @@ function addFame(n, why) {
 }
 function drawSide() {
   const el = $("faction"); if (!el || !S.side) return;
-  el.textContent = S.side === "Marine" ? `⚓ Marine · Honor ${(S.honor || 0).toLocaleString()}` : `🏴‍☠️ Pirate · Bounty ${(S.bounty || 0).toLocaleString()}`;
+  el.textContent = S.side === "Marine" ? `⚓ Marine · Honor ${(S.honor || 0).toLocaleString()}` : `🏴‍☠️ Pirate · Bounty ${(S.bounty || 0).toLocaleString()}`; el.textContent += ` · ${S.race} V${raceV()}`;
   el.style.color = "#fff";
 }
 function chooseSide(first) {
@@ -1349,8 +1382,8 @@ function removeShared(m) {
 }
 function killEnemy(e) {
   shareKill(e);
-  if (e.beast) { if (e.levi) { S.leviKills = (S.leviKills || 0) + 1; show(`LEVIATHAN DEFEATED! The next one is Lv. ${300 + 50 * S.leviKills}`, 4); } const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
-  if (e.event) { const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
+  if (e.beast) { addFrags(e.levi ? 300 : 100); if (e.levi) { S.leviKills = (S.leviKills || 0) + 1; show(`LEVIATHAN DEFEATED! The next one is Lv. ${300 + 50 * S.leviKills}`, 4); } const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
+  if (e.event) { S.seaKings = (S.seaKings || 0) + 1; addFrags(50); const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
 +${money(big)} and a FREE gacha spin`, 5); }
   if (e.boss) addFame(e.lvl * 40);
   if (e.rival) addFame(e.lvl * (S.side === "Marine" ? 30 : 15));
@@ -1358,6 +1391,7 @@ function killEnemy(e) {
   scene.remove(e.b.g, e.bar, e.label); cubes(e.pos.clone().setY(e.pos.y + 2), 0xffd23a, 16);
   const xp = e.boss ? e.lvl * 120 : Math.round(20 + e.lvl * 12), cash = e.boss ? e.lvl * 2500 : Math.round(rnd(30, 60) * e.lvl);
   gainXp(xp); S.beli += cash; if (!e.rival) shareGain(xp, cash);
+  if (S.race === "Ghoul") P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.06);
   if (P.tool >= 1) { addMastery(P.tool, Math.max(1, Math.round(e.lvl / 2)) * (e.boss ? 5 : 1)); drawSkills(); } floatText(e.pos, `+${xp} XP`, "#ffd23a"); floatText(e.pos, `+${money(cash)}`, "#7dff7d");
   const q = S.quest;
   if (q && !e.boss && e.name === q.mob) {
@@ -1506,6 +1540,56 @@ function useSkill(sk, statKey, color) {
     const a = aimPoint();
     for (let i = 0; i < o.n; i++) setTimeout(() => { const p = a.clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))); p.y = Math.max(groundAt(p.x, p.z), 0); pillar(p, color, 1.2, 18, 0.4); explode(p, o.r, dmg, color, fxo); }, i * 140);
   }
+}
+// ================= secrets =================
+// Hidden NPCs (their names show as ???) for races, race awakenings, fruit awakening, the True
+// Triple Katana and God Human. Fragments come from Sea Beasts, Leviathans and the Sea King.
+function addFrags(n) { S.frags = (S.frags || 0) + n; floatText(P.pos, `+${n} Fragments`, "#ce93d8"); }
+const secretRow = (title, about, btn) => `<div class="row"><div class="grow"><b>${title}</b><div style="font-size:12px;opacity:.85">${about}</div></div>${btn}</div>`;
+function openRacer() {
+  const r = RACES[S.race];
+  openModal("Mysterious Scientist", `<p>Your race: <b>${S.race} V${raceV()}</b> · ${r.perk}</p>` +
+    secretRow("Reroll your race", "Get a random new race (your awakening level stays).", `<button class="btn" id="rr" ${S.beli < 3000000 ? "disabled" : ""}>${money(3000000)}</button>`) +
+    secretRow("Race V2", "Lv. 80 and $5,000,000: +6% damage and +5% health.", raceV() >= 2 ? "<b>✅</b>" : `<button class="btn blue" id="rv2" ${S.lvl >= 80 && S.beli >= 5000000 ? "" : "disabled"}>Awaken</button>`) +
+    secretRow("Race V3", `Defeat 3 Sea Kings (you have ${S.seaKings || 0}) and $10,000,000.`, raceV() >= 3 ? "<b>✅</b>" : `<button class="btn blue" id="rv3" ${raceV() === 2 && (S.seaKings || 0) >= 3 && S.beli >= 10000000 ? "" : "disabled"}>Awaken</button>`) +
+    secretRow("Race V4", `Defeat 2 Leviathans (you have ${S.leviKills || 0}), Lv. 200 and 500 Fragments (you have ${S.frags || 0}). Unlocks T: Race Awakening (+40% damage, faster, 30 s).`, raceV() >= 4 ? "<b>✅</b>" : `<button class="btn blue" id="rv4" ${raceV() === 3 && (S.leviKills || 0) >= 2 && S.lvl >= 200 && (S.frags || 0) >= 500 ? "" : "disabled"}>Awaken</button>`));
+  const on = (id, f) => { const b = $(id); if (b) b.onclick = () => { f(); save(); SFX.win(); openRacer(); }; };
+  on("rr", () => { if (S.beli < 3000000) return; S.beli -= 3000000; const o = Object.keys(RACES).filter((x) => x !== S.race); S.race = o[Math.floor(Math.random() * o.length)]; show(`You are now a ${S.race}!`, 3); });
+  on("rv2", () => { S.beli -= 5000000; S.raceV = 2; show("Race V2 awakened!", 3); });
+  on("rv3", () => { S.beli -= 10000000; S.raceV = 3; show("Race V3 awakened!", 3); });
+  on("rv4", () => { S.frags -= 500; S.raceV = 4; show("RACE V4! Press T to awaken your race", 4); });
+}
+function raceAwaken() {
+  if (raceV() < 4) return show("Awaken your race to V4 first (it's a secret)", 1.5);
+  if (P.raceAwake) return; if ((P.raceCd || 0) > performance.now()) return show(`Race Awakening in ${Math.ceil((P.raceCd - performance.now()) / 1000)}s`, 1);
+  P.raceAwake = true; P.raceCd = performance.now() + 120000; SFX.boom?.(); ring(P.pos, RACES[S.race].color, 10, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), RACES[S.race].color, 30, 9);
+  show(`${S.race.toUpperCase()} AWAKENING!`, 2.5);
+  setTimeout(() => { P.raceAwake = false; show("Race Awakening ended", 1.5); }, 30000);
+}
+function openAwakener() {
+  const f = S.fruit, done = (S.awakened || []).includes(f), cost = f ? { Common: 300, Uncommon: 500, Rare: 800, Legendary: 1200, Mythical: 2000 }[FRUITS[f].rar] : 0;
+  openModal("Awakening Expert", `<p>Bring me Fragments (from Sea Beasts, Leviathans and the Sea King) and I'll awaken your fruit: +25% fruit damage, forever.</p><p>Fragments: <b>${S.frags || 0}</b></p>` +
+    (f ? secretRow(`Awaken ${f}`, `Costs ${cost} Fragments.`, done ? "<b>✅ Awakened</b>" : `<button class="btn blue" id="awk" ${(S.frags || 0) >= cost ? "" : "disabled"}>Awaken</button>`) : "<p>Eat a fruit first.</p>"));
+  const b = $("awk"); if (b) b.onclick = () => { S.frags -= cost; S.awakened = [...(S.awakened || []), f]; save(); SFX.win(); show(`${f} AWAKENED!`, 3); openAwakener(); };
+}
+// Legendary Sword Dealer: shows up on a random island every 15 minutes, selling one of three swords.
+const LEGEND_SWORDS = ["Ember Blade", "Tide Blade", "Storm Blade"];
+function openLegendDealer() {
+  const n = LEGEND_SWORDS[Math.floor(Date.now() / (15 * 60000)) % 3];
+  openModal("Legendary Sword Dealer", S.swords.includes(n) ? `<p>You already have the ${n}. Come back later for another.</p>` : `<p>Psst... today I have the <b>${n}</b>.</p><div style="text-align:center"><button class="btn blue" id="lsb" ${S.beli < 2000000 ? "disabled" : ""}>Buy for ${money(2000000)}</button></div>`);
+  const b = $("lsb"); if (b) b.onclick = () => { if (S.beli < 2000000) return; S.beli -= 2000000; S.swords.push(n); save(); SFX.win(); show(`You got the ${n}!`, 3); closeModal(); };
+}
+function openSwordMaster() {
+  const have = LEGEND_SWORDS.filter((n) => S.swords.includes(n)).length, got = S.swords.includes("True Triple Katana");
+  openModal("Sword Master", got ? "<p>You wield the True Triple Katana. Few ever do.</p>" : `<p>Bring me the three legendary blades (Ember, Tide and Storm: you have ${have}/3) and $5,000,000, and I'll forge the <b>True Triple Katana</b>.</p><div style="text-align:center"><button class="btn blue" id="ttk" ${have === 3 && S.beli >= 5000000 ? "" : "disabled"}>Forge</button></div>`);
+  const b = $("ttk"); if (b) b.onclick = () => { S.beli -= 5000000; S.swords = S.swords.filter((n) => !LEGEND_SWORDS.includes(n)); S.swords.push("True Triple Katana"); S.sword = "True Triple Katana"; save(); SFX.win(); show("TRUE TRIPLE KATANA!", 4); closeModal(); drawHot(); };
+}
+function openMonk() {
+  const need = Object.keys(STYLES).filter((n) => n !== "Combat" && n !== "God Human");
+  const ready = need.filter((n) => (S.styles || []).includes(n) && ((S.mastery || {})["style:" + n] || 0) >= 300);
+  const got = (S.styles || []).includes("God Human");
+  openModal("Ancient Monk", got ? "<p>You have mastered God Human.</p>" : `<p>Master every fighting style (own it with 300 mastery): <b>${ready.length}/${need.length}</b>. Then bring $15,000,000 and I'll teach you <b>God Human</b>.</p><p style="font-size:12px;opacity:.8">${need.map((n) => n + (ready.includes(n) ? " ✅" : " ❌")).join(" · ")}</p><div style="text-align:center"><button class="btn blue" id="gh" ${ready.length === need.length && S.beli >= 15000000 ? "" : "disabled"}>Learn God Human</button></div>`);
+  const b = $("gh"); if (b) b.onclick = () => { S.beli -= 15000000; S.styles = [...(S.styles || []), "God Human"]; S.style = "God Human"; save(); SFX.win(); show("GOD HUMAN!", 4); closeModal(); drawSkills(); };
 }
 // ---- Dragon Transformation: you become a huge flying dragon for 40 seconds (or until out of energy)
 let dragonModel = null;
@@ -1697,7 +1781,7 @@ addEventListener("keydown", (e) => {
   if (e.code === "Escape" && modalOpen) return closeModal();
   if (!started || dead || modalOpen) return;
   if (e.code === "Digit1") equip(1); if (e.code === "Digit2") equip(2); if (e.code === "Digit3") equip(3);
-  if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C"); if (e.code === "KeyV") trySkill("V"); if (e.code === "KeyF") trySkill("F"); if (e.code === "KeyG") trySkill("G");
+  if (e.code === "KeyZ") trySkill("Z"); if (e.code === "KeyX") trySkill("X"); if (e.code === "KeyC") trySkill("C"); if (e.code === "KeyV") trySkill("V"); if (e.code === "KeyF") trySkill("F"); if (e.code === "KeyG") trySkill("G"); if (e.code === "KeyT") raceAwaken();
   if (e.code === "KeyQ" || e.code === "ShiftLeft" || e.code === "ShiftRight") dash();
   if (e.code === "KeyJ") toggleBuso();
   if (e.code === "KeyE") interact();
@@ -1726,7 +1810,7 @@ function jump() {
   if (sailing()) return leaveWheel();
   // jumping uses energy (more for the jump in the air); with too little you can't
   if (P.onGround || inWater()) { if (P.en < 6) return show("Not enough energy", 0.6); P.en -= 6; P.vel.y = inWater() ? 14 : 24; P.jumps = 1; P.onGround = false; }
-  else if (P.jumps < (S.skyJumps ? 12 : 2)) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps++; ring(P.pos, 0xffffff, 2, 0.25); }
+  else if (P.jumps < ((S.skyJumps ? 12 : 2) + (S.race === "Angel" ? 1 : 0))) { if (P.en < 12) return show("Not enough energy", 0.6); P.en -= 12; P.vel.y = 22; P.jumps++; ring(P.pos, 0xffffff, 2, 0.25); }
 }
 // Trail: little buddies that float after you (from your avatar; they don't do anything).
 const TRAIL_COLS = { rainbow: [0xff5252, 0xffd740, 0x69f0ae, 0x40c4ff, 0xe040fb], stars: [0xfff59d, 0xffe082, 0xfff9c4], bubbles: [0xb3e5fc, 0xe1f5fe, 0xb2ebf2] };
@@ -2147,7 +2231,7 @@ function tick() {
       if (P.boat) { P.pos.y = 2.3 + Math.sin(T * 2) * 0.15; b.g.position.set(P.pos.x, Math.sin(T * 2) * 0.15, P.pos.z); b.g.rotation.y = b.yaw; b.g.rotation.z = Math.sin(T * 1.5) * 0.04; P.faceYaw = b.yaw; }
       P.vel.set(0, 0, 0); P.onGround = true;
     } else {
-      const want = moveDir().multiplyScalar(inWater() ? 9 : 16);
+      const want = moveDir().multiplyScalar((inWater() ? (S.race === "Shark" ? 18 : 9) : 16) * (S.race === "Rabbit" ? 1.15 : 1) * (P.raceAwake ? 1.2 : 1));
       const k = P.onGround ? 30 : inWater() ? 14 : 9; // start and stop almost at once, like Roblox
       if (P.dashT > 0) { P.dashT -= dt; P.vel.x = P.dashVel.x; P.vel.z = P.dashVel.z; P.vel.y = Math.max(P.vel.y, 0); cubes(P.pos.clone().setY(P.pos.y + 2), 0xffffff, 1, 2); }
       else { P.vel.x += (want.x - P.vel.x) * Math.min(1, k * dt); P.vel.z += (want.z - P.vel.z) * Math.min(1, k * dt); }
