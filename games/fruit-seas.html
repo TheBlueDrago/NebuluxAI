@@ -39,7 +39,8 @@
   body.touch #skills{bottom:auto;top:12px;right:12px}
   body.touch #hot{bottom:auto;top:12px;left:auto;right:200px;transform:none}
   body.touch #side{flex-direction:row;top:172px;transform:none}
-  body.touch .sb{width:48px;height:48px;font-size:9px}
+  body.touch .sb{width:48px;height:48px;font-size:9px} body.touch #bFruits{font-size:7px!important}
+  @media (max-width:600px){.invtabs button{min-width:60px;padding:7px 4px;font-size:12px} .invgrid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:7px} .tile .ic{width:38px;height:38px;font-size:21px} .stat2{grid-template-columns:repeat(2,1fr);gap:7px}}
   body.touch .sb em{font-size:16px}
   body.touch .keys, body.touch #help{display:none}
   #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
@@ -69,14 +70,26 @@
   .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}
   .keys{font-size:13px;line-height:1.9;opacity:.95}
   kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  /* phones: menus on top, no long move list (the buttons have the moves), smaller everything */
+  .modal{z-index:30}
+  body.touch #skills, body.touch #faction, body.touch #mastery{display:none}
+  body.touch .tb.sk2{width:54px;height:54px;font-size:16px}
+  body.touch #msg{font-size:18px;top:24%}
+  body.touch #chat{width:200px;bottom:auto;top:150px;left:auto;right:12px;font-size:11px}
+  body.touch #prompt{top:auto;bottom:300px;font-size:13px}
+  body.touch #combo{font-size:24px;top:30%}
+  body.touch #kenTxt{font-size:12px;top:96px}
+  /* phones turned sideways */
+  @media (min-aspect-ratio:1/1){ body.touch #mini{left:auto;right:10px;top:8px;transform:none;width:76px;height:76px} body.touch #top{width:230px} body.touch #top .bar{height:13px} body.touch #hot{right:auto;left:50%;transform:translateX(-50%) scale(.8);transform-origin:top center} }
   /* phones held upright */
   @media (max-aspect-ratio:1/1){
     body.touch #top{width:170px} body.touch #top .bar{height:14px}
     body.touch #skills{top:12px;right:12px} body.touch .sk{min-width:140px;height:30px;font-size:12px}
     body.touch #hot{top:auto;bottom:250px;right:auto;left:50%;transform:translateX(-50%)}
     body.touch #mini{top:auto;bottom:320px;left:auto;right:12px;transform:none;width:90px;height:90px}
-    body.touch #side{top:auto;bottom:190px;left:14px}
-    body.touch #hot{bottom:300px} body.touch #mini{bottom:360px}
+    body.touch #side{top:150px;bottom:auto;left:10px;flex-direction:column;gap:5px}
+    body.touch .sb{width:44px;height:44px;font-size:8px} body.touch .sb em{font-size:14px}
+    body.touch #hot{bottom:236px;transform:translateX(-50%) scale(.72);transform-origin:bottom center} body.touch #mini{top:12px;bottom:auto;right:12px;width:78px;height:78px}
   }
   #chat{position:fixed;left:14px;bottom:110px;width:300px;font-size:13px;font-weight:700;z-index:5;color:#fff}
   #chatlog{max-height:150px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
@@ -112,7 +125,7 @@
 <div id="combo" style="position:fixed;right:24px;top:42%;font:900 40px Segoe UI,system-ui;color:#ffd23a;text-align:right;-webkit-text-stroke:2px #000;opacity:0;transition:opacity .3s,transform .08s;pointer-events:none;z-index:4"></div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
-  <button class="sb" id="bFruits"><em>🎒</em>Inventory</button>
+  <button class="sb" id="bFruits" style="font-size:9px;letter-spacing:-.2px"><em>🎒</em>Inventory</button>
   <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
   <button class="sb" id="bBeast" style="display:none" title="Summon a Sea Beast to defeat for prizes"><em>🐉</em><span id="beastTxt">Beast</span></button>
   <button class="sb" id="bAlly" style="display:none" title="Summon a Sea Beast that fights for you"><em>🐲</em><span id="allyTxt">Ally</span></button>
@@ -132,10 +145,13 @@
   <button class="tb big" data-a="atk" style="right:28px;bottom:40px">Hit</button>
   <button class="tb" data-a="jump" style="right:126px;bottom:28px">Jump</button>
   <button class="tb" data-a="dash" style="right:40px;bottom:136px">Dash</button>
-  <button class="tb" data-a="Z" style="right:200px;bottom:44px">Z</button>
-  <button class="tb" data-a="X" style="right:134px;bottom:108px">X</button>
-  <button class="tb" data-a="C" style="right:72px;bottom:208px">C</button>
-  <button class="tb" data-a="E" style="right:204px;bottom:122px">E</button>
+  <button class="tb sk2" data-a="Z" style="right:190px;bottom:30px">Z</button>
+  <button class="tb sk2" data-a="X" style="right:196px;bottom:100px">X</button>
+  <button class="tb sk2" data-a="C" style="right:150px;bottom:162px">C</button>
+  <button class="tb sk2" data-a="V" style="right:88px;bottom:200px">V</button>
+  <button class="tb sk2" data-a="F" style="right:20px;bottom:214px">F</button>
+  <button class="tb sk2" data-a="G" style="right:20px;bottom:274px;display:none">G</button>
+  <button class="tb" data-a="E" style="left:24px;bottom:170px;width:52px;height:52px">E</button>
 </div>
 <div class="modal" id="modal"><div class="box"><button class="x" id="mx">X</button><h2 id="mt"></h2><div id="mb"></div></div></div>
 <div id="start"><div class="center">
@@ -594,7 +610,7 @@ scene.add(P.body.g);
 // Your Nebulux AI username over your head (Nebulux Games passes it in; "You" elsewhere).
 const myName = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? window.nebulux.username : "You";
 const nameTag = makeLabel(myName, "#ffffff", 768); nameTag.scale.set(6, 1, 1); scene.add(nameTag);
-const cam = { yaw: Math.PI, pitch: 0.38, dist: 16 };
+const cam = { yaw: Math.PI, pitch: 0.38, dist: matchMedia("(pointer: coarse) and (max-aspect-ratio: 1/1)").matches ? 26 : 16 }; // further back on upright phones
 // You come back on the last island you stood on in this sea (S.home), else the sea's spawn island.
 function spawnPoint() {
   const isl = ISLANDS.find((i) => i.name === S.home && i.sea === S.sea) || ISLANDS.find((i) => i.spawn && i.sea === S.sea);
@@ -2306,6 +2322,7 @@ function drawHot() {
 }
 function drawSkills() {
   const s = skillsFor(P.tool);
+  document.querySelectorAll(".tb.sk2").forEach((b) => { const sk = s.list.find((x) => x[0] === b.dataset.a); b.style.display = sk ? "" : "none"; if (sk) b.textContent = b.dataset.a; });
   const mk = masteryKey(P.tool);
   if ($("mastery")) $("mastery").textContent = mk ? `${mk.split(":")[1]} mastery ${Math.floor(mastery(P.tool))} / ${MAX_MASTERY}` + (mastery(P.tool) < MAX_MASTERY ? ` (${Math.floor((S.mxp || {})[mk] || 0)} / ${masteryNeed(mastery(P.tool))} XP)` : "") : "";
   $("skills").innerHTML = s.list.map((sk) => { const left = Math.max(0, P.cds[P.tool + sk[0]] || 0); return `<div class="sk ${P.en < sk[3] ? "low" : ""}"><div class="cdv" style="width:${(left / sk[2]) * 100}%"></div><kbd>${sk[0]}</kbd>${sk[1]}${left > 0 ? ` <span style="margin-left:auto;opacity:.8">${left.toFixed(1)}</span>` : ""}</div>`; }).join("");
