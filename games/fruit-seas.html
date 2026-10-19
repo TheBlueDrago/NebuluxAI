@@ -592,7 +592,7 @@ function spawnPoint() {
   return V(isl.x, groundAt(isl.x, isl.z + dz) + 0.1, isl.z + dz);
 }
 P.pos.copy(spawnPoint()); P.hp = maxHp(); P.en = maxEn();
-if (location.search.includes("nxtest")) window.__fs = { P, get mo() { return modalOpen; }, get dd() { return dead; }, get st() { return started; }, get keys() { return keys; }, get sailing() { return sailing(); }, sk: (t) => { try { return skillsFor(t).list.map((x) => x[0] + " " + x[1]).join(", "); } catch (e) { return "ERR " + e.message; } }, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
+if (location.search.includes("nxtest")) window.__fs = { P, startRaid: () => startRaid(), get raid() { return raid; }, get mo() { return modalOpen; }, get dd() { return dead; }, get st() { return started; }, get keys() { return keys; }, get sailing() { return sailing(); }, sk: (t) => { try { return skillsFor(t).list.map((x) => x[0] + " " + x[1]).join(", "); } catch (e) { return "ERR " + e.message; } }, get S() { return S; }, groundAt, seaKingEvent: () => seaKingEvent(), spawnBeast: () => spawnBeast(P.pos), summonAlly: () => summonAlly(), get beast() { return beast; }, get ally() { return ally; }, spawnWildFruit: () => spawnWildFruit(), get wildFruits() { return wildFruits; }, get iceTiles() { return iceTiles; }, get enemies() { return enemies; }, get allies() { return allies; }, get remotes() { return remotes; }, get NET() { return NET; } }; // automated tests only
 
 // ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
 const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
@@ -662,6 +662,7 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
 buildCafe(ISLANDS.find((i) => i.name === "Harbor Town"));
+for (const n of ["Harbor Town", "Port Haven"]) { const isl = ISLANDS.find((i) => i.name === n); if (isl) addNpc(isl, -isl.r * 0.45, -isl.r * 0.35, "Raid Lab", 0x6a1b9a, () => openRaidLab(), { hat: "wizard", exact: true }); }
 for (const isl of ISLANDS) { const f = new THREE.Mesh(new THREE.RingGeometry(isl.r + 8, isl.r + 15, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false })); f.rotation.x = -Math.PI / 2; f.position.set(isl.x, 0.05, isl.z); f.userData.sea = isl.sea; scene.add(f); foams.push(f); }
 // A huge stone castle on Castle on the Sea (Third Sea): outer walls with battlements, four round-ish
 // towers with red roofs, a gate, and a tall keep in the middle where the Rip Commander waits.
@@ -812,6 +813,7 @@ ISLANDS.forEach((i) => { spawnChest(i); spawnChest(i); });
 const enemies = [];
 const deadSlots = new Map(); // slot -> time (ms) it comes back
 function respawnLater(e, ms) {
+  if (e.raid) return; // raid enemies never come back
   const sl = e.slot && e.slot.split(":")[1];
   if (e.slot) deadSlots.set(e.slot, Date.now() + ms);
   setTimeout(() => { if (e.slot && enemies.some((x) => x.slot === e.slot)) return; spawnEnemy(e.isl, e.boss, sl); }, ms);
@@ -1557,6 +1559,51 @@ function useSkill(sk, statKey, color) {
     const a = aimPoint();
     for (let i = 0; i < o.n; i++) setTimeout(() => { const p = a.clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))); p.y = Math.max(groundAt(p.x, p.z), 0); pillar(p, color, 1.2, 18, 0.4); explode(p, o.r, dmg, color, fxo); }, i * 140);
   }
+}
+// ================= raids =================
+// Buy a raid chip at the Raid Lab (Harbor Town and Port Haven): 5 waves of enemies appear around you,
+// the last with a Raid Boss. Beat them all within 4 minutes for Fragments and maybe a fruit.
+let raid = null;
+const RAID_PRICE = 150000;
+function openRaidLab() {
+  if (raid) return openModal("Raid Lab", "<p>A raid is already going! Beat the waves.</p>");
+  openModal("Raid Lab", `<p>Start a raid right here: <b>5 waves</b> of enemies at your level, then a <b>Raid Boss</b>. You have 4 minutes.</p><p>Win: <b>${150 + deepNow() * 50} Fragments</b>, money, and a 1 in 4 chance of a random fruit.</p><div style="text-align:center"><button class="btn blue" id="raidb" ${S.beli < RAID_PRICE ? "disabled" : ""}>Buy a raid chip (${money(RAID_PRICE)})</button></div>`);
+  $("raidb").onclick = () => { if (S.beli < RAID_PRICE) return; S.beli -= RAID_PRICE; save(); closeModal(); startRaid(); };
+}
+function startRaid() {
+  const isl = islandAt(P.pos.x, P.pos.z) || ISLANDS.find((i) => i.sea === S.sea && i.spawn);
+  raid = { isl, wave: 0, foes: [], end: performance.now() + 240000, center: P.pos.clone() };
+  SFX.boom?.(); show("RAID STARTED! Wave 1", 2.5); nextWave();
+}
+function nextWave() {
+  raid.wave++;
+  const boss = raid.wave === 5, n = boss ? 1 : 3 + raid.wave;
+  for (let i = 0; i < n; i++) {
+    const before = enemies.length;
+    spawnEnemy(raid.isl, boss ? { name: "Raid Boss", lvl: S.lvl + 25, hp: Math.round(3000 + S.lvl * S.lvl * 2.5), color: 0x6a1b9a } : null);
+    const e = enemies[before]; if (!e) continue;
+    e.raid = true; e.lvl = S.lvl + raid.wave * 4; if (!boss) { e.maxHp = e.hp = Math.round(60 + e.lvl * 30 + e.lvl * e.lvl * 0.8); }
+    const a = (i / n) * 6.28, d = boss ? 14 : 16 + Math.random() * 8;
+    e.pos.set(raid.center.x + Math.cos(a) * d, 0, raid.center.z + Math.sin(a) * d); e.pos.y = Math.max(0, groundAt(e.pos.x, e.pos.z)); e.home = e.pos.clone(); e.aggro = 30;
+    cubes(e.pos.clone().setY(e.pos.y + 2), 0xce93d8, 10, 6); raid.foes.push(e);
+  }
+  if (raid.wave > 1) show(boss ? "FINAL WAVE: the RAID BOSS!" : `Wave ${raid.wave}`, 2);
+}
+function raidTick() {
+  if (!raid) return;
+  raid.foes = raid.foes.filter((e) => enemies.includes(e) && e.hp > 0);
+  if (performance.now() > raid.end || dead) {
+    for (const e of raid.foes) { scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); }
+    raid = null; show("The raid failed...", 3); return;
+  }
+  if (!raid.foes.length) {
+    if (raid.wave < 5) return nextWave();
+    const frags = 150 + deepNow() * 50, cash = S.lvl * 3000; addFrags(frags); S.beli += cash; SFX.win();
+    let extra = ""; if (Math.random() < 0.25) { const f = pick(FRUIT_NAMES); S.inv.push(f); extra = `\nYou found a ${f} Fruit!`; }
+    show(`RAID CLEARED!\n+${frags} Fragments  +${money(cash)}${extra}`, 5); raid = null; save();
+  }
+  const left = Math.max(0, Math.ceil((raid ? raid.end - performance.now() : 0) / 1000));
+  if (raid) raid.text = `RAID · wave ${raid.wave}/5 · ${raid.foes.length} left · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
 }
 // ================= secrets =================
 // Hidden NPCs (their names show as ???) for races, race awakenings, fruit awakening, the True
@@ -2357,7 +2404,7 @@ function tick() {
     updateAllies(dt);
     updateTrail(dt);
     updateWildFruits();
-    beastTick(dt);
+    beastTick(dt); raidTick();
 
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
@@ -2478,7 +2525,7 @@ function tick() {
     $("beli").textContent = money(S.beli);
     const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
     if (qq) $("quest").innerHTML = `📜 Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
-    $("where").textContent = `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
+    $("where").textContent = raid && raid.text ? raid.text : `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
     if (started) { drawSkills(); drawMini(); }
   }
   renderer.render(scene, camera);
