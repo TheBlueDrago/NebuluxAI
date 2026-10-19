@@ -183,6 +183,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+
 document.body.appendChild(renderer.domElement);
 const cvs = renderer.domElement;
 const scene = new THREE.Scene();
@@ -255,6 +257,8 @@ const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
   snow: [0xf4fbff, 0xe6f2fa, 0xffffff], candy: [0xff9fc8, 0xffe0f0, 0xb3e5fc], lava: [0x5a4a44, 0x4d3f3a, 0x665650], ghost: [0x5b6b7a, 0x52606e, 0x66788a],
 };
+// Foam rings where each island meets the water (gently pulsing).
+const foams = [];
 const seaGround = []; // the island blocks of each sea (only the sea you're in is drawn)
 const heights = new Map(); // "cx,cz" -> {y, lava}
 const key = (cx, cz) => cx + "," + cz;
@@ -344,7 +348,8 @@ for (const isl of ISLANDS) { const l = makeLabel(isl.name, "#ffd23a", 768); l.sc
 
 // ocean that follows you
 const seaGeo = new THREE.PlaneGeometry(1400, 1400, 90, 90); seaGeo.rotateX(-Math.PI / 2);
-const seaMat = new THREE.MeshLambertMaterial({ color: 0x1e90ff, transparent: true, opacity: 0.88 });
+// shiny water that catches the sun
+const seaMat = new THREE.MeshPhongMaterial({ color: 0x1e90ff, specular: 0x2a5577, shininess: 60, transparent: true, opacity: 0.88 });
 const ocean = new THREE.Mesh(seaGeo, seaMat); ocean.receiveShadow = true; scene.add(ocean);
 const seaBase = seaGeo.attributes.position.array.slice();
 
@@ -657,6 +662,7 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
 buildCafe(ISLANDS.find((i) => i.name === "Harbor Town"));
+for (const isl of ISLANDS) { const f = new THREE.Mesh(new THREE.RingGeometry(isl.r + 8, isl.r + 15, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false })); f.rotation.x = -Math.PI / 2; f.position.set(isl.x, 0.05, isl.z); f.userData.sea = isl.sea; scene.add(f); foams.push(f); }
 // A huge stone castle on Castle on the Sea (Third Sea): outer walls with battlements, four round-ish
 // towers with red roofs, a gate, and a tall keep in the middle where the Rip Commander waits.
 (function buildCastle(isl) {
@@ -2208,6 +2214,7 @@ function tick() {
   const dt = Math.min(clock.getDelta(), document.hidden ? 1 : 0.05); T += dt;
   const sea = SEAS[S.sea];
   seaGround.forEach((m, i) => m && (m.visible = i === S.sea));
+  for (const f of foams) { f.visible = f.userData.sea === S.sea; f.material.opacity = 0.32 + Math.sin(T * 1.6 + f.position.x) * 0.12; }
   scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 160, 560); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
 
   // waves
