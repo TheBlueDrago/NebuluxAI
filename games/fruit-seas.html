@@ -2344,8 +2344,19 @@ Day ${S.streak} in a row${S.streak % 7 === 0 ? " · FREE gacha spin!" : ""}`, 4)
 // Nebulux admins (the owner) get every fruit as a permanent fruit.
 const isAdmin = !!(window.nebulux && window.nebulux.admin);
 // A gift added to a player's save by the team (e.g. to make up for lost progress): shown once.
-function claimGift() {
+function claimGift(accepted) {
   const g = S.gift; if (!g || typeof g !== "object") return;
+  // A gift that asks first: Yes gives it, No turns it down (it's gone either way).
+  if (g.ask && !accepted) {
+    setTimeout(() => {
+      openModal("A message for you", `<p style="font-size:17px"><b>${String(g.ask).replace(/</g, "")}</b></p><div style="text-align:center;margin-top:12px"><button class="btn" id="gyes">Yes</button> <button class="btn gray" id="gno">No</button></div>`);
+      $("gyes").onclick = () => { closeModal(); claimGift(true); };
+      $("gno").onclick = () => { delete S.gift; save(); closeModal(); show("You said no.", 2); };
+    }, 800);
+    return;
+  }
+  if (g.perms) S.perm = [...FRUIT_NAMES];
+  for (const n of Array.isArray(g.swords) ? g.swords : []) if (SWORDS[n] && !S.swords.includes(n)) S.swords.push(n);
   S.beli += Math.max(0, +g.beli || 0);
   if (+g.setLvl > 0) { S.lvl = Math.floor(+g.setLvl); S.xp = 0; }
   if (g.resetStats) { for (const k in S.st) S.st[k] = 0; S.pts = (S.lvl - 1) * 3; }
