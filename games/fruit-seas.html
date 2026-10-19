@@ -452,6 +452,17 @@ const FRUITS = {
   Magma: { rar: "Rare", price: 420000, color: 0xff3d00, css: "#ff3d00", skills: [["Z", "Magma Fist", 3, 18, 70, "proj", { size: 1.2, speed: 38, range: 45, explode: 6, burn: true }], ["X", "Volcano", 9, 35, 85, "aoe", { r: 9, burn: true }], ["C", "Meteor Shower", 14, 50, 60, "rain", { n: 8, r: 6, burn: true }]] },
   Dark: { rar: "Legendary", price: 800000, color: 0x4a148c, css: "#7e57c2", skills: [["Z", "Black Hole Shot", 3, 18, 75, "proj", { size: 1.3, speed: 45, range: 50, pierce: true, freeze: 1 }], ["X", "Void Dash", 5, 20, 50, "dash", { dist: 30 }], ["C", "Black Hole", 14, 55, 110, "aoe", { r: 16, self: true, freeze: 2 }]] },
   Dragon: { rar: "Mythical", price: 1500000, color: 0x00c853, css: "#00e676", skills: [["Z", "Dragon Breath", 2.5, 18, 95, "proj", { size: 1.5, speed: 60, range: 55, pierce: true, burn: true }], ["X", "Dragon Rush", 6, 25, 80, "dash", { dist: 34 }], ["C", "Dragon Storm", 16, 60, 75, "rain", { n: 12, r: 6, burn: true }]] },
+  // More fruits (2026-10-19)
+  Smoke: { rar: "Common", price: 15000, color: 0xcfd8dc, css: "#cfd8dc", skills: [["Z", "Smoke Puff", 3, 14, 35, "proj", { size: 1.2, speed: 40, range: 35 }], ["X", "Smoke Cloud", 7, 22, 40, "aoe", { r: 8, self: true }], ["C", "Smoke Twister", 11, 30, 45, "rain", { n: 6, r: 5 }]] },
+  Diamond: { rar: "Uncommon", price: 110000, color: 0x80deea, css: "#80deea", skills: [["Z", "Diamond Shard", 2.5, 14, 48, "proj", { size: 0.8, speed: 60, range: 45 }], ["X", "Crystal Spikes", 7, 24, 60, "aoe", { r: 7, front: true }], ["C", "Gem Rain", 12, 32, 50, "rain", { n: 8, r: 6 }]] },
+  Rumble: { rar: "Rare", price: 450000, color: 0x40c4ff, css: "#40c4ff", skills: [["Z", "Thunder Bolt", 2, 15, 65, "proj", { size: 0.9, speed: 90, range: 60, explode: 4 }], ["X", "Lightning Dash", 6, 22, 70, "dash", { dist: 26 }], ["C", "Thunder Storm", 13, 38, 70, "rain", { n: 12, r: 8 }]] },
+  Venom: { rar: "Legendary", price: 900000, color: 0x8e24aa, css: "#ab47bc", skills: [["Z", "Poison Shot", 2.5, 16, 70, "proj", { size: 1, speed: 50, range: 45, burn: true }], ["X", "Toxic Pool", 8, 26, 80, "aoe", { r: 9, self: true, burn: true }], ["C", "Venom Hydra", 14, 40, 85, "barrage", { n: 10, r: 6, burn: true }]] },
+  Phoenix: { rar: "Legendary", price: 1100000, color: 0x29b6f6, css: "#ffca28", skills: [["Z", "Blue Flame", 2.5, 16, 72, "proj", { size: 1.1, speed: 60, range: 50, burn: true }], ["X", "Phoenix Dive", 6, 22, 80, "dash", { dist: 30, burn: true }], ["C", "Rebirth Flames", 14, 40, 75, "aoe", { r: 12, self: true, burn: true }]] },
+  Gravity: { rar: "Mythical", price: 1700000, color: 0x5e35b1, css: "#7e57c2", skills: [["Z", "Gravity Push", 3, 18, 85, "aoe", { r: 8, front: true }], ["X", "Meteor Pull", 9, 30, 95, "rain", { n: 10, r: 8 }], ["C", "Black Star", 15, 45, 120, "aoe", { r: 14, self: true }]] },
+  Dough: { rar: "Mythical", price: 2000000, color: 0xf5deb3, css: "#f5deb3", skills: [["Z", "Dough Fist", 2.5, 18, 88, "proj", { size: 1.4, speed: 55, range: 45, explode: 4 }], ["X", "Roller Donut", 6, 24, 90, "dash", { dist: 28 }], ["C", "Mochi Rain", 13, 40, 95, "barrage", { n: 14, r: 7 }]] },
+  Spirit: { rar: "Mythical", price: 2500000, color: 0xb2ebf2, css: "#b2ebf2", skills: [["Z", "Soul Orb", 2.5, 18, 90, "proj", { size: 1.2, speed: 55, range: 55, freeze: 1 }], ["X", "Soul Storm", 9, 30, 95, "aoe", { r: 11, self: true, freeze: 1.5 }], ["C", "Heaven and Hell", 15, 45, 110, "rain", { n: 16, r: 10, burn: true }]] },
+  Leopard: { rar: "Mythical", price: 3000000, color: 0xffb300, css: "#ffb300", skills: [["Z", "Claw Slash", 2, 15, 95, "aoe", { r: 6, front: true }], ["X", "Leopard Pounce", 5, 20, 105, "dash", { dist: 34 }], ["C", "Body Flicker", 12, 38, 115, "barrage", { n: 12, r: 6 }]] },
+  Kitsune: { rar: "Mythical", price: 4000000, color: 0x1e88e5, css: "#42a5f5", skills: [["Z", "Fox Fire", 2, 16, 100, "proj", { size: 1.2, speed: 70, range: 60, burn: true }], ["X", "Nine Tails", 8, 30, 110, "barrage", { n: 9, r: 7, burn: true }], ["C", "Azure Flame Storm", 15, 45, 125, "rain", { n: 20, r: 12, burn: true }]] },
 };
 const FRUIT_NAMES = Object.keys(FRUITS);
 const SWORDS = {
@@ -606,6 +617,8 @@ function openSkyJumps() {
 }
 const npcs = [];
 function addNpc(isl, ox, oz, name, color, open, opts = {}) {
+  // the shop NPCs on the spawn islands stand spread around the (big) island, not in a clump
+  if (isl.spawn && !opts.exact) { ox *= 2.8; oz *= 2.8; }
   const b = makeBody({ shirt: color, pants: 0x333333, hat: opts.hat, hatColor: opts.hatColor, skin: opts.skin });
   const x = isl.x + ox, z = isl.z + oz; b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-ox, -oz); scene.add(b.g);
   const l = makeLabel(name, "#7dff7d", 768); l.scale.set(8, 1.3, 1); l.position.set(x, groundAt(x, z) + 5.6, z); scene.add(l);
@@ -620,11 +633,41 @@ for (const isl of ISLANDS.filter((i) => i.spawn)) {
   addNpc(isl, -12, -2, "Pirate Recruiter", 0x212121, () => chooseSide(false), { hat: "tricorn" });
   addNpc(isl, -12, 8, "Marine Recruiter", 0xeceff1, () => chooseSide(false), { hat: "helmet", hatColor: 0x1565c0 });
   addNpc(isl, 12, -4, "Haki Teacher", 0x37474f, () => openHaki(), { hat: "headphones" });
-  addNpc(isl, 12, 6, "Boat Dealer", 0x1565c0, () => openBoats(), { hat: "tricorn" });
+  addNpc(isl, isl.r - 12, 0, "Boat Dealer", 0x1565c0, () => openBoats(), { hat: "tricorn", exact: true }); // on the shore, by the water
+  { const dx = isl.x + isl.r - 6, dz = isl.z; for (let k = 0; k < 4; k++) { const plank = box(3, 0.4, 2.2, 0x8d6e63); plank.position.set(dx + k * 2.4, 1.2, dz); scene.add(plank); } } // a little dock
   addNpc(isl, 4, 10, "Sky Jump Master", 0x90caf9, openSkyJumps, { hat: "halo" });
   addNpc(isl, -9, 4, "Crew Recruiter", 0x6d4c41, openCrew, { hat: "bandana", hatColor: 0x3e2723 });
 }
 buildCafe(ISLANDS.find((i) => i.name === "Harbor Town"));
+// A huge stone castle on Castle on the Sea (Third Sea): outer walls with battlements, four round-ish
+// towers with red roofs, a gate, and a tall keep in the middle where the Rip Commander waits.
+(function buildCastle(isl) {
+  if (!isl) return;
+  const cx = isl.x, cz = isl.z, y = groundAt(cx, cz), g = new THREE.Group(); g.position.set(cx, y, cz);
+  const add = (m, x, yy, z) => { m.position.set(x, yy, z); g.add(m); return m; };
+  const stone = 0x9e9e9e, dark = 0x757575, roof = 0xb71c1c, R = 46, H = 14;
+  for (const [sx, sz, w, d] of [[0, -1, R * 2, 3], [0, 1, R * 2, 3], [-1, 0, 3, R * 2], [1, 0, 3, R * 2]]) {
+    if (sz === -1) { add(box(R - 6, H, 3, stone), -(R + 6) / 2, H / 2, -R); add(box(R - 6, H, 3, stone), (R + 6) / 2, H / 2, -R); add(box(12, 5, 3, dark), 0, H - 2.5, -R); }
+    else add(box(w, H, d, stone), sx * R, H / 2, sz * R);
+  }
+  for (let t = -R; t <= R; t += 4) for (const [ax, az] of [[t, -R], [t, R], [-R, t], [R, t]]) add(box(1.6, 1.6, 1.6, dark), ax, H + 0.8, az); // battlements
+  for (const [tx, tz] of [[-R, -R], [R, -R], [-R, R], [R, R]]) {
+    add(box(10, H + 10, 10, stone), tx, (H + 10) / 2, tz);
+    add(box(12, 1.5, 12, dark), tx, H + 10.75, tz);
+    for (let k = 0; k < 4; k++) add(box(10 - k * 2.6, 2.4, 10 - k * 2.6, roof), tx, H + 12.5 + k * 2.4, tz);
+  }
+  // the keep
+  add(box(30, 26, 26, stone), 0, 13, 6); add(box(32, 1.5, 28, dark), 0, 26.75, 6);
+  for (let k = 0; k < 5; k++) add(box(26 - k * 5, 3, 22 - k * 4.4, roof), 0, 29 + k * 3, 6);
+  add(box(8, 12, 1, 0x4e342e), 0, 6, -7.1); // keep door
+  for (const sx of [-1, 1]) for (const yy of [10, 18]) add(box(3, 4, 1, 0x263238), sx * 9, yy, -7.1); // windows
+  for (const sx of [-1, 1]) { const f = add(box(0.4, 10, 0.4, 0x5d4037), sx * 12, 40, 6); add(box(5, 3, 0.2, roof), sx * 12 + 2.5, 43, 6); }
+  scene.add(g);
+  // walls and towers are solid
+  for (let t = -R; t <= R; t += 2) { solids.push({ x: cx + t, z: cz + R, r: 1.6 }, { x: cx - R, z: cz + t, r: 1.6 }, { x: cx + R, z: cz + t, r: 1.6 }); if (Math.abs(t) > 7) solids.push({ x: cx + t, z: cz - R, r: 1.6 }); }
+  for (let x = -15; x <= 15; x += 2.5) for (let z = -7; z <= 19; z += 2.5) if (Math.abs(x) > 13 || (z < -5 && Math.abs(x) > 4) || z > 17) solids.push({ x: cx + x, z: cz + z, r: 1.4 });
+  for (const [tx, tz] of [[-R, -R], [R, -R], [-R, R], [R, R]]) solids.push({ x: cx + tx, z: cz + tz, r: 6 });
+})(ISLANDS.find((i) => i.name === "Castle on the Sea"));
 // A Home Point on every island (a glowing pad with a keeper): set it to come back there when you die.
 for (const isl of ISLANDS) {
   const ox = 0, oz = 20, x = isl.x + ox, z = isl.z + oz, y = groundAt(x, z);
@@ -633,21 +676,21 @@ for (const isl of ISLANDS) {
   addNpc(isl, ox, oz, "Home Point", 0x2e7d32, () => {
     if (S.home === isl.name) return openModal("Home Point", `<p>Your home point is already <b>${isl.name}</b>. You come back here when you're defeated.</p>`);
     S.home = isl.name; save(); SFX.win(); ring(P.pos, 0x7dff7d, 6, 0.6); show(`Home point set: ${isl.name}`, 2.5);
-  }, { hat: "cap", hatColor: 0x2e7d32 });
+  }, { hat: "cap", hatColor: 0x2e7d32, exact: true });
 }
 // The leaderboard of top levels stands next to the Sea Traveler on both spawn islands.
 const lvlBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
-  const b = makeBoard("Top levels", (v) => `Lv. ${v}`); const x = isl.x + 14, z = isl.z - 1;
+  const b = makeBoard("Top levels", (v) => `Lv. ${v}`); const x = isl.x + 40, z = isl.z - 1;
   b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-14, 1); b.g.scale.setScalar(1.3); scene.add(b.g);
   solids.push({ x, z, r: 2 }); loadBoard(b, "level"); return b;
 });
 const moneyBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
-  const b = makeBoard("Richest", (v) => money(v), "#7dff7d"); const x = isl.x + 14, z = isl.z + 9;
+  const b = makeBoard("Richest", (v) => money(v), "#7dff7d"); const x = isl.x + 40, z = isl.z + 14;
   b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-14, -9); b.g.scale.setScalar(1.3); scene.add(b.g);
   solids.push({ x, z, r: 2 }); loadBoard(b, "money"); return b;
 });
 const bountyBoards = ISLANDS.filter((i) => i.spawn).map((isl) => {
-  const b = makeBoard("Top bounty / honor", (v) => money(v).slice(1), "#ff8a65"); const x = isl.x + 14, z = isl.z - 11;
+  const b = makeBoard("Top bounty / honor", (v) => money(v).slice(1), "#ff8a65"); const x = isl.x + 40, z = isl.z - 5 - 11;
   b.g.position.set(x, groundAt(x, z), z); b.g.rotation.y = Math.atan2(-14, 11); b.g.scale.setScalar(1.3); scene.add(b.g);
   solids.push({ x, z, r: 2 }); loadBoard(b, "bounty"); return b;
 });
@@ -734,9 +777,14 @@ function respawnLater(e, ms) {
   if (e.slot) deadSlots.set(e.slot, Date.now() + ms);
   setTimeout(() => { if (e.slot && enemies.some((x) => x.slot === e.slot)) return; spawnEnemy(e.isl, e.boss, sl); }, ms);
 }
+// Endless seas: after the Third Sea come Sea 4, 5, 6 and on forever. They use the Third Sea's islands,
+// with everything 60 levels stronger each time (S.deep = how far past the Third Sea you are).
+const deepNow = () => (S.sea === 2 ? S.deep || 0 : 0);
+const seaTitle = () => (S.sea === 2 && deepNow() ? `Sea ${3 + deepNow()}` : SEAS[S.sea].name);
 function spawnEnemy(isl, boss, slot) {
   if (slot != null) deadSlots.delete(ISLANDS.indexOf(isl) + ":" + slot);
-  const lvl = boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4));
+  const extra = isl.sea === 2 ? deepNow() * 60 : 0;
+  const lvl = (boss ? boss.lvl : isl.lvl + Math.floor(rnd(0, 4))) + extra;
   let x, z;
   for (let t = 0; t < 20; t++) { const a = rnd(0, 7), d = boss ? (isl.spawn ? rnd(15, isl.r - 4) : rnd(0, 6)) : rnd(isl.spawn ? 14 : 5, isl.r - 3); x = isl.x + Math.cos(a) * d; z = isl.z + Math.sin(a) * d; if (!lavaAt(x, z)) break; }
   const shirts = { grass: [0x8d6e63, 0x558b2f], sand: [0xd7a35a, 0xa1887f], stone: [0x546e7a, 0x37474f], snow: [0x90caf9, 0xeceff1], lava: [0xbf360c, 0x4e342e], ghost: [0x80cbc4, 0x4db6ac], candy: [0xf06292, 0xffffff] }[isl.top];
@@ -747,7 +795,7 @@ function spawnEnemy(isl, boss, slot) {
   const bar = hpBar(); scene.add(bar);
   const name = boss ? boss.name : isl.mob;
   const label = makeLabel(`${name} [Lv. ${lvl}]`, boss ? "#ff4d4d" : "#ffffff", 768); label.scale.set(7, 1.1, 1); scene.add(label);
-  const mhp = boss ? boss.hp : Math.round(40 + lvl * 22 + lvl * lvl * 0.6);
+  const mhp = boss ? Math.round(boss.hp * (1 + extra / 40)) : Math.round(40 + lvl * 22 + lvl * lvl * 0.6);
   enemies.push({ slot: slot == null ? null : ISLANDS.indexOf(isl) + ":" + slot, b, pos, isl, boss, lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: rnd(0.5, 1.5), swing: 0, slow: 0, freeze: 0, burn: 0, kb: V(), t: rnd(0, 9), wander: pos.clone(), dmg: boss ? 12 + lvl * 1.4 : 4 + lvl * 1.1, speed: boss ? 9 : 10, special: 5, name });
 }
 // Spawn spots come from a seeded random, so every player's enemies start in the same places.
@@ -1138,8 +1186,8 @@ function buildCafe(isl) {
   for (let z = -D / 2; z <= D / 2; z += 1.5) for (const sx of [-1, 1]) solids.push({ x: cx + sx * W / 2, z: cz + z, r: 1 });
   for (let x = -11; x <= 11; x += 1.5) solids.push({ x: cx + x, z: cz + D / 2 - 5, r: 1.1 });
   const sign = makeLabel('CAFÉ', '#ffd23a', 512); sign.scale.set(16, 4, 1); sign.position.set(cx, y + H + 7, cz); scene.add(sign);
-  addNpc(isl, OX - 6, OZ + D / 2 - 8, 'Fruit Trader', 0x7cb342, openTrade, { hat: 'tophat' });
-  addNpc(isl, OX + 6, OZ + D / 2 - 8, 'Café Manager', 0x4e342e, () => openModal('Café Manager', '<p>Welcome to the Café! Trade fruits with other players at the Fruit Trader. Crews, boats, Haki and fighting styles are sold around Harbor Town.</p>'), { hat: 'cap' });
+  addNpc(isl, OX - 6, OZ + D / 2 - 8, 'Fruit Trader', 0x7cb342, openTrade, { hat: 'tophat', exact: true });
+  addNpc(isl, OX + 6, OZ + D / 2 - 8, 'Café Manager', 0x4e342e, () => openModal('Café Manager', '<p>Welcome to the Café! Trade fruits with other players at the Fruit Trader. Crews, boats, Haki and fighting styles are sold around Harbor Town.</p>'), { hat: 'cap', exact: true });
 }
 function openCrew() {
   const full = S.crew >= 2;
@@ -1320,6 +1368,7 @@ Level up! Lv. ${S.lvl}` : ""}`, 3.5); ring(P.pos, 0xffd23a, 8, 0.8); }
   }
   if (e.boss) {
     S.bosses[e.name] = true;
+    if (e.name === "Rip Commander" && S.sea === 2 && (S.deepBeat || 0) < deepNow() + 1) { S.deepBeat = deepNow() + 1; setTimeout(() => show(`The way to Sea ${4 + deepNow()} is open! Talk to the Sea Traveler.`, 5), 1500); }
     if (e.name === "Captain Ironjaw" && !S.seaUnlocked) { S.seaUnlocked = true; show(`${e.name} defeated!\nThe Sea Traveler can now take you to the Second Sea!`, 5); }
     else if (!e.event) show(`${e.name} defeated!`, 4);
     const bigBoss = e.name === "Captain Ironjaw" || e.name === "Admiral Frostbeard";
@@ -1433,6 +1482,7 @@ function explode(pos, r, dmg, color, fxo) {
 function useSkill(sk, statKey, color) {
   const [k, , cd, energy, power, type, o] = sk;
   const id = P.tool + k;
+  if (type === "transform" && P.dragon) { setDragon(false); return; } // G again turns you back (no cooldown)
   if ((P.cds[id] || 0) > 0) return;
   if (P.en < energy) return show("Not enough energy", 0.8);
   if (P.boat && type === "dash") return show("Can't dash-attack from a boat", 0.8);
@@ -1865,7 +1915,24 @@ function openTravel() {
     openModal("Sea Traveler", `<p>Where to?</p>
       ${SEAS.map((x, i) => i === S.sea ? "" : `<div class="row"><div class="grow"><b>${x.name}</b>${i === 2 ? ` <div style="font-size:12px;opacity:.85">Needs Lv. 80 ${S.lvl >= 80 ? "✅" : "❌"} · defeat the Elder Dragon (Dragon Lair) ${(S.bosses || {})["Elder Dragon"] ? "✅" : "❌"}</div>` : ""}</div><button class="btn blue" data-sea="${i}" ${i === 2 && !ok3 ? "disabled" : ""}>Travel</button></div>`).join("")}`);
     $("mb").querySelectorAll("[data-sea]").forEach((b) => (b.onclick = () => travel(+b.dataset.sea)));
+    if (S.sea === 2) {
+      // deeper seas: each needs 60 more levels and the Rip Commander beaten in the sea before it
+      const next = deepNow() + 1, need = 80 + next * 60, beat = (S.deepBeat || 0) >= next;
+      $("mb").insertAdjacentHTML("beforeend", `<h3 style="margin:12px 0 6px">Deeper seas</h3>
+        <div class="row"><div class="grow"><b>Sea ${3 + next}</b><div style="font-size:12px;opacity:.85">Everything is ${next * 60} levels stronger · Needs Lv. ${need} ${S.lvl >= need ? "✅" : "❌"} · defeat the Rip Commander here ${beat ? "✅" : "❌"}</div></div><button class="btn blue" id="deeper" ${S.lvl >= need && beat ? "" : "disabled"}>Sail</button></div>
+        ${deepNow() ? `<div class="row"><div class="grow"><b>${deepNow() === 1 ? "Third Sea" : "Sea " + (2 + deepNow())}</b></div><button class="btn" id="shallower">Go back</button></div>` : ""}`);
+      const go = (d) => { S.deep = d; closeModal(); reseedDeep(); netSwitchSea(); show(`Welcome to ${seaTitle()}!`, 3); };
+      $("deeper").onclick = () => go(next);
+      if ($("shallower")) $("shallower").onclick = () => go(deepNow() - 1);
+    }
   }
+}
+// After changing how deep you are, the Third Sea's enemies come back at the new strength.
+function reseedDeep() {
+  for (const e of enemies.slice()) if (!e.remote && e.isl && e.isl.sea === 2 && !e.beast) { scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); }
+  if (seaKing && !enemies.includes(seaKing)) seaKing = null;
+  for (const isl of ISLANDS.filter((i) => i.sea === 2)) { for (let i = 0; i < isl.n; i++) spawnEnemy(isl, null, i); if (isl.boss) spawnEnemy(isl, isl.boss, "boss"); }
+  P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); save();
 }
 // ================= online players =================
 // Real people in the same sea (workers/nebulux-multiplayer, ?game=fruit-seas). Each game sends its
@@ -1906,7 +1973,7 @@ function netConnect() {
   };
   ws.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.t === "hello") { if ((m.games || []).includes("fruit-seas")) { NET.ok = true; NET.room = "fs" + S.sea; ws.send(JSON.stringify({ t: "join", q: NET.room, name: netName() })); } return; }
+    if (m.t === "hello") { if ((m.games || []).includes("fruit-seas")) { NET.ok = true; NET.room = "fs" + S.sea + (deepNow() ? "d" + deepNow() : ""); ws.send(JSON.stringify({ t: "join", q: NET.room, name: netName() })); } return; }
     if (m.t === "room") { NET.you = m.you; for (const pl of m.players || []) addRemote(pl.id, pl.name); if (remotes.size) show(`${remotes.size} other pirate${remotes.size === 1 ? " is" : "s are"} in this sea`, 2.5); return; }
     if (m.t === "pjoin") { addRemote(m.id, m.name); setTimeout(() => sendWorld(m.id), 800); show(`${m.name} sailed into this sea`, 2); return; }
     if (m.t === "left") { dropRemote(m.from || m.id); return; }
@@ -1993,7 +2060,7 @@ setTimeout(netConnect, 1500);
 
 function travel(sea) {
   closeModal(); if (P.boat) toggleBoat();
-  S.sea = sea; S.home = null; save(); netSwitchSea(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
+  S.sea = sea; S.home = null; if (sea !== 2) S.deep = 0; save(); netSwitchSea(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
 }
 $("bStats").onclick = () => started && openStats();
 $("bFruits").onclick = () => started && openFruits();
@@ -2262,7 +2329,7 @@ function tick() {
     $("beli").textContent = money(S.beli);
     const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
     if (qq) $("quest").innerHTML = `📜 Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
-    $("where").textContent = `${SEAS[S.sea].name}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
+    $("where").textContent = `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
     if (started) { drawSkills(); drawMini(); }
   }
   renderer.render(scene, camera);
