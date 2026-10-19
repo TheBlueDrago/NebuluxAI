@@ -73,7 +73,7 @@
   /* phones: menus on top, no long move list (the buttons have the moves), smaller everything */
   .modal{z-index:30}
   body.touch #skills, body.touch #faction, body.touch #mastery{display:none}
-  body.touch .tb.sk2{width:54px;height:54px;font-size:16px}
+  body.touch .tb.sk2{width:62px;height:62px;font-size:16px}
   body.touch #msg{font-size:18px;top:24%}
   body.touch #chat{width:200px;bottom:auto;top:150px;left:auto;right:12px;font-size:11px}
   body.touch #prompt{top:auto;bottom:300px;font-size:13px}
@@ -150,7 +150,7 @@
   <button class="tb sk2" data-a="C" style="right:150px;bottom:162px">C</button>
   <button class="tb sk2" data-a="V" style="right:88px;bottom:200px">V</button>
   <button class="tb sk2" data-a="F" style="right:20px;bottom:214px">F</button>
-  <button class="tb sk2" data-a="G" style="right:20px;bottom:274px;display:none">G</button>
+  <button class="tb sk2" data-a="G" style="right:20px;bottom:284px">G</button>
   <button class="tb" data-a="E" style="left:24px;bottom:170px;width:52px;height:52px">E</button>
 </div>
 <div class="modal" id="modal"><div class="box"><button class="x" id="mx">X</button><h2 id="mt"></h2><div id="mb"></div></div></div>
@@ -2322,7 +2322,7 @@ function drawHot() {
 }
 function drawSkills() {
   const s = skillsFor(P.tool);
-  document.querySelectorAll(".tb.sk2").forEach((b) => { const sk = s.list.find((x) => x[0] === b.dataset.a); b.style.display = sk ? "" : "none"; if (sk) b.textContent = b.dataset.a; });
+  document.querySelectorAll(".tb.sk2").forEach((b) => { const sk = s.list.find((x) => x[0] === b.dataset.a); b.style.display = ""; b.style.opacity = sk ? 1 : 0.35; b.innerHTML = `<span style="line-height:1">${b.dataset.a}<br><small style="font-size:8px;font-weight:800;display:block;max-width:58px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${sk ? sk[1].replace(/</g, "") : "Locked"}</small></span>`; }); // every move button shows its attack
   const mk = masteryKey(P.tool);
   if ($("mastery")) $("mastery").textContent = mk ? `${mk.split(":")[1]} mastery ${Math.floor(mastery(P.tool))} / ${MAX_MASTERY}` + (mastery(P.tool) < MAX_MASTERY ? ` (${Math.floor((S.mxp || {})[mk] || 0)} / ${masteryNeed(mastery(P.tool))} XP)` : "") : "";
   $("skills").innerHTML = s.list.map((sk) => { const left = Math.max(0, P.cds[P.tool + sk[0]] || 0); return `<div class="sk ${P.en < sk[3] ? "low" : ""}"><div class="cdv" style="width:${(left / sk[2]) * 100}%"></div><kbd>${sk[0]}</kbd>${sk[1]}${left > 0 ? ` <span style="margin-left:auto;opacity:.8">${left.toFixed(1)}</span>` : ""}</div>`; }).join("");
