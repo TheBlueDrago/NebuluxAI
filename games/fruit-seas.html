@@ -223,7 +223,12 @@ const cvs = renderer.domElement;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 900);
 addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x5a6a4a, 1.05));
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x5a6a4a, 1.05); scene.add(hemi);
+// Day and night: a 10-minute cycle that follows the clock, so everyone online has the same time.
+const DAY_MS = 10 * 60000;
+const dayPhase = () => (Date.now() % DAY_MS) / DAY_MS; // 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight
+const isNight = () => { const f = dayPhase(); return f > 0.55 && f < 0.95; };
+const daylight = () => { const f = dayPhase(); return Math.max(0.18, Math.min(1, 0.6 + Math.sin(f * Math.PI * 2) * 0.9)); };
 const sun = new THREE.DirectionalLight(0xfff4e0, 1.05);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, far: 260 });
@@ -240,6 +245,8 @@ const skyDome = new THREE.Mesh(
   })
 );
 skyDome.renderOrder = -1; scene.add(skyDome);
+// stars for the night sky
+const stars = (() => { const n = 600, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const u = Math.random() * 6.28, v = Math.random() * 1.3; pos[i * 3] = Math.cos(u) * Math.cos(v) * 700; pos[i * 3 + 1] = Math.sin(v) * 700 + 40; pos[i * 3 + 2] = Math.sin(u) * Math.cos(v) * 700; } const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); const m = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, fog: false })); m.visible = false; scene.add(m); return m; })();
 const clouds = [];
 {
   const cm = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.92 });
@@ -284,7 +291,7 @@ const ISLANDS = [
   { sea: 2, x: 3110, z: -340, r: 32, h: 6, name: "Castle on the Sea", lvl: 135, n: 6, mob: "Castle Knight", top: "stone", boss: { name: "Rip Commander", lvl: 150, hp: 120000, color: 0xb71c1c } },
 ];
 // Islands are big: everything above is spread out and scaled up 2.6 times.
-const BIG = 3.2;
+const BIG = 4;
 for (const isl of ISLANDS) { const cx = SEAS[isl.sea].cx; isl.x = cx + (isl.x - cx) * BIG; isl.z *= BIG; isl.r = Math.round(isl.r * BIG * (isl.sea ? 1.8 : 1.5)); isl.n = Math.round(isl.n * (isl.sea ? 2.3 : 1.8)); }
 const TOPS = {
   grass: [0x55c742, 0x4cb83b, 0x5fd14a], sand: [0xf2d58a, 0xe8c977, 0xf6de9c], stone: [0x8a8a92, 0x7b7b83, 0x96969e],
@@ -513,6 +520,7 @@ const SWORDS = {
   "Tide Blade": { price: 2000000, mult: 6.5, color: 0x4fc3f7, sea: 99 },
   "Storm Blade": { price: 2000000, mult: 6.5, color: 0xfff176, sea: 99 },
   "True Triple Katana": { price: 0, mult: 12, color: 0xe0e0e0, sea: 99 },
+  "Cursed Dual Katana": { price: 0, mult: 10, color: 0x7b1fa2, sea: 99 },
   "Tushita": { price: 5000000, mult: 7.5, color: 0xffb300, sea: 2 },
   "Yama": { price: 8000000, mult: 9, color: 0x880e4f, sea: 2 },
 };
@@ -1426,6 +1434,7 @@ function killEnemy(e) {
   if (e.beast) { addFrags(e.levi ? 300 : 100); if (e.levi) { S.leviKills = (S.leviKills || 0) + 1; show(`LEVIATHAN DEFEATED! The next one is Lv. ${300 + 50 * S.leviKills}`, 4); } const loot = e.lvl * 9000; S.beli += loot; gainXp(e.lvl * 300); if (Math.random() < 0.5) S.inv.push(pick(FRUIT_NAMES)); beast = null; scene.remove(e.b.g, e.bar, e.label); enemies.splice(enemies.indexOf(e), 1); save(); SFX.win(); show(`You defeated the SEA BEAST!\n+${money(loot)} and lots of XP`, 5); return; }
   if (e.event) { S.seaKings = (S.seaKings || 0) + 1; addFrags(50); const big = e.lvl * 6000; S.beli += big; S.freeSpin = true; seaKing = null; show(`You beat the Sea King!
 +${money(big)} and a FREE gacha spin`, 5); }
+  if (e.cursed) { addFrags(200); if (!S.swords.includes("Cursed Dual Katana")) { S.swords.push("Cursed Dual Katana"); setTimeout(() => show("You got the CURSED DUAL KATANA!", 4), 1200); } }
   if (e.boss) addFame(e.lvl * 40);
   if (e.rival) addFame(e.lvl * (S.side === "Marine" ? 30 : 15));
   if (e.rival) { const bounty = e.lvl * 400; S.beli += bounty; floatText(e.pos, `Bounty +${money(bounty)}`, "#ffb74d"); setTimeout(() => spawnRival(e.isl.sea), 45000); }
@@ -1637,6 +1646,37 @@ function raidTick() {
   }
   const left = Math.max(0, Math.ceil((raid ? raid.end - performance.now() : 0) / 1000));
   if (raid) raid.text = `RAID · wave ${raid.wave}/5 · ${raid.foes.length} left · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+}
+// ================= night secrets =================
+// The Cursed Captain rises at Ghost Reef only at night (Lv. 70+ to see him). He drops the Cursed
+// Dual Katana the first time, and Fragments every time.
+let cursed = null;
+function cursedTick() {
+  const isl = ISLANDS.find((i) => i.name === "Ghost Reef"); if (!isl || S.sea !== 1) return;
+  if (isNight() && !cursed && S.lvl >= 70 && performance.now() > (cursedTick.next || 0)) {
+    const before = enemies.length; spawnEnemy(isl, { name: "Cursed Captain", lvl: 90, hp: 60000, color: 0x1b5e20 }); cursed = enemies[before];
+    if (cursed) { cursed.raid = true; cursed.cursed = true; show("The CURSED CAPTAIN has risen at Ghost Reef...", 4); }
+  }
+  if (cursed && (!enemies.includes(cursed) || cursed.hp <= 0)) { cursed = null; cursedTick.next = performance.now() + 120000; }
+  if (cursed && !isNight()) { scene.remove(cursed.b.g, cursed.bar, cursed.label); enemies.splice(enemies.indexOf(cursed), 1); cursed = null; show("The Cursed Captain sank back with the sunrise", 3); }
+}
+// A golden chest hides somewhere in your sea and moves every 30 minutes: walk to it and press E.
+let goldChest = null;
+function placeGoldChest() {
+  if (goldChest) { scene.remove(goldChest.g); goldChest = null; }
+  const k = Math.floor(Date.now() / (30 * 60000)), isls = ISLANDS.filter((i) => i.sea === S.sea), isl = isls[k % isls.length];
+  if ((S.goldOpened || "") === S.sea + ":" + k) return;
+  const a = (k * 1.91) % 6.28, d = isl.r * 0.82, x = isl.x + Math.cos(a) * d, z = isl.z + Math.sin(a) * d, y = groundAt(x, z);
+  const g = new THREE.Group(); g.add(box(2.2, 1.4, 1.5, 0xffc107).translateY(0.7)); g.add(box(2.3, 0.5, 1.6, 0xffa000).translateY(1.6)); g.add(box(0.4, 0.5, 0.2, 0x5d4037).translateY(1.2).translateZ(0.8));
+  g.position.set(x, y, z); scene.add(g); goldChest = { g, x, z, key: S.sea + ":" + k };
+}
+setInterval(() => { if (started) placeGoldChest(); }, 60000);
+function openGoldChest() {
+  if (!goldChest) return false;
+  if (Math.hypot(goldChest.x - P.pos.x, goldChest.z - P.pos.z) > 4) return false;
+  const cash = 2000000 + S.lvl * 20000, f = pick(FRUIT_NAMES); S.beli += cash; S.inv.push(f); addFrags(100); S.goldOpened = goldChest.key; save(); SFX.win();
+  cubes(goldChest.g.position.clone().setY(goldChest.g.position.y + 2), 0xffd23a, 30, 9); scene.remove(goldChest.g); goldChest = null;
+  show(`GOLDEN TREASURE!\n+${money(cash)}, a ${f} Fruit and 100 Fragments`, 5); return true;
 }
 // ================= secrets =================
 // Hidden NPCs (their names show as ???) for races, race awakenings, fruit awakening, the True
@@ -2027,6 +2067,7 @@ function moveDir() {
 function interact() {
   const n = npcs.find((n) => Math.hypot(n.x - P.pos.x, n.z - P.pos.z) < 5);
   if (n) return n.open();
+  if (openGoldChest()) return;
   if (!chests.some((c) => Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 3.5)) return useKen();
   const c = chests.find((c) => Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < 3.5);
   if (c) {
@@ -2314,7 +2355,7 @@ setTimeout(netConnect, 1500);
 
 function travel(sea) {
   closeModal(); if (P.boat) toggleBoat();
-  S.sea = sea; S.home = null; if (sea !== 2) S.deep = 0; save(); netSwitchSea(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
+  setTimeout(placeGoldChest, 500); S.sea = sea; S.home = null; if (sea !== 2) S.deep = 0; save(); netSwitchSea(); P.pos.copy(spawnPoint()); P.vel.set(0, 0, 0); show(`Welcome to the ${SEAS[sea].name}!`, 3);
 }
 $("bStats").onclick = () => started && openStats();
 $("bFruits").onclick = () => started && openInventory(invTab);
@@ -2385,7 +2426,7 @@ function claimGift(accepted) {
   delete S.gift; save(); SFX.win();
   setTimeout(() => openModal("A gift for you", `<p style="font-size:16px"><b>${String(g.msg || "Thanks for playing!").replace(/</g, "")}</b></p>${g.beli ? `<p>+${money(g.beli)}</p>` : ""}${g.mastery ? `<p>Mastery ${g.mastery} on every fighting style and sword</p>` : ""}${g.note ? `<p>${String(g.note).replace(/</g, "")}</p>` : ""}`), 800);
 }
-$("play").onclick = () => { $("start").style.display = "none"; started = true; claimGift(); if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); S.crew = 0; pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; setTimeout(placeGoldChest, 1000); claimGift(); if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); S.crew = 0; pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
@@ -2407,7 +2448,12 @@ function tick() {
   const sea = SEAS[S.sea];
   seaGround.forEach((m, i) => m && (m.visible = i === S.sea));
   for (const f of foams) { f.visible = f.userData.sea === S.sea; f.material.opacity = 0.32 + Math.sin(T * 1.6 + f.position.x) * 0.12; }
-  scene.background = new THREE.Color(sea.sky); scene.fog = scene.fog || new THREE.Fog(sea.sky, 160, 560); scene.fog.color.setHex(sea.sky); seaMat.color.setHex(sea.water);
+  const dl = daylight(), night = new THREE.Color(0x0b1430);
+  const skyNow = new THREE.Color(sea.sky).lerp(night, 1 - dl);
+  scene.background = skyNow; scene.fog = scene.fog || new THREE.Fog(sea.sky, 160, 560); scene.fog.color.copy(skyNow); seaMat.color.setHex(sea.water).lerp(new THREE.Color(0x0a2a55), (1 - dl) * 0.8);
+  hemi.intensity = 0.35 + 0.7 * dl; sun.intensity = 0.15 + 0.9 * dl;
+  skyDome.material.uniforms.top.value.setHex(0x3d8bff).lerp(night, 1 - dl); skyDome.material.uniforms.bottom.value.setHex(0xd6ecff).lerp(new THREE.Color(0x1a2a50), 1 - dl);
+  stars.visible = dl < 0.5; stars.position.copy(camera.position);
 
   // waves
   ocean.position.set(Math.round(P.pos.x / 10) * 10, 0, Math.round(P.pos.z / 10) * 10);
@@ -2462,7 +2508,7 @@ function tick() {
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
     // stay inside the sea
-    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 1060) { so.setLength(1060); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
+    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 1330) { so.setLength(1330); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
 
     // dash-skill hits
     if (P.dashHit) { P.dashHit.t -= dt; for (const e of enemies.slice()) if (!P.dashHit.set.has(e) && e.pos.distanceTo(P.pos) < (e.boss ? 5 : 3.5)) { P.dashHit.set.add(e); hurtEnemy(e, P.dashHit.dmg, P.pos, P.dashHit.fxo); } cubes(P.pos.clone().setY(P.pos.y + 2), P.dashHit.color, 1, 2); if (P.dashHit.t <= 0) P.dashHit = null; }
@@ -2491,7 +2537,7 @@ function tick() {
     updateAllies(dt);
     updateTrail(dt);
     updateWildFruits();
-    beastTick(dt); raidTick();
+    beastTick(dt); raidTick(); cursedTick();
 
     const isl = islandAt(P.pos.x, P.pos.z);
     if (isl && isl !== lastIsl) show(`${isl.name}\nLv. ${isl.lvl}+`, 2);
