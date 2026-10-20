@@ -2314,6 +2314,14 @@ $("bStats").onclick = () => started && openStats();
 $("bFruits").onclick = () => started && openInventory(invTab);
 $("bBoat").onclick = () => started && toggleBoat();
 
+// Phones: the weapon slots and the left buttons react to a touch right away, even while another
+// finger is on the joystick or turning the camera (a tap there never became a click).
+addEventListener("touchstart", (e) => {
+  for (const t of e.changedTouches) {
+    const el = t.target && t.target.closest && t.target.closest("#hot .slot, #side .sb");
+    if (el) { e.preventDefault(); el.click(); }
+  }
+}, { passive: false });
 function drawHot() {
   const slots = [[1, "Fists", "👊"], S.sword && [2, S.sword, "🗡️"], S.fruit && [3, S.fruit, "🍎"]].filter(Boolean);
   $("hot").innerHTML = slots.map(([n, label, icon]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b><span style="font-size:20px">${icon}</span>${label}</div>`).join("");
