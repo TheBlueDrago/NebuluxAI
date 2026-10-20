@@ -6,6 +6,7 @@
 //   { action: "me" }                       -> { name, credits, daily }
 //   { action: "chat", messages, memory }   -> { reply, credits }
 //   { action: "plan", goal, memory }       -> { steps: [string], credits }
+//   { action: "load" } / { action: "save", data } -> the person's tasks, goals, chat and memory
 //   { action: "signout" }                  -> { ok }
 // Orbit calls send "Authorization: Orbit <token>". Orbit tokens: ORBIT_WEEKLY free every week (no money
 // involved). Paid in tokens: what was sent and written (about 4 letters a token). Separate from Nebulux AI.
@@ -33,6 +34,7 @@ const ensure = (db) =>
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_codes (code TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT, exp INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_tokens (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT, at INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_wallets (user_id TEXT PRIMARY KEY, credits INTEGER NOT NULL, day TEXT NOT NULL)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS orbit_data (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)"),
   ]).catch((e) => { ready = null; throw e; }));
 
 async function orbitUser(db, request) {
@@ -117,6 +119,19 @@ export async function onRequestPost({ request, env }) {
       return out(request, { ok: true });
     }
     if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), weekly: ORBIT_WEEKLY });
+    // Tasks, goals, chat and memory kept with the account, so every device shows the same Orbit.
+    if (action === "load") {
+      const row = await db.prepare("SELECT data, at FROM orbit_data WHERE user_id = ?").bind(me.user_id).first();
+      return out(request, { data: row ? JSON.parse(row.data) : null, at: row ? row.at : 0 });
+    }
+    if (action === "save") {
+      if (!(await allow(`orbit-save:${me.user_id}`, 30, 60))) return out(request, { error: "Saving too often." }, 429);
+      const text = JSON.stringify(body.data || {});
+      if (text.length > 400000) return out(request, { error: "That's too much to save (400 KB at most)." }, 413);
+      const at = Date.now();
+      await db.prepare("INSERT INTO orbit_data (user_id, data, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, at = excluded.at").bind(me.user_id, text, at).run();
+      return out(request, { ok: true, at });
+    }
 
     if (action === "chat" || action === "plan") {
       if (!(await allow(`orbit-ai:${me.user_id}`, 12, 60))) return out(request, { error: "Slow down a little: up to 12 a minute." }, 429);
