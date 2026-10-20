@@ -23,7 +23,10 @@ const corsFor = (request) => {
   return { "Access-Control-Allow-Origin": ORIGINS.some((r) => r.test(o)) ? o : "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", Vary: "Origin" };
 };
 const out = (request, obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", ...corsFor(request) } });
-const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+export const randHex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const rand = randHex;
+// Addresses the Orbit site can come back to after connecting something (orbit-google/start.js).
+export const ORBIT_RETURN = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev(\/|$)/, /^https:\/\/orbit\.nebuluxai\.com(\/|$)/, /^http:\/\/localhost(:\d+)?(\/|$)/];
 // The week starts on Monday (UTC); the free tokens refill then.
 const weekKey = () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
 const tokensOf = (...texts) => Math.ceil(texts.reduce((n, t) => n + String(t || "").length, 0) / 4);
@@ -35,12 +38,49 @@ const ensure = (db) =>
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_tokens (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT, at INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_wallets (user_id TEXT PRIMARY KEY, credits INTEGER NOT NULL, day TEXT NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_data (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)"),
+    // Connections (Gmail for now): the permission Google gave, kept until they disconnect.
+    db.prepare("CREATE TABLE IF NOT EXISTS orbit_states (state TEXT PRIMARY KEY, user_id TEXT NOT NULL, back TEXT NOT NULL, exp INTEGER NOT NULL)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS orbit_connections (user_id TEXT NOT NULL, provider TEXT NOT NULL, refresh TEXT NOT NULL, email TEXT, at INTEGER NOT NULL, PRIMARY KEY (user_id, provider))"),
   ]).catch((e) => { ready = null; throw e; }));
+export const orbitEnsure = ensure;
 
+export async function orbitUserByToken(db, token) {
+  if (!/^[a-f0-9]{48}$/i.test(String(token || ""))) return null;
+  return await db.prepare("SELECT user_id, name FROM orbit_tokens WHERE token = ?").bind(String(token)).first();
+}
 async function orbitUser(db, request) {
   const m = /^Orbit\s+([a-f0-9]{48})$/i.exec(request.headers.get("authorization") || "");
-  if (!m) return null;
-  return await db.prepare("SELECT user_id, name FROM orbit_tokens WHERE token = ?").bind(m[1]).first();
+  return m ? orbitUserByToken(db, m[1]) : null;
+}
+
+// ---- Gmail (only after the person connects it, and sending only when they press Send) ----
+async function gmailAccess(env, db, uid) {
+  const c = await db.prepare("SELECT refresh, email FROM orbit_connections WHERE user_id = ? AND provider = 'gmail'").bind(uid).first();
+  if (!c) return null;
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, refresh_token: c.refresh, grant_type: "refresh_token" }),
+  }).catch(() => null);
+  const t = r && r.ok ? await r.json().catch(() => null) : null;
+  return t && t.access_token ? { token: t.access_token, email: c.email } : null;
+}
+const header = (msg, name) => ((msg.payload && msg.payload.headers) || []).find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
+async function gmailList(access, max = 10) {
+  const g = (path) => fetch("https://gmail.googleapis.com/gmail/v1/users/me/" + path, { headers: { Authorization: "Bearer " + access.token } }).then((r) => (r.ok ? r.json() : null));
+  const list = await g(`messages?maxResults=${max}&labelIds=INBOX`);
+  const out = [];
+  for (const m of (list && list.messages) || []) {
+    const full = await g(`messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
+    if (full) out.push({ id: m.id, from: header(full, "From"), subject: header(full, "Subject"), date: header(full, "Date"), snippet: String(full.snippet || "").slice(0, 300), unread: (full.labelIds || []).includes("UNREAD") });
+  }
+  return out;
+}
+async function gmailSend(access, to, subject, text) {
+  const enc = (s) => btoa(unescape(encodeURIComponent(s)));
+  const raw = [`To: ${to}`, `Subject: =?UTF-8?B?${enc(subject)}?=`, "MIME-Version: 1.0", "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", enc(text)].join("\r\n");
+  const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: "Bearer " + access.token, "Content-Type": "application/json" }, body: JSON.stringify({ raw: btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") }) });
+  return r.ok;
 }
 // The week's free tokens are topped up the first time they're looked at each week.
 async function wallet(db, uid) {
@@ -54,7 +94,7 @@ async function wallet(db, uid) {
 }
 const spend = (db, uid, n) => db.prepare("UPDATE orbit_wallets SET credits = MAX(0, credits - ?) WHERE user_id = ?").bind(n, uid).run();
 
-const ORBIT_RULES = `You are Nebulux Orbit, a friendly personal AI agent made by Nebulux AI. You help the person with their day: answering questions, remembering what they tell you (see "What you know about them"), planning goals step by step, and keeping track of tasks. You only talk and plan: you cannot browse, buy or pay for anything, send messages or emails, or reach their computer, and you never ask for passwords, card numbers or other private details. If they ask you to do one of those, say you can't and tell them how they can do it themselves. Keep answers clear and warm.`;
+const ORBIT_RULES = `You are Nebulux Orbit, a friendly personal AI agent made by Nebulux AI. You help the person with their day: answering questions, remembering what they tell you (see "What you know about them"), planning goals step by step, and keeping track of tasks. You talk and plan. If they connected Gmail, their latest emails may be included below, and you can read and summarize them; you can write email drafts, but you never send one yourself: they review it and press Send. You cannot browse, buy or pay for anything, or reach their computer, and you never ask for passwords, card numbers or other private details. If they ask you to do one of those, say you can't and tell them how they can do it themselves. Keep answers clear and warm.`;
 const memoryBlock = (memory) => {
   const m = String(memory || "").trim().slice(0, 4000);
   return m ? `What you know about them (they wrote or approved this):\n${m}\n\n` : "";
@@ -131,6 +171,34 @@ export async function onRequestPost({ request, env }) {
       const at = Date.now();
       await db.prepare("INSERT INTO orbit_data (user_id, data, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, at = excluded.at").bind(me.user_id, text, at).run();
       return out(request, { ok: true, at });
+    }
+
+    // ---- connections ----
+    if (action === "connections") {
+      const rows = (await db.prepare("SELECT provider, email, at FROM orbit_connections WHERE user_id = ?").bind(me.user_id).all()).results || [];
+      return out(request, { connections: rows, gmailReady: !!env.GOOGLE_CLIENT_ID });
+    }
+    if (action === "disconnect") {
+      const c = await db.prepare("SELECT refresh FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).first();
+      if (c) await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(c.refresh), { method: "POST" }).catch(() => {});
+      await db.prepare("DELETE FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).run();
+      return out(request, { ok: true });
+    }
+    if (action === "gmail_list") {
+      if (!(await allow(`orbit-gmail:${me.user_id}`, 20, 60))) return out(request, { error: "Slow down a little." }, 429);
+      const a = await gmailAccess(env, db, me.user_id);
+      if (!a) return out(request, { error: "Connect Gmail first (Connections)." }, 400);
+      return out(request, { email: a.email, messages: await gmailList(a, Math.min(20, Math.max(1, +body.max || 10))) });
+    }
+    if (action === "gmail_send") {
+      // Only sent when the person pressed Send on the email themselves (the site asks first).
+      if (body.confirmed !== true) return out(request, { error: "Press Send to confirm." }, 400);
+      if (!(await allow(`orbit-send:${me.user_id}`, 20, 86400))) return out(request, { error: "That's the most emails Orbit can send for you today." }, 429);
+      const to = String(body.to || "").trim(), subject = String(body.subject || "").slice(0, 200), text = String(body.text || "").slice(0, 20000);
+      if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(to)) return out(request, { error: "That email address doesn't look right." }, 400);
+      const a = await gmailAccess(env, db, me.user_id);
+      if (!a) return out(request, { error: "Connect Gmail first (Connections)." }, 400);
+      return (await gmailSend(a, to, subject, text)) ? out(request, { ok: true }) : out(request, { error: "Gmail didn't send it. Try again." }, 502);
     }
 
     if (action === "chat" || action === "plan") {
