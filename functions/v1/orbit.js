@@ -14,11 +14,11 @@ import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 
-const ORIGINS = [/^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev$/, /^https:\/\/orbit\.nebuluxai\.com$/, /^https:\/\/nebuluxai\.com$/, /^http:\/\/localhost(:\d+)?$/];
+const ORIGINS = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev$/, /^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev$/, /^https:\/\/orbit\.nebuluxai\.com$/, /^https:\/\/nebuluxai\.com$/, /^http:\/\/localhost(:\d+)?$/];
 const ORBIT_DAILY = 100;
 const corsFor = (request) => {
   const o = request.headers.get("Origin") || "";
-  return { "Access-Control-Allow-Origin": ORIGINS.some((r) => r.test(o)) ? o : "https://nebulux-orbit.pages.dev", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", Vary: "Origin" };
+  return { "Access-Control-Allow-Origin": ORIGINS.some((r) => r.test(o)) ? o : "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", Vary: "Origin" };
 };
 const out = (request, obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", ...corsFor(request) } });
 const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");

@@ -8,7 +8,7 @@ import AuthLayout from "@/components/AuthLayout";
 // "Sign in with Nebulux" for Nebulux Orbit (functions/v1/orbit.js). The Orbit site sends people here
 // with ?return=<its address>. After they press Allow, a one-time code goes back to Orbit, which trades
 // it for its own sign-in. Orbit gets the person's name only: no chats, files, payments or password.
-const ORBIT_SITES = [/^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev(\/|$)/, /^https:\/\/orbit\.nebuluxai\.com(\/|$)/, /^http:\/\/localhost(:\d+)?(\/|$)/];
+const ORBIT_SITES = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev(\/|$)/,/^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev(\/|$)/, /^https:\/\/orbit\.nebuluxai\.com(\/|$)/, /^http:\/\/localhost(:\d+)?(\/|$)/];
 
 export default function ConnectOrbit() {
   const { isAuthenticated, isLoadingAuth, user } = useAuth();
