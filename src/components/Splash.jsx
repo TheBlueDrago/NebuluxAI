@@ -9,7 +9,7 @@ export const playSplashAfterLogin = () => { try { sessionStorage.setItem(SPLASH_
 const signedIn = () => { try { return !!JSON.parse(localStorage.getItem("bh-me") || "null")?.id; } catch { return false; } };
 // No intro on pages people open to get one thing done (often from a published site or
 // game), or on the public info pages, which should show up right away. The home page does get it.
-const SKIP = /^\/(buy|report|site\/|play\/|terms|privacy|contact|ThankYou|promo-success|arcade|templates|pricing|business|about|showcase|enterprise|guides|safety|whats-new|ideas)/;
+const SKIP = /^\/(connect\/|buy|report|site\/|play\/|terms|privacy|contact|ThankYou|promo-success|arcade|templates|pricing|business|about|showcase|enterprise|guides|safety|whats-new|ideas)/;
 
 // The intro plays right after signing in, and when someone who's signed in opens the site in a
 // new tab (once per tab, not on every reload). Not for visitors who aren't signed in.
@@ -20,6 +20,8 @@ function shouldShow() {
   try { justLoggedIn = !!sessionStorage.getItem(SPLASH_AFTER_LOGIN); sessionStorage.removeItem(SPLASH_AFTER_LOGIN); } catch { /* storage blocked */ }
   if (!justLoggedIn && !signedIn()) return false;
   if (SKIP.test(window.location.pathname)) return false;
+  // Turned off in Settings → Capabilities (on for everyone unless they turn it off).
+  try { if (localStorage.getItem("nx-splash") === "off") return false; } catch { /* storage blocked */ }
   // Not in the installed app (home screen): the phone starts it fresh on almost every launch,
   // so it would play the 4.7-second intro every time someone opens it.
   if (window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true) return false;
@@ -50,7 +52,8 @@ export default function Splash() {
   }, []);
   if (phase === "gone") return null;
   return (
-    <div className={`fixed inset-0 z-[100] transition-opacity duration-[600ms] ease-in-out ${phase === "leaving" ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+    // One click or tap anywhere skips it, just this time.
+    <div onPointerDown={() => setPhase("leaving")} onTransitionEnd={() => phase === "leaving" && setPhase("gone")} className={`fixed inset-0 z-[100] transition-opacity duration-[600ms] ease-in-out ${phase === "leaving" ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
       <Intro />
     </div>
   );

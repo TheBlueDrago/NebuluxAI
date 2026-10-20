@@ -92,6 +92,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
   const [notify, setNotify] = useState(readNotify);
   const [web, setWeb] = useState(() => lsGet("nx-web", "on") === "on");
   const [followUps, setFollowUps] = useState(() => lsGet("nx-followups", "on") === "on");
+  const [splash, setSplash] = useState(() => lsGet("nx-splash", "on") === "on");
   const [codeSession, setCodeSession] = useState(() => lsGet("nx-code-session", "cloud"));
   const [gh, setGh] = useState(savedToken);
   // Usage: plan credits (chatting) vs. API key credits (the prepaid balance API keys and website AI use)
@@ -258,6 +259,9 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
         <H first>Capabilities</H>
         <Row title="Web search" sub="Let Nebulux AI look things up on the web when a question needs fresh facts.">
           <Toggle on={web} onChange={(v) => (setWeb(v), lsSet("nx-web", v ? "on" : "off"))} label="Web search" />
+        </Row>
+        <Row title="Intro animation" sub="Play the Nebulux AI intro when you sign in or open the site. Tap anywhere to skip it.">
+          <Toggle on={splash} onChange={(v) => (setSplash(v), lsSet("nx-splash", v ? "on" : "off"))} label="Intro animation" />
         </Row>
         <Row title="Suggested follow-ups" sub="Show quick follow-up questions under replies.">
           <Toggle on={followUps} onChange={(v) => (setFollowUps(v), lsSet("nx-followups", v ? "on" : "off"))} label="Suggested follow-ups" />
