@@ -58,7 +58,28 @@ const memoryBlock = (memory) => {
   return m ? `What you know about them (they wrote or approved this):\n${m}\n\n` : "";
 };
 
-export const onRequestOptions = ({ request }) => new Response(null, { status: 204, headers: corsFor(request) });
+// Muse Spark (Meta's Model API, https://dev.meta.ai/docs): used when the MUSE_SPARK_API_KEY secret is set
+// on this project. It's paid per token (Standard mode: $1.25 per 1M sent, $4.25 per 1M written), so
+// replies are kept short. If Muse fails (no key, out of credit, busy) the caller uses the free models.
+async function museGenerate(env, system, user) {
+  const key = env.MUSE_SPARK_API_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch("https://api.meta.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "muse-spark-1.3", messages: [{ role: "developer", content: system }, { role: "user", content: user }], max_completion_tokens: 1500, reasoning_effort: "low" }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const text = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+    return text ? String(text) : null;
+  } catch {
+    return null;
+  }
+}
+
+export const onRequestOptions =({ request }) => new Response(null, { status: 204, headers: corsFor(request) });
 
 export async function onRequestPost({ request, env }) {
   const db = env.DB;
@@ -111,7 +132,9 @@ export async function onRequestPost({ request, env }) {
         if (!goal) return out(request, { error: "Type a goal first." }, 400);
         prompt = `${ORBIT_RULES}\n\n${memoryBlock(body.memory)}Make a short, practical step-by-step plan for this goal: "${goal}". Answer ONLY with the steps, one per line, 3 to 8 steps, each starting with "- ", no other text.`;
       }
-      const text = String(await orbitGenerate(env, prompt, 8000)).trim();
+      // Muse Spark first (when its key is set), the free Google models otherwise or if Muse fails.
+      const task = prompt.slice(ORBIT_RULES.length + 2);
+      const text = String((await museGenerate(env, ORBIT_RULES, task)) || (await orbitGenerate(env, prompt, 8000))).trim();
       await spend(db, me.user_id, tokensOf(prompt, text));
       const credits = await wallet(db, me.user_id);
       if (action === "chat") return out(request, { reply: text, credits });
