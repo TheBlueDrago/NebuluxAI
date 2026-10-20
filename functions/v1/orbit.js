@@ -204,11 +204,11 @@ export async function onRequestPost({ request, env }) {
     // ---- connections ----
     if (action === "connections") {
       const rows = (await db.prepare("SELECT provider, email, at FROM orbit_connections WHERE user_id = ?").bind(me.user_id).all()).results || [];
-      return out(request, { connections: rows, gmailReady: !!env.GOOGLE_CLIENT_ID });
+      return out(request, { connections: rows, gmailReady: !!env.GOOGLE_CLIENT_ID, googleReady: !!env.GOOGLE_CLIENT_ID, githubReady: !!env.GITHUB_CLIENT_ID });
     }
     if (action === "disconnect") {
       const c = await db.prepare("SELECT refresh FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).first();
-      if (c) await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(c.refresh), { method: "POST" }).catch(() => {});
+      if (c && body.provider !== "github") await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(c.refresh), { method: "POST" }).catch(() => {});
       await db.prepare("DELETE FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).run();
       return out(request, { ok: true });
     }
@@ -217,6 +217,14 @@ export async function onRequestPost({ request, env }) {
       const a = await gmailAccess(env, db, me.user_id);
       if (!a) return out(request, { error: "Connect Gmail first (Connections)." }, 400);
       return out(request, { email: a.email, messages: await gmailList(a, Math.min(20, Math.max(1, +body.max || 10))) });
+    }
+    if (action === "github_list") {
+      if (!(await allow(`orbit-gh:${me.user_id}`, 20, 60))) return out(request, { error: "Slow down a little." }, 429);
+      const c = await db.prepare("SELECT refresh, email FROM orbit_connections WHERE user_id = ? AND provider = 'github'").bind(me.user_id).first();
+      if (!c) return out(request, { error: "Connect GitHub first (Connections)." }, 400);
+      const gh = (path) => fetch("https://api.github.com/" + path, { headers: { Authorization: "Bearer " + c.refresh, "User-Agent": "Nebulux-Orbit", Accept: "application/vnd.github+json" } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const [repos, work] = await Promise.all([gh("user/repos?sort=updated&per_page=10"), gh(`search/issues?q=${encodeURIComponent("is:open involves:" + c.email)}&sort=updated&per_page=10`)]);
+      return out(request, { login: c.email, repos: (repos || []).map((r) => ({ name: r.full_name, url: r.html_url, private: r.private, updated: r.updated_at, about: r.description || "" })), open: ((work && work.items) || []).map((i) => ({ title: i.title, url: i.html_url, repo: String(i.repository_url || "").split("/repos/")[1] || "", pr: !!i.pull_request })) });
     }
     if (action === "calendar_list" || action === "calendar_add" || action === "drive_list" || action === "drive_read") {
       if (!(await allow(`orbit-g:${me.user_id}`, 30, 60))) return out(request, { error: "Slow down a little." }, 429);
