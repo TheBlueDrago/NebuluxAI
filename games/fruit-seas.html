@@ -1109,9 +1109,15 @@ function openBeastPicker() {
 function updateBeast(e, dt) {
   e.t += dt; e.atkCd -= dt;
   if (!e.god && (T > e.until || e.pos.distanceTo(P.pos) > 260)) { removeBeast(e, "The Sea Beast dived back into the deep"); return; }
-  if (e.god) { e.b.segs.forEach((m, i) => { m.position.set(Math.sin(e.t * 0.7 + i * 0.8) * i * 0.6, 7 + Math.sin(e.t * 0.6 - i * 0.7) * 3.5 - i * 1.1, -i * 4.6); }); e.b.g.position.set(e.pos.x, -40, e.pos.z); e.b.g.rotation.y = Math.atan2(P.pos.x - e.pos.x, P.pos.z - e.pos.z);
+  if (e.god) {
+    // Its body is far out at sea and huge, so its "hit spot" stays just in front of you: every attack you
+    // throw on God Island can reach it.
+    e.bodyPos = e.bodyPos || e.pos.clone();
+    const toward = e.bodyPos.clone().sub(P.pos).setY(0); if (toward.lengthSq() > 1) toward.normalize();
+    e.pos.copy(P.pos).addScaledVector(toward, 3.5); e.pos.y = P.pos.y;
+    e.b.segs.forEach((m, i) => { m.position.set(Math.sin(e.t * 0.7 + i * 0.8) * i * 0.6, 7 + Math.sin(e.t * 0.6 - i * 0.7) * 3.5 - i * 1.1, -i * 4.6); }); e.b.g.position.set(e.bodyPos.x, -40, e.bodyPos.z); e.b.g.rotation.y = Math.atan2(P.pos.x - e.bodyPos.x, P.pos.z - e.bodyPos.z);
     if (e.atkCd <= 0 && !dead) { e.atkCd = 2.2; const at = P.pos.clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))); ring(at, 0xffe082, 1, 0.9); setTimeout(() => { if (beast !== e) return; pillar(at, 0xffe082, 3, 30, 0.7); explodeEnemy(at, 7, maxHp() * 0.12, 0xffe082); }, 900); }
-    const sc = e.b.g.scale.x; e.bar.visible = e.label.visible = true; e.bar.position.set(e.pos.x, 9 * sc, e.pos.z); e.bar.quaternion.copy(camera.quaternion); const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k); e.label.position.set(e.pos.x, 9 * sc + 12, e.pos.z); return; }
+    const sc = e.b.g.scale.x; e.bar.visible = e.label.visible = true; e.bar.position.set(e.bodyPos.x, 9 * sc, e.bodyPos.z); e.bar.quaternion.copy(camera.quaternion); const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k); e.label.position.set(e.bodyPos.x, 9 * sc + 12, e.bodyPos.z); return; }
   // swim around its spot, facing you, its body waving behind it
   const to = P.pos.clone().sub(e.pos).setY(0), d = to.length();
   if (d > 18) e.pos.addScaledVector(to.normalize(), Math.min(d - 18, 8 * dt));
