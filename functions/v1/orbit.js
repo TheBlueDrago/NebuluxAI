@@ -39,6 +39,8 @@ const ensure = (db) =>
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_wallets (user_id TEXT PRIMARY KEY, credits INTEGER NOT NULL, day TEXT NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_data (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)"),
     // Connections (Gmail for now): the permission Google gave, kept until they disconnect.
+    // Orbit is for ages 13 and up: the birthday is asked once and can't be changed afterwards.
+    db.prepare("CREATE TABLE IF NOT EXISTS orbit_ages (user_id TEXT PRIMARY KEY, birth TEXT NOT NULL, at INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_states (state TEXT PRIMARY KEY, user_id TEXT NOT NULL, back TEXT NOT NULL, exp INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_connections (user_id TEXT NOT NULL, provider TEXT NOT NULL, refresh TEXT NOT NULL, email TEXT, at INTEGER NOT NULL, PRIMARY KEY (user_id, provider))"),
   ]).catch((e) => { ready = null; throw e; }));
@@ -186,7 +188,18 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("DELETE FROM orbit_tokens WHERE token = ?").bind(String(request.headers.get("authorization")).split(/\s+/)[1]).run();
       return out(request, { ok: true });
     }
-    if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), weekly: ORBIT_WEEKLY });
+    const ageRow = await db.prepare("SELECT birth FROM orbit_ages WHERE user_id = ?").bind(me.user_id).first();
+    const ageOf = (birth) => { const b = new Date(birth + "T00:00:00Z"), n = new Date(); let a = n.getUTCFullYear() - b.getUTCFullYear(); if (n.getUTCMonth() < b.getUTCMonth() || (n.getUTCMonth() === b.getUTCMonth() && n.getUTCDate() < b.getUTCDate())) a--; return a; };
+    const under13 = ageRow ? ageOf(ageRow.birth) < 13 : false;
+    if (action === "setbirth") {
+      if (ageRow) return out(request, { error: "Your birthday is already set.", under13 }, 400);
+      const birth = String(body.birth || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || isNaN(new Date(birth)) || ageOf(birth) > 120 || ageOf(birth) < 0) return out(request, { error: "Enter your real birthday." }, 400);
+      await db.prepare("INSERT INTO orbit_ages (user_id, birth, at) VALUES (?, ?, ?)").bind(me.user_id, birth, Date.now()).run();
+      return out(request, { ok: true, under13: ageOf(birth) < 13 });
+    }
+    if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), weekly: ORBIT_WEEKLY, needBirth: !ageRow, under13 });
+    if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Nebulux Orbit is for ages 13 and up." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     // Tasks, goals, chat and memory kept with the account, so every device shows the same Orbit.
     if (action === "load") {
       const row = await db.prepare("SELECT data, at FROM orbit_data WHERE user_id = ?").bind(me.user_id).first();
