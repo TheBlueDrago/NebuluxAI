@@ -7,22 +7,25 @@
 //   { action: "chat", messages, memory }   -> { reply, credits }
 //   { action: "plan", goal, memory }       -> { steps: [string], credits }
 //   { action: "signout" }                  -> { ok }
-// Orbit calls send "Authorization: Orbit <token>". Orbit credits: ORBIT_DAILY free every day (no money
-// involved); a chat costs 1, a plan 2. They're separate from Nebulux AI's credits.
+// Orbit calls send "Authorization: Orbit <token>". Orbit tokens: ORBIT_WEEKLY free every week (no money
+// involved). Paid in tokens: what was sent and written (about 4 letters a token). Separate from Nebulux AI.
 // Orbit only talks and plans: it can't buy anything, send messages, or see cards or passwords.
 import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 
 const ORIGINS = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev$/, /^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev$/, /^https:\/\/orbit\.nebuluxai\.com$/, /^https:\/\/nebuluxai\.com$/, /^http:\/\/localhost(:\d+)?$/];
-const ORBIT_DAILY = 100;
+const ORBIT_WEEKLY = 1000000; // free Orbit tokens each week (a token is about 4 letters)
+const MIN_TOKENS = 300; // what one more reply needs at least
 const corsFor = (request) => {
   const o = request.headers.get("Origin") || "";
   return { "Access-Control-Allow-Origin": ORIGINS.some((r) => r.test(o)) ? o : "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", Vary: "Origin" };
 };
 const out = (request, obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", ...corsFor(request) } });
 const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
-const today = () => new Date().toISOString().slice(0, 10);
+// The week starts on Monday (UTC); the free tokens refill then.
+const weekKey = () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+const tokensOf = (...texts) => Math.ceil(texts.reduce((n, t) => n + String(t || "").length, 0) / 4);
 
 let ready = null;
 const ensure = (db) =>
@@ -37,12 +40,12 @@ async function orbitUser(db, request) {
   if (!m) return null;
   return await db.prepare("SELECT user_id, name FROM orbit_tokens WHERE token = ?").bind(m[1]).first();
 }
-// The day's free credits are topped up the first time they're looked at each day.
+// The week's free tokens are topped up the first time they're looked at each week.
 async function wallet(db, uid) {
   const w = await db.prepare("SELECT credits, day FROM orbit_wallets WHERE user_id = ?").bind(uid).first();
-  if (!w || w.day !== today()) {
-    const credits = Math.max(ORBIT_DAILY, w ? w.credits : 0);
-    await db.prepare("INSERT INTO orbit_wallets (user_id, credits, day) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET credits = excluded.credits, day = excluded.day").bind(uid, credits, today()).run();
+  if (!w || w.day !== weekKey()) {
+    const credits = ORBIT_WEEKLY;
+    await db.prepare("INSERT INTO orbit_wallets (user_id, credits, day) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET credits = excluded.credits, day = excluded.day").bind(uid, credits, weekKey()).run();
     return credits;
   }
   return w.credits;
@@ -92,13 +95,12 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("DELETE FROM orbit_tokens WHERE token = ?").bind(String(request.headers.get("authorization")).split(/\s+/)[1]).run();
       return out(request, { ok: true });
     }
-    if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), daily: ORBIT_DAILY });
+    if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), weekly: ORBIT_WEEKLY });
 
     if (action === "chat" || action === "plan") {
       if (!(await allow(`orbit-ai:${me.user_id}`, 12, 60))) return out(request, { error: "Slow down a little: up to 12 a minute." }, 429);
-      const cost = action === "plan" ? 2 : 1;
       const have = await wallet(db, me.user_id);
-      if (have < cost) return out(request, { error: `You're out of Orbit credits for today. You get ${ORBIT_DAILY} free again tomorrow.`, credits: have }, 402);
+      if (have < MIN_TOKENS) return out(request, { error: `You've used this week's Orbit tokens. You get ${ORBIT_WEEKLY.toLocaleString("en-US")} free again on Monday.`, credits: have }, 402);
       let prompt;
       if (action === "chat") {
         const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-16).map((m) => `${m.role === "assistant" ? "Orbit" : "Them"}: ${String(m.content || "").slice(0, 3000)}`).join("\n\n");
@@ -110,7 +112,7 @@ export async function onRequestPost({ request, env }) {
         prompt = `${ORBIT_RULES}\n\n${memoryBlock(body.memory)}Make a short, practical step-by-step plan for this goal: "${goal}". Answer ONLY with the steps, one per line, 3 to 8 steps, each starting with "- ", no other text.`;
       }
       const text = String(await orbitGenerate(env, prompt, 8000)).trim();
-      await spend(db, me.user_id, cost);
+      await spend(db, me.user_id, tokensOf(prompt, text));
       const credits = await wallet(db, me.user_id);
       if (action === "chat") return out(request, { reply: text, credits });
       const steps = text.split("\n").map((l) => l.replace(/^\s*[-*\d.)]+\s*/, "").trim()).filter(Boolean).slice(0, 8);
