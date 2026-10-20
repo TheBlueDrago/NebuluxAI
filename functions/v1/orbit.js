@@ -54,8 +54,8 @@ async function orbitUser(db, request) {
 }
 
 // ---- Gmail (only after the person connects it, and sending only when they press Send) ----
-async function gmailAccess(env, db, uid) {
-  const c = await db.prepare("SELECT refresh, email FROM orbit_connections WHERE user_id = ? AND provider = 'gmail'").bind(uid).first();
+async function googleAccess(env, db, uid, provider) {
+  const c = await db.prepare("SELECT refresh, email FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(uid, provider).first();
   if (!c) return null;
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -64,6 +64,34 @@ async function gmailAccess(env, db, uid) {
   }).catch(() => null);
   const t = r && r.ok ? await r.json().catch(() => null) : null;
   return t && t.access_token ? { token: t.access_token, email: c.email } : null;
+}
+const gmailAccess = (env, db, uid) => googleAccess(env, db, uid, "gmail");
+const gapi = (access, url, init = {}) => fetch(url, { ...init, headers: { Authorization: "Bearer " + access.token, "Content-Type": "application/json", ...(init.headers || {}) } });
+// Google Calendar: the next events, and adding one the person approved.
+async function calendarList(access) {
+  const now = new Date().toISOString();
+  const r = await gapi(access, `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&maxResults=12&singleEvents=true&orderBy=startTime`);
+  const d = r.ok ? await r.json() : null;
+  return ((d && d.items) || []).map((e) => ({ id: e.id, title: e.summary || "(no title)", start: (e.start && (e.start.dateTime || e.start.date)) || "", end: (e.end && (e.end.dateTime || e.end.date)) || "", where: e.location || "" }));
+}
+async function calendarAdd(access, title, start, end) {
+  const r = await gapi(access, "https://www.googleapis.com/calendar/v3/calendars/primary/events", { method: "POST", body: JSON.stringify({ summary: title, start: { dateTime: start }, end: { dateTime: end } }) });
+  return r.ok;
+}
+// Google Drive (Docs, Slides, Sheets and more): recent files, and the text of one they pick.
+async function driveList(access) {
+  const r = await gapi(access, "https://www.googleapis.com/drive/v3/files?pageSize=15&orderBy=modifiedTime desc&fields=files(id,name,mimeType,modifiedTime,webViewLink)&q=trashed%3Dfalse");
+  const d = r.ok ? await r.json() : null;
+  return (d && d.files) || [];
+}
+async function driveRead(access, id) {
+  const meta = await gapi(access, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=name,mimeType`).then((r) => (r.ok ? r.json() : null));
+  if (!meta) return null;
+  const g = meta.mimeType.startsWith("application/vnd.google-apps.");
+  const url = g ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${meta.mimeType.endsWith("spreadsheet") ? "text/csv" : "text/plain"}` : `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`;
+  if (!g && !/^text\/|json|csv|markdown/.test(meta.mimeType)) return { name: meta.name, text: "(Orbit can only read Google Docs, Slides, Sheets and text files.)" };
+  const text = await gapi(access, url).then((r) => (r.ok ? r.text() : ""));
+  return { name: meta.name, text: String(text).slice(0, 20000) };
 }
 const header = (msg, name) => ((msg.payload && msg.payload.headers) || []).find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
 async function gmailList(access, max = 10) {
@@ -189,6 +217,19 @@ export async function onRequestPost({ request, env }) {
       const a = await gmailAccess(env, db, me.user_id);
       if (!a) return out(request, { error: "Connect Gmail first (Connections)." }, 400);
       return out(request, { email: a.email, messages: await gmailList(a, Math.min(20, Math.max(1, +body.max || 10))) });
+    }
+    if (action === "calendar_list" || action === "calendar_add" || action === "drive_list" || action === "drive_read") {
+      if (!(await allow(`orbit-g:${me.user_id}`, 30, 60))) return out(request, { error: "Slow down a little." }, 429);
+      const provider = action.startsWith("calendar") ? "calendar" : "drive";
+      const a = await googleAccess(env, db, me.user_id, provider);
+      if (!a) return out(request, { error: `Connect ${provider === "calendar" ? "Google Calendar" : "Google Drive"} first (Connections).` }, 400);
+      if (action === "calendar_list") return out(request, { events: await calendarList(a) });
+      if (action === "drive_list") return out(request, { files: await driveList(a) });
+      if (action === "drive_read") { const f = await driveRead(a, String(body.id || "")); return f ? out(request, f) : out(request, { error: "That file couldn't be opened." }, 404); }
+      if (body.confirmed !== true) return out(request, { error: "Press Add to confirm." }, 400);
+      const title = String(body.title || "").slice(0, 200), start = new Date(body.start), end = new Date(body.end || +new Date(body.start) + 3600e3);
+      if (!title || isNaN(start) || isNaN(end)) return out(request, { error: "Add a title and a time." }, 400);
+      return (await calendarAdd(a, title, start.toISOString(), end.toISOString())) ? out(request, { ok: true }) : out(request, { error: "Google Calendar didn't add it." }, 502);
     }
     if (action === "gmail_send") {
       // Only sent when the person pressed Send on the email themselves (the site asks first).

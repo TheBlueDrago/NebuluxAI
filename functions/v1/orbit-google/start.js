@@ -5,24 +5,30 @@
 // https://nebuluxai.com/v1/orbit-google/callback must be one of its redirect URIs.
 import { orbitEnsure, orbitUserByToken, ORBIT_RETURN, randHex } from "../orbit.js";
 
-export const GMAIL_SCOPES = "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send";
+// What each connection may do (Google shows this on its permission screen).
+export const GOOGLE_SCOPES = {
+  gmail: "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
+  calendar: "openid email https://www.googleapis.com/auth/calendar.events",
+  drive: "openid email https://www.googleapis.com/auth/drive.readonly",
+};
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const back = url.searchParams.get("return") || "";
   if (!ORBIT_RETURN.some((r) => r.test(back))) return new Response("This link isn't from Nebulux Orbit.", { status: 400 });
-  const done = (why) => Response.redirect(back + (back.includes("?") ? "&" : "?") + "gmail=" + why, 302);
+  const provider = GOOGLE_SCOPES[url.searchParams.get("p")] ? url.searchParams.get("p") : "gmail";
+  const done = (why) => Response.redirect(back + (back.includes("?") ? "&" : "?") + "connected=" + provider + "&result=" + why, 302);
   if (!env.DB || !env.GOOGLE_CLIENT_ID) return done("unavailable");
   await orbitEnsure(env.DB);
   const me = await orbitUserByToken(env.DB, url.searchParams.get("t") || "");
   if (!me) return done("signin");
   const state = randHex(16);
-  await env.DB.prepare("INSERT INTO orbit_states (state, user_id, back, exp) VALUES (?, ?, ?, ?)").bind(state, me.user_id, back, Date.now() + 600000).run();
+  await env.DB.prepare("INSERT INTO orbit_states (state, user_id, back, exp) VALUES (?, ?, ?, ?)").bind(state, me.user_id, provider + " " + back, Date.now() + 600000).run();
   const g = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   g.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
   g.searchParams.set("redirect_uri", url.origin + "/v1/orbit-google/callback");
   g.searchParams.set("response_type", "code");
-  g.searchParams.set("scope", GMAIL_SCOPES);
+  g.searchParams.set("scope", GOOGLE_SCOPES[provider]);
   g.searchParams.set("access_type", "offline");
   g.searchParams.set("prompt", "consent");
   g.searchParams.set("include_granted_scopes", "true");

@@ -11,7 +11,8 @@ export async function onRequestGet({ request, env }) {
   const row = await env.DB.prepare("SELECT user_id, back, exp FROM orbit_states WHERE state = ?").bind(state).first();
   await env.DB.prepare("DELETE FROM orbit_states WHERE state = ? OR exp < ?").bind(state, Date.now()).run();
   if (!row || row.exp < Date.now()) return new Response("This link has expired. Try connecting again.", { status: 400 });
-  const done = (why) => Response.redirect(row.back + (row.back.includes("?") ? "&" : "?") + "gmail=" + why, 302);
+  const [provider, back] = [row.back.split(" ")[0], row.back.slice(row.back.indexOf(" ") + 1)];
+  const done = (why) => Response.redirect(back + (back.includes("?") ? "&" : "?") + "connected=" + provider + "&result=" + why, 302);
   const code = url.searchParams.get("code");
   if (!code) return done("cancelled");
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -26,6 +27,6 @@ export async function onRequestGet({ request, env }) {
     const part = String(tok.id_token || "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     email = JSON.parse(atob(part + "===".slice((part.length + 3) % 4))).email || "";
   } catch {}
-  await env.DB.prepare("INSERT INTO orbit_connections (user_id, provider, refresh, email, at) VALUES (?, 'gmail', ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET refresh = excluded.refresh, email = excluded.email, at = excluded.at").bind(row.user_id, tok.refresh_token, String(email).slice(0, 200), Date.now()).run();
+  await env.DB.prepare("INSERT INTO orbit_connections (user_id, provider, refresh, email, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET refresh = excluded.refresh, email = excluded.email, at = excluded.at").bind(row.user_id, provider, tok.refresh_token, String(email).slice(0, 200), Date.now()).run();
   return done("connected");
 }
