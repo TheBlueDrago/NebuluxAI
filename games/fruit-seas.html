@@ -128,12 +128,16 @@
 <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"></div>
 <div id="kenfx" style="position:fixed;inset:0;pointer-events:none;backdrop-filter:grayscale(1) brightness(.62) contrast(1.25);-webkit-backdrop-filter:grayscale(1) brightness(.62) contrast(1.25);background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 35%, rgba(0,0,0,.6));opacity:0;transition:opacity .4s;z-index:0"></div>
 <div id="kenTxt" class="sh" style="display:none;position:fixed;left:50%;top:70px;transform:translateX(-50%);font-weight:900;font-size:16px;color:#fff;z-index:5"></div>
+<div id="racebar" style="display:none;position:fixed;left:50%;bottom:100px;transform:translateX(-50%);width:220px;height:16px;border:3px solid #000;border-radius:8px;background:#222;overflow:hidden;z-index:3"><div style="height:100%;width:0;background:linear-gradient(90deg,#ff8f00,#ffd23a)"></div><span style="position:absolute;inset:0;text-align:center;font-size:10px;font-weight:900;line-height:10px;color:#fff;text-shadow:0 1px 2px #000"></span></div>
 <div id="combo" style="position:fixed;right:24px;top:42%;font:900 40px Segoe UI,system-ui;color:#ffd23a;text-align:right;-webkit-text-stroke:2px #000;opacity:0;transition:opacity .3s,transform .08s;pointer-events:none;z-index:4"></div>
 <div id="side">
   <button class="sb" id="bStats"><em>📊</em>Stats</button>
   <button class="sb" id="bFruits" style="font-size:9px;letter-spacing:-.2px"><em>🎒</em>Inventory</button>
   <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
   <button class="sb" id="bBeast" style="display:none" title="Summon a Sea Beast to defeat for prizes"><em>🐉</em><span id="beastTxt">Beast</span></button>
+  <button class="sb" id="bLevi" style="display:none" title="Summon a Leviathan"><em>🦑</em>Levi</button>
+  <button class="sb" id="bDest" style="display:none" title="Summon a Destroyer"><em>💀</em>Destroy</button>
+  <button class="sb" id="bGod" style="display:none" title="Summon a SEA GOD (everyone online fights it)"><em>👼</em>God</button>
   <button class="sb" id="bAlly" style="display:none" title="Summon a Sea Beast that fights for you"><em>🐲</em><span id="allyTxt">Ally</span></button>
   <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
 </div>
@@ -627,6 +631,7 @@ const nameTag = makeLabel(myName, "#ffffff", 768); nameTag.scale.set(6, 1, 1); s
 const cam = { yaw: Math.PI, pitch: 0.38, dist: matchMedia("(pointer: coarse) and (max-aspect-ratio: 1/1)").matches ? 26 : 16 }; // further back on upright phones
 // You come back on the last island you stood on in this sea (S.home), else the sea's spawn island.
 function spawnPoint() {
+  if (P && P.inGod) return GOD_AT.clone().add(V(0, 4, -100));
   const isl = ISLANDS.find((i) => i.name === S.home && i.sea === S.sea) || ISLANDS.find((i) => i.spawn && i.sea === S.sea);
   // Spawn islands: by the shops in the middle. Others: at the shore, away from the boss in the middle.
   const dz = isl.spawn ? 4 : isl.r - 8;
@@ -1018,24 +1023,95 @@ function makeBeastBody(color) {
   return { g, segs };
 }
 let beast = null, ally = null;
-function spawnBeast(nearPos, why, exact) {
+function spawnBeast(nearPos, why, exact, pickTier) {
   if (beast && (!enemies.includes(beast) || beast.hp <= 0)) beast = null; // a leftover from an earlier beast
-  if (beast) return;
-  const levi = S.sea === 2, lvl = levi ? 300 + 50 * (S.leviKills || 0) : Math.max(40, S.lvl + 5) /* Leviathans: Lv. 300, then 50 more for each one you beat */, body = makeBeastBody(levi ? 0x7b1010 : 0x1e5aa8);
-  if (levi) body.g.scale.setScalar(1.8);
+  if (beast && !ownerMax()) return; // the owner can have several at once
+  // Beasts grow with their level: Sea Beast (to Lv. 500), then Leviathan, Destroyer (Lv. 100,000+) and
+  // Sea God (Lv. 1,000,000,000, the highest). Leviathans start at Lv. 300 and gain 50 for each one you beat.
+  let levi = S.sea === 2 || S.lvl + 5 >= 500, lvl = levi ? Math.min(1e9, 300 + 50 * (S.leviKills || 0)) : Math.min(500, Math.max(40, S.lvl + 5));
+  // a kind chosen at the Fight button
+  if (pickTier === "beast") { levi = false; lvl = Math.min(500, Math.max(40, S.lvl + 5)); }
+  if (pickTier === "levi") { levi = true; lvl = Math.max(500, Math.min(99999, 300 + 50 * (S.leviKills || 0))); }
+  if (pickTier === "destroyer") { levi = true; lvl = Math.max(100000, Math.min(999999999, 300 + 50 * (S.leviKills || 0))); }
+  if (pickTier === "god") { levi = true; lvl = 1e9; }
+  const tier = lvl >= 1e9 ? "SEA GOD" : lvl >= 100000 ? "DESTROYER" : levi ? "LEVIATHAN" : "Sea Beast";
+  const body = makeBeastBody(tier === "SEA GOD" ? 0xffc400 : tier === "DESTROYER" ? 0x212121 : levi ? 0x7b1010 : 0x1e5aa8);
+  body.g.scale.setScalar(lvl >= 1e9 ? 34 : 0.6 + Math.log10(lvl) * 0.55); // bigger the higher its level; a Sea God fills the sky
+  if (lvl >= 1e9) { // the Sea God: white wings and a golden halo
+    const head = body.segs[0];
+    for (const sx of [-1, 1]) { const w = box(10, 0.4, 5, 0xffffff); w.position.set(sx * 7, 3, -1); w.rotation.z = sx * 0.35; head.add(w); const w2 = box(6, 0.3, 3.5, 0xfffde7); w2.position.set(sx * 13.5, 5, -1.5); w2.rotation.z = sx * 0.6; head.add(w2); }
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.35, 8, 28), new THREE.MeshBasicMaterial({ color: 0xffe082 })); halo.rotation.x = Math.PI / 2; halo.position.set(0, 6.5, 0); head.add(halo);
+  }
   const a = rnd(0, 7), pos = exact ? nearPos.clone() : nearPos.clone().add(V(Math.cos(a) * 26, 0, Math.sin(a) * 26)); pos.y = 0;
-  if (!exact && netOn()) netSend({ t: "fx", k: "beast", x: Math.round(pos.x), z: Math.round(pos.z) });
+  if (lvl >= 1e9) pos.copy(GOD_AT).add(V(0, 0, 230));
+  if (!exact && netOn() && lvl < 1e9) netSend({ t: "fx", k: "beast", x: Math.round(pos.x), z: Math.round(pos.z) });
   body.g.position.copy(pos); scene.add(body.g);
   const bar = hpBar(); bar.scale.setScalar(3); scene.add(bar);
-  const label = makeLabel(`${levi ? "LEVIATHAN" : "Sea Beast"} [Lv. ${lvl}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
-  const mhp = Math.round(6000 + lvl * lvl * 4);
-  beast = { levi, beast: true, event: true, b: { g: body.g, segs: body.segs }, pos, home: pos.clone(), isl: ISLANDS.find((i) => i.sea === S.sea), boss: { name: "Sea Beast" }, name: "Sea Beast", lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: 3, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, swing: 0, until: T + 240 };
+  const label = makeLabel(`${tier} [Lv. ${lvl.toLocaleString()}]`, "#ff4d4d", 768); label.scale.set(12, 1.8, 1); scene.add(label);
+  // Easier than before: low-level beasts keep about a third of their old health; the higher the level,
+  // the less is taken away (a Sea God keeps all of it).
+  const mhp = Math.round((6000 + lvl * lvl * 4) / Math.max(1, 3 - Math.log10(lvl) / 4.5));
+  beast = { levi, god: lvl >= 1e9, beast: true, event: true, b: { g: body.g, segs: body.segs }, pos, home: pos.clone(), isl: ISLANDS.find((i) => i.sea === S.sea), boss: { name: "Sea Beast" }, name: "Sea Beast", lvl, hp: mhp, maxHp: mhp, bar, label, atkCd: 3, t: 0, kb: V(), freeze: 0, burn: 0, aggro: 0, swing: 0, until: T + 240 };
   enemies.push(beast);
   SFX.boom(); shake = Math.max(shake, 0.5); show(why || "A SEA BEAST rises from the deep!", 4);
 }
+// ================= the Sea God =================
+// When anyone summons a Sea God, everyone online (every sea) is taken to one huge God Island to fight it
+// together. It ends when the Sea God falls or after 10 minutes, and everyone goes back where they were.
+const GOD_AT = V(0, 0, 9000);
+let godMesh = null;
+function buildGodIsland() {
+  if (godMesh) return; const R = 300;
+  for (let cx = Math.floor((GOD_AT.x - R) / CELL); cx <= Math.ceil((GOD_AT.x + R) / CELL); cx++) for (let cz = Math.floor((GOD_AT.z - R) / CELL); cz <= Math.ceil((GOD_AT.z + R) / CELL); cz++) {
+    if (Math.hypot(cx * CELL + 1 - GOD_AT.x, cz * CELL + 1 - GOD_AT.z) < R) heights.set(key(cx, cz), { y: 2, lava: false });
+  }
+  godMesh = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(R, R + 10, 10, 64), new THREE.MeshStandardMaterial({ color: 0xeceff1, roughness: 0.8 })); top.position.set(GOD_AT.x, -3, GOD_AT.z); godMesh.add(top);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 2, 8, 80), new THREE.MeshStandardMaterial({ color: 0xffd54f })); rim.rotation.x = Math.PI / 2; rim.position.set(GOD_AT.x, 2.2, GOD_AT.z); godMesh.add(rim);
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * 6.28, c = box(4, 22, 4, 0xffffff); c.position.set(GOD_AT.x + Math.cos(a) * (R - 12), 11, GOD_AT.z + Math.sin(a) * (R - 12)); godMesh.add(c); solids.push({ x: c.position.x, z: c.position.z, r: 3 }); }
+  scene.add(godMesh);
+}
+function enterGod(by) {
+  if (P.inGod) return;
+  buildGodIsland(); P.godBack = { sea: S.sea, pos: P.pos.clone() }; P.inGod = true; P.godEnd = performance.now() + 600000;
+  if (P.boat) toggleBoat();
+  if (beast) removeBeast(beast);
+  P.pos.copy(GOD_AT).add(V(rnd(-40, 40), 4, rnd(-120, -60))); P.vel.set(0, 0, 0);
+  spawnBeast(GOD_AT, "", true, "god");
+  SFX.boom?.(); shake = 1; show(`${by ? by + " summoned" : "Someone summoned"} a SEA GOD!\nEveryone fights it together on God Island!`, 5);
+  netSwitchSea();
+}
+function leaveGod(won) {
+  if (!P.inGod) return;
+  P.inGod = false; if (beast && beast.god) removeBeast(beast);
+  if (won) { addFrags(1000); S.beli += 50000000; save(); show("THE SEA GOD HAS FALLEN!\n+1,000 Fragments and $50,000,000", 5); } else show("The Sea God returned to the heavens", 3);
+  const b = P.godBack; P.pos.copy(b ? b.pos : spawnPoint()); P.vel.set(0, 0, 0);
+  netSwitchSea();
+}
+setInterval(() => { if (P.inGod && (performance.now() > P.godEnd || (!beast && performance.now() > P.godEnd - 595000))) leaveGod(!beast); }, 1000);
+function summonGod() {
+  if (!ownerMax() && Date.now() - (S.godAt || 0) < 30 * 60000) return show(`You can summon a Sea God again in ${Math.ceil((30 * 60000 - (Date.now() - S.godAt)) / 60000)} min`, 2);
+  S.godAt = Date.now(); save();
+  if (netOn()) netSend({ t: "god", name: netName() });
+  enterGod(netName());
+}
+// The Fight button: choose which kind of beast to summon (by level; the owner can pick any).
+function openBeastPicker() {
+  const any = ownerMax(), kinds = [["beast", "🐉 Sea Beast", "Up to Lv. 500", 50], ["levi", "🦑 Leviathan", "Lv. 500+", 500], ["destroyer", "💀 Destroyer", "Lv. 100,000+", 100000], ["god", "👼 SEA GOD", "Lv. 1,000,000,000 · everyone online fights it on God Island · once every 30 min", 1e9]];
+  openModal("Summon a beast", kinds.map(([id, name, about, need]) => `<div class="row"><div class="grow"><b>${name}</b><div style="font-size:12px;opacity:.85">${about}${!any && S.lvl < need ? ` · needs Lv. ${need.toLocaleString()}` : ""}</div></div><button class="btn blue" data-bk="${id}" ${any || S.lvl >= need ? "" : "disabled"}>Summon</button></div>`).join(""));
+  $("mb").querySelectorAll("[data-bk]").forEach((b) => (b.onclick = () => {
+    closeModal(); const id = b.dataset.bk;
+    if (id === "god") return summonGod();
+    if (beast) return show("A beast is already here!", 2);
+    spawnBeast(P.pos, "You blew the horn... it answers! Defeat it!", false, id);
+  }));
+}
 function updateBeast(e, dt) {
   e.t += dt; e.atkCd -= dt;
-  if (T > e.until || e.pos.distanceTo(P.pos) > 260) { removeBeast(e, "The Sea Beast dived back into the deep"); return; }
+  if (!e.god && (T > e.until || e.pos.distanceTo(P.pos) > 260)) { removeBeast(e, "The Sea Beast dived back into the deep"); return; }
+  if (e.god) { e.b.segs.forEach((m, i) => { m.position.set(Math.sin(e.t * 0.7 + i * 0.8) * i * 0.6, 7 + Math.sin(e.t * 0.6 - i * 0.7) * 3.5 - i * 1.1, -i * 4.6); }); e.b.g.position.set(e.pos.x, -40, e.pos.z); e.b.g.rotation.y = Math.atan2(P.pos.x - e.pos.x, P.pos.z - e.pos.z);
+    if (e.atkCd <= 0 && !dead) { e.atkCd = 2.2; const at = P.pos.clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))); ring(at, 0xffe082, 1, 0.9); setTimeout(() => { if (beast !== e) return; pillar(at, 0xffe082, 3, 30, 0.7); explodeEnemy(at, 7, maxHp() * 0.12, 0xffe082); }, 900); }
+    const sc = e.b.g.scale.x; e.bar.visible = e.label.visible = true; e.bar.position.set(e.pos.x, 9 * sc, e.pos.z); e.bar.quaternion.copy(camera.quaternion); const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k); e.label.position.set(e.pos.x, 9 * sc + 12, e.pos.z); return; }
   // swim around its spot, facing you, its body waving behind it
   const to = P.pos.clone().sub(e.pos).setY(0), d = to.length();
   if (d > 18) e.pos.addScaledVector(to.normalize(), Math.min(d - 18, 8 * dt));
@@ -1051,7 +1127,7 @@ function updateBeast(e, dt) {
     if (pickYou || target) {
       e.atkCd = 2.6; const at = (pickYou ? P.pos : target.pos).clone(); ring(at, 0x40c4ff, 1, 0.9);
       setTimeout(() => {
-        if (!beast || beast !== e) return;
+        if (!enemies.includes(e)) return;
         pillar(at, 0x40c4ff, 2.5, 16, 0.6); explodeEnemy(at, 6, 10 + e.lvl * 1.6, 0x40c4ff);
         for (const x of enemies.slice()) if (!x.beast && !x.remote && x.pos.distanceTo(at) < 6) beastHit(x, 40 + e.lvl * 6);
       }, 750);
@@ -1059,9 +1135,9 @@ function updateBeast(e, dt) {
   }
   const vis = d < 160; e.bar.visible = e.label.visible = vis;
   if (vis) {
-    e.bar.position.set(e.pos.x, 20, e.pos.z); e.bar.quaternion.copy(camera.quaternion);
+    const sc = e.b.g.scale.x; e.bar.position.set(e.pos.x, 12 * sc, e.pos.z); e.bar.quaternion.copy(camera.quaternion);
     const k = Math.max(0.001, e.hp / e.maxHp); e.bar.fg.scale.x = k; e.bar.fg.position.x = -1.05 * (1 - k);
-    e.label.position.set(e.pos.x, 22.5, e.pos.z);
+    e.label.position.set(e.pos.x, 12 * sc + 2.5, e.pos.z);
   }
 }
 // The beast hurting an enemy or a bot pirate (no reward for you; they come back later as usual).
@@ -1117,9 +1193,16 @@ function beastTick(dt) {
   $("beastTxt").textContent = wait ? `${wait}m` : "Fight";
   // Lv. 100: a second button, a Sea Beast that fights for you (its own 1-minute recharge)
   $("bAlly").style.display = S.lvl >= 100 ? "" : "none";
+  for (const id of ["bLevi", "bDest", "bGod"]) $(id).style.display = ownerMax() ? "" : "none";
   const aw = Math.max(0, Math.ceil(((S.allyAt || 0) + 60000 - Date.now()) / 1000));
   $("allyTxt").textContent = ally ? "Active" : aw ? `${aw}s` : "Ally";
 }
+// Leviathans, Destroyers and Sea Gods: only the owner summons them, whenever and as many as they like.
+for (const [id, kind] of [["bLevi", "levi"], ["bDest", "destroyer"], ["bGod", "god"]]) $(id).onclick = () => {
+  if (!started || dead || !ownerMax()) return;
+  if (kind === "god") return summonGod();
+  spawnBeast(P.pos, "You blew the horn... it answers! Defeat it!", false, kind);
+};
 $("bAlly").onclick = () => {
   if (!started || dead || S.lvl < 100 || ally) return;
   if ((S.allyAt || 0) + 60000 > Date.now()) return show("Your ally can be called again in a minute", 2);
@@ -1127,7 +1210,7 @@ $("bAlly").onclick = () => {
 };
 $("bBeast").onclick = () => {
   if (!started || dead || S.lvl < 50) return;
-  { if (beast) return show("A Sea Beast is already here!", 2); S.beastAt = Date.now(); save(); spawnBeast(P.pos, "You blew the horn...\nA SEA BEAST answers! Defeat it!"); }
+  if (beast) return show("A beast is already here!", 2); spawnBeast(P.pos, "You blew the horn... a SEA BEAST answers!", false, "beast");
 };
 
 // Crew: up to 2 crewmates you hire at the Crew Recruiter. They follow you and fight enemies near you.
@@ -1374,7 +1457,7 @@ function hurtEnemy(e, dmg, from, fxo = {}) {
   if (e.rival && !pvpOn()) { if (T - (P.pvpNote || -9) > 3) { P.pvpNote = T; show(S.lvl < 5 ? "PvP unlocks at Lv. 5" : "PvP is off: you can't hurt other pirates", 1.5); } return; }
   dmg = Math.round(dmg * rnd(0.9, 1.1));
   SFX.hit();
-  e.hp -= dmg; dmgText(e.pos, dmg, fxo.freeze ? "#9fe8ff" : fxo.burn ? "#ffae5a" : dmg >= 1000 ? "#ffd23a" : "#ff4d4d"); addCombo(dmg);
+  chargeRace(2); e.hp -= dmg; dmgText(e.pos, dmg, fxo.freeze ? "#9fe8ff" : fxo.burn ? "#ffae5a" : dmg >= 1000 ? "#ffd23a" : "#ff4d4d"); addCombo(dmg);
   const away = e.pos.clone().sub(from).setY(0); if (away.lengthSq() > 0.001) e.kb.addScaledVector(away.normalize(), e.boss ? 2 : fxo.kb ?? 10);
   if (fxo.freeze) e.freeze = Math.max(e.freeze, fxo.freeze);
   if (fxo.burn) e.burn = 3;
@@ -1694,14 +1777,36 @@ function openRacer() {
   on("rr", () => { if (S.beli < 3000000) return; S.beli -= 3000000; const o = Object.keys(RACES).filter((x) => x !== S.race); S.race = o[Math.floor(Math.random() * o.length)]; show(`You are now a ${S.race}!`, 3); });
   on("rv2", () => { S.beli -= 5000000; S.raceV = 2; show("Race V2 awakened!", 3); });
   on("rv3", () => { S.beli -= 10000000; S.raceV = 3; show("Race V3 awakened!", 3); });
-  on("rv4", () => { S.frags -= 500; S.raceV = 4; show("RACE V4! Press T to awaken your race", 4); });
+  on("rv4", () => { S.frags -= 500; S.raceV = 4; addRaceWings(); drawRaceMeter(); show("RACE V4! Charge it up, then press T", 4); });
 }
+// V4 has to be charged up first: the meter fills as you hit enemies (and slowly by itself), and
+// using it empties it.
+function addRaceWings() {
+  if (raceV() < 4 || P.body.wings4) return;
+  const g = new THREE.Group(), col = S.race === "Ghoul" ? 0x4a0000 : RACES[S.race].color, n = S.race === "Ghoul" ? 4 : 2;
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? 1 : -1, row = Math.floor(i / 2);
+    const w = new THREE.Group(); w.position.set(side * 0.5, 3.4 - row * 0.9, -0.55);
+    const a = box(0.2, 0.25 + 0.1 * (1 - row), 2.4 - row * 0.5, col); a.position.set(side * 0.9, 0.2, 0); a.rotation.y = side * 0.5; w.add(a);
+    const tip = box(0.15, 0.2, 1.2, S.race === "Ghoul" ? 0x9c0000 : 0xffffff, false); tip.position.set(side * 1.9, 0.5, -0.3); tip.rotation.y = side * 0.9; w.add(tip);
+    w.rotation.z = side * (0.35 + row * 0.25); g.add(w);
+  }
+  P.body.inner.add(g); P.body.wings4 = g;
+}
+function chargeRace(n) { if (raceV() < 4 || P.raceAwake) return; P.raceMeter = Math.min(100, (P.raceMeter || 0) + n); drawRaceMeter(); }
+function drawRaceMeter() {
+  const el = $("racebar"); if (!el) return; el.style.display = raceV() >= 4 ? "block" : "none";
+  const v = P.raceAwake ? 100 : Math.floor(P.raceMeter || 0);
+  el.firstChild.style.width = v + "%"; el.lastChild.textContent = P.raceAwake ? "RACE AWAKENED" : v >= 100 ? "V4 READY: press T" : `V4 charge ${v}%`;
+  el.style.boxShadow = v >= 100 && !P.raceAwake ? "0 0 12px #ffd23a" : "";
+}
+setInterval(() => chargeRace(0.25), 1000);
 function raceAwaken() {
   if (raceV() < 4) return show("Awaken your race to V4 first (it's a secret)", 1.5);
-  if (P.raceAwake) return; if ((P.raceCd || 0) > performance.now()) return show(`Race Awakening in ${Math.ceil((P.raceCd - performance.now()) / 1000)}s`, 1);
-  P.raceAwake = true; P.raceCd = performance.now() + 120000; SFX.boom?.(); ring(P.pos, RACES[S.race].color, 10, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), RACES[S.race].color, 30, 9);
+  if (P.raceAwake) return; if ((P.raceMeter || 0) < 100) return show(`Charge your V4 first: ${Math.floor(P.raceMeter || 0)}%`, 1.2);
+  P.raceAwake = true; P.raceMeter = 0; drawRaceMeter(); SFX.boom?.(); ring(P.pos, RACES[S.race].color, 10, 0.8); cubes(P.pos.clone().setY(P.pos.y + 3), RACES[S.race].color, 30, 9);
   show(`${S.race.toUpperCase()} AWAKENING!`, 2.5);
-  setTimeout(() => { P.raceAwake = false; show("Race Awakening ended", 1.5); }, 30000);
+  setTimeout(() => { P.raceAwake = false; drawRaceMeter(); show("Race Awakening ended", 1.5); }, 30000);
 }
 function openAwakener() {
   const f = S.fruit, done = (S.awakened || []).includes(f), cost = f ? { Common: 300, Uncommon: 500, Rare: 800, Legendary: 1200, Mythical: 2000 }[FRUITS[f].rar] : 0;
@@ -2268,7 +2373,7 @@ function netConnect() {
   };
   ws.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.t === "hello") { if ((m.games || []).includes("fruit-seas")) { NET.ok = true; NET.room = "fs" + S.sea + (deepNow() ? "d" + deepNow() : ""); ws.send(JSON.stringify({ t: "join", q: NET.room, name: netName() })); } return; }
+    if (m.t === "hello") { if ((m.games || []).includes("fruit-seas")) { NET.ok = true; NET.room = P.inGod ? "fs0d999" : "fs" + S.sea + (deepNow() ? "d" + deepNow() : ""); ws.send(JSON.stringify({ t: "join", q: NET.room, name: netName() })); } return; }
     if (m.t === "room") { NET.you = m.you; for (const pl of m.players || []) addRemote(pl.id, pl.name); if (remotes.size) show(`${remotes.size} other pirate${remotes.size === 1 ? " is" : "s are"} in this sea`, 2.5); return; }
     if (m.t === "pjoin") { addRemote(m.id, m.name); setTimeout(() => sendWorld(m.id), 800); show(`${m.name} sailed into this sea`, 2); return; }
     if (m.t === "left") { dropRemote(m.from || m.id); return; }
@@ -2299,6 +2404,7 @@ function netConnect() {
       return;
     }
     if (m.t === "crew") { crewMessage(m); return; }
+    if (m.t === "god") { enterGod(String(m.fromName || m.name || "").slice(0, 24)); return; }
     if (m.t === "chat") { say(m.mine ? myName : m.name, m.text, !!m.mine); return; }
     if (m.t === "chatno") { say("Server", m.why || "That message wasn't sent."); return; }
     if (m.t === "fx") {
@@ -2426,7 +2532,7 @@ function claimGift(accepted) {
   delete S.gift; save(); SFX.win();
   setTimeout(() => openModal("A gift for you", `<p style="font-size:16px"><b>${String(g.msg || "Thanks for playing!").replace(/</g, "")}</b></p>${g.beli ? `<p>+${money(g.beli)}</p>` : ""}${g.mastery ? `<p>Mastery ${g.mastery} on every fighting style and sword</p>` : ""}${g.note ? `<p>${String(g.note).replace(/</g, "")}</p>` : ""}`), 800);
 }
-$("play").onclick = () => { $("start").style.display = "none"; started = true; setTimeout(placeGoldChest, 1000); claimGift(); if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); S.crew = 0; pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; setTimeout(() => { addRaceWings(); drawRaceMeter(); }, 500); setTimeout(placeGoldChest, 1000); claimGift(); if (isAdmin) { S.haki = S.instinct = S.instinct2 = S.skyJumps = true; S.boats = Object.keys(BOATS); S.styles = Object.keys(STYLES); S.swords = [...new Set([...(S.swords || []), ...Object.keys(SWORDS)])]; if (!S.sword) S.sword = Object.keys(SWORDS).pop(); S.perm = [...FRUIT_NAMES]; if (!S.fruit) S.fruit = FRUIT_NAMES[FRUIT_NAMES.length - 1]; save(); } dailyReward(); drawSide(); if (!S.side) setTimeout(function ask() { if (modalOpen) return setTimeout(ask, 1000); chooseSide(true); }, 600); S.crew = 0; pvpLabel(); drawHot(); if (S.lvl > 1) sendLevel(); show(S.freeSpin ? "Welcome to Fruit Seas!\nTalk to the Fruit Gacha for a FREE spin" : "Welcome back!", 3.5); };
 
 const collide = (p, rad) => { for (const s of solids) { const dx = p.x - s.x, dz = p.z - s.z, d = Math.hypot(dx, dz), m = s.r + rad; if (d < m && d > 0.001) { p.x = s.x + (dx / d) * m; p.z = s.z + (dz / d) * m; } } };
 
@@ -2508,7 +2614,7 @@ function tick() {
       if (shiftLock) P.faceYaw = cam.yaw + Math.PI;
     }
     // stay inside the sea
-    const sc = V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > 1330) { so.setLength(1330); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
+    const sc = P.inGod ? GOD_AT.clone() : V(SEAS[S.sea].cx, 0, -100 * BIG), so = P.pos.clone().sub(sc).setY(0); if (so.length() > (P.inGod ? 300 : 1330)) { so.setLength(1330); P.pos.x = sc.x + so.x; P.pos.z = sc.z + so.z; }
 
     // dash-skill hits
     if (P.dashHit) { P.dashHit.t -= dt; for (const e of enemies.slice()) if (!P.dashHit.set.has(e) && e.pos.distanceTo(P.pos) < (e.boss ? 5 : 3.5)) { P.dashHit.set.add(e); hurtEnemy(e, P.dashHit.dmg, P.pos, P.dashHit.fxo); } cubes(P.pos.clone().setY(P.pos.y + 2), P.dashHit.color, 1, 2); if (P.dashHit.t <= 0) P.dashHit = null; }
@@ -2658,7 +2764,7 @@ function tick() {
     $("beli").textContent = money(S.beli);
     const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
     if (qq) $("quest").innerHTML = `📜 Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
-    $("where").textContent = raid && raid.text ? raid.text : `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
+    $("where").textContent = P.inGod ? `👼 God Island · ${Math.max(0, Math.ceil((P.godEnd - performance.now()) / 60000))} min left` : raid && raid.text ? raid.text : `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
     if (started) { drawSkills(); drawMini(); }
   }
   renderer.render(scene, camera);

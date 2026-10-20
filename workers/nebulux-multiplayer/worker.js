@@ -260,6 +260,16 @@ export class Arena {
       }
       return;
     }
+    // Fruit Seas: a Sea God summoned by someone takes every Fruit Seas player (every sea) to God Island.
+    if (m.t === "god" && a.match && a.match.startsWith("fruit:")) {
+      const now = Date.now();
+      if (a.lastGod && now - a.lastGod < 60000) return;
+      a.lastGod = now;
+      ws.serializeAttachment(a);
+      const out = JSON.stringify({ t: "god", fromName: a.name, from: a.id });
+      for (const s of this.sockets()) if (s.ws !== ws && s.a.match && s.a.match.startsWith("fruit:")) try { s.ws.send(out); } catch {}
+      return;
+    }
     // Fruit Seas crews: a message to a crewmate by name, in either sea (both seas live in this room).
     if (m.t === "crew" && a.match && a.match.startsWith("fruit:")) {
       const toName = String(m.toName || "").replace(/[^A-Za-z0-9 _]/g, "").slice(0, 24), toId = String(m.toId || "");
