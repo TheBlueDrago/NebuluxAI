@@ -199,7 +199,7 @@ export async function onRequestPost({ request, env }) {
       return out(request, { ok: true, under13: ageOf(birth) < 13 });
     }
     if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), weekly: ORBIT_WEEKLY, needBirth: !ageRow, under13 });
-    if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Nebulux Orbit is for ages 13 and up." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
+    if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     // Tasks, goals, chat and memory kept with the account, so every device shows the same Orbit.
     if (action === "load") {
       const row = await db.prepare("SELECT data, at FROM orbit_data WHERE user_id = ?").bind(me.user_id).first();
