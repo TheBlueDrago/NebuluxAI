@@ -614,3 +614,10 @@ export async function onRequestPost(context) {
     return json({ error: "Unhandled error", detail: String((err && err.stack) || err) }, 500);
   }
 }
+
+// Nebulux Orbit (functions/v1/orbit.js): a plain reply from the free models, with the same safety rules
+// and backups. Orbit charges its own credits, so nothing is charged here.
+export async function orbitGenerate(env, prompt, maxChars = 8000) {
+  const r = await runWithBackup(env, geminiKeys(env), MODELS_BY_STRENGTH, prompt, "medium", 0, { maxChars });
+  return r.text || "";
+}
