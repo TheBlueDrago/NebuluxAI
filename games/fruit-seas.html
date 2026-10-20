@@ -72,7 +72,13 @@
   kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
   /* phones: menus on top, no long move list (the buttons have the moves), smaller everything */
   .modal{z-index:30}
-  body.touch #skills, body.touch #faction, body.touch #mastery{display:none}
+  body.touch #faction{display:none}
+  /* phones, like Blox Fruits: the moves are a list on the right side (tap one to use it), with the mastery above */
+  body.touch .tb.sk2{display:none!important}
+  body.touch #skills{display:flex!important;top:auto!important;bottom:300px!important;right:8px!important;gap:4px;z-index:3}
+  body.touch .sk{min-width:120px!important;height:30px!important;font-size:11px!important;padding:0 6px;pointer-events:auto}
+  body.touch #mastery{display:block;top:auto!important;bottom:calc(300px + 6 * 34px)!important;right:10px!important;font-size:10px!important;max-width:150px;text-align:right}
+  @media (min-aspect-ratio:1/1){ body.touch #skills{bottom:150px!important;right:120px!important} body.touch #mastery{bottom:calc(150px + 6 * 34px)!important;right:120px!important} }
   body.touch .tb.sk2{width:62px;height:62px;font-size:16px}
   body.touch #msg{font-size:18px;top:24%}
   body.touch #chat{width:200px;bottom:auto;top:150px;left:auto;right:12px;font-size:11px}
@@ -555,7 +561,7 @@ if (!S.race || !RACES[S.race]) { S.race = Object.keys(RACES)[Math.floor(Math.ran
 const raceV = () => S.raceV || 1;
 const raceBoost = () => 1 + (raceV() - 1) * 0.06 + (typeof P !== "undefined" && P.raceAwake ? 0.4 : 0);
 const maxHp = () => Math.round((100 + (S.lvl - 1) * 8 + S.st.defense * 20) * (1 + (raceV() - 1) * 0.05));
-const maxEn = () => Math.round((100 + (S.lvl - 1) * 4 + S.st.energy * 15) * (S.race === "Cyborg" ? 1.25 : 1));
+const maxEn = () => Math.round((100 + Math.min(S.lvl - 1, 5000) * 4 + S.st.energy * 15) * (S.race === "Cyborg" ? 1.25 : 1));
 const xpNeed = () => Math.floor(60 + S.lvl * 45 + S.lvl * S.lvl * 2);
 const mult = (stat) => (1 + S.st[stat] * 0.05 + (S.lvl - 1) * 0.02) * (P.buso ? 1.15 : 1) * (S.race === "Human" ? 1.08 : 1) * raceBoost() * (stat === "fruit" && (S.awakened || []).includes(S.fruit) ? 1.25 : 1);
 // ---- Haki, like Blox Fruits: J = Buso (Aura: arms turn black, +15% damage, uses a little energy);
@@ -2320,6 +2326,12 @@ addEventListener("touchstart", (e) => {
   for (const t of e.changedTouches) {
     const el = t.target && t.target.closest && t.target.closest("#hot .slot, #side .sb");
     if (el) { e.preventDefault(); el.click(); }
+  }
+}, { passive: false });
+addEventListener("touchstart", (e) => {
+  for (const t of e.changedTouches) {
+    const el = t.target && t.target.closest && t.target.closest("#skills .sk");
+    if (el && started && !dead && !modalOpen) { e.preventDefault(); const k = el.querySelector("kbd"); if (k) trySkill(k.textContent.trim()); }
   }
 }, { passive: false });
 function drawHot() {
