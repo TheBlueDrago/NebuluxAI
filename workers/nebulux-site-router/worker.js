@@ -204,7 +204,10 @@ async function ownerBlock(request, env, url) {
 // The owner link only works from the owner's home network (OWNER_NETS secret, comma-separated:
 // an exact address, or a prefix ending in ":" or "." such as the home IPv6 "2600:1700:150:960:").
 // Anywhere else it shows the ordinary "temporarily down" page. Not set = works anywhere.
+// OWNER_ANY_NETWORK = "on" (wrangler.toml [vars], owner's request 2026-10-21) lets it work on any
+// internet; the owner password is still asked for after the link.
 function ownerNet(request, env) {
+  if (env && env.OWNER_ANY_NETWORK === "on") return true;
   var nets = String((env && env.OWNER_NETS) || "").split(",").map(function (s) {
     return s.trim().toLowerCase();
   }).filter(Boolean);
