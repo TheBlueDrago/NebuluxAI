@@ -151,11 +151,12 @@ export function mergeOrbit(a, b) {
   const chats = byId(a.chats, b.chats, (old, nu) => (old.at || 0) > (nu.at || 0)).sort((p, q) => (q.at || 0) - (p.at || 0)).slice(0, 25);
   const goals = byId(a.goals, b.goals, () => false);
   const tasks = byId(a.tasks, b.tasks, () => false);
+  const library = byId(a.library, b.library, (old, nu) => (old.at || 0) > (nu.at || 0)).sort((p, q) => (q.at || 0) - (p.at || 0)).slice(0, 100);
   const seen = new Set();
   const activity = [...(Array.isArray(b.activity) ? b.activity : []), ...(Array.isArray(a.activity) ? a.activity : [])].filter((x) => x && !seen.has(x.t + "|" + x.text) && seen.add(x.t + "|" + x.text)).sort((p, q) => q.t - p.t).slice(0, 200);
   const am = Number(a.memAt) || 0, bm = Number(b.memAt) || 0, aMem = String(a.memory || ""), bMem = String(b.memory || "");
   const useB = bm > am || (bm === am && (bMem.trim() || !aMem.trim()));
-  return { chats, goals, tasks, activity, memory: useB ? bMem : aMem, memAt: Math.max(am, bm), deleted };
+  return { chats, goals, tasks, library, activity, memory: useB ? bMem : aMem, memAt: Math.max(am, bm), deleted };
 }
 
 // Someone's usage, with the weekly allowance reset once its 7 days are up.
@@ -194,7 +195,7 @@ What you can see and do inside Orbit:
 - Their tasks and goals: listed below when they have any.
 - Connected apps: Gmail, Google Calendar, Drive, Tasks, YouTube and GitHub, once they connect them on the Connections page. If something they ask needs an app they haven't connected, tell them to connect it there.
 - A web browser with tabs they can see. For fresh information or a web page, put ONE of these alone on the last line and stop: [[search: what to look up]] or [[open: https://full-address]]. The page comes back to you as "Browser:", then you answer from it. A few times in a row at most.
-- Actions you can take for them, each on its own line, anywhere in your answer (they run when you finish): [[task: what to do | optional due like 2026-10-25 17:00]] adds a task, [[remember: a fact about them]] saves to their memory (only things they said and want remembered), [[goal: a goal]] makes a step-by-step plan in their Goals, [[theme: dark]] or [[theme: light]], and [[go: chat|goals|tasks|memory|connections|settings|usage|browser]] opens that page. Use them when they ask you to do something, and say in a few words what you did.
+- Actions you can take for them, each on its own line, anywhere in your answer (they run when you finish): [[task: what to do | optional due like 2026-10-25 17:00]] adds a task, [[remember: a fact about them]] saves to their memory (only things they said and want remembered), [[forget: words from a memory]] removes it when they ask you to forget something, [[goal: a goal]] makes a step-by-step plan in their Goals, [[save: a short title]] saves this answer to their Library (when they ask you to save something, or you made them a plan, checklist or document worth keeping), [[theme: dark]] or [[theme: light]], and [[go: chat|goals|tasks|memory|connections|settings|usage|browser]] opens that page. Use them when they ask you to do something, and say in a few words what you did.
 
 Limits: you never buy or pay for anything, log in to websites, fill in forms, or send emails or messages yourself (they review drafts and press Send), and you never ask for passwords, card numbers or other private details.`;
 // What Orbit knows about their account, so it can answer "how many credits have I used?".
@@ -344,6 +345,13 @@ export async function onRequestPost({ request, env }) {
     if (action === "me") return out(request, { owner: await isMe(), name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
     if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
     if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
+    // Signed-in devices: how many, and sign out every other one.
+    if (action === "sessions" || action === "signout_others") {
+      const mine = String(request.headers.get("authorization")).split(/s+/)[1] || "";
+      if (action === "signout_others") await db.prepare("DELETE FROM orbit_tokens WHERE user_id = ? AND token <> ?").bind(me.user_id, mine).run();
+      const rows = (await db.prepare("SELECT token, at FROM orbit_tokens WHERE user_id = ? ORDER BY at DESC").bind(me.user_id).all()).results || [];
+      return out(request, { sessions: rows.map((r) => ({ at: r.at, current: r.token === mine })) });
+    }
     if (action === "accept_terms") {
       if (body.version !== ORBIT_TERMS_VERSION) return out(request, { error: "Reload the page to see the latest Terms.", termsVersion: ORBIT_TERMS_VERSION }, 409);
       await db.prepare("INSERT INTO orbit_terms (user_id, version, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET version = excluded.version, at = excluded.at").bind(me.user_id, ORBIT_TERMS_VERSION, Date.now()).run();
