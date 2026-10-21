@@ -16,6 +16,7 @@
 // Orbit only talks and plans: it can't buy anything, send messages, or see cards or passwords.
 import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
+import { exempt } from "../../cloudflare-lib/terms.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 import { publicUrl, parseResults, pageText, viewHtml } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/web-browse.js";
 
@@ -60,6 +61,15 @@ export const orbitEnsure = ensure;
 export async function orbitUserByToken(db, token) {
   if (!/^[a-f0-9]{48}$/i.test(String(token || ""))) return null;
   return await db.prepare("SELECT user_id, name FROM orbit_tokens WHERE token = ?").bind(String(token)).first();
+}
+// The owner's own accounts (cloudflare-lib/terms.js EXEMPT): only they get Orbit's Monitor.
+async function isOwner(db, uid) {
+  try {
+    const row = await db.prepare("SELECT data FROM rows WHERE entity = 'User' AND id = ?").bind(uid).first();
+    return !!row && exempt(JSON.parse(row.data));
+  } catch {
+    return false;
+  }
 }
 async function orbitUser(db, request) {
   const m = /^Orbit\s+([a-f0-9]{48})$/i.exec(request.headers.get("authorization") || "");
@@ -278,7 +288,58 @@ export async function onRequestPost({ request, env }) {
     const termsRow = await db.prepare("SELECT version FROM orbit_terms WHERE user_id = ?").bind(me.user_id).first();
     if (termsRow && termsRow.version === "declined") return out(request, { error: "This account can't use Nebulux Orbit. Your Nebulux AI account still works as usual.", blocked: true }, 403);
     const needTerms = !termsRow || termsRow.version !== ORBIT_TERMS_VERSION;
-    if (action === "me") return out(request, { name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
+    const owner = await isOwner(db, me.user_id);
+    // ---- Monitor (the owner only, checked here on every request) ----
+    if (action === "monitor" || action === "monitor_act") {
+      if (!owner) return out(request, { error: "Not found." }, 404);
+      if (action === "monitor_act") {
+        const uid = String(body.userId || "");
+        if (!/^[a-z0-9]{6,40}$/i.test(uid)) return out(request, { error: "Pick an account." }, 400);
+        if (body.kind === "unblock") await db.prepare("DELETE FROM orbit_terms WHERE user_id = ? AND version = 'declined'").bind(uid).run();
+        else if (body.kind === "bonus") {
+          const n = Math.floor(Number(body.amount) || 0);
+          if (n <= 0 || n > 1e12) return out(request, { error: "Type how many bonus tokens to give." }, 400);
+          await usageRow(db, uid);
+          await db.prepare("UPDATE orbit_usage SET bonus = bonus + ? WHERE user_id = ?").bind(n, uid).run();
+        } else if (body.kind === "resetweek") await db.prepare("UPDATE orbit_usage SET used = 0 WHERE user_id = ?").bind(uid).run();
+        else if (body.kind === "signout") await db.prepare("DELETE FROM orbit_tokens WHERE user_id = ?").bind(uid).run();
+        else return out(request, { error: "Unknown action." }, 400);
+        return out(request, { ok: true });
+      }
+      const all = async (q, ...b) => ((await db.prepare(q).bind(...b).all()).results || []);
+      const limit = weeklyOf(env), now = Date.now();
+      const [names, usage, terms, conns, ages, devices, dataRows] = await Promise.all([
+        all("SELECT user_id, name, MAX(at) AS at FROM orbit_tokens GROUP BY user_id"),
+        all("SELECT user_id, used, reset_at, bonus FROM orbit_usage"),
+        all("SELECT user_id, version, at FROM orbit_terms"),
+        all("SELECT user_id, provider FROM orbit_connections"),
+        all("SELECT user_id, birth FROM orbit_ages"),
+        all("SELECT COUNT(*) AS n FROM orbit_tokens"),
+        all("SELECT user_id, LENGTH(data) AS size, at FROM orbit_data"),
+      ]);
+      const ids = new Set([...names, ...usage, ...terms, ...ages, ...dataRows].map((r) => r.user_id));
+      const by = (rows) => Object.fromEntries(rows.map((r) => [r.user_id, r]));
+      const N = by(names), U = by(usage), T = by(terms), A = by(ages), D = by(dataRows);
+      const C = {}; for (const c of conns) (C[c.user_id] ||= []).push(c.provider);
+      const yrs = (b) => { const d = new Date(b + "T00:00:00Z"), n = new Date(); let a = n.getUTCFullYear() - d.getUTCFullYear(); if (n.getUTCMonth() < d.getUTCMonth() || (n.getUTCMonth() === d.getUTCMonth() && n.getUTCDate() < d.getUTCDate())) a--; return a; };
+      const people = [...ids].map((id) => {
+        const u = U[id], live = u && now < u.reset_at ? u.used : 0;
+        return {
+          id, name: (N[id] && N[id].name) || "(signed out)", lastSignIn: (N[id] && N[id].at) || 0,
+          pct: Math.round((live / limit) * 1000) / 10, bonus: (u && u.bonus) || 0, resetAt: (u && u.reset_at) || 0,
+          terms: !T[id] ? "not yet" : T[id].version === "declined" ? "declined" : T[id].version === ORBIT_TERMS_VERSION ? "accepted" : "old version",
+          age: A[id] ? (yrs(A[id].birth) < 13 ? "under 13" : "13+") : "not set",
+          apps: C[id] || [], synced: D[id] ? { size: D[id].size, at: D[id].at } : null,
+        };
+      }).sort((a, b) => b.lastSignIn - a.lastSignIn);
+      const usedAll = usage.reduce((n, u) => n + (now < u.reset_at ? u.used : 0), 0);
+      const appCount = {}; for (const c of conns) appCount[c.provider] = (appCount[c.provider] || 0) + 1;
+      return out(request, {
+        totals: { people: people.length, devices: (devices[0] && devices[0].n) || 0, activeThisWeek: people.filter((p) => p.pct > 0).length, tokensThisWeek: usedAll, weeklyLimit: limit, accepted: people.filter((p) => p.terms === "accepted").length, declined: people.filter((p) => p.terms === "declined").length, under13: people.filter((p) => p.age === "under 13").length },
+        apps: appCount, people, termsVersion: ORBIT_TERMS_VERSION, muse: !!env.MUSE_SPARK_API_KEY,
+      });
+    }
+    if (action === "me") return out(request, { owner, name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
     if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
     if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     if (action === "accept_terms") {
