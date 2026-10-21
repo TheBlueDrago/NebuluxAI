@@ -276,6 +276,14 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("INSERT INTO orbit_codes (code, user_id, name, exp) VALUES (?, ?, ?, ?)").bind(code, user.id, String(user.full_name || "").slice(0, 60), Date.now() + 5 * 60000).run();
       return out(request, { code });
     }
+    if (action === "email_check") {
+      const ip = request.headers.get("cf-connecting-ip") || "x";
+      if (!(await allow(`orbit-email:${ip}`, 10, 600))) return out(request, { error: "Too many tries. Wait a few minutes." }, 429);
+      const email = String(body.email || "").trim().toLowerCase();
+      if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(email) || email.length > 200) return out(request, { error: "That email address doesn't look right." }, 400);
+      const row = await db.prepare("SELECT 1 AS ok FROM rows WHERE entity = 'User' AND lower(json_extract(data, '$.email')) = ? LIMIT 1").bind(email).first();
+      return out(request, { exists: !!row });
+    }
     if (action === "exchange") {
       const ip = request.headers.get("cf-connecting-ip") || "x";
       if (!(await allow(`orbit-ex:${ip}`, 20, 600))) return out(request, { error: "Too many tries. Wait a few minutes." }, 429);
@@ -297,7 +305,11 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("DELETE FROM orbit_tokens WHERE token = ?").bind(String(request.headers.get("authorization")).split(/\s+/)[1]).run();
       return out(request, { ok: true });
     }
-    const ageRow = await db.prepare("SELECT birth FROM orbit_ages WHERE user_id = ?").bind(me.user_id).first();
+    let ageRow = await db.prepare("SELECT birth FROM orbit_ages WHERE user_id = ?").bind(me.user_id).first();
+    if (!ageRow) {
+      const ai = await db.prepare("SELECT birth FROM user_ages WHERE user_id = ?").bind(me.user_id).first().catch(() => null);
+      if (ai && /^\d{4}-\d{2}-\d{2}$/.test(ai.birth)) { await db.prepare("INSERT OR IGNORE INTO orbit_ages (user_id, birth, at) VALUES (?, ?, ?)").bind(me.user_id, ai.birth, Date.now()).run(); ageRow = { birth: ai.birth }; }
+    }
     const ageOf = (birth) => { const b = new Date(birth + "T00:00:00Z"), n = new Date(); let a = n.getUTCFullYear() - b.getUTCFullYear(); if (n.getUTCMonth() < b.getUTCMonth() || (n.getUTCMonth() === b.getUTCMonth() && n.getUTCDate() < b.getUTCDate())) a--; return a; };
     const under13 = ageRow ? ageOf(ageRow.birth) < 13 : false;
     if (action === "setbirth") {
@@ -305,6 +317,7 @@ export async function onRequestPost({ request, env }) {
       const birth = String(body.birth || "");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || isNaN(new Date(birth)) || ageOf(birth) > 120 || ageOf(birth) < 0) return out(request, { error: "Enter your real birthday." }, 400);
       await db.prepare("INSERT INTO orbit_ages (user_id, birth, at) VALUES (?, ?, ?)").bind(me.user_id, birth, Date.now()).run();
+      await db.batch([db.prepare("CREATE TABLE IF NOT EXISTS user_ages (user_id TEXT PRIMARY KEY, birth TEXT NOT NULL, at INTEGER NOT NULL)"), db.prepare("INSERT OR IGNORE INTO user_ages (user_id, birth, at) VALUES (?, ?, ?)").bind(me.user_id, birth, Date.now())]).catch(() => {});
       return out(request, { ok: true, under13: ageOf(birth) < 13 });
     }
     const termsRow = await db.prepare("SELECT version FROM orbit_terms WHERE user_id = ?").bind(me.user_id).first();
@@ -365,7 +378,6 @@ export async function onRequestPost({ request, env }) {
     }
     if (action === "me") return out(request, { owner: await isMe(), name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
     if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
-    if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     // Signed-in devices: how many, and sign out every other one.
     if (action === "sessions" || action === "signout_others") {
       const mine = String(request.headers.get("authorization")).split(/s+/)[1] || "";
@@ -405,6 +417,8 @@ export async function onRequestPost({ request, env }) {
     }
     // Everything else needs the current Terms accepted.
     if (needTerms && !["load", "save"].includes(action)) return out(request, { error: "Please accept Orbit's Terms of Service and Privacy Policy first.", needTerms: true, termsVersion: ORBIT_TERMS_VERSION }, 403);
+    // Then the birthday (one for Nebulux AI and Orbit), and Orbit is for 13 and up.
+    if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     // Tasks, goals, chat and memory kept with the account, so every device shows the same Orbit.
     if (action === "load") {
       const row = await db.prepare("SELECT data, at FROM orbit_data WHERE user_id = ?").bind(me.user_id).first();
