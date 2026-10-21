@@ -98,3 +98,24 @@ assert(res.status === 404, "deeper addresses aren't sites");
   r = await worker.fetch(new Request("https://nova.nebuluxai.com/", { headers: { cookie: "nx_owner=owner-secret-123" } }), env);
   assert(r.status === 200, "the owner gets in");
 }
+
+// The owner's routes are checked before the maintenance page: from any internet (OWNER_ANY_NETWORK),
+// the owner link reaches the owner sign-in and the right password unlocks, while public pages stay down.
+{
+  const away = { "cf-connecting-ip": "203.0.113.9" }; // not the home network
+  const sites = { fetch: async (q) => new Response("{}", { status: q.headers.get("x-admin-key") === "right-pass" ? 200 : 403 }) };
+  const env = { MAINTENANCE: "on", OWNER_KEY: "owner-secret-123", OWNER_NETS: "2600:1700:150:960:", OWNER_ANY_NETWORK: "on", SITES: sites, KV: { get: async () => null, delete: async () => {} } };
+  let r = await worker.fetch(new Request("https://nebuluxai.com/", { headers: away }), env);
+  assert(r.status === 503 && (await r.text()).includes("down for maintenance"), "maintenance: a public page still shows the down page");
+  r = await worker.fetch(new Request("https://nebuluxai.com/pricing", { headers: away }), env);
+  assert(r.status === 503, "maintenance: every public route is down");
+  r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123", { headers: away }), env);
+  const body = await r.text();
+  assert(r.status === 200 && /Owner sign-in/.test(body) && !body.includes("down for maintenance"), "the owner link bypasses maintenance and reaches the owner sign-in, from any internet");
+  r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123", { method: "POST", headers: { ...away, "content-type": "application/x-www-form-urlencoded" }, body: "pw=wrong" }), env);
+  assert(r.status === 403 && /isn't right/.test(await r.text()), "a wrong owner password is refused");
+  r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123", { method: "POST", headers: { ...away, "content-type": "application/x-www-form-urlencoded", "cf-connecting-ip": "203.0.113.10" }, body: "pw=right-pass" }), env);
+  assert(r.status === 302 && /nx_owner=owner-secret-123/.test(r.headers.get("set-cookie") || ""), "the right owner password (checked through the SITES binding) unlocks");
+  r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123", { headers: away }), { ...env, OWNER_ANY_NETWORK: "" });
+  assert(r.status === 503, "with the home-network lock on, the owner link away from home shows the down page");
+}

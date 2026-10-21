@@ -153,10 +153,31 @@ export function mergeOrbit(a, b) {
   const tasks = byId(a.tasks, b.tasks, () => false);
   const library = byId(a.library, b.library, (old, nu) => (old.at || 0) > (nu.at || 0)).sort((p, q) => (q.at || 0) - (p.at || 0)).slice(0, 100);
   const seen = new Set();
-  const activity = [...(Array.isArray(b.activity) ? b.activity : []), ...(Array.isArray(a.activity) ? a.activity : [])].filter((x) => x && !seen.has(x.t + "|" + x.text) && seen.add(x.t + "|" + x.text)).sort((p, q) => q.t - p.t).slice(0, 200);
+  // "Clear activity" stays cleared everywhere: nothing from before the latest clear comes back.
+  const activityCleared = Math.max(Number(a.activityCleared) || 0, Number(b.activityCleared) || 0);
+  const activity = [...(Array.isArray(b.activity) ? b.activity : []), ...(Array.isArray(a.activity) ? a.activity : [])].filter((x) => x && x.t > activityCleared && !seen.has(x.t + "|" + x.text) && seen.add(x.t + "|" + x.text)).sort((p, q) => q.t - p.t).slice(0, 200);
   const am = Number(a.memAt) || 0, bm = Number(b.memAt) || 0, aMem = String(a.memory || ""), bMem = String(b.memory || "");
   const useB = bm > am || (bm === am && (bMem.trim() || !aMem.trim()));
-  return { chats, goals, tasks, library, activity, memory: useB ? bMem : aMem, memAt: Math.max(am, bm), deleted };
+  return { chats, goals, tasks, library, activity, activityCleared, memory: useB ? bMem : aMem, memAt: Math.max(am, bm), deleted };
+}
+
+// A plan's steps from the AI's list. Only a real list marker ("- ", "* ", "• ", "1. ", "2) ") starts a
+// step (so "0.1-0.2 miles" isn't mistaken for one), a wrapped line joins the step before it, and
+// numbers that lost their 0 or a space ("of.1-0.2") are put right ("of 0.1–0.2").
+export function planSteps(text) {
+  const steps = [], marker = /^(?:[-*•]|\d{1,2}[.)])\s+(.+)$/;
+  const lines = String(text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const listed = lines.some((l) => marker.test(l)); // no markers at all: one step per line
+  for (const l of lines) {
+    const m = marker.exec(l);
+    if (m) steps.push(m[1]);
+    else if (listed && steps.length) steps[steps.length - 1] += " " + l;
+    else if (!listed) steps.push(l); // (with a list, a line before it is just an intro)
+  }
+  return steps
+    .map((s) => s.replace(/([A-Za-z])\.(\d)/g, "$1 0.$2").replace(/(^|\s)\.(\d)/g, "$10.$2").replace(/(\d)\s?-\s?(\d)/g, "$1–$2").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 // Someone's usage, with the weekly allowance reset once its 7 days are up.
@@ -538,7 +559,7 @@ export async function onRequestPost({ request, env }) {
       const used = r.tokens ? r.tokens.input + r.tokens.output : tokensOf(prompt, text);
       const usage = usageView(env, await charge(env, db, me.user_id, used));
       if (action === "chat") return out(request, { reply: text, usage });
-      const steps = text.split("\n").map((l) => l.replace(/^\s*[-*\d.)]+\s*/, "").trim()).filter(Boolean).slice(0, 8);
+      const steps = planSteps(text);
       return out(request, { steps, usage });
     }
     return out(request, { error: "Unknown action." }, 400);
