@@ -17,6 +17,7 @@ import LiveCost from "@/components/chat/LiveCost";
 import { elapsedText, setViewing, startActivity, finishActivity } from "@/lib/aiActivity";
 import EffortPicker from "@/components/chat/EffortPicker";
 import BlackholeIcon from "@/components/BlackholeIcon";
+import ThinkingDots from "@/components/ThinkingDots";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
@@ -741,8 +742,8 @@ export default function CodePage({ userInitial }) {
             )}
             {loading && !live && (
               <div className="flex items-center gap-2.5 text-[var(--cl-muted)]">
-                <BlackholeIcon className="w-5 h-5 animate-spin" />
-                <span className="text-sm animate-pulse">{browsing ? "Searching the web…" : "Thinking…"}{q.queue.length > 0 ? ` (${q.queue.length} up next)` : ""}</span>
+                <ThinkingDots />
+                {(browsing || q.queue.length > 0) && <span className="text-sm">{browsing ? "Searching the web…" : ""}{q.queue.length > 0 ? `${browsing ? " · " : ""}${q.queue.length} up next` : ""}</span>}
                 <LiveCost activityKey="code:live" since={runRef.current.start} extra={runRef.current.credits} />
               </div>
             )}

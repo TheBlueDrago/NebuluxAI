@@ -23,6 +23,7 @@ import { Plus, RotateCcw, Pencil, ImagePlus, Globe, X as XIcon } from "lucide-re
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import AttachedFile from "@/components/chat/AttachedFile";
 import BlackholeIcon from "@/components/BlackholeIcon";
+import ThinkingDots from "@/components/ThinkingDots";
 import AiChooser from "@/components/AiChooser";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
 import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
@@ -603,10 +604,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
           {loading && !live && (
             <div className="flex justify-start">
               <div className="bg-slate-800 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2.5">
-                <BlackholeIcon className="w-5 h-5 animate-spin" />
-                <span className="text-slate-300 text-sm animate-pulse">
-                  Thinking...{q.queue.length > 0 ? ` (${q.queue.length} up next)` : ""}
-                </span>
+                <ThinkingDots className="py-1.5" />
+                {q.queue.length > 0 && <span className="text-slate-400 text-sm">{q.queue.length} up next</span>}
                 <LiveCost activityKey={conversation?.id ? `chat:${conversation.id}` : null} />
               </div>
             </div>
