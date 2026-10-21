@@ -123,6 +123,31 @@ async function gmailSend(access, to, subject, text) {
   const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: "Bearer " + access.token, "Content-Type": "application/json" }, body: JSON.stringify({ raw: btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") }) });
   return r.ok;
 }
+// Two copies of someone's Orbit data (chats, goals, tasks, memory, activity) made into one. b wins ties
+// (it's the newer save); chats keep whichever copy changed last; anything in "deleted" stays deleted;
+// memory goes with whichever was edited last (memAt), and an empty memory never wipes a filled one
+// unless it really was cleared later. The site does the same when it loads (keep the two in step).
+export function mergeOrbit(a, b) {
+  a = a && typeof a === "object" ? a : {};
+  b = b && typeof b === "object" ? b : {};
+  const deleted = [...new Set([...(Array.isArray(a.deleted) ? a.deleted : []), ...(Array.isArray(b.deleted) ? b.deleted : [])])].slice(-1000);
+  const gone = new Set(deleted);
+  const byId = (x, y, keepOld) => {
+    const m = new Map();
+    for (const it of Array.isArray(y) ? y : []) if (it && it.id && !gone.has(it.id)) m.set(it.id, it);
+    for (const it of Array.isArray(x) ? x : []) if (it && it.id && !gone.has(it.id)) { const o = m.get(it.id); if (!o) m.set(it.id, it); else if (keepOld(it, o)) m.set(it.id, it); }
+    return [...m.values()];
+  };
+  const chats = byId(a.chats, b.chats, (old, nu) => (old.at || 0) > (nu.at || 0)).sort((p, q) => (q.at || 0) - (p.at || 0)).slice(0, 25);
+  const goals = byId(a.goals, b.goals, () => false);
+  const tasks = byId(a.tasks, b.tasks, () => false);
+  const seen = new Set();
+  const activity = [...(Array.isArray(b.activity) ? b.activity : []), ...(Array.isArray(a.activity) ? a.activity : [])].filter((x) => x && !seen.has(x.t + "|" + x.text) && seen.add(x.t + "|" + x.text)).sort((p, q) => q.t - p.t).slice(0, 200);
+  const am = Number(a.memAt) || 0, bm = Number(b.memAt) || 0, aMem = String(a.memory || ""), bMem = String(b.memory || "");
+  const useB = bm > am || (bm === am && (bMem.trim() || !aMem.trim()));
+  return { chats, goals, tasks, activity, memory: useB ? bMem : aMem, memAt: Math.max(am, bm), deleted };
+}
+
 // Someone's usage, with the weekly allowance reset once its 7 days are up.
 async function usageRow(db, uid) {
   const now = Date.now();
@@ -227,6 +252,8 @@ export async function onRequestPost({ request, env }) {
       const row = await db.prepare("SELECT user_id, name, exp FROM orbit_codes WHERE code = ?").bind(code).first();
       await db.prepare("DELETE FROM orbit_codes WHERE code = ? OR exp < ?").bind(code, Date.now()).run();
       if (!row || row.exp < Date.now()) return out(request, { error: "That sign-in link has expired. Try again." }, 400);
+      const declined = await db.prepare("SELECT version FROM orbit_terms WHERE user_id = ?").bind(row.user_id).first();
+      if (declined && declined.version === "declined") return out(request, { error: "This account can't use Nebulux Orbit. Your Nebulux AI account still works as usual.", blocked: true }, 403);
       const token = rand(24);
       await db.prepare("INSERT INTO orbit_tokens (token, user_id, name, at) VALUES (?, ?, ?, ?)").bind(token, row.user_id, row.name, Date.now()).run();
       return out(request, { token, name: row.name || "there" });
@@ -249,6 +276,7 @@ export async function onRequestPost({ request, env }) {
       return out(request, { ok: true, under13: ageOf(birth) < 13 });
     }
     const termsRow = await db.prepare("SELECT version FROM orbit_terms WHERE user_id = ?").bind(me.user_id).first();
+    if (termsRow && termsRow.version === "declined") return out(request, { error: "This account can't use Nebulux Orbit. Your Nebulux AI account still works as usual.", blocked: true }, 403);
     const needTerms = !termsRow || termsRow.version !== ORBIT_TERMS_VERSION;
     if (action === "me") return out(request, { name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
     if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
@@ -256,6 +284,16 @@ export async function onRequestPost({ request, env }) {
     if (action === "accept_terms") {
       if (body.version !== ORBIT_TERMS_VERSION) return out(request, { error: "Reload the page to see the latest Terms.", termsVersion: ORBIT_TERMS_VERSION }, 409);
       await db.prepare("INSERT INTO orbit_terms (user_id, version, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET version = excluded.version, at = excluded.at").bind(me.user_id, ORBIT_TERMS_VERSION, Date.now()).run();
+      return out(request, { ok: true });
+    }
+    // "I don't accept": the account can't use Orbit from now on (only the owner can undo it, in the
+    // database). Nebulux AI isn't affected. Every device is signed out of Orbit.
+    if (action === "decline_terms") {
+      if (body.confirmed !== true) return out(request, { error: "Confirm first." }, 400);
+      await db.batch([
+        db.prepare("INSERT INTO orbit_terms (user_id, version, at) VALUES (?, 'declined', ?) ON CONFLICT(user_id) DO UPDATE SET version = 'declined', at = excluded.at").bind(me.user_id, Date.now()),
+        db.prepare("DELETE FROM orbit_tokens WHERE user_id = ?").bind(me.user_id),
+      ]);
       return out(request, { ok: true });
     }
     // Delete all Orbit data: what's synced, every connected app (Google's permission is withdrawn too)
@@ -281,7 +319,12 @@ export async function onRequestPost({ request, env }) {
     }
     if (action === "save") {
       if (!(await allow(`orbit-save:${me.user_id}`, 30, 60))) return out(request, { error: "Saving too often." }, 429);
-      const text = JSON.stringify(body.data || {});
+      // Merged with what's saved, never replacing it, so a device with less (a new phone, an old tab)
+      // can't wipe chats or tasks made on another one. Deletions travel as "deleted" ids.
+      const row = await db.prepare("SELECT data FROM orbit_data WHERE user_id = ?").bind(me.user_id).first();
+      let cur = {};
+      try { cur = row ? JSON.parse(row.data) : {}; } catch { cur = {}; }
+      const text = JSON.stringify(mergeOrbit(cur, body.data || {}));
       if (text.length > 400000) return out(request, { error: "That's too much to save (400 KB at most)." }, 413);
       const at = Date.now();
       await db.prepare("INSERT INTO orbit_data (user_id, data, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, at = excluded.at").bind(me.user_id, text, at).run();
