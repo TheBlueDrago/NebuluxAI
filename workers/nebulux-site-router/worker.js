@@ -247,11 +247,13 @@ function ownerPwPage(err) {
   return new Response(DOWN_PAGE.replace("</style>", "</style>" + WAIT_STYLE).replace(/<h1>[\s\S]*?<\/h1>/, "<h1>Owner sign-in</h1>" + body).replace("<body>", "<body><div>" + MARK).replace("</body>", "</div></body>"),
     { status: err ? 403 : 200, headers: { "content-type": "text/html;charset=UTF-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
 }
-async function ownerPasswordOk(request) {
+// Asked through the SITES service binding: one Worker can't reach another on workers.dev by plain fetch.
+async function ownerPasswordOk(request, env) {
   var form = await request.formData().catch(function () { return null; });
   var pw = form ? String(form.get("pw") || "") : "";
   if (!pw) return false;
-  var r = await fetch(SITES_CHECK, { headers: { "x-admin-key": pw } }).catch(function () { return null; });
+  var q = new Request(SITES_CHECK, { headers: { "x-admin-key": pw } });
+  var r = await (env && env.SITES ? env.SITES.fetch(q) : fetch(q)).catch(function () { return null; });
   return !!(r && r.ok);
 }
 
@@ -271,7 +273,7 @@ async function maintenance(request, env, url) {
       if (request.method !== "POST") return ownerPwPage("");
       var tip = request.headers.get("cf-connecting-ip") || "unknown";
       if (!(await allow("ownerpw:" + tip, 8, 900))) return ownerPwPage("Too many tries. Wait 15 minutes.");
-      if (!(await ownerPasswordOk(request))) return ownerPwPage("That password isn't right.");
+      if (!(await ownerPasswordOk(request, env))) return ownerPwPage("That password isn't right.");
       // The real owner: lift any block on this browser and this internet address.
       var ip = request.headers.get("cf-connecting-ip") || "";
       if (ip && env.KV) {

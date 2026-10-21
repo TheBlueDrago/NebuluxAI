@@ -160,7 +160,7 @@ Limits: you never buy or pay for anything, log in to websites, fill in forms, or
 // What Orbit knows about their account, so it can answer "how many credits have I used?".
 const accountBlock = (env, u) => {
   const when = new Date(u.resetAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" }) + " UTC";
-  return `Their Orbit account: Free plan. ${u.pct < 1 && u.pct > 0 ? "Under 1%" : Math.floor(u.pct) + "%"} of the free weekly limit used. The weekly limit resets ${when} (every 7 days). Bonus tokens left: ${u.bonus.toLocaleString("en-US")} (used only after the weekly limit runs out). Paid plans (Starter, Expert) are coming soon. Show percentages for the weekly limit, never a raw token count.\n\n`;
+  return `Their Orbit account: Free plan. ${u.pct < 1 && u.pct > 0 ? "1%" : Math.floor(u.pct) + "%"} of the free weekly limit used. The weekly limit resets ${when} (every 7 days). Bonus tokens left: ${u.bonus.toLocaleString("en-US")} (used only after the weekly limit runs out). Paid plans (Starter, Expert) are coming soon. Show percentages for the weekly limit, never a raw token count.\n\n`;
 };
 // Their open tasks and goals, sent by the site.
 const listBlock = (body) => {
