@@ -5,19 +5,23 @@
 //   { action: "exchange", code }           -> { token, name }   the Orbit sign-in (kept by the Orbit site)
 //   { action: "me" }                       -> { name, credits, daily }
 //   { action: "chat", messages, memory }   -> { reply, credits }
-//   { action: "plan", goal, memory }       -> { steps: [string], credits }
+//   { action: "plan", goal, memory }       -> { steps: [string], usage }
 //   { action: "load" } / { action: "save", data } -> the person's tasks, goals, chat and memory
 //   { action: "signout" }                  -> { ok }
-// Orbit calls send "Authorization: Orbit <token>". Orbit tokens: ORBIT_WEEKLY free every week (no money
-// involved). Paid in tokens: what was sent and written (about 4 letters a token). Separate from Nebulux AI.
+// Orbit calls send "Authorization: Orbit <token>". Usage works like Muse's: every request is charged
+// the tokens the model really used (input + output, from the API's usage data), so the whole chat
+// history that's resent each turn counts and longer chats cost more. That comes out of a weekly
+// allowance first (shown only as a percentage; it resets 7 days after it started, at the same time),
+// then out of a bonus pool (referrals or purchases; shown as an exact number). Separate from Nebulux AI.
 // Orbit only talks and plans: it can't buy anything, send messages, or see cards or passwords.
 import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 
 const ORIGINS = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev$/, /^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev$/, /^https:\/\/orbit\.nebuluxai\.com$/, /^https:\/\/nebuluxai\.com$/, /^http:\/\/localhost(:\d+)?$/];
-const ORBIT_WEEKLY = 1000000; // free Orbit tokens each week (a token is about 4 letters)
-const MIN_TOKENS = 300; // what one more reply needs at least
+// The weekly allowance in tokens: the ORBIT_WEEKLY_TOKENS setting on Cloudflare, or this.
+const weeklyOf = (env) => Math.max(1000, Number(env.ORBIT_WEEKLY_TOKENS) || 1000000);
+const WEEK = 7 * 86400e3;
 const corsFor = (request) => {
   const o = request.headers.get("Origin") || "";
   return { "Access-Control-Allow-Origin": ORIGINS.some((r) => r.test(o)) ? o : "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", Vary: "Origin" };
@@ -27,8 +31,7 @@ export const randHex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map
 const rand = randHex;
 // Addresses the Orbit site can come back to after connecting something (orbit-google/start.js).
 export const ORBIT_RETURN = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev(\/|$)/, /^https:\/\/orbit\.nebuluxai\.com(\/|$)/, /^http:\/\/localhost(:\d+)?(\/|$)/];
-// The week starts on Monday (UTC); the free tokens refill then.
-const weekKey = () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+// Only for a reply from a model that doesn't report its usage: about 4 letters a token.
 const tokensOf = (...texts) => Math.ceil(texts.reduce((n, t) => n + String(t || "").length, 0) / 4);
 
 let ready = null;
@@ -36,7 +39,9 @@ const ensure = (db) =>
   (ready ||= db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_codes (code TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT, exp INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_tokens (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT, at INTEGER NOT NULL)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS orbit_wallets (user_id TEXT PRIMARY KEY, credits INTEGER NOT NULL, day TEXT NOT NULL)"),
+    // used: tokens used of this week's allowance. reset_at: when it goes back to 0 (every 7 days,
+    // at the time of day they first used Orbit). bonus: extra tokens, spent only after the allowance.
+    db.prepare("CREATE TABLE IF NOT EXISTS orbit_usage (user_id TEXT PRIMARY KEY, used INTEGER NOT NULL DEFAULT 0, reset_at INTEGER NOT NULL, bonus INTEGER NOT NULL DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_data (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)"),
     // Connections (Gmail for now): the permission Google gave, kept until they disconnect.
     // Orbit is for ages 13 and up: the birthday is asked once and can't be changed afterwards.
@@ -112,17 +117,33 @@ async function gmailSend(access, to, subject, text) {
   const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: "Bearer " + access.token, "Content-Type": "application/json" }, body: JSON.stringify({ raw: btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") }) });
   return r.ok;
 }
-// The week's free tokens are topped up the first time they're looked at each week.
-async function wallet(db, uid) {
-  const w = await db.prepare("SELECT credits, day FROM orbit_wallets WHERE user_id = ?").bind(uid).first();
-  if (!w || w.day !== weekKey()) {
-    const credits = ORBIT_WEEKLY;
-    await db.prepare("INSERT INTO orbit_wallets (user_id, credits, day) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET credits = excluded.credits, day = excluded.day").bind(uid, credits, weekKey()).run();
-    return credits;
+// Someone's usage, with the weekly allowance reset once its 7 days are up.
+async function usageRow(db, uid) {
+  const now = Date.now();
+  let u = await db.prepare("SELECT used, reset_at, bonus FROM orbit_usage WHERE user_id = ?").bind(uid).first();
+  if (!u) {
+    u = { used: 0, reset_at: now + WEEK, bonus: 0 };
+    await db.prepare("INSERT OR IGNORE INTO orbit_usage (user_id, used, reset_at, bonus) VALUES (?, 0, ?, 0)").bind(uid, u.reset_at).run();
+  } else if (now >= u.reset_at) {
+    // Same time of day as before, in 7-day steps (missed weeks are skipped).
+    u = { used: 0, reset_at: u.reset_at + Math.ceil((now - u.reset_at + 1) / WEEK) * WEEK, bonus: u.bonus };
+    await db.prepare("UPDATE orbit_usage SET used = 0, reset_at = ? WHERE user_id = ?").bind(u.reset_at, uid).run();
   }
-  return w.credits;
+  return u;
 }
-const spend = (db, uid, n) => db.prepare("UPDATE orbit_wallets SET credits = MAX(0, credits - ?) WHERE user_id = ?").bind(n, uid).run();
+// What the site shows: a percentage of the weekly allowance (never the raw count), the reset time,
+// and the bonus tokens as an exact number.
+const usageView = (env, u) => {
+  const limit = weeklyOf(env), pct = Math.min(100, (u.used / limit) * 100);
+  return { pct: Math.round(pct * 10) / 10, resetAt: u.reset_at, bonus: Math.max(0, u.bonus), out: u.used >= limit && u.bonus <= 0 };
+};
+// Charges what a request used: from the weekly allowance first, then the bonus pool.
+async function charge(env, db, uid, tokens) {
+  const u = await usageRow(db, uid), limit = weeklyOf(env);
+  const fromWeek = Math.min(tokens, Math.max(0, limit - u.used)), fromBonus = Math.min(Math.max(0, u.bonus), tokens - fromWeek);
+  await db.prepare("UPDATE orbit_usage SET used = used + ?, bonus = MAX(0, bonus - ?) WHERE user_id = ?").bind(fromWeek, fromBonus, uid).run();
+  return { ...u, used: u.used + fromWeek, bonus: u.bonus - fromBonus };
+}
 
 const ORBIT_RULES = `You are Nebulux Orbit, a friendly personal AI agent made by Nebulux AI. You help the person with their day: answering questions, remembering what they tell you (see "What you know about them"), planning goals step by step, and keeping track of tasks. You talk and plan. If they connected Gmail, their latest emails may be included below, and you can read and summarize them; you can write email drafts, but you never send one yourself: they review it and press Send. You cannot browse, buy or pay for anything, or reach their computer, and you never ask for passwords, card numbers or other private details. If they ask you to do one of those, say you can't and tell them how they can do it themselves. Keep answers clear and warm.`;
 const memoryBlock = (memory) => {
@@ -146,7 +167,8 @@ async function museGenerate(env, system, user) {
     if (!r.ok) return null;
     const d = await r.json();
     const text = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-    return text ? String(text) : null;
+    const u = d && d.usage;
+    return text ? { text: String(text), tokens: u ? { input: u.prompt_tokens || 0, output: u.completion_tokens || 0 } : null } : null;
   } catch {
     return null;
   }
@@ -199,7 +221,8 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("INSERT INTO orbit_ages (user_id, birth, at) VALUES (?, ?, ?)").bind(me.user_id, birth, Date.now()).run();
       return out(request, { ok: true, under13: ageOf(birth) < 13 });
     }
-    if (action === "me") return out(request, { name: me.name || "there", credits: await wallet(db, me.user_id), weekly: ORBIT_WEEKLY, needBirth: !ageRow, under13 });
+    if (action === "me") return out(request, { name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13 });
+    if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
     if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     // Tasks, goals, chat and memory kept with the account, so every device shows the same Orbit.
     if (action === "load") {
@@ -280,8 +303,8 @@ export async function onRequestPost({ request, env }) {
 
     if (action === "chat" || action === "plan") {
       if (!(await allow(`orbit-ai:${me.user_id}`, 12, 60))) return out(request, { error: "Slow down a little: up to 12 a minute." }, 429);
-      const have = await wallet(db, me.user_id);
-      if (have < MIN_TOKENS) return out(request, { error: `You've used this week's Orbit tokens. You get ${ORBIT_WEEKLY.toLocaleString("en-US")} free again on Monday.`, credits: have }, 402);
+      const now = usageView(env, await usageRow(db, me.user_id));
+      if (now.out) return out(request, { error: "You've reached your weekly limit.", limitReached: true, usage: now }, 402);
       let prompt;
       if (action === "chat") {
         const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-16).map((m) => `${m.role === "assistant" ? "Orbit" : "Them"}: ${String(m.content || "").slice(0, 3000)}`).join("\n\n");
@@ -294,12 +317,14 @@ export async function onRequestPost({ request, env }) {
       }
       // Muse Spark first (when its key is set), the free Google models otherwise or if Muse fails.
       const task = prompt.slice(ORBIT_RULES.length + 2);
-      const text = String((await museGenerate(env, ORBIT_RULES, task)) || (await orbitGenerate(env, prompt, 8000))).trim();
-      await spend(db, me.user_id, tokensOf(prompt, text));
-      const credits = await wallet(db, me.user_id);
-      if (action === "chat") return out(request, { reply: text, credits });
+      const r = (await museGenerate(env, ORBIT_RULES, task)) || (await orbitGenerate(env, prompt, 8000));
+      const text = String(r.text || "").trim();
+      if (!text) return out(request, { error: "Orbit couldn't answer just now. Try again." }, 503);
+      const used = r.tokens ? r.tokens.input + r.tokens.output : tokensOf(prompt, text);
+      const usage = usageView(env, await charge(env, db, me.user_id, used));
+      if (action === "chat") return out(request, { reply: text, usage });
       const steps = text.split("\n").map((l) => l.replace(/^\s*[-*\d.)]+\s*/, "").trim()).filter(Boolean).slice(0, 8);
-      return out(request, { steps, credits });
+      return out(request, { steps, usage });
     }
     return out(request, { error: "Unknown action." }, 400);
   } catch (err) {

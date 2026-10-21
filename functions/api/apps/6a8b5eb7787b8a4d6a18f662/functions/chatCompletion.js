@@ -193,6 +193,7 @@ async function generate(apiKey, model, prompt, generationConfig, timeoutMs, { on
       streamError = chunk.error;
       return;
     }
+    if (chunk.usageMetadata) usage = chunk.usageMetadata; // a running total: the last one covers the whole request
     const cand = (chunk.candidates && chunk.candidates[0]) || {};
     if (cand.finishReason) finishReason = cand.finishReason;
     const parts = (cand.content && cand.content.parts) || [];
@@ -204,6 +205,7 @@ async function generate(apiKey, model, prompt, generationConfig, timeoutMs, { on
     }
   };
   const sources = [];
+  let usage = null;
   let finishReason = "";
   let stopped = false;
   while (!cut) {
@@ -244,7 +246,8 @@ async function generate(apiKey, model, prompt, generationConfig, timeoutMs, { on
     if (onDelta) onDelta(tail);
   }
   // Ran into the length limit mid-answer: the app offers "Keep going".
-  return { text: out, cut, stopped, more: finishReason === "MAX_TOKENS" && !cut && !stopped };
+  const tokens = usage ? { input: usage.promptTokenCount || 0, output: (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0) + (usage.toolUsePromptTokenCount || 0) } : null;
+  return { text: out, cut, stopped, more: finishReason === "MAX_TOKENS" && !cut && !stopped, tokens };
 }
 
 // Questions about now (news, scores, weather, prices, "today", "latest") get a Google search
@@ -621,7 +624,9 @@ export async function onRequestPost(context) {
 
 // Nebulux Orbit (functions/v1/orbit.js): a plain reply from the free models, with the same safety rules
 // and backups. Orbit charges its own credits, so nothing is charged here.
+// Orbit is billed by the tokens the model really used (input + output, thinking included), from
+// Google's usage data. tokens is null when the answer came from a model that doesn't report it.
 export async function orbitGenerate(env, prompt, maxChars = 8000) {
   const r = await runWithBackup(env, geminiKeys(env), MODELS_BY_STRENGTH, prompt, "low", 0, { maxChars });
-  return r.text || "";
+  return { text: r.text || "", tokens: r.tokens || null };
 }
