@@ -626,7 +626,8 @@ export async function onRequestPost(context) {
 // and backups. Orbit charges its own credits, so nothing is charged here.
 // Orbit is billed by the tokens the model really used (input + output, thinking included), from
 // Google's usage data. tokens is null when the answer came from a model that doesn't report it.
-export async function orbitGenerate(env, prompt, maxChars = 8000) {
-  const r = await runWithBackup(env, geminiKeys(env), MODELS_BY_STRENGTH, prompt, "low", 0, { maxChars });
+// opts.onDelta streams the answer as it's written; opts.shouldStop ends it early (Stop pressed).
+export async function orbitGenerate(env, prompt, maxChars = 8000, opts = {}) {
+  const r = await runWithBackup(env, geminiKeys(env), MODELS_BY_STRENGTH, prompt, "low", 0, { maxChars, onDelta: opts.onDelta, shouldStop: opts.shouldStop });
   return { text: r.text || "", tokens: r.tokens || null };
 }

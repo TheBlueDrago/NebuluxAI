@@ -17,6 +17,7 @@
 import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
+import { publicUrl, parseResults, pageText, viewHtml } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/web-browse.js";
 
 const ORIGINS = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev$/, /^https:\/\/([a-z0-9-]+\.)?nebulux-orbit\.pages\.dev$/, /^https:\/\/orbit\.nebuluxai\.com$/, /^https:\/\/nebuluxai\.com$/, /^http:\/\/localhost(:\d+)?$/];
 // The weekly allowance in tokens: the ORBIT_WEEKLY_TOKENS setting on Cloudflare, or this.
@@ -145,7 +146,7 @@ async function charge(env, db, uid, tokens) {
   return { ...u, used: u.used + fromWeek, bonus: u.bonus - fromBonus };
 }
 
-const ORBIT_RULES = `You are Nebulux Orbit, a friendly personal AI agent made by Nebulux AI. You help the person with their day: answering questions, remembering what they tell you (see "What you know about them"), planning goals step by step, and keeping track of tasks. You talk and plan. If they connected Gmail, their latest emails may be included below, and you can read and summarize them; you can write email drafts, but you never send one yourself: they review it and press Send. You cannot browse, buy or pay for anything, or reach their computer, and you never ask for passwords, card numbers or other private details. If they ask you to do one of those, say you can't and tell them how they can do it themselves. Keep answers clear and warm.`;
+const ORBIT_RULES = `You are Nebulux Orbit, a friendly personal AI agent made by Nebulux AI. You help the person with their day: answering questions, remembering what they tell you (see "What you know about them"), planning goals step by step, and keeping track of tasks. You talk and plan. If they connected Gmail, their latest emails may be included below, and you can read and summarize them; you can write email drafts, but you never send one yourself: they review it and press Send. You have a web browser with tabs that they can see. When you need a web page or fresh information, put one command alone on the last line of your answer and stop: [[search: what to look up]] to search the web, or [[open: https://full-address]] to open a page. The page's text then comes back to you in the next message ("Browser:"), and you answer from it. Use the browser only when it really helps, at most a few times in a row. You cannot buy or pay for anything, log in to websites, fill in forms, or reach their computer, and you never ask for passwords, card numbers or other private details. If they ask you to do one of those, say you can't and tell them how they can do it themselves. Keep answers clear and warm.`;
 const memoryBlock = (memory) => {
   const m = String(memory || "").trim().slice(0, 4000);
   return m ? `What you know about them (they wrote or approved this):\n${m}\n\n` : "";
@@ -301,19 +302,67 @@ export async function onRequestPost({ request, env }) {
       return (await gmailSend(a, to, subject, text)) ? out(request, { ok: true }) : out(request, { error: "Gmail didn't send it. Try again." }, 502);
     }
 
+    // The browser: search results, or a page (its text for Orbit, and a safe copy to show in a tab).
+    if (action === "web_search" || action === "web_open") {
+      if (!(await allow(`orbit-web:${me.user_id}`, 30, 60))) return out(request, { error: "Too many pages at once. Wait a minute." }, 429);
+      const headers = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 NebuluxOrbit/1.0", accept: "text/html,application/xhtml+xml", "accept-language": "en-US,en;q=0.9" };
+      try {
+        if (action === "web_search") {
+          const q = String(body.q || "").trim().slice(0, 300);
+          if (!q) return out(request, { results: [] });
+          const res = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q), { headers });
+          if (!res.ok) return out(request, { error: "Search isn't working right now." }, 502);
+          return out(request, { results: parseResults(await res.text()) });
+        }
+        const u = publicUrl(body.url);
+        if (!u) return out(request, { error: "That address can't be opened." }, 400);
+        const res = await fetch(u.href, { headers, redirect: "follow", signal: AbortSignal.timeout(15000) });
+        const final = publicUrl(res.url) ? res.url : u.href, type = res.headers.get("content-type") || "";
+        if (!/text\/html|text\/plain|xhtml/.test(type)) return out(request, { url: final, title: "", text: `(This is a ${type.split(";")[0] || "file"}, not a web page.)` });
+        const raw = (await res.text()).slice(0, 1500000);
+        const { title, text } = /html/.test(type) ? pageText(raw) : { title: "", text: raw.slice(0, 20000) };
+        return out(request, { url: final, title, text, ...(body.view && /html/.test(type) ? { html: viewHtml(raw, final) } : {}) });
+      } catch {
+        return out(request, { error: "The page couldn't be opened." }, 502);
+      }
+    }
     if (action === "chat" || action === "plan") {
       if (!(await allow(`orbit-ai:${me.user_id}`, 12, 60))) return out(request, { error: "Slow down a little: up to 12 a minute." }, 429);
       const now = usageView(env, await usageRow(db, me.user_id));
       if (now.out) return out(request, { error: "You've reached your weekly limit.", limitReached: true, usage: now }, 402);
       let prompt;
       if (action === "chat") {
-        const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-16).map((m) => `${m.role === "assistant" ? "Orbit" : "Them"}: ${String(m.content || "").slice(0, 3000)}`).join("\n\n");
+        const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-16).map((m) => `${m.role === "assistant" ? "Orbit" : "Them"}: ${String(m.content || "").slice(0, 6000)}`).join("\n\n");
         if (!msgs) return out(request, { error: "Say something first." }, 400);
         prompt = `${ORBIT_RULES}\n\n${memoryBlock(body.memory)}The conversation so far:\n${msgs}\n\nReply as Orbit to their last message.`;
       } else {
         const goal = String(body.goal || "").trim().slice(0, 600);
         if (!goal) return out(request, { error: "Type a goal first." }, 400);
         prompt = `${ORBIT_RULES}\n\n${memoryBlock(body.memory)}Make a short, practical step-by-step plan for this goal: "${goal}". Answer ONLY with the steps, one per line, 3 to 8 steps, each starting with "- ", no other text.`;
+      }
+      // Streamed chat: the words arrive as they're written (newline-separated JSON: {d} pieces, then
+      // {done, usage}). Stop on the site cancels the request, which ends the answer here too, and
+      // only what was used up to then is charged.
+      if (action === "chat" && body.stream) {
+        const enc = new TextEncoder();
+        let gone = false;
+        const stream = new ReadableStream({
+          async start(ctl) {
+            const send = (o) => { if (!gone) try { ctl.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch { gone = true; } };
+            let text = "";
+            try {
+              const r = await orbitGenerate(env, prompt, 8000, { onDelta: (t) => { text += t; send({ d: t }); }, shouldStop: () => gone || request.signal?.aborted });
+              const used = r.tokens && !r.stopped ? r.tokens.input + r.tokens.output : tokensOf(prompt, r.text || text);
+              send({ done: true, stopped: !!r.stopped, usage: usageView(env, await charge(env, db, me.user_id, used)) });
+            } catch (e) {
+              if (text) await charge(env, db, me.user_id, tokensOf(prompt, text)).catch(() => {});
+              send({ error: "Orbit couldn't answer just now. Try again." });
+            }
+            try { ctl.close(); } catch {}
+          },
+          cancel() { gone = true; },
+        });
+        return new Response(stream, { headers: { "content-type": "application/x-ndjson", "cache-control": "no-store", ...corsFor(request) } });
       }
       // Muse Spark first (when its key is set), the free Google models otherwise or if Muse fails.
       const task = prompt.slice(ORBIT_RULES.length + 2);
