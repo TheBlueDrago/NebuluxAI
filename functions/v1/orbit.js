@@ -141,6 +141,7 @@ async function museGenerate(env, system, user) {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "muse-spark-1.3", messages: [{ role: "developer", content: system }, { role: "user", content: user }], max_completion_tokens: 1500, reasoning_effort: "low" }),
+      signal: AbortSignal.timeout(12000), // a slow answer falls back to the other model instead of keeping people waiting
     });
     if (!r.ok) return null;
     const d = await r.json();
