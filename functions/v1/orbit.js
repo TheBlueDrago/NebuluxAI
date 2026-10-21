@@ -286,12 +286,14 @@ export async function onRequestPost({ request, env }) {
       return out(request, { ok: true, under13: ageOf(birth) < 13 });
     }
     const termsRow = await db.prepare("SELECT version FROM orbit_terms WHERE user_id = ?").bind(me.user_id).first();
-    if (termsRow && termsRow.version === "declined") return out(request, { error: "This account can't use Nebulux Orbit. Your Nebulux AI account still works as usual.", blocked: true }, 403);
+    // Looked up only when needed (one more database read).
+    let ownerKnown = null;
+    const isMe = async () => (ownerKnown ??= await isOwner(db, me.user_id));
+    if (termsRow && termsRow.version === "declined" && !(await isMe())) return out(request, { error: "This account can't use Nebulux Orbit. Your Nebulux AI account still works as usual.", blocked: true }, 403);
     const needTerms = !termsRow || termsRow.version !== ORBIT_TERMS_VERSION;
-    const owner = await isOwner(db, me.user_id);
     // ---- Monitor (the owner only, checked here on every request) ----
     if (action === "monitor" || action === "monitor_act") {
-      if (!owner) return out(request, { error: "Not found." }, 404);
+      if (!(await isMe())) return out(request, { error: "Not found." }, 404);
       if (action === "monitor_act") {
         const uid = String(body.userId || "");
         if (!/^[a-z0-9]{6,40}$/i.test(uid)) return out(request, { error: "Pick an account." }, 400);
@@ -339,7 +341,7 @@ export async function onRequestPost({ request, env }) {
         apps: appCount, people, termsVersion: ORBIT_TERMS_VERSION, muse: !!env.MUSE_SPARK_API_KEY,
       });
     }
-    if (action === "me") return out(request, { owner, name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
+    if (action === "me") return out(request, { owner: await isMe(), name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
     if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
     if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
     if (action === "accept_terms") {
@@ -351,6 +353,7 @@ export async function onRequestPost({ request, env }) {
     // database). Nebulux AI isn't affected. Every device is signed out of Orbit.
     if (action === "decline_terms") {
       if (body.confirmed !== true) return out(request, { error: "Confirm first." }, 400);
+      if (await isMe()) return out(request, { error: "The owner's account can't be blocked." }, 400);
       await db.batch([
         db.prepare("INSERT INTO orbit_terms (user_id, version, at) VALUES (?, 'declined', ?) ON CONFLICT(user_id) DO UPDATE SET version = 'declined', at = excluded.at").bind(me.user_id, Date.now()),
         db.prepare("DELETE FROM orbit_tokens WHERE user_id = ?").bind(me.user_id),
@@ -457,19 +460,19 @@ export async function onRequestPost({ request, env }) {
 
     // The browser: search results, or a page (its text for Orbit, and a safe copy to show in a tab).
     if (action === "web_search" || action === "web_open") {
-      if (!(await allow(`orbit-web:${me.user_id}`, 30, 60))) return out(request, { error: "Too many pages at once. Wait a minute." }, 429);
+      if (!(await allow(`orbit-web:${me.user_id}`, 60, 60))) return out(request, { error: "Too many pages at once. Wait a minute." }, 429);
       const headers = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 NebuluxOrbit/1.0", accept: "text/html,application/xhtml+xml", "accept-language": "en-US,en;q=0.9" };
       try {
         if (action === "web_search") {
           const q = String(body.q || "").trim().slice(0, 300);
           if (!q) return out(request, { results: [] });
-          const res = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q), { headers });
+          const res = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q), { headers, cf: { cacheTtl: 600, cacheEverything: true } });
           if (!res.ok) return out(request, { error: "Search isn't working right now." }, 502);
           return out(request, { results: parseResults(await res.text()) });
         }
         const u = publicUrl(body.url);
         if (!u) return out(request, { error: "That address can't be opened." }, 400);
-        const res = await fetch(u.href, { headers, redirect: "follow", signal: AbortSignal.timeout(15000) });
+        const res = await fetch(u.href, { headers, redirect: "follow", signal: AbortSignal.timeout(12000), cf: { cacheTtl: 300, cacheEverything: true } });
         const final = publicUrl(res.url) ? res.url : u.href, type = res.headers.get("content-type") || "";
         if (!/text\/html|text\/plain|xhtml/.test(type)) return out(request, { url: final, title: "", text: `(This is a ${type.split(";")[0] || "file"}, not a web page.)` });
         const raw = (await res.text()).slice(0, 1500000);
