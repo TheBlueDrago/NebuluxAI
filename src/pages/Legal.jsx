@@ -42,7 +42,7 @@ export function Terms() {
       <p>
         These terms cover your use of Nebulux AI at nebuluxai.com, including its AI chat, Nebulux Code,
         the Website and Game Designers and the sites and games people publish with it. By
-        creating an account or using Nebulux AI you agree to them. If you don't agree, please don't use it.
+        creating an account or using Nebulux AI you agree to them. If you don't agree, please don't use it. If you choose "I don't agree" when we ask you to accept them, your account is removed: you're signed out and can't sign in again unless we restore it.
       </p>
 
       <h2>Who can use it</h2>

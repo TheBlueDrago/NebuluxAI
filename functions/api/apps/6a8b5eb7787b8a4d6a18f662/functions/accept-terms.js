@@ -5,11 +5,13 @@
 //
 // { action: "get" }               -> { accepted, version, returning, deadline }
 // { action: "accept", version }   -> { accepted: true }
+// { action: "decline", confirmed } -> { removed: true } (only the owner can restore it, in Monitor)
 // { action: "overdue" } (admins)  -> { users: [{ id, email, name, lastAccepted, created }], checked, accepted }
 //
 // KV (PUBLISHED_HTML): terms:<userId> = { version, at } (the latest acceptance).
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
-import { currentUser } from "../../../../../cloudflare-lib/credits.js";
+import { currentUser, applyGrant } from "../../../../../cloudflare-lib/credits.js";
+import { logAdmin } from "../../../../../cloudflare-lib/audit.js";
 import { TERMS_VERSION, EXEMPT, exempt } from "../../../../../cloudflare-lib/terms.js";
 
 export { TERMS_VERSION, EXEMPT };
@@ -64,6 +66,17 @@ export async function onRequestPost(context) {
       const prev = await kv.get(key, "json");
       if (!prev || prev.version !== version) await kv.put(key, JSON.stringify({ version, at: new Date().toISOString() }));
       return json({ accepted: true, version });
+    }
+
+    // "I don't agree": the account is removed the same way an admin removes one in Monitor (blocked,
+    // its email blocked too, listed under "Removed accounts"). Nothing is deleted, so only the owner
+    // can bring it back there (Restore). The owner's and admins' accounts can't be removed this way.
+    if (body.action === "decline") {
+      if (body.confirmed !== true) return json({ error: "Confirm first." }, 400);
+      if (user.role === "admin" || exempt(user)) return json({ error: "This account can't be removed." }, 400);
+      await applyGrant(kv, user.id, { removed: true, email: user.email || "" });
+      await logAdmin(kv, user, "decline-terms", { userId: user.id, email: user.email || "" }, request).catch(() => {});
+      return json({ removed: true });
     }
 
     if (exempt(user)) return json({ accepted: true, version });

@@ -83,15 +83,14 @@ export default function TermsGate({ user, onDone }) {
 
   if (!need) return null;
 
-  // Not agreeing deletes the account for good (after one clear warning): their websites and games,
-  // then the account itself, then everything saved in this browser. Same steps as Delete account.
+  // Not agreeing removes the account (after one clear warning): it's blocked and signed out, but
+  // nothing is deleted, so only the Nebulux owner can bring it back (Monitor → Removed accounts).
   const decline = async () => {
     if (!confirmDelete) return setConfirmDelete(true); // first press: show the warning
     setBusy(true);
     setErr("");
     try {
-      await base44.functions.invoke("delete-my-content");
-      await base44.functions.invoke("delete-account");
+      await base44.functions.invoke("accept-terms", { action: "decline", confirmed: true });
       try {
         localStorage.clear();
         indexedDB.deleteDatabase("blackhole-designer");
@@ -100,7 +99,7 @@ export default function TermsGate({ user, onDone }) {
       }
       signOut("/");
     } catch {
-      setErr("Couldn't delete the account right now. Try again, or contact support@nebuluxai.com.");
+      setErr("Couldn't remove the account right now. Try again, or contact support@nebuluxai.com.");
       setBusy(false);
     }
   };
@@ -176,13 +175,13 @@ export default function TermsGate({ user, onDone }) {
         )}
         {confirmDelete && (
           <div role="alert" className="mt-3 rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-200">
-            <p className="font-semibold">Delete your account forever?</p>
+            <p className="font-semibold">Remove your account?</p>
             <p className="mt-1 text-xs">
-              If you don't agree, your Nebulux AI account is deleted: your credits, plan, websites and games. This can't be undone. Press <b>Yes, delete my account</b> to confirm, or <b>Go back</b>.
+              If you don't agree, your Nebulux AI account is removed and you're signed out. You won't be able to sign in again, and only the Nebulux team can bring the account back. Press <b>Yes, remove my account</b> to confirm, or <b>Go back</b>.
             </p>
             <div className="mt-2 flex gap-2">
               <button type="button" disabled={busy} onClick={decline} className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 text-xs font-semibold text-[#fff] disabled:opacity-50">
-                {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Yes, delete my account
+                {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Yes, remove my account
               </button>
               <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">
                 Go back
@@ -198,7 +197,7 @@ export default function TermsGate({ user, onDone }) {
             disabled={busy}
             className="px-4 py-2.5 rounded-lg text-sm text-slate-400 hover:text-red-300 hover:bg-slate-800"
           >
-            I don't agree (delete my account)
+            I don't agree (remove my account)
           </button>
           <button
             type="button"
