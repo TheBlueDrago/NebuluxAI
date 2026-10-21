@@ -32,6 +32,7 @@ import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/term
 import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
+import { ageStatus } from "../../../../../cloudflare-lib/agegate.js";
 
 const MODEL_MAP = {
   automatic: "gemini-3.6-flash",
@@ -485,6 +486,9 @@ export async function onRequestPost(context) {
     const kv = env.PUBLISHED_HTML;
     const user = await currentUser(request);
     if (!user) return json({ error: "Please sign in to use the AI." }, 401);
+    // Birthday asked after sign-in; accounts below the minimum age wait until they reach it (cloudflare-lib/agegate.js).
+    const age = await ageStatus(env.DB, user.id).catch(() => ({}));
+    if (age.blocked) return json({ error: "Your account isn't available yet." }, 403);
     const ent = await entitlement(kv, request, user);
     if (ent.blocked) return json({ error: "Your account can't use the AI right now." }, 403);
 

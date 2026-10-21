@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import Splash from '@/components/Splash';
+import AgeGate from '@/components/AgeGate';
 import OfflineBanner from '@/components/OfflineBanner';
 import Home from '@/pages/Home';
 const Chat = lazy(() => import('@/pages/Chat'));
@@ -167,6 +168,7 @@ function App() {
         <Router>
           <ScrollToTop />
           <Splash />
+          <AgeGate />
           <OfflineBanner />
           <ErrorBoundary>
             <AuthenticatedApp />
