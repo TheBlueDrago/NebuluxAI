@@ -23,6 +23,9 @@ const ORIGINS = [/^https:\/\/nebuluxorbit\.thebluedragonstriker\.workers\.dev$/,
 // The weekly allowance in tokens: the ORBIT_WEEKLY_TOKENS setting on Cloudflare, or this.
 const weeklyOf = (env) => Math.max(1000, Number(env.ORBIT_WEEKLY_TOKENS) || 1000000);
 const WEEK = 7 * 86400e3;
+// Orbit's Terms of Service and Privacy Policy (nebuluxorbit.../terms and /privacy). Changing this asks
+// everyone to accept again before Orbit works for them.
+const ORBIT_TERMS_VERSION = "2026-10-21";
 const corsFor = (request) => {
   const o = request.headers.get("Origin") || "";
   return { "Access-Control-Allow-Origin": ORIGINS.some((r) => r.test(o)) ? o : "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", Vary: "Origin" };
@@ -47,6 +50,8 @@ const ensure = (db) =>
     // Connections (Gmail for now): the permission Google gave, kept until they disconnect.
     // Orbit is for ages 13 and up: the birthday is asked once and can't be changed afterwards.
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_ages (user_id TEXT PRIMARY KEY, birth TEXT NOT NULL, at INTEGER NOT NULL)"),
+    // Which version of Orbit's Terms and Privacy Policy each person accepted, and when.
+    db.prepare("CREATE TABLE IF NOT EXISTS orbit_terms (user_id TEXT PRIMARY KEY, version TEXT NOT NULL, at INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_states (state TEXT PRIMARY KEY, user_id TEXT NOT NULL, back TEXT NOT NULL, exp INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_connections (user_id TEXT NOT NULL, provider TEXT NOT NULL, refresh TEXT NOT NULL, email TEXT, at INTEGER NOT NULL, PRIMARY KEY (user_id, provider))"),
   ]).catch((e) => { ready = null; throw e; }));
@@ -243,9 +248,32 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("INSERT INTO orbit_ages (user_id, birth, at) VALUES (?, ?, ?)").bind(me.user_id, birth, Date.now()).run();
       return out(request, { ok: true, under13: ageOf(birth) < 13 });
     }
-    if (action === "me") return out(request, { name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13 });
+    const termsRow = await db.prepare("SELECT version FROM orbit_terms WHERE user_id = ?").bind(me.user_id).first();
+    const needTerms = !termsRow || termsRow.version !== ORBIT_TERMS_VERSION;
+    if (action === "me") return out(request, { name: me.name || "there", usage: usageView(env, await usageRow(db, me.user_id)), needBirth: !ageRow, under13, needTerms, termsVersion: ORBIT_TERMS_VERSION });
     if (action === "usage") return out(request, { usage: usageView(env, await usageRow(db, me.user_id)) });
     if (action !== "signout" && (!ageRow || under13)) return out(request, { error: under13 ? "Your account isn't available yet." : "Enter your birthday first.", needBirth: !ageRow, under13 }, 403);
+    if (action === "accept_terms") {
+      if (body.version !== ORBIT_TERMS_VERSION) return out(request, { error: "Reload the page to see the latest Terms.", termsVersion: ORBIT_TERMS_VERSION }, 409);
+      await db.prepare("INSERT INTO orbit_terms (user_id, version, at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET version = excluded.version, at = excluded.at").bind(me.user_id, ORBIT_TERMS_VERSION, Date.now()).run();
+      return out(request, { ok: true });
+    }
+    // Delete all Orbit data: what's synced, every connected app (Google's permission is withdrawn too)
+    // and every signed-in device. The birthday stays (so the age rule can't be got around) and so does
+    // this week's usage (so the weekly limit can't be reset this way).
+    if (action === "delete_data") {
+      if (body.confirmed !== true) return out(request, { error: "Confirm first." }, 400);
+      const conns = (await db.prepare("SELECT provider, refresh FROM orbit_connections WHERE user_id = ?").bind(me.user_id).all()).results || [];
+      for (const c of conns) if (c.provider !== "github") await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(c.refresh), { method: "POST" }).catch(() => {});
+      await db.batch([
+        db.prepare("DELETE FROM orbit_data WHERE user_id = ?").bind(me.user_id),
+        db.prepare("DELETE FROM orbit_connections WHERE user_id = ?").bind(me.user_id),
+        db.prepare("DELETE FROM orbit_tokens WHERE user_id = ?").bind(me.user_id),
+      ]);
+      return out(request, { ok: true });
+    }
+    // Everything else needs the current Terms accepted.
+    if (needTerms && !["load", "save"].includes(action)) return out(request, { error: "Please accept Orbit's Terms of Service and Privacy Policy first.", needTerms: true, termsVersion: ORBIT_TERMS_VERSION }, 403);
     // Tasks, goals, chat and memory kept with the account, so every device shows the same Orbit.
     if (action === "load") {
       const row = await db.prepare("SELECT data, at FROM orbit_data WHERE user_id = ?").bind(me.user_id).first();
