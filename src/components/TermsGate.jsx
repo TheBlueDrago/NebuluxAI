@@ -13,7 +13,7 @@ const monthName = (v) => new Date(`${v}-15T00:00:00Z`).toLocaleDateString([], { 
 const dayName = (iso) => new Date(iso).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
 const seenKey = (id, v) => `nx-terms:${id}:${v}`;
 // The agreement's version when the server can't be asked (keep in step with accept-terms.js).
-const FALLBACK_VERSION = "2026-10-07-api";
+const FALLBACK_VERSION = "2026-10-21-privacy";
 
 const POINTS = [
   "You're 13 or older. If you're under 18, a parent or guardian agrees to these terms with you.",
@@ -21,7 +21,7 @@ const POINTS = [
   "Never share passwords, card numbers or private details (your address, school or phone number) with the AI or on pages you publish.",
   "The AI can make mistakes. Check important answers, and don't rely on it for medical, legal or money decisions.",
   "Websites and games you publish are public. You're responsible for them, and we can take down anything that breaks the rules.",
-  "We store your password only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals. We never sell your data. See the Privacy Policy for what we collect and why.",
+  "We store your password only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals. We never sell your data, including your birthday, password or other sign-in details. See the Privacy Policy for what we collect and why.",
 ];
 
 export default function TermsGate({ user, onDone }) {

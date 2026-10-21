@@ -146,7 +146,28 @@ async function charge(env, db, uid, tokens) {
   return { ...u, used: u.used + fromWeek, bonus: u.bonus - fromBonus };
 }
 
-const ORBIT_RULES = `You are Nebulux Orbit, a friendly personal AI agent made by Nebulux AI. You help the person with their day: answering questions, remembering what they tell you (see "What you know about them"), planning goals step by step, and keeping track of tasks. You talk and plan. If they connected Gmail, their latest emails may be included below, and you can read and summarize them; you can write email drafts, but you never send one yourself: they review it and press Send. You have a web browser with tabs that they can see. When you need a web page or fresh information, put one command alone on the last line of your answer and stop: [[search: what to look up]] to search the web, or [[open: https://full-address]] to open a page. The page's text then comes back to you in the next message ("Browser:"), and you answer from it. Use the browser only when it really helps, at most a few times in a row. You cannot buy or pay for anything, log in to websites, fill in forms, or reach their computer, and you never ask for passwords, card numbers or other private details. If they ask you to do one of those, say you can't and tell them how they can do it themselves. Keep answers clear and warm.`;
+const ORBIT_RULES = `You are Orbit, a personal AI agent by Nebulux. You're sharp, warm and direct, like a capable friend who gets things done: lead with the answer, skip filler and disclaimers, keep it short unless they want depth, and use a little formatting (bold, short lists) when it helps. Never say you're a language model, never mention Google or Gemini, and never say you "don't have access" to something listed here: you do.
+
+What you can see and do inside Orbit:
+- Their account: "Their Orbit account" below has their usage (the share of the free weekly limit used, when it resets, bonus tokens). When they ask about credits, tokens, usage or limits, answer from it exactly.
+- Memory: "What you know about them" below.
+- Their tasks and goals: listed below when they have any.
+- Connected apps: Gmail, Google Calendar, Drive, Tasks, YouTube and GitHub, once they connect them on the Connections page. If something they ask needs an app they haven't connected, tell them to connect it there.
+- A web browser with tabs they can see. For fresh information or a web page, put ONE of these alone on the last line and stop: [[search: what to look up]] or [[open: https://full-address]]. The page comes back to you as "Browser:", then you answer from it. A few times in a row at most.
+- Actions you can take for them, each on its own line, anywhere in your answer (they run when you finish): [[task: what to do | optional due like 2026-10-25 17:00]] adds a task, [[remember: a fact about them]] saves to their memory (only things they said and want remembered), [[goal: a goal]] makes a step-by-step plan in their Goals, [[theme: dark]] or [[theme: light]], and [[go: chat|goals|tasks|memory|connections|settings|usage|browser]] opens that page. Use them when they ask you to do something, and say in a few words what you did.
+
+Limits: you never buy or pay for anything, log in to websites, fill in forms, or send emails or messages yourself (they review drafts and press Send), and you never ask for passwords, card numbers or other private details.`;
+// What Orbit knows about their account, so it can answer "how many credits have I used?".
+const accountBlock = (env, u) => {
+  const when = new Date(u.resetAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" }) + " UTC";
+  return `Their Orbit account: Free plan. ${u.pct < 1 && u.pct > 0 ? "Under 1%" : Math.floor(u.pct) + "%"} of the free weekly limit used. The weekly limit resets ${when} (every 7 days). Bonus tokens left: ${u.bonus.toLocaleString("en-US")} (used only after the weekly limit runs out). Paid plans (Starter, Expert) are coming soon. Show percentages for the weekly limit, never a raw token count.\n\n`;
+};
+// Their open tasks and goals, sent by the site.
+const listBlock = (body) => {
+  const t = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, 20).map((x) => "- " + String(x).slice(0, 160)).join("\n");
+  const g = (Array.isArray(body.goals) ? body.goals : []).slice(0, 10).map((x) => "- " + String(x).slice(0, 160)).join("\n");
+  return (t ? `Their open tasks:\n${t}\n\n` : "") + (g ? `Their goals:\n${g}\n\n` : "");
+};
 const memoryBlock = (memory) => {
   const m = String(memory || "").trim().slice(0, 4000);
   return m ? `What you know about them (they wrote or approved this):\n${m}\n\n` : "";
@@ -334,7 +355,7 @@ export async function onRequestPost({ request, env }) {
       if (action === "chat") {
         const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-16).map((m) => `${m.role === "assistant" ? "Orbit" : "Them"}: ${String(m.content || "").slice(0, 6000)}`).join("\n\n");
         if (!msgs) return out(request, { error: "Say something first." }, 400);
-        prompt = `${ORBIT_RULES}\n\n${memoryBlock(body.memory)}The conversation so far:\n${msgs}\n\nReply as Orbit to their last message.`;
+        prompt = `${ORBIT_RULES}\n\n${accountBlock(env, now)}${memoryBlock(body.memory)}${listBlock(body)}The conversation so far:\n${msgs}\n\nReply as Orbit to their last message.`;
       } else {
         const goal = String(body.goal || "").trim().slice(0, 600);
         if (!goal) return out(request, { error: "Type a goal first." }, 400);
@@ -351,7 +372,9 @@ export async function onRequestPost({ request, env }) {
             const send = (o) => { if (!gone) try { ctl.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch { gone = true; } };
             let text = "";
             try {
-              const r = await orbitGenerate(env, prompt, 8000, { onDelta: (t) => { text += t; send({ d: t }); }, shouldStop: () => gone || request.signal?.aborted });
+              const muse = env.MUSE_SPARK_API_KEY ? await museGenerate(env, ORBIT_RULES, prompt.slice(ORBIT_RULES.length + 2)) : null;
+              if (muse) { text = muse.text; send({ d: text }); }
+              const r = muse || (await orbitGenerate(env, prompt, 8000, { onDelta: (t) => { text += t; send({ d: t }); }, shouldStop: () => gone || request.signal?.aborted }));
               const used = r.tokens && !r.stopped ? r.tokens.input + r.tokens.output : tokensOf(prompt, r.text || text);
               send({ done: true, stopped: !!r.stopped, usage: usageView(env, await charge(env, db, me.user_id, used)) });
             } catch (e) {

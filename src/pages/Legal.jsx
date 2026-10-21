@@ -172,7 +172,7 @@ export function Privacy() {
       <div className="my-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
         <p className="font-semibold text-white">In short</p>
         <ul>
-          <li>We don't sell your information, and we don't show ads or use tracking cookies.</li>
+          <li>We never sell your information: not your birthday, your password or other sign-in details, your chats, or anything else about you. We don't show ads or use tracking cookies.</li>
           <li>If you're signed in, your chats are saved with your account so they show on all your devices. The website and game you are working on (even before you publish), published websites and games, and game progress are kept on our servers with your account.</li>
           <li>What you ask the AI goes to Google to get an answer; we keep only the start of your five latest questions, to keep the service safe.</li>
           <li>You can download a copy of your data or delete your account at any time.</li>
@@ -183,6 +183,7 @@ export function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li><strong>Account:</strong> your email address, and your name and picture if you sign in with Google.</li>
+        <li><strong>Birthday:</strong> the date you enter once after signing in, used only to check your account can use Nebulux AI and Nebulux Orbit. It's never shown to anyone, never sold and never shared.</li>
         <li><strong>Forms on sites people make:</strong> if you fill in a form on a site made with Nebulux AI (a booking, an RSVP, a sign-up), what you type is kept for that site's owner to read, up to their latest 200 messages. Password and card-number fields are never sent, and the owner can delete messages at any time.</li>
         <li><strong>What you make:</strong> the sites and games you publish, and the website and game you are working on.</li>
         <li><strong>Your chats:</strong> if you're signed in, your chats (the messages you send and the AI's answers) are saved with your account so they appear on every device you sign in on. They're private to your account: we don't read them, except when needed to look into a report, keep someone safe or follow the law. Pictures you attach aren't kept with your account. Deleting a chat deletes it from your account too. If you're not signed in, chats stay only in your browser.</li>
@@ -214,7 +215,7 @@ export function Privacy() {
         <li>To handle payments and pay site owners for their sales.</li>
         <li>To check Enterprise applications.</li>
       </ul>
-      <p>We don't sell your personal information and we don't show you ads.</p>
+      <p>We never sell your personal information, including your birthday, your password and other sign-in details (credentials), your connected apps' data, your chats or what you make. We don't rent or trade it either, and we don't show you ads.</p>
 
       <h2>Who helps us run it</h2>
       <ul>
