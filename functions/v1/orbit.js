@@ -239,6 +239,20 @@ export async function onRequestPost({ request, env }) {
       const [repos, work] = await Promise.all([gh("user/repos?sort=updated&per_page=10"), gh(`search/issues?q=${encodeURIComponent("is:open involves:" + c.email)}&sort=updated&per_page=10`)]);
       return out(request, { login: c.email, repos: (repos || []).map((r) => ({ name: r.full_name, url: r.html_url, private: r.private, updated: r.updated_at, about: r.description || "" })), open: ((work && work.items) || []).map((i) => ({ title: i.title, url: i.html_url, repo: String(i.repository_url || "").split("/repos/")[1] || "", pr: !!i.pull_request })) });
     }
+    if (action === "youtube_list" || action === "gtasks_list") {
+      if (!(await allow(`orbit-g:${me.user_id}`, 30, 60))) return out(request, { error: "Slow down a little." }, 429);
+      const provider = action === "youtube_list" ? "youtube" : "tasks";
+      const a = await googleAccess(env, db, me.user_id, provider);
+      if (!a) return out(request, { error: `Connect ${provider === "youtube" ? "YouTube" : "Google Tasks"} first (Connections).` }, 400);
+      const g = (u) => fetch(u, { headers: { Authorization: "Bearer " + a } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (provider === "youtube") {
+        const [subs, lists] = await Promise.all([g("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=15&order=relevance"), g("https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=10")]);
+        return out(request, { channels: ((subs && subs.items) || []).map((i) => ({ name: i.snippet.title, about: String(i.snippet.description || "").slice(0, 140) })), playlists: ((lists && lists.items) || []).map((i) => ({ name: i.snippet.title, count: i.contentDetails?.itemCount || 0 })) });
+      }
+      const lists = await g("https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=10");
+      const all = await Promise.all(((lists && lists.items) || []).slice(0, 5).map(async (l) => { const t = await g(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(l.id)}/tasks?showCompleted=false&maxResults=25`); return ((t && t.items) || []).map((x) => ({ list: l.title, title: x.title, due: x.due || "" })); }));
+      return out(request, { tasks: all.flat().filter((t) => t.title) });
+    }
     if (action === "calendar_list" || action === "calendar_add" || action === "drive_list" || action === "drive_read") {
       if (!(await allow(`orbit-g:${me.user_id}`, 30, 60))) return out(request, { error: "Slow down a little." }, 429);
       const provider = action.startsWith("calendar") ? "calendar" : "drive";

@@ -10,6 +10,8 @@ export const GOOGLE_SCOPES = {
   gmail: "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
   calendar: "openid email https://www.googleapis.com/auth/calendar.events",
   drive: "openid email https://www.googleapis.com/auth/drive.readonly",
+  youtube: "openid email https://www.googleapis.com/auth/youtube.readonly",
+  tasks: "openid email https://www.googleapis.com/auth/tasks.readonly",
 };
 
 export async function onRequestGet({ request, env }) {
