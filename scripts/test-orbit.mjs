@@ -34,3 +34,11 @@ r = mergeOrbit(cloud, { activity: [], activityCleared: 150 });
 assert(r.activity.length === 0 && r.activityCleared === 150, "Clear activity: older entries don't come back from another device");
 r = mergeOrbit(r, { activity: [{ t: 100, text: "old" }, { t: 200, text: "new" }] });
 assert(r.activity.length === 1 && r.activity[0].text === "new", "after a clear, only newer activity is kept, even from a device that still has the old list");
+
+// ---- the agent's name and SOUL file ----
+const { agentName, selfBlock } = await import(new URL("../functions/v1/orbit.js", import.meta.url).href);
+assert(agentName({}) === "Orbit" && agentName({ agentName: "Nova <b>" }) === "Nova b", "the agent is Orbit unless renamed (names are cleaned)");
+assert(selfBlock({}) === "", "nothing extra by default");
+const sb = selfBlock({ agentName: "Nova", soul: "Be playful and short." });
+assert(/your name is Nova/.test(sb) && /SOUL file/.test(sb) && /Be playful and short\./.test(sb) && /can't change the rules/.test(sb), "a rename and the SOUL file go to the AI, below the rules");
+assert(selfBlock({ soul: "x".repeat(5000) }).length < 2300, "the SOUL file is capped");

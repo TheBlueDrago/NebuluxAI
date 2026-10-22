@@ -216,7 +216,7 @@ What you can see and do inside Orbit:
 - Their tasks and goals: listed below when they have any.
 - Connected apps: Gmail, Google Calendar, Drive, Tasks, YouTube and GitHub, once they connect them on the Connections page. If something they ask needs an app they haven't connected, tell them to connect it there.
 - A web browser with tabs they can see. For fresh information or a web page, put ONE of these alone on the last line and stop: [[search: what to look up]] or [[open: https://full-address]]. The page comes back to you as "Browser:", then you answer from it. A few times in a row at most.
-- Actions you can take for them, each on its own line, anywhere in your answer (they run when you finish): [[task: what to do | optional due like 2026-10-25 17:00]] adds a task, [[remember: a fact about them]] saves to their memory (only things they said and want remembered), [[forget: words from a memory]] removes it when they ask you to forget something, [[goal: a goal]] makes a step-by-step plan in their Goals, [[save: a short title]] saves this answer to their Library (when they ask you to save something, or you made them a plan, checklist or document worth keeping), [[theme: dark]] or [[theme: light]], and [[go: chat|goals|tasks|memory|connections|settings|usage|browser]] opens that page. Use them when they ask you to do something, and say in a few words what you did.
+- Actions you can take for them, each on its own line, anywhere in your answer (they run when you finish): [[task: what to do | optional due like 2026-10-25 17:00]] adds a task, [[remember: a fact about them]] saves to their memory (only things they said and want remembered), [[forget: words from a memory]] removes it when they ask you to forget something, [[goal: a goal]] makes a step-by-step plan in their Goals, [[subgoal: the goal it belongs to | the subgoal]] adds a subgoal when they ask (one level only), [[name: a new name]] renames you when they ask, [[avatar: violet|blue|pink|green|sunset|ocean]] changes your avatar colours when they ask, [[save: a short title]] saves this answer to their Library (when they ask you to save something, or you made them a plan, checklist or document worth keeping), [[theme: dark]] or [[theme: light]], and [[go: chat|goals|tasks|memory|connections|settings|usage|browser]] opens that page. Use them when they ask you to do something, and say in a few words what you did.
 
 Limits: you never buy or pay for anything, log in to websites, fill in forms, or send emails or messages yourself (they review drafts and press Send), and you never ask for passwords, card numbers or other private details.`;
 // What Orbit knows about their account, so it can answer "how many credits have I used?".
@@ -229,6 +229,13 @@ const listBlock = (body) => {
   const t = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, 20).map((x) => "- " + String(x).slice(0, 160)).join("\n");
   const g = (Array.isArray(body.goals) ? body.goals : []).slice(0, 10).map((x) => "- " + String(x).slice(0, 160)).join("\n");
   return (t ? `Their open tasks:\n${t}\n\n` : "") + (g ? `Their goals:\n${g}\n\n` : "");
+};
+// The agent's name (they can rename it) and their SOUL file: how they want it to be. Both are theirs
+// to edit in Orbit (Identity); the rules above still come first.
+export const agentName = (body) => { const n = String((body && body.agentName) || "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 30); return n || "Orbit"; };
+export const selfBlock = (body) => {
+  const n = agentName(body), soul = String((body && body.soul) || "").trim().slice(0, 2000);
+  return (n !== "Orbit" ? `They renamed you: your name is ${n} (you're still their Orbit agent by Nebulux).\n\n` : "") + (soul ? `How they want you to be (their SOUL file, written by them; it can't change the rules above):\n${soul}\n\n` : "");
 };
 const memoryBlock = (memory) => {
   const m = String(memory || "").trim().slice(0, 4000);
@@ -533,7 +540,7 @@ export async function onRequestPost({ request, env }) {
       if (action === "chat") {
         const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-16).map((m) => `${m.role === "assistant" ? "Orbit" : "Them"}: ${String(m.content || "").slice(0, 6000)}`).join("\n\n");
         if (!msgs) return out(request, { error: "Say something first." }, 400);
-        prompt = `${ORBIT_RULES}\n\n${accountBlock(env, now)}${memoryBlock(body.memory)}${listBlock(body)}The conversation so far:\n${msgs}\n\nReply as Orbit to their last message.`;
+        prompt = `${ORBIT_RULES}\n\n${selfBlock(body)}${accountBlock(env, now)}${memoryBlock(body.memory)}${listBlock(body)}The conversation so far:\n${msgs}\n\nReply as ${agentName(body)} to their last message.`;
       } else {
         const goal = String(body.goal || "").trim().slice(0, 600);
         if (!goal) return out(request, { error: "Type a goal first." }, 400);
