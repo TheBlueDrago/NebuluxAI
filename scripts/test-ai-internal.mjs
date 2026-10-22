@@ -1,5 +1,6 @@
 // Offline test: attached images reach Gemini (with limits); free "internal" AI calls (chat titles) are held to the basic model, a
 // short prompt and a per-user rate; normal calls are still charged. Run: node scripts/test-ai-internal.mjs
+const { TERMS_VERSION } = await import(new URL("../cloudflare-lib/terms.js", import.meta.url).href); // the agreement version accepted in these tests
 const F = new URL("../functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/", import.meta.url).pathname;
 const assert = (c, m) => { if (!c) { console.error("FAIL", m); process.exitCode = 1; } else console.log("ok", m); };
 // Rate limits count per clock minute or hour: pin the clock 30 seconds past an hour so a run
@@ -24,7 +25,7 @@ const cache = new Map();
 globalThis.caches = { default: { match: async (r) => (cache.has(r.url) ? new Response(cache.get(r.url)) : undefined), put: async (r, res) => cache.set(r.url, await res.text()) } };
 const store = new Map();
 // Test accounts have accepted the user agreement (its own tests: test-terms.mjs).
-const kv = { get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: "2026-10-07-api" } : null), put: async (k, v) => store.set(k, v), delete: async (k) => store.delete(k) };
+const kv = { get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: TERMS_VERSION } : null), put: async (k, v) => store.set(k, v), delete: async (k) => store.delete(k) };
 const { onRequestPost } = await import(F + "chatCompletion.js");
 const call = async (body) => {
   const r = await onRequestPost({ request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify(body) }), env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k" }, waitUntil: () => {} });

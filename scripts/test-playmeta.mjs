@@ -20,3 +20,10 @@ out = withGameMeta(index, { title: `"><script>alert(1)</script>` });
 assert(!out.includes("<script>"), "a game title can't add HTML to the page");
 
 assert(withGameMeta(index, { title: "" }) === index, "no title leaves the page as it was");
+
+// The game's own address for previews and search engines (not the home page's), and its picture on X too.
+const real = (await import("node:fs")).readFileSync(new URL("../index.html", import.meta.url), "utf8"); // the app page as deployed
+out = withGameMeta(real, { title: "Fruit Seas", genre: "adventure", name: "fruit-seas" });
+assert(/<link rel="canonical" href="https:\/\/nebuluxai\.com\/play\/fruit-seas" \/>/.test(out) && (out.match(/rel="canonical"/g) || []).length === 1, "a game page names its own address as canonical (once)");
+assert(/property="og:url" content="https:\/\/nebuluxai\.com\/play\/fruit-seas"/.test(out), "and as its share address");
+assert(/name="twitter:image" content="https:\/\/nebuluxai\.com\/game-thumbs\/fruit-seas\.jpg"/.test(out), "a game with a screenshot shows it on X too");

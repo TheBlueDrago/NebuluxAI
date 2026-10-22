@@ -23,6 +23,14 @@ export function withGameMeta(html, { title, genre, name: slug }) {
     out = setMeta(out, "property", "og:image:width", "480");
     out = setMeta(out, "property", "og:image:height", "360");
     out = setMeta(out, "property", "og:image:alt", name);
+    out = setMeta(out, "name", "twitter:image", `https://nebuluxai.com/game-thumbs/${slug}.jpg`);
+  }
+  // The game page's own address: for link previews (og:url) and search engines (canonical),
+  // instead of the home page's.
+  if (/^[a-z0-9.-]{1,63}$/.test(String(slug || ""))) {
+    const url = `https://nebuluxai.com/play/${slug}`;
+    out = setMeta(out, "property", "og:url", url);
+    out = out.replace(/<link\s+rel="canonical"[^>]*>\s*/i, "").replace(/<\/head>/i, () => `<link rel="canonical" href="${esc(url)}" />\n</head>`);
   }
   return out;
 }

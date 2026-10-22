@@ -1,6 +1,7 @@
 // Offline test for plan publishing limits enforced by the publish functions (Free keeps 1
 // website, Pro 3, ...; games are per month), with Base44 (fetch) and KV faked.
 // Run: node scripts/test-limits.mjs
+const { TERMS_VERSION } = await import(new URL("../cloudflare-lib/terms.js", import.meta.url).href); // the agreement version accepted in these tests
 const assert = (c, m) => {
   if (!c) {
     console.error("FAIL", m);
@@ -25,7 +26,7 @@ assert(limitError("game", "free", Array.from({ length: 50 }, (_, i) => game(`202
 const store = new Map();
 const kv = {
   // Test accounts have accepted the user agreement (its own tests: test-terms.mjs).
-  get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: "2026-10-07-api" } : null),
+  get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: TERMS_VERSION } : null),
   getWithMetadata: async (k) => ({ value: store.get(k) ?? null, metadata: store.has(k + "#meta") ? JSON.parse(store.get(k + "#meta")) : null }),
   put: async (k, v, o) => {
     store.set(k, String(v));

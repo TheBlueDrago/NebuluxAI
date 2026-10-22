@@ -1,6 +1,7 @@
 // Offline test: questions about now (news, scores, weather, "today") are answered with a Google
 // search and list their sources; others aren't searched; if searching fails the question is
 // still answered without it; every call knows today's date. Run: node scripts/test-web-answers.mjs
+const { TERMS_VERSION } = await import(new URL("../cloudflare-lib/terms.js", import.meta.url).href); // the agreement version accepted in these tests
 import { fileURLToPath, pathToFileURL } from "node:url";
 const R = fileURLToPath(new URL("..", import.meta.url));
 const assert = (c, m) => {
@@ -30,7 +31,7 @@ const cache = new Map();
 globalThis.caches = { default: { match: async (r) => (cache.has(r.url) ? new Response(cache.get(r.url)) : undefined), put: async (r, res) => cache.set(r.url, await res.text()) } };
 const store = new Map();
 // Test accounts have accepted the user agreement (its own tests: test-terms.mjs).
-const kv = { get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: "2026-10-07-api" } : null), put: async (k, v) => store.set(k, v), delete: async (k) => store.delete(k) };
+const kv = { get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: TERMS_VERSION } : null), put: async (k, v) => store.set(k, v), delete: async (k) => store.delete(k) };
 const mod = await import(pathToFileURL(R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js").href);
 const call = async (question) => {
   const r = await mod.onRequestPost({ request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify({ prompt: question, question, model: "automatic" }) }), env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k" }, waitUntil: () => {} });
