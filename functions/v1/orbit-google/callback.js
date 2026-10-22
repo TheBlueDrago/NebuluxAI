@@ -1,7 +1,9 @@
 // Nebulux Orbit → "Connect Gmail" (step 2): Google sends the person back here. The code is swapped
-// for a long-lived Gmail permission (refresh token), kept with their Orbit account, then they go back
-// to Orbit. They can disconnect any time in Orbit's Connections.
+// for a long-lived permission (refresh token), kept sealed (cloudflare-lib/seal.js) with their Orbit
+// account together with what they actually granted, then they go back to Orbit. They can disconnect
+// any time in Orbit's Connections.
 import { orbitEnsure } from "../orbit.js";
+import { seal } from "../../../cloudflare-lib/seal.js";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -27,6 +29,8 @@ export async function onRequestGet({ request, env }) {
     const part = String(tok.id_token || "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     email = JSON.parse(atob(part + "===".slice((part.length + 3) % 4))).email || "";
   } catch {}
-  await env.DB.prepare("INSERT INTO orbit_connections (user_id, provider, refresh, email, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET refresh = excluded.refresh, email = excluded.email, at = excluded.at").bind(row.user_id, provider, tok.refresh_token, String(email).slice(0, 200), Date.now()).run();
+  let sealed;
+  try { sealed = await seal(env, tok.refresh_token, row.user_id + "|" + provider); } catch { return done("unavailable"); }
+  await env.DB.prepare("INSERT INTO orbit_connections (user_id, provider, refresh, email, at, scopes, status) VALUES (?, ?, ?, ?, ?, ?, NULL) ON CONFLICT(user_id, provider) DO UPDATE SET refresh = excluded.refresh, email = excluded.email, at = excluded.at, scopes = excluded.scopes, status = NULL").bind(row.user_id, provider, sealed, String(email).slice(0, 200), Date.now(), String(tok.scope || "").slice(0, 2000)).run();
   return done("connected");
 }

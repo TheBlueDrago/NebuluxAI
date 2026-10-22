@@ -1,6 +1,8 @@
 // Nebulux Orbit → "Connect GitHub" (step 2): GitHub sends the person back here (under Nebulux Code's
-// registered callback). The access is kept with their Orbit account until they disconnect.
+// registered callback). The access is kept sealed (cloudflare-lib/seal.js) with their Orbit account
+// until they disconnect.
 import { orbitEnsure } from "../../v1/orbit.js";
+import { seal } from "../../../cloudflare-lib/seal.js";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -22,6 +24,8 @@ export async function onRequestGet({ request, env }) {
   const data = res ? await res.json().catch(() => ({})) : {};
   if (!data.access_token) return done("failed");
   const me = await fetch("https://api.github.com/user", { headers: { Authorization: "Bearer " + data.access_token, "User-Agent": "Nebulux" } }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
-  await env.DB.prepare("INSERT INTO orbit_connections (user_id, provider, refresh, email, at) VALUES (?, 'github', ?, ?, ?) ON CONFLICT(user_id, provider) DO UPDATE SET refresh = excluded.refresh, email = excluded.email, at = excluded.at").bind(row.user_id, data.access_token, String(me.login || "").slice(0, 100), Date.now()).run();
+  let sealed;
+  try { sealed = await seal(env, data.access_token, row.user_id + "|github"); } catch { return done("unavailable"); }
+  await env.DB.prepare("INSERT INTO orbit_connections (user_id, provider, refresh, email, at, status) VALUES (?, 'github', ?, ?, ?, NULL) ON CONFLICT(user_id, provider) DO UPDATE SET refresh = excluded.refresh, email = excluded.email, at = excluded.at, status = NULL").bind(row.user_id, sealed, String(me.login || "").slice(0, 100), Date.now()).run();
   return done("connected");
 }

@@ -17,6 +17,7 @@
 import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
 import { exempt } from "../../cloudflare-lib/terms.js";
+import { seal, unseal, isSealed } from "../../cloudflare-lib/seal.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 import { publicUrl, parseResults, pageText, viewHtml } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/web-browse.js";
 
@@ -55,7 +56,13 @@ const ensure = (db) =>
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_terms (user_id TEXT PRIMARY KEY, version TEXT NOT NULL, at INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_states (state TEXT PRIMARY KEY, user_id TEXT NOT NULL, back TEXT NOT NULL, exp INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS orbit_connections (user_id TEXT NOT NULL, provider TEXT NOT NULL, refresh TEXT NOT NULL, email TEXT, at INTEGER NOT NULL, PRIMARY KEY (user_id, provider))"),
-  ]).catch((e) => { ready = null; throw e; }));
+  ])
+    // scopes: what the person actually granted (Google's own list). status: "reconnect" once the permission stops working.
+    .then(async () => {
+      const cols = ((await db.prepare("PRAGMA table_info(orbit_connections)").all()).results || []).map((c) => c.name);
+      for (const c of ["scopes", "status"]) if (!cols.includes(c)) await db.prepare(`ALTER TABLE orbit_connections ADD COLUMN ${c} TEXT`).run();
+    })
+    .catch((e) => { ready = null; throw e; }));
 export const orbitEnsure = ensure;
 
 export async function orbitUserByToken(db, token) {
@@ -76,24 +83,97 @@ async function orbitUser(db, request) {
   return m ? orbitUserByToken(db, m[1]) : null;
 }
 
-// ---- Gmail (only after the person connects it, and sending only when they press Send) ----
-async function googleAccess(env, db, uid, provider) {
-  const c = await db.prepare("SELECT refresh, email FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(uid, provider).first();
-  if (!c) return null;
+// ---- Connected apps (only after the person connects them; sending and adding only when they confirm) ----
+// What each permission covers, by the names Orbit's Settings → Connectors uses. A connection asks only
+// for "read" at first; Gmail's "send" is asked for separately, the first time they turn sending on.
+// Gmail reads with gmail.readonly because the inbox list shows each email's short preview.
+const G = "https://www.googleapis.com/auth/";
+export const SCOPE_NEEDS = {
+  gmail: { read: G + "gmail.readonly", send: G + "gmail.send" },
+  calendar: { read: G + "calendar.events", add: G + "calendar.events" },
+  drive: { read: G + "drive.readonly" },
+  youtube: { read: G + "youtube.readonly" },
+  tasks: { read: G + "tasks.readonly" },
+};
+// The permissions a connection is missing ("Needs additional access"). Connections made before Orbit
+// kept the granted list (scopes null) count as having what was asked for then.
+export const needsOf = (provider, scopes) => (scopes == null ? [] : Object.entries(SCOPE_NEEDS[provider] || {}).filter(([, sc]) => !String(scopes).split(/\s+/).includes(sc)).map(([k]) => k));
+// What Connect asks Google for: reading, plus one extra permission when the person asked for it.
+export const GOOGLE_SCOPES = Object.fromEntries(Object.entries(SCOPE_NEEDS).map(([p, n]) => [p, "openid email " + n.read]));
+export const scopesFor = (provider, add) => [...new Set((GOOGLE_SCOPES[provider] + " " + ((add && add !== "read" && SCOPE_NEEDS[provider][add]) || "")).trim().split(" "))].join(" ");
+// The address of Google's (or GitHub's) own permission screen for one connection. A one-time state
+// (10 minutes) remembers who is connecting and where to go back to (orbit-google/callback.js,
+// github/callback/orbit.js). GitHub uses Nebulux Code's app, under its registered return address.
+export async function connectAddress(env, db, origin, uid, provider, add, back) {
+  const state = randHex(16);
+  await db.prepare("INSERT INTO orbit_states (state, user_id, back, exp) VALUES (?, ?, ?, ?)").bind(state, uid, provider + " " + back, Date.now() + 600000).run();
+  const github = provider === "github", g = new URL(github ? "https://github.com/login/oauth/authorize" : "https://accounts.google.com/o/oauth2/v2/auth");
+  const set = (k, v) => g.searchParams.set(k, v);
+  set("client_id", String(github ? env.GITHUB_CLIENT_ID : env.GOOGLE_CLIENT_ID).trim());
+  set("redirect_uri", origin + (github ? "/github/callback/orbit" : "/v1/orbit-google/callback"));
+  if (github) set("scope", "read:user repo");
+  else { set("response_type", "code"); set("scope", scopesFor(provider, add)); set("access_type", "offline"); set("prompt", "consent"); set("include_granted_scopes", "true"); }
+  set("state", state);
+  return g.toString();
+}
+const connBind = (uid, provider) => uid + "|" + provider;
+const markReconnect = (db, uid, provider) => db.prepare("UPDATE orbit_connections SET status = 'reconnect' WHERE user_id = ? AND provider = ?").bind(uid, provider).run().catch(() => {});
+// { token, email, scopes } when it works; otherwise { status: "none" | "reconnect" | "down" }.
+export async function googleAccess(env, db, uid, provider) {
+  const c = await db.prepare("SELECT refresh, email, scopes, status FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(uid, provider).first();
+  if (!c) return { status: "none" };
+  const refresh = await unseal(env, c.refresh, connBind(uid, provider));
+  if (!refresh) { await markReconnect(db, uid, provider); return { status: "reconnect" }; }
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, refresh_token: c.refresh, grant_type: "refresh_token" }),
+    body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, refresh_token: refresh, grant_type: "refresh_token" }),
   }).catch(() => null);
   const t = r && r.ok ? await r.json().catch(() => null) : null;
-  return t && t.access_token ? { token: t.access_token, email: c.email } : null;
+  if (!t || !t.access_token) {
+    // Google says the permission is gone (taken back, expired, or the password changed).
+    const e = r && !r.ok ? await r.json().catch(() => ({})) : {};
+    if (e.error === "invalid_grant" || (r && r.status === 401)) { await markReconnect(db, uid, provider); return { status: "reconnect" }; }
+    return { status: "down" };
+  }
+  // Keep the granted list current (a permission can be taken back at Google) and seal an older plain token.
+  const scopes = t.scope ? String(t.scope) : c.scopes;
+  if (!isSealed(c.refresh) || scopes !== c.scopes || c.status) {
+    try {
+      await db.prepare("UPDATE orbit_connections SET refresh = ?, scopes = ?, status = NULL WHERE user_id = ? AND provider = ?").bind(isSealed(c.refresh) ? c.refresh : await seal(env, refresh, connBind(uid, provider)), scopes, uid, provider).run();
+    } catch {}
+  }
+  return { token: t.access_token, email: c.email, scopes };
 }
 const gmailAccess = (env, db, uid) => googleAccess(env, db, uid, "gmail");
+// GitHub's permission doesn't expire; a 401 from GitHub means it was taken back.
+async function githubAccess(env, db, uid) {
+  const c = await db.prepare("SELECT refresh, email, status FROM orbit_connections WHERE user_id = ? AND provider = 'github'").bind(uid).first();
+  if (!c) return { status: "none" };
+  const tok = await unseal(env, c.refresh, connBind(uid, "github"));
+  if (!tok) { await markReconnect(db, uid, "github"); return { status: "reconnect" }; }
+  if (!isSealed(c.refresh)) await seal(env, tok, connBind(uid, "github")).then((v) => db.prepare("UPDATE orbit_connections SET refresh = ? WHERE user_id = ? AND provider = 'github'").bind(v, uid).run()).catch(() => {});
+  return { token: tok, email: c.email };
+}
+const CONN_NAMES = { gmail: "Gmail", calendar: "Google Calendar", drive: "Google Drive", youtube: "YouTube", tasks: "Google Tasks", github: "GitHub" };
+const noAccess = (request, a, provider) => {
+  const n = CONN_NAMES[provider] || provider;
+  if (a.status === "reconnect") return out(request, { error: `${n} needs reconnecting. Open Settings → Connectors → ${n} and press Reconnect.`, reconnect: provider }, 400);
+  if (a.status === "down") return out(request, { error: `Couldn't reach ${n} just now. Try again in a moment.` }, 502);
+  return out(request, { error: `Connect ${n} first (Settings → Connectors).` }, 400);
+};
+// Taking the permission back at Google when someone disconnects (or deletes their data).
+const revokeAt = async (env, c, uid) => {
+  if (c.provider === "github") return;
+  const tok = await unseal(env, c.refresh, connBind(uid, c.provider));
+  if (tok) await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(tok), { method: "POST" }).catch(() => {});
+};
 const gapi = (access, url, init = {}) => fetch(url, { ...init, headers: { Authorization: "Bearer " + access.token, "Content-Type": "application/json", ...(init.headers || {}) } });
 // Google Calendar: the next events, and adding one the person approved.
-async function calendarList(access) {
-  const now = new Date().toISOString();
-  const r = await gapi(access, `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&maxResults=12&singleEvents=true&orderBy=startTime`);
+// days: only events starting in the next that many days (for Upcoming); 0 for the next 12 whenever they are.
+async function calendarList(access, days = 0) {
+  const now = new Date().toISOString(), until = days ? "&timeMax=" + encodeURIComponent(new Date(Date.now() + days * 864e5).toISOString()) : "";
+  const r = await gapi(access, `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}${until}&maxResults=12&singleEvents=true&orderBy=startTime`);
   const d = r.ok ? await r.json() : null;
   return ((d && d.items) || []).map((e) => ({ id: e.id, title: e.summary || "(no title)", start: (e.start && (e.start.dateTime || e.start.date)) || "", end: (e.end && (e.end.dateTime || e.end.date)) || "", where: e.location || "" }));
 }
@@ -414,7 +494,7 @@ export async function onRequestPost({ request, env }) {
     if (action === "delete_data") {
       if (body.confirmed !== true) return out(request, { error: "Confirm first." }, 400);
       const conns = (await db.prepare("SELECT provider, refresh FROM orbit_connections WHERE user_id = ?").bind(me.user_id).all()).results || [];
-      for (const c of conns) if (c.provider !== "github") await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(c.refresh), { method: "POST" }).catch(() => {});
+      for (const c of conns) await revokeAt(env, c, me.user_id);
       await db.batch([
         db.prepare("DELETE FROM orbit_data WHERE user_id = ?").bind(me.user_id),
         db.prepare("DELETE FROM orbit_connections WHERE user_id = ?").bind(me.user_id),
@@ -447,35 +527,55 @@ export async function onRequestPost({ request, env }) {
 
     // ---- connections ----
     if (action === "connections") {
-      const rows = (await db.prepare("SELECT provider, email, at FROM orbit_connections WHERE user_id = ?").bind(me.user_id).all()).results || [];
-      return out(request, { connections: rows, gmailReady: !!env.GOOGLE_CLIENT_ID, googleReady: !!env.GOOGLE_CLIENT_ID, githubReady: !!env.GITHUB_CLIENT_ID });
+      const rows = (await db.prepare("SELECT provider, email, at, scopes, status FROM orbit_connections WHERE user_id = ?").bind(me.user_id).all()).results || [];
+      const connections = rows.map((c) => ({ provider: c.provider, email: c.email, at: c.at, status: c.status === "reconnect" ? "reconnect" : "ok", need: needsOf(c.provider, c.scopes) }));
+      return out(request, { connections, gmailReady: !!env.GOOGLE_CLIENT_ID, googleReady: !!env.GOOGLE_CLIENT_ID, githubReady: !!env.GITHUB_CLIENT_ID });
+    }
+    // Connect, Reconnect, or "Allow" for one more permission: the address of the provider's permission screen.
+    if (action === "connect_url") {
+      const provider = String(body.provider || ""), back = String(body.back || "");
+      if (!CONN_NAMES[provider]) return out(request, { error: "Unknown app." }, 400);
+      if (!ORBIT_RETURN.some((r) => r.test(back))) return out(request, { error: "This link isn't from Nebulux Orbit." }, 400);
+      if (!(provider === "github" ? env.GITHUB_CLIENT_ID : env.GOOGLE_CLIENT_ID)) return out(request, { error: `${CONN_NAMES[provider]} isn't available yet.` }, 503);
+      if (!(await allow(`orbit-conn:${me.user_id}`, 10, 600))) return out(request, { error: "Slow down a little." }, 429);
+      return out(request, { url: await connectAddress(env, db, new URL(request.url).origin, me.user_id, provider, String(body.add || ""), back) });
+    }
+    // The detail page checks the permission still works (so a dead one shows "Needs reconnect").
+    if (action === "connection_check") {
+      const provider = String(body.provider || "");
+      if (!CONN_NAMES[provider]) return out(request, { error: "Unknown app." }, 400);
+      if (!(await allow(`orbit-check:${me.user_id}`, 20, 60))) return out(request, { error: "Slow down a little." }, 429);
+      const a = provider === "github" ? await githubAccess(env, db, me.user_id) : await googleAccess(env, db, me.user_id, provider);
+      return out(request, { status: a.status || "ok", need: a.token ? needsOf(provider, a.scopes) : [] });
     }
     if (action === "disconnect") {
-      const c = await db.prepare("SELECT refresh FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).first();
-      if (c && body.provider !== "github") await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(c.refresh), { method: "POST" }).catch(() => {});
+      const c = await db.prepare("SELECT provider, refresh FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).first();
+      if (c) await revokeAt(env, c, me.user_id);
       await db.prepare("DELETE FROM orbit_connections WHERE user_id = ? AND provider = ?").bind(me.user_id, String(body.provider || "")).run();
       return out(request, { ok: true });
     }
     if (action === "gmail_list") {
       if (!(await allow(`orbit-gmail:${me.user_id}`, 20, 60))) return out(request, { error: "Slow down a little." }, 429);
       const a = await gmailAccess(env, db, me.user_id);
-      if (!a) return out(request, { error: "Connect Gmail first (Connections)." }, 400);
+      if (!a.token) return noAccess(request, a, "gmail");
       return out(request, { email: a.email, messages: await gmailList(a, Math.min(20, Math.max(1, +body.max || 10))) });
     }
     if (action === "github_list") {
       if (!(await allow(`orbit-gh:${me.user_id}`, 20, 60))) return out(request, { error: "Slow down a little." }, 429);
-      const c = await db.prepare("SELECT refresh, email FROM orbit_connections WHERE user_id = ? AND provider = 'github'").bind(me.user_id).first();
-      if (!c) return out(request, { error: "Connect GitHub first (Connections)." }, 400);
-      const gh = (path) => fetch("https://api.github.com/" + path, { headers: { Authorization: "Bearer " + c.refresh, "User-Agent": "Nebulux-Orbit", Accept: "application/vnd.github+json" } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const c = await githubAccess(env, db, me.user_id);
+      if (!c.token) return noAccess(request, c, "github");
+      let dead = false;
+      const gh = (path) => fetch("https://api.github.com/" + path, { headers: { Authorization: "Bearer " + c.token, "User-Agent": "Nebulux-Orbit", Accept: "application/vnd.github+json" } }).then((r) => { if (r.status === 401) dead = true; return r.ok ? r.json() : null; }).catch(() => null);
       const [repos, work] = await Promise.all([gh("user/repos?sort=updated&per_page=10"), gh(`search/issues?q=${encodeURIComponent("is:open involves:" + c.email)}&sort=updated&per_page=10`)]);
+      if (dead) { await markReconnect(db, me.user_id, "github"); return noAccess(request, { status: "reconnect" }, "github"); }
       return out(request, { login: c.email, repos: (repos || []).map((r) => ({ name: r.full_name, url: r.html_url, private: r.private, updated: r.updated_at, about: r.description || "" })), open: ((work && work.items) || []).map((i) => ({ title: i.title, url: i.html_url, repo: String(i.repository_url || "").split("/repos/")[1] || "", pr: !!i.pull_request })) });
     }
     if (action === "youtube_list" || action === "gtasks_list") {
       if (!(await allow(`orbit-g:${me.user_id}`, 30, 60))) return out(request, { error: "Slow down a little." }, 429);
       const provider = action === "youtube_list" ? "youtube" : "tasks";
       const a = await googleAccess(env, db, me.user_id, provider);
-      if (!a) return out(request, { error: `Connect ${provider === "youtube" ? "YouTube" : "Google Tasks"} first (Connections).` }, 400);
-      const g = (u) => fetch(u, { headers: { Authorization: "Bearer " + a } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!a.token) return noAccess(request, a, provider);
+      const g = (u) => fetch(u, { headers: { Authorization: "Bearer " + a.token } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       if (provider === "youtube") {
         const [subs, lists] = await Promise.all([g("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=15&order=relevance"), g("https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=10")]);
         return out(request, { channels: ((subs && subs.items) || []).map((i) => ({ name: i.snippet.title, about: String(i.snippet.description || "").slice(0, 140) })), playlists: ((lists && lists.items) || []).map((i) => ({ name: i.snippet.title, count: i.contentDetails?.itemCount || 0 })) });
@@ -488,8 +588,8 @@ export async function onRequestPost({ request, env }) {
       if (!(await allow(`orbit-g:${me.user_id}`, 30, 60))) return out(request, { error: "Slow down a little." }, 429);
       const provider = action.startsWith("calendar") ? "calendar" : "drive";
       const a = await googleAccess(env, db, me.user_id, provider);
-      if (!a) return out(request, { error: `Connect ${provider === "calendar" ? "Google Calendar" : "Google Drive"} first (Connections).` }, 400);
-      if (action === "calendar_list") return out(request, { events: await calendarList(a) });
+      if (!a.token) return noAccess(request, a, provider);
+      if (action === "calendar_list") return out(request, { events: await calendarList(a, Math.min(14, Math.max(0, +body.days || 0))) });
       if (action === "drive_list") return out(request, { files: await driveList(a) });
       if (action === "drive_read") { const f = await driveRead(a, String(body.id || "")); return f ? out(request, f) : out(request, { error: "That file couldn't be opened." }, 404); }
       if (body.confirmed !== true) return out(request, { error: "Press Add to confirm." }, 400);
@@ -504,7 +604,9 @@ export async function onRequestPost({ request, env }) {
       const to = String(body.to || "").trim(), subject = String(body.subject || "").slice(0, 200), text = String(body.text || "").slice(0, 20000);
       if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(to)) return out(request, { error: "That email address doesn't look right." }, 400);
       const a = await gmailAccess(env, db, me.user_id);
-      if (!a) return out(request, { error: "Connect Gmail first (Connections)." }, 400);
+      if (!a.token) return noAccess(request, a, "gmail");
+      // Sending is its own permission, asked for only when they turn it on.
+      if (needsOf("gmail", a.scopes).includes("send")) return out(request, { error: "Orbit doesn't have permission to send from your Gmail yet. Allow it in Settings → Connectors → Gmail.", needAccess: "send" }, 403);
       return (await gmailSend(a, to, subject, text)) ? out(request, { ok: true }) : out(request, { error: "Gmail didn't send it. Try again." }, 502);
     }
 

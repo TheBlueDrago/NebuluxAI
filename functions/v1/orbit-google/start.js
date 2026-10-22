@@ -1,18 +1,11 @@
-// Nebulux Orbit → "Connect Gmail" (step 1). Opened by the Orbit site as
-// https://nebuluxai.com/v1/orbit-google/start?t=<Orbit sign-in>&return=<Orbit address>.
-// It remembers who is connecting (a one-time state, 10 minutes) and sends them to Google's own
-// permission screen for reading and sending Gmail. Uses the owner's Google app (GOOGLE_CLIENT_ID);
-// https://nebuluxai.com/v1/orbit-google/callback must be one of its redirect URIs.
-import { orbitEnsure, orbitUserByToken, ORBIT_RETURN, randHex } from "../orbit.js";
-
-// What each connection may do (Google shows this on its permission screen).
-export const GOOGLE_SCOPES = {
-  gmail: "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
-  calendar: "openid email https://www.googleapis.com/auth/calendar.events",
-  drive: "openid email https://www.googleapis.com/auth/drive.readonly",
-  youtube: "openid email https://www.googleapis.com/auth/youtube.readonly",
-  tasks: "openid email https://www.googleapis.com/auth/tasks.readonly",
-};
+// Nebulux Orbit → Connect (step 1), older form: https://nebuluxai.com/v1/orbit-google/start?p=<app>&t=<Orbit sign-in>&return=<Orbit>.
+// The Orbit site now asks for the address with a POST instead ({ action: "connect_url" } in orbit.js),
+// so its sign-in isn't put in a URL; this stays for a page that was open before that change.
+// A connection asks only to read at first; &add=send (Gmail) asks for sending on top.
+// Uses the owner's Google app (GOOGLE_CLIENT_ID); https://nebuluxai.com/v1/orbit-google/callback must be
+// one of its redirect URIs.
+import { orbitEnsure, orbitUserByToken, ORBIT_RETURN, connectAddress, GOOGLE_SCOPES } from "../orbit.js";
+export { GOOGLE_SCOPES, scopesFor } from "../orbit.js";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -24,16 +17,5 @@ export async function onRequestGet({ request, env }) {
   await orbitEnsure(env.DB);
   const me = await orbitUserByToken(env.DB, url.searchParams.get("t") || "");
   if (!me) return done("signin");
-  const state = randHex(16);
-  await env.DB.prepare("INSERT INTO orbit_states (state, user_id, back, exp) VALUES (?, ?, ?, ?)").bind(state, me.user_id, provider + " " + back, Date.now() + 600000).run();
-  const g = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  g.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
-  g.searchParams.set("redirect_uri", url.origin + "/v1/orbit-google/callback");
-  g.searchParams.set("response_type", "code");
-  g.searchParams.set("scope", GOOGLE_SCOPES[provider]);
-  g.searchParams.set("access_type", "offline");
-  g.searchParams.set("prompt", "consent");
-  g.searchParams.set("include_granted_scopes", "true");
-  g.searchParams.set("state", state);
-  return Response.redirect(g.toString(), 302);
+  return Response.redirect(await connectAddress(env, env.DB, url.origin, me.user_id, provider, url.searchParams.get("add"), back), 302);
 }
