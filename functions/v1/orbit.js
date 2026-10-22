@@ -18,6 +18,9 @@ import { currentUser } from "../../cloudflare-lib/credits.js";
 import { allow } from "../../cloudflare-lib/ratelimit.js";
 import { exempt } from "../../cloudflare-lib/terms.js";
 import { seal, unseal, isSealed } from "../../cloudflare-lib/seal.js";
+import { handleAuth, sha } from "../../cloudflare-lib/auth.js";
+import { update } from "../../cloudflare-lib/db.js";
+import { turnstileOn } from "../../cloudflare-lib/turnstile.js";
 import { orbitGenerate } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion.js";
 import { publicUrl, parseResults, pageText, viewHtml } from "../api/apps/6a8b5eb7787b8a4d6a18f662/functions/web-browse.js";
 
@@ -362,6 +365,37 @@ export async function onRequestPost({ request, env }) {
       const code = rand(16);
       await db.prepare("INSERT INTO orbit_codes (code, user_id, name, exp) VALUES (?, ?, ?, ?)").bind(code, user.id, String(user.full_name || "").slice(0, 60), Date.now() + 5 * 60000).run();
       return out(request, { code });
+    }
+    // Orbit's sign-up page (nebulux-orbit: /signup). Orbit's own backend can't send email, so the account
+    // is made here, by the same code as nebuluxai.com's sign-up: the password rules, the "I'm not a robot"
+    // check, a 6-digit code to confirm the email, the welcome email and the owner told about new accounts.
+    // Once the code is right, Orbit gets its own sign-in (the Nebulux session that comes with it is ended).
+    if (action === "signup_settings") return out(request, { turnstile_site_key: turnstileOn(env) ? env.TURNSTILE_SITE_KEY : null });
+    if (action === "signup" || action === "signup_verify" || action === "signup_resend") {
+      const ip = request.headers.get("cf-connecting-ip") || "x";
+      if (!(await allow(`orbit-signup:${ip}`, 15, 3600))) return out(request, { error: "Too many tries. Wait a while and try again." }, 429);
+      const email = String(body.email || "").trim().toLowerCase();
+      if (action === "signup") {
+        const r = await handleAuth(db, env, request, "auth/register", { email, password: String(body.password || ""), turnstile_token: body.turnstile_token });
+        if (r.status !== 200) return out(request, { error: r.body.message, code: r.body.code }, r.status);
+        // the name they chose (a new account starts with the part of the email before the @)
+        const name = String(body.full_name || "").replace(/<[^>]*>/g, "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 60);
+        if (name) {
+          const row = await db.prepare("SELECT user_id, verified FROM logins WHERE email = ?").bind(email).first();
+          if (row && !row.verified) await update(db, "User", { system: true }, row.user_id, { full_name: name }).catch(() => {});
+        }
+        return out(request, { ok: true, email });
+      }
+      if (action === "signup_resend") {
+        const r = await handleAuth(db, env, request, "auth/resend-otp", { email });
+        return r.status === 200 ? out(request, { ok: true }) : out(request, { error: r.body.message }, r.status);
+      }
+      const r = await handleAuth(db, env, request, "auth/verify-otp", { email, otp_code: String(body.code || "") });
+      if (r.status !== 200) return out(request, { error: r.body.message }, r.status);
+      if (r.body.access_token) await db.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha(r.body.access_token)).run().catch(() => {});
+      const u = r.body.user || {}, token = rand(24), name = String(u.full_name || "").slice(0, 60);
+      await db.prepare("INSERT INTO orbit_tokens (token, user_id, name, at) VALUES (?, ?, ?, ?)").bind(token, u.id, name, Date.now()).run();
+      return out(request, { token, name: name || "there" });
     }
     if (action === "email_check") {
       const ip = request.headers.get("cf-connecting-ip") || "x";
