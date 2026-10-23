@@ -29,6 +29,7 @@ import { CREDIT_PACKS } from "./creditPacks.js";
 export { TIERS, TIER_OF_MODEL, TIER_NAMES, PLAN_TOTALS } from "./planTotals.js";
 import { TIERS, PLAN_TOTALS } from "./planTotals.js";
 import { blockedBy, unverified, emailRemoved, removedEmailKey } from "./bans.js";
+import { readSession, sessionView, sessionExempt } from "./creditSession.js";
 const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4, admin: 5 };
 
 // Whole credits: 1 per started 10,000 characters of reply, times the effort level.
@@ -218,7 +219,9 @@ export async function entitlement(kv, request, user, { other = false } = {}) {
   };
 }
 
-export async function creditStatus(kv, ent) {
+// db (optional): the D1 database, for the session limit (creditSession.js). Without it the status has
+// no session; for the owner's accounts it's null (no limit).
+export async function creditStatus(kv, ent, db) {
   const month = monthKey();
   const base = PLAN_TOTALS[ent.plan] || PLAN_TOTALS.free;
   const totals = {};
@@ -242,6 +245,7 @@ export async function creditStatus(kv, ent) {
     ...(ent.blocked && ent.blockReason ? { blockReason: ent.blockReason } : {}),
     ...(ent.blocked ? { blockedUntil: ent.blockedUntil || null } : {}),
     tiers,
+    ...(db ? { session: sessionExempt(ent.user) ? null : sessionView(await readSession(db, ent.user.id).catch(() => null)) } : {}),
     planSource: ent.planSource || "free",
     planEndsAt: ent.planEndsAt || null,
     offer: ent.offer || null,

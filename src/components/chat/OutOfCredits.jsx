@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Clock, Zap, Coins } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
 import { outOfCreditsOptions, nextRefresh, waitText } from "@/lib/creditRefresh";
+import SessionLimit from "@/components/chat/SessionLimit";
 
 const price = (n) => `$${Number.isInteger(Number(n)) ? n : Number(n).toFixed(2)}`;
 const money = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
@@ -24,6 +25,9 @@ export default function OutOfCredits({ tier, canSwitch = true }) {
     if (due) credits?.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [due]);
+
+  // The session limit, not the month's credits: when the next session starts.
+  if (credits?.sessionOut) return <SessionLimit />;
 
   const { name, upgrade, pack, refresh } = outOfCreditsOptions(tier, credits, now);
   const wait = refresh ? waitText(refresh.at - now) : "";

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { sessionState } from "@/lib/creditRefresh";
 
 // Credits are counted and enforced on the server (the Cloudflare "credits" and
 // "chatCompletion" functions, see cloudflare-lib/credits.js). They used to live in
@@ -54,6 +55,17 @@ export function useCredits() {
     [refresh]
   );
 
+  // The session limit (cloudflare-lib/creditSession.js: 1 credit per message, 50 per 5-hour session,
+  // shared by every AI and chat): while it's used up, every AI waits; when it resets, the status is
+  // read again so sending opens up by itself.
+  const session = status?.session || null;
+  const ses = sessionState(session);
+  useEffect(() => {
+    if (!ses.resetAt) return undefined;
+    const t = setTimeout(refresh, Math.min(2147483000, ses.resetAt - Date.now() + 1500));
+    return () => clearTimeout(t);
+  }, [ses.resetAt, refresh]);
+
   const tier = (k) => status?.tiers?.[k] || NONE;
   // Until the first load finishes, don't block sending — the server checks anyway.
   const remainingOf = (k) => (status ? tier(k).remaining : Infinity);
@@ -76,10 +88,10 @@ export function useCredits() {
     aiCodeRemaining,
     galaxy5Remaining,
     space5Remaining,
-    aiExhausted: aiRemaining <= 0,
-    aiCodeExhausted: aiCodeRemaining <= 0,
-    galaxy5Exhausted: galaxy5Remaining <= 0,
-    space5Exhausted: space5Remaining <= 0,
+    aiExhausted: aiRemaining <= 0 || ses.out,
+    aiCodeExhausted: aiCodeRemaining <= 0 || ses.out,
+    galaxy5Exhausted: galaxy5Remaining <= 0 || ses.out,
+    space5Exhausted: space5Remaining <= 0 || ses.out,
     plan: status?.plan || "free",
     // Where the plan comes from ("free", "paid", "trial", "grant", "member", "admin"), when it
     // ends, the new-account offer, and (Enterprise) the seats in the shared pool.
@@ -89,6 +101,9 @@ export function useCredits() {
     seats: status?.seats || null,
     shared: !!status?.shared,
     tiers: status?.tiers || null,
+    // { limit, hours, used, remaining, resetAt } (null for the owner's accounts), and whether it's used up
+    session,
+    sessionOut: ses.out,
     // Banned or blocked by an admin, as the server sees it (the ban screen uses this too).
     blocked: status?.blocked === true,
     blockedUntil: status?.blockedUntil || null,

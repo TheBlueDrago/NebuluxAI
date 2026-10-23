@@ -14,7 +14,7 @@ export async function onRequest(context) {
     const body = request.method === "POST" ? await request.clone().json().catch(() => ({})) : {};
     if (body && body.action === "my-activity") return json({ activity: await activityOf(env.PUBLISHED_HTML, user.id) });
     const ent = await entitlement(env.PUBLISHED_HTML, request, user);
-    return json(await creditStatus(env.PUBLISHED_HTML, ent));
+    return json(await creditStatus(env.PUBLISHED_HTML, ent, env.DB));
   } catch (err) {
     return json({ error: "Could not load credits.", detail: String((err && err.message) || err) }, 500);
   }

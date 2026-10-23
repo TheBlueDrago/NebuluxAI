@@ -36,6 +36,7 @@ const ANSWER_OR_CODE =
 import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
 import { TIER_OF_AI } from "@/lib/creditRefresh";
 import OutOfCredits from "@/components/chat/OutOfCredits";
+import SessionMeter from "@/components/chat/SessionMeter";
 import { useEffort, effortFor } from "@/lib/effort";
 import { streamChat } from "@/lib/aiStream";
 import { chatTitle } from "@/lib/chatTitle";
@@ -655,6 +656,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               ))}
             </div>
           )}
+          <SessionMeter />
           {isExhausted && !loading && <OutOfCredits tier={TIER_OF_AI[selectedAi]} />}
           <div className={claude ? "claude-composer bg-[var(--cl-card)] border border-[var(--cl-border)] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,.25)] focus-within:border-[var(--cl-focus)] transition-colors" : ""}>
           <div className={claude ? "flex items-end gap-2" : "flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-indigo-500/50 transition-colors"}>

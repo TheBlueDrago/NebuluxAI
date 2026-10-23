@@ -33,6 +33,7 @@ import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_C
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
 import { ageStatus } from "../../../../../cloudflare-lib/agegate.js";
+import { takeSessionCredit, giveSessionCredit, sessionExempt, waitText } from "../../../../../cloudflare-lib/creditSession.js";
 
 const MODEL_MAP = {
   automatic: "gemini-3.6-flash",
@@ -517,7 +518,7 @@ export async function onRequestPost(context) {
     const effort = internal ? "low" : EFFORT[body.effort] ? body.effort : DEFAULT_EFFORT;
     const mult = EFFORT_MULT[effort];
 
-    let left = Infinity;
+    let left = Infinity, sessionTook = null;
     if (!internal && !apiBill) {
       // Replies started at the same moment all see the same balance and their charges can
       // overwrite each other (KV has no locks), so a script firing many at once could get
@@ -525,7 +526,7 @@ export async function onRequestPost(context) {
       if (!(await allow(`chat:${user.id}`, 15, 60))) {
         return json({ error: "You're sending messages very fast. Wait a moment and try again." }, 429);
       }
-      const before = await creditStatus(kv, ent);
+      const before = await creditStatus(kv, ent, env.DB);
       left = before.tiers[tier].remaining;
       if (before.tiers[tier].total <= 0) {
         return json(
@@ -547,10 +548,29 @@ export async function onRequestPost(context) {
       }
     }
 
+    // The session limit (cloudflare-lib/creditSession.js): this message takes 1 of the session's 50
+    // credits now, as it's sent (the first starts the 5-hour timer); one limit for every AI and chat.
+    // A website or game build's automatic "continue" rides on the message that started it.
+    if (!internal && !apiBill && env.DB && !sessionExempt(user)) {
+      const took = await takeSessionCredit(env.DB, user.id, { followUp: body.question === "continue" });
+      if (!took.ok) {
+        const wait = waitText(took.start + 5 * 3600e3 - Date.now());
+        return json({ error: `You've used all 50 credits for this session (1 per message). Your next session starts in ${wait}.`, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
+      }
+      if (took.counted) sessionTook = took;
+    }
+    // No answer came (the AI was busy or failed): the message's session credit goes back.
+    const noAnswer = async () => {
+      if (sessionTook) await giveSessionCredit(env.DB, user.id, sessionTook.start);
+    };
+
     // "Who made you?": the model's own training says Google, so the reminder goes with the question.
     const idNote = !internal && asksWhoItIs(body.question) ? `${IDENTITY_NOTE}\n\n` : "";
     const input = internal ? prompt : promptParts(idNote + prompt, body.images);
-    if (input && input.error) return json({ error: input.error }, 400);
+    if (input && input.error) {
+      await noAnswer();
+      return json({ error: input.error }, 400);
+    }
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
     // The reply stops at what the user's credits cover: whole credits x effort multiplier.
@@ -568,7 +588,7 @@ export async function onRequestPost(context) {
       const cost = cut ? left : creditsFor(text, effort);
       // `question` is the user's own words (the prompt adds instructions), for Monitor's activity view.
       await charge(kv, ent, tier, cost, String(body.question || prompt).slice(0, 300));
-      return { cut, charged: cost, credits: await creditStatus(kv, ent) };
+      return { cut, charged: cost, credits: await creditStatus(kv, ent, env.DB) };
     };
 
     if (!body.stream) {
@@ -581,6 +601,7 @@ export async function onRequestPost(context) {
         // bare "error code: 502", which hid this message from users.
         counted(context, failKind(err));
         flagged(context, err, user, prompt);
+        await noAnswer();
         return json(failure(err), 503);
       }
     }
@@ -610,6 +631,7 @@ export async function onRequestPost(context) {
         } catch (err) {
           counted(context, failKind(err));
           flagged(context, err, user, prompt);
+          await noAnswer();
           await send({ ...failure(err), status: 503 });
         } finally {
           await writer.close().catch(() => {});

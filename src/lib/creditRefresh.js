@@ -22,6 +22,21 @@ export function nextRefresh(now = Date.now()) {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
 }
 
+// The session limit (cloudflare-lib/creditSession.js): each message takes 1 credit as it's sent, up to
+// 50 per 5-hour session, one limit for every AI and chat; a session's timer starts with its first message. `session` is the server's { limit, hours, used,
+// remaining, resetAt }. -> { left, out, resetAt, running }: a session whose time is up counts as fresh.
+export function sessionState(session, now = Date.now()) {
+  if (!session) return { left: Infinity, out: false, resetAt: null, running: false };
+  const running = !!session.resetAt && session.resetAt > now;
+  const left = running ? Math.max(0, session.remaining) : session.limit;
+  return { left, out: running && left <= 0, resetAt: running ? session.resetAt : null, running };
+}
+// "3:42 PM", or "tomorrow 1:05 AM" when the reset is on another day.
+export function resetTimeText(at, now = Date.now()) {
+  const d = new Date(at), t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return d.toDateString() === new Date(now).toDateString() ? t : `tomorrow ${t}`;
+}
+
 // "6 days 4 hours", "3 hours 12 minutes", "12 minutes".
 export function waitText(ms) {
   const mins = Math.max(1, Math.ceil(ms / 60000));
