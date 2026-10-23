@@ -55,8 +55,8 @@ export function useCredits() {
     [refresh]
   );
 
-  // The session limit (cloudflare-lib/creditSession.js: 1 credit per message, 50 per 5-hour session,
-  // shared by every AI and chat): while it's used up, every AI waits; when it resets, the status is
+  // The session limit (cloudflare-lib/creditSession.js: 50 credits per 5-hour session, used by how
+  // much work each reply takes, shared by every AI and chat): while it's used up, every AI waits; when it resets, the status is
   // read again so sending opens up by itself.
   const session = status?.session || null;
   const ses = sessionState(session);

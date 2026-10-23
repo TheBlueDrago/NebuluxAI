@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CreditCard, Sparkles, Users, Clock, ArrowRight } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
 import PurchaseHistory from "@/components/profile/PurchaseHistory";
-import { sessionState, resetTimeText } from "@/lib/creditRefresh";
+import { sessionState, resetTimeText, creditText } from "@/lib/creditRefresh";
 
 const PLAN = {
   free: { name: "Free", price: "$0" },
@@ -98,13 +98,13 @@ export default function SubscriptionPanel({ onBack, onManagePeople }) {
           <div className="mt-4">
             <div className="flex justify-between text-sm">
               <span className="text-slate-300 font-medium">This session</span>
-              <span className="text-xs text-slate-400">{s.left} of {credits.session.limit} left</span>
+              <span className="text-xs text-slate-400">{creditText(s.left)} of {credits.session.limit} left</span>
             </div>
             <div className="mt-1 h-1.5 rounded-full bg-slate-800 overflow-hidden">
               <div className="h-full bg-gradient-to-r from-amber-400 to-fuchsia-400" style={{ width: `${pct}%` }} />
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              {s.running ? `Resets ${resetTimeText(s.resetAt)}. ` : ""}Each message uses 1 credit, up to {credits.session.limit} per {credits.session.hours}-hour session for all of Nebulux AI. A session starts with your first message.
+              {s.running ? `Resets ${resetTimeText(s.resetAt)}. ` : ""}Replies use credits by how much work they take (a quick answer costs a fraction of one), up to {credits.session.limit} per {credits.session.hours}-hour session for all of Nebulux AI. A session starts with your first message.
             </p>
           </div>
         );

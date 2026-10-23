@@ -24,7 +24,8 @@
 // Every call must come from a signed-in user and is charged server-side in whole
 // credits (see cloudflare-lib/credits.js): 1 per started 10,000 characters of reply,
 // times the effort level. A reply that costs more than the user has left is cut off
-// at what their credits cover.
+// at what their credits cover. Each reply's work (thinking included) also counts toward the
+// session limit, 50 credits per 5 hours for all of Nebulux AI (cloudflare-lib/creditSession.js).
 import { alertOwner } from "../../../../../cloudflare-lib/ownerAlerts.js";
 import { HELP_RULES } from "../../../../../cloudflare-lib/helpguide.js";
 import { json } from "../../../../../cloudflare-lib/published.js";
@@ -33,7 +34,7 @@ import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_C
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
 import { ageStatus } from "../../../../../cloudflare-lib/agegate.js";
-import { takeSessionCredit, giveSessionCredit, sessionExempt, waitText } from "../../../../../cloudflare-lib/creditSession.js";
+import { openSession, chargeSession, workCost, sessionMaxChars, sessionExempt, waitText } from "../../../../../cloudflare-lib/creditSession.js";
 
 const MODEL_MAP = {
   automatic: "gemini-3.6-flash",
@@ -518,7 +519,7 @@ export async function onRequestPost(context) {
     const effort = internal ? "low" : EFFORT[body.effort] ? body.effort : DEFAULT_EFFORT;
     const mult = EFFORT_MULT[effort];
 
-    let left = Infinity, sessionTook = null;
+    let left = Infinity;
     if (!internal && !apiBill) {
       // Replies started at the same moment all see the same balance and their charges can
       // overwrite each other (KV has no locks), so a script firing many at once could get
@@ -548,60 +549,61 @@ export async function onRequestPost(context) {
       }
     }
 
-    // The session limit (cloudflare-lib/creditSession.js): this message takes 1 of the session's 50
-    // credits now, as it's sent (the first starts the 5-hour timer); one limit for every AI and chat.
-    // A website or game build's automatic "continue" rides on the message that started it.
+    // The session limit (cloudflare-lib/creditSession.js): 50 credits per 5-hour session, one limit
+    // for every AI and chat, charged by the work each reply takes. The first message starts the
+    // timer; a message goes ahead while the session has credits left, and its reply stops where
+    // they run out. A reply that gets no answer costs nothing.
+    let session = null;
     if (!internal && !apiBill && env.DB && !sessionExempt(user)) {
-      const took = await takeSessionCredit(env.DB, user.id, { followUp: body.question === "continue" });
-      if (!took.ok) {
-        const wait = waitText(took.start + 5 * 3600e3 - Date.now());
-        return json({ error: `You've used all 50 credits for this session (1 per message). Your next session starts in ${wait}.`, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
+      session = await openSession(env.DB, user.id);
+      if (!session.ok) {
+        const wait = waitText(session.start + 5 * 3600e3 - Date.now());
+        return json({ error: `You've used all 50 credits for this session. Your next session starts in ${wait}.`, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
       }
-      if (took.counted) sessionTook = took;
     }
-    // No answer came (the AI was busy or failed): the message's session credit goes back.
-    const noAnswer = async () => {
-      if (sessionTook) await giveSessionCredit(env.DB, user.id, sessionTook.start);
-    };
 
     // "Who made you?": the model's own training says Google, so the reminder goes with the question.
     const idNote = !internal && asksWhoItIs(body.question) ? `${IDENTITY_NOTE}\n\n` : "";
     const input = internal ? prompt : promptParts(idNote + prompt, body.images);
-    if (input && input.error) {
-      await noAnswer();
-      return json({ error: input.error }, 400);
-    }
+    if (input && input.error) return json({ error: input.error }, 400);
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
-    // The reply stops at what the user's credits cover: whole credits x effort multiplier.
-    const maxChars = internal ? Infinity : apiBill ? Math.max(200, Number(body.apiMaxChars) || 0) : Math.floor(left / mult) * CHARS_PER_CREDIT;
+    // The reply stops at what the user's credits cover: whole credits x effort multiplier, and what
+    // the session has left (sessionCapped: the session is the tighter of the two).
+    let maxChars = internal ? Infinity : apiBill ? Math.max(200, Number(body.apiMaxChars) || 0) : Math.floor(left / mult) * CHARS_PER_CREDIT;
+    const sessionCapped = !!session && sessionMaxChars(session.remaining, effort) < maxChars;
+    if (sessionCapped) maxChars = sessionMaxChars(session.remaining, effort);
     const maxTokens = internal ? 1024 : 0;
     const search = !internal && body.noWeb !== true && wantsSearch(body.question) && (await searchAllowed());
 
     // Charge for what was produced. A cut reply takes every remaining credit, which
     // pauses the chat until the user has more.
-    const settle = async (text, cut, stopped) => {
+    const settle = async (text, cut, stopped, tokens) => {
       if (internal) return {};
       if (apiBill) return { apiChars: (text || "").length, ...(cut ? { cut: true } : {}) }; // the API charges its own balance
       // Stopped by the user: what was written so far is charged (nothing if nothing was).
       if (stopped && !text) return { stopped: true, charged: 0 };
-      const cost = cut ? left : creditsFor(text, effort);
+      const bySession = cut && sessionCapped;
+      const cost = cut && !bySession ? left : creditsFor(text, effort);
       // `question` is the user's own words (the prompt adds instructions), for Monitor's activity view.
       await charge(kv, ent, tier, cost, String(body.question || prompt).slice(0, 300));
-      return { cut, charged: cost, credits: await creditStatus(kv, ent, env.DB) };
+      // The session: the reply's work (thinking included), or all it had left when it stopped the reply.
+      const work = session ? (bySession ? session.remaining : workCost({ tokens, text, effort })) : 0;
+      if (session) await chargeSession(env.DB, user.id, session.start, work);
+      // cutBy "session": stopped by the session limit (the app says when it resets), not the month's credits
+      return { cut, ...(bySession ? { cutBy: "session" } : {}), charged: cost, ...(session ? { sessionCharged: work } : {}), credits: await creditStatus(kv, ent, env.DB) };
     };
 
     if (!body.stream) {
       try {
         const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
         counted(context, "ok", r.model);
-        return json({ content: r.text, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut)) });
+        return json({ content: r.text, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, false, r.tokens)) });
       } catch (err) {
         // 503 rather than 502: Cloudflare replaces 502 bodies on the custom domain with a
         // bare "error code: 502", which hid this message from users.
         counted(context, failKind(err));
         flagged(context, err, user, prompt);
-        await noAnswer();
         return json(failure(err), 503);
       }
     }
@@ -627,11 +629,10 @@ export async function onRequestPost(context) {
         try {
           const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           counted(context, "ok", r.model);
-          await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped)) });
+          await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped, r.tokens)) });
         } catch (err) {
           counted(context, failKind(err));
           flagged(context, err, user, prompt);
-          await noAnswer();
           await send({ ...failure(err), status: 503 });
         } finally {
           await writer.close().catch(() => {});

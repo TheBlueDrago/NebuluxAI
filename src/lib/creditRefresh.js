@@ -22,8 +22,9 @@ export function nextRefresh(now = Date.now()) {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
 }
 
-// The session limit (cloudflare-lib/creditSession.js): each message takes 1 credit as it's sent, up to
-// 50 per 5-hour session, one limit for every AI and chat; a session's timer starts with its first message. `session` is the server's { limit, hours, used,
+// The session limit (cloudflare-lib/creditSession.js): 50 credits per 5-hour session, one limit for
+// every AI and chat, used by how much work each reply takes (a quick answer costs a fraction of one);
+// a session's timer starts with its first message. `session` is the server's { limit, hours, used,
 // remaining, resetAt }. -> { left, out, resetAt, running }: a session whose time is up counts as fresh.
 export function sessionState(session, now = Date.now()) {
   if (!session) return { left: Infinity, out: false, resetAt: null, running: false };
@@ -31,6 +32,8 @@ export function sessionState(session, now = Date.now()) {
   const left = running ? Math.max(0, session.remaining) : session.limit;
   return { left, out: running && left <= 0, resetAt: running ? session.resetAt : null, running };
 }
+// "34.5", "50": session credits come in tenths; whole amounts show without the decimal.
+export const creditText = (n) => (Number.isInteger(n) ? String(n) : (Math.floor(n * 10) / 10).toFixed(1));
 // "3:42 PM", or "tomorrow 1:05 AM" when the reset is on another day.
 export function resetTimeText(at, now = Date.now()) {
   const d = new Date(at), t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });

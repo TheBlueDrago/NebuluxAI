@@ -33,7 +33,7 @@ import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
 const ANSWER_OR_CODE =
   "There are no modes: never say you're in a mode or that you can't write code. Answer normally in plain conversational text. " +
   "Only when the person asks you to make, build, write, fix or change something, give the FULL working code in fenced code blocks (no placeholders), with a short note on how to use it.";
-import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
+import { cutNote } from "@/lib/creditCost";
 import { TIER_OF_AI } from "@/lib/creditRefresh";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import SessionMeter from "@/components/chat/SessionMeter";
@@ -238,7 +238,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       recordMessage(shell?.currentUser?.id, ai, text.length + content.length, "chat");
       // what this answer used and how long it took, shown under it
       const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}) };
-      addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, used, ...(res.more ? { more: true } : {}) });
+      addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) });
       if (talkBackRef.current) speakText(content);
       // Away on another tab: ring the bell and play the chime.
       if (typeof document !== "undefined" && document.hidden) addNotification({ kind: "ai", text: `Nebulux AI finished: ${text.slice(0, 60)}`, link: "/chat" });

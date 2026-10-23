@@ -8,7 +8,7 @@ import { RotateCcw, Globe, Github, X, Loader2, FileCode, Upload, LogOut, Maximiz
 import { downloadChat } from "@/lib/downloadChat";
 import { loadDesignerHtmlIntoProject, genProjectId } from "@/lib/designerStore";
 import { GAME_DESIGNER_STORE_KEY } from "@/lib/gameDesignerStore";
-import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
+import { cutNote } from "@/lib/creditCost";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import { useEffort, effortFor } from "@/lib/effort";
 import { useLocation } from "react-router-dom";
@@ -453,7 +453,7 @@ export default function CodePage({ userInitial }) {
       notifyDone(content);
       if (Number.isFinite(res.charged)) runRef.current.credits += res.charged;
       const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: runRef.current.credits } : {}) };
-      setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${OUT_OF_CREDITS_NOTE}` : content, used, ...(res.more ? { more: true } : {}) }]);
+      setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) }]);
       // Built a page: run it in the Nebulux Browser right away.
       const page = htmlOf(content);
       if (page) openPreview(page, text.slice(0, 40));

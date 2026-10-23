@@ -25,7 +25,7 @@ import { STARTER_GAME_HTML } from "@/lib/gameTemplate";
 import { GAME_TLDS } from "@/lib/blackholeDomain";
 import { gameLimit, inThisMonth } from "@/lib/publishLimits";
 import PreviewFrame from "@/components/PreviewFrame";
-import { OUT_OF_CREDITS_NOTE } from "@/lib/creditCost";
+import { cutNote } from "@/lib/creditCost";
 import { TIER_OF_AI } from "@/lib/creditRefresh";
 import OutOfCredits from "@/components/chat/OutOfCredits";
 import SessionMeter from "@/components/chat/SessionMeter";
@@ -439,7 +439,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
       spendFor[ai]?.(res.credits);
       let content = res.content ?? "";
-      let cut = res.cut;
+      let cut = res.cut, cutBy = res.cutBy;
       // The AI ran out of room before the game was finished: ask it to carry on from where it
       // stopped (up to 3 times), so a half-written game (broken code, a black screen) isn't shown.
       let more = res.more;
@@ -457,6 +457,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
         content = joinContinuation(sofar, next.content ?? "");
         more = next.more;
         cut = next.cut;
+        cutBy = next.cutBy || cutBy;
       }
       setLive("");
       if (!discuss && !cut && looksCut(content)) {
@@ -470,7 +471,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
       if (cut) {
         // A half-written game would be broken, so only the explanation so far is shown.
         const said = discuss ? content.trim() : introBeforeCode(content);
-        pushMsg({ role: "ai", text: true, content: [said, OUT_OF_CREDITS_NOTE].filter(Boolean).join("\n\n") });
+        pushMsg({ role: "ai", text: true, content: [said, cutNote({ cutBy })].filter(Boolean).join("\n\n") });
         return;
       }
       if (discuss) {
