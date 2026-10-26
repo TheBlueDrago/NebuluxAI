@@ -50,7 +50,7 @@
 <body>
 <div id="hud" class="sh">
   <div class="bar" id="hp"><i></i><span></span></div>
-  <div id="res"><b style="color:#e0e0e0">⬜ <span id="iron">0</span> iron</b><b style="color:#ffd23a">🟨 <span id="gold">0</span> gold</b></div>
+  <div id="res"><b style="color:#e0e0e0"><span id="iron">0</span> iron</b><b style="color:#ffd23a"><span id="gold">0</span> gold</b></div>
   <div id="tip" style="font-size:12px;margin-top:4px;opacity:.9"></div>
 </div>
 <div id="teams" class="sh"></div>
@@ -371,13 +371,13 @@ function openShop() {
   $("mb").querySelectorAll("[data-id]").forEach((b) => b.onclick = () => { const s = SHOP.find((x) => x.id === b.dataset.id); if (P[s.cost[1]] < s.cost[0]) return; P[s.cost[1]] -= s.cost[0]; s.buy(); tone(900, 0.08, "square", 0.05); drawHot(); openShop(); });
 }
 function drawHot() {
-  const slots = [[1, `${P.sword} Sword`, "🗡️"], [2, `Blocks ×${P.wool}`, "🟦"], [3, `Apple ×${P.apples}`, "🍏"]];
-  $("hot").innerHTML = slots.map(([n, l, i]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b><em>${i}</em>${l}</div>`).join("");
+  const slots = [[1, `${P.sword} Sword`], [2, `Blocks ×${P.wool}`], [3, `Apple ×${P.apples}`]];
+  $("hot").innerHTML = slots.map(([n, l]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b>${l}</div>`).join("");
   $("hot").querySelectorAll(".slot").forEach((s) => s.onclick = () => (+s.dataset.t === 3 ? eatApple() : equip(+s.dataset.t)));
   P.body.sword.visible = P.tool === 1; P.body.sword.blade.material = mat(SWORDS[P.sword].c);
 }
 function drawTeams() {
-  $("teams").innerHTML = TEAMS.map((t) => { const alive = t.id === 0 ? !P.dead || t.bedAlive : !t.bot.out; return `<div class="tm"><i style="background:${t.css}"></i>${t.name} ${t.bedAlive ? "🛏️" : "❌"} ${alive ? "" : "OUT"}</div>`; }).join("");
+  $("teams").innerHTML = TEAMS.map((t) => { const alive = t.id === 0 ? !P.dead || t.bedAlive : !t.bot.out; return `<div class="tm"><i style="background:${t.css}"></i>${t.name} <small>${t.bedAlive ? "bed" : "no bed"}</small> ${alive ? "" : "OUT"}</div>`; }).join("");
 }
 $("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); drawHot(); show("Protect your bed!\nBuild bridges and break the others", 3); };
 
@@ -512,7 +512,7 @@ function tick() {
   uiT -= dt;
   if (uiT <= 0) {
     uiT = 0.12;
-    $("hp").firstChild.style.width = `${clamp(P.hp, 0, 100)}%`; $("hp").lastChild.textContent = `${Math.ceil(Math.max(0, P.hp))} / 100${P.armor ? `  🛡${P.armor}` : ""}`;
+    $("hp").firstChild.style.width = `${clamp(P.hp, 0, 100)}%`; $("hp").lastChild.textContent = `${Math.ceil(Math.max(0, P.hp))} / 100${P.armor ? ` · armor ${P.armor}` : ""}`;
     $("iron").textContent = P.iron; $("gold").textContent = P.gold;
     $("tip").textContent = T < 40 ? "Stand on the white pad for iron · E at the SHOP to buy blocks" : TEAMS[0].bedAlive ? "Build a bridge to an enemy island and break their bed!" : "No bed: don't fall!";
     if (started) { drawTeams(); if (P.tool === 2 || uiT) { const w = $("hot").querySelector('[data-t="2"]'); if (w) w.lastChild.textContent = `Blocks ×${P.wool}`; } }
@@ -535,7 +535,7 @@ const LB = (() => {
   const el = document.createElement("div"); el.className = "lb";
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const draw = (list) => {
-    el.innerHTML = `<h3>🏆 Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
+    el.innerHTML = `<h3>Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
       : !list ? `<p>Loading…</p>` : !list.length ? `<p>No winners yet. Be the first!</p>`
       : `<ol>${list.slice(0, 5).map((r, i) => `<li class="${me && r.name === me ? "me" : ""}"><b>${i + 1}</b><span>${esc(r.name)}</span><i>${r.score}</i></li>`).join("")}</ol>`)
       + `<p>Your wins: <b>${wins}</b></p>`;

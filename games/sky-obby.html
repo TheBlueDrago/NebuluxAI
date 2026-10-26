@@ -186,7 +186,7 @@ function makeBoard(title, show, color = "#ffd54f") {
     const L = b.list;
     const gr = x.createLinearGradient(0, 0, 0, 640); gr.addColorStop(0, "#1a1240"); gr.addColorStop(1, "#0b0820"); x.fillStyle = gr; x.fillRect(0, 0, 512, 640);
     x.strokeStyle = color; x.lineWidth = 10; x.strokeRect(5, 5, 502, 630);
-    x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.font = "900 44px Segoe UI, system-ui"; x.fillText("🏆 " + title, 256, 52);
+    x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.font = "900 44px Segoe UI, system-ui"; x.fillText(title, 256, 52);
     x.fillStyle = "rgba(255,255,255,.18)"; x.fillRect(30, 88, 452, 3);
     if (note || !L || !L.length) {
       x.fillStyle = "#cfd8ff"; x.font = "600 28px Segoe UI, system-ui";
@@ -380,7 +380,7 @@ function tick() {
   // hud
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").style.opacity = 0; }
   $("stage").textContent = `Stage ${S.stage} / ${STAGES}`;
-  $("sub").textContent = `⏱ ${fmt(S.time)} · 💀 ${S.deaths}${S.best !== null ? ` · 🏆 ${fmt(S.best)}` : ""}`;
+  $("sub").textContent = `Time ${fmt(S.time)} · Falls ${S.deaths}${S.best !== null ? ` · Best ${fmt(S.best)}` : ""}`;
   $("bar").firstChild.style.width = `${(S.stage / STAGES) * 100}%`;
   renderer.render(scene, camera);
 }

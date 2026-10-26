@@ -131,15 +131,15 @@
 <div id="racebar" style="display:none;position:fixed;left:50%;bottom:100px;transform:translateX(-50%);width:220px;height:16px;border:3px solid #000;border-radius:8px;background:#222;overflow:hidden;z-index:3"><div style="height:100%;width:0;background:linear-gradient(90deg,#ff8f00,#ffd23a)"></div><span style="position:absolute;inset:0;text-align:center;font-size:10px;font-weight:900;line-height:10px;color:#fff;text-shadow:0 1px 2px #000"></span></div>
 <div id="combo" style="position:fixed;right:24px;top:42%;font:900 40px Segoe UI,system-ui;color:#ffd23a;text-align:right;-webkit-text-stroke:2px #000;opacity:0;transition:opacity .3s,transform .08s;pointer-events:none;z-index:4"></div>
 <div id="side">
-  <button class="sb" id="bStats"><em>📊</em>Stats</button>
-  <button class="sb" id="bFruits" style="font-size:9px;letter-spacing:-.2px"><em>🎒</em>Inventory</button>
-  <button class="sb" id="bBoat"><em>⛵</em>Boat (B)</button>
-  <button class="sb" id="bBeast" style="display:none" title="Summon a Sea Beast to defeat for prizes"><em>🐉</em><span id="beastTxt">Beast</span></button>
-  <button class="sb" id="bLevi" style="display:none" title="Summon a Leviathan"><em>🦑</em>Levi</button>
-  <button class="sb" id="bDest" style="display:none" title="Summon a Destroyer"><em>💀</em>Destroy</button>
-  <button class="sb" id="bGod" style="display:none" title="Summon a SEA GOD (everyone online fights it)"><em>👼</em>God</button>
-  <button class="sb" id="bAlly" style="display:none" title="Summon a Sea Beast that fights for you"><em>🐲</em><span id="allyTxt">Ally</span></button>
-  <button class="sb" id="bPvp"><em>⚔️</em><span id="pvpTxt">PvP</span></button>
+  <button class="sb" id="bStats">Stats</button>
+  <button class="sb" id="bFruits" style="font-size:9px;letter-spacing:-.2px">Inventory</button>
+  <button class="sb" id="bBoat">Boat (B)</button>
+  <button class="sb" id="bBeast" style="display:none" title="Summon a Sea Beast to defeat for prizes"><span id="beastTxt">Beast</span></button>
+  <button class="sb" id="bLevi" style="display:none" title="Summon a Leviathan">Levi</button>
+  <button class="sb" id="bDest" style="display:none" title="Summon a Destroyer">Destroy</button>
+  <button class="sb" id="bGod" style="display:none" title="Summon a SEA GOD (everyone online fights it)">God</button>
+  <button class="sb" id="bAlly" style="display:none" title="Summon a Sea Beast that fights for you"><span id="allyTxt">Ally</span></button>
+  <button class="sb" id="bPvp"><span id="pvpTxt">PvP</span></button>
 </div>
 <div id="hot"></div>
 <div id="faction" class="sh" style="position:fixed;right:14px;top:200px;text-align:right;font-weight:900;font-size:13px"></div>
@@ -656,7 +656,7 @@ function makeBoard(title, show, color = "#ffd54f") {
     const L = b.list;
     const gr = x.createLinearGradient(0, 0, 0, 640); gr.addColorStop(0, "#1a1240"); gr.addColorStop(1, "#0b0820"); x.fillStyle = gr; x.fillRect(0, 0, 512, 640);
     x.strokeStyle = color; x.lineWidth = 10; x.strokeRect(5, 5, 502, 630);
-    x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.font = "900 44px Segoe UI, system-ui"; x.fillText("🏆 " + title, 256, 52);
+    x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.font = "900 44px Segoe UI, system-ui"; x.fillText(title, 256, 52);
     x.fillStyle = "rgba(255,255,255,.18)"; x.fillRect(30, 88, 452, 3);
     if (note || !L || !L.length) {
       x.fillStyle = "#cfd8ff"; x.font = "600 28px Segoe UI, system-ui";
@@ -797,13 +797,13 @@ function addFame(n, why) {
 }
 function drawSide() {
   const el = $("faction"); if (!el || !S.side) return;
-  el.textContent = S.side === "Marine" ? `⚓ Marine · Honor ${(S.honor || 0).toLocaleString()}` : `🏴‍☠️ Pirate · Bounty ${(S.bounty || 0).toLocaleString()}`; el.textContent += ` · ${S.race} V${raceV()}`;
+  el.textContent = S.side === "Marine" ? `Marine · Honor ${(S.honor || 0).toLocaleString()}` : `Pirate · Bounty ${(S.bounty || 0).toLocaleString()}`; el.textContent += ` · ${S.race} V${raceV()}`;
   el.style.color = "#fff";
 }
 function chooseSide(first) {
   openModal(first ? "Choose your side" : "Recruiter", `<p>${first ? "Are you a Pirate or a Marine?" : "Switch sides? (You keep your bounty and honor.)"}</p>
-    <div class="row"><div class="grow"><b>🏴‍☠️ Pirate</b><div style="font-size:12px;opacity:.85">Earn <b>bounty</b> by defeating bosses and other players.</div></div><button class="btn" data-side="Pirate">${S.side === "Pirate" ? "You're a Pirate" : "Be a Pirate"}</button></div>
-    <div class="row"><div class="grow"><b>⚓ Marine</b><div style="font-size:12px;opacity:.85">Earn <b>honor</b> by defeating bosses, bandit pirates and other players.</div></div><button class="btn blue" data-side="Marine">${S.side === "Marine" ? "You're a Marine" : "Be a Marine"}</button></div>`);
+    <div class="row"><div class="grow"><b>Pirate</b><div style="font-size:12px;opacity:.85">Earn <b>bounty</b> by defeating bosses and other players.</div></div><button class="btn" data-side="Pirate">${S.side === "Pirate" ? "You're a Pirate" : "Be a Pirate"}</button></div>
+    <div class="row"><div class="grow"><b>Marine</b><div style="font-size:12px;opacity:.85">Earn <b>honor</b> by defeating bosses, bandit pirates and other players.</div></div><button class="btn blue" data-side="Marine">${S.side === "Marine" ? "You're a Marine" : "Be a Marine"}</button></div>`);
   $("mb").querySelectorAll("[data-side]").forEach((b) => (b.onclick = () => { S.side = b.dataset.side; save(); drawSide(); closeModal(); show(`You're a ${S.side} now!`, 2.5); }));
 }
 let sentLvl = 0;
@@ -1097,7 +1097,7 @@ function summonGod() {
 }
 // The Fight button: choose which kind of beast to summon (by level; the owner can pick any).
 function openBeastPicker() {
-  const any = ownerMax(), kinds = [["beast", "🐉 Sea Beast", "Up to Lv. 500", 50], ["levi", "🦑 Leviathan", "Lv. 500+", 500], ["destroyer", "💀 Destroyer", "Lv. 100,000+", 100000], ["god", "👼 SEA GOD", "Lv. 1,000,000,000 · everyone online fights it on God Island · once every 30 min", 1e9]];
+  const any = ownerMax(), kinds = [["beast", "Sea Beast", "Up to Lv. 500", 50], ["levi", "Leviathan", "Lv. 500+", 500], ["destroyer", "Destroyer", "Lv. 100,000+", 100000], ["god", "SEA GOD", "Lv. 1,000,000,000 · everyone online fights it on God Island · once every 30 min", 1e9]];
   openModal("Summon a beast", kinds.map(([id, name, about, need]) => `<div class="row"><div class="grow"><b>${name}</b><div style="font-size:12px;opacity:.85">${about}${!any && S.lvl < need ? ` · needs Lv. ${need.toLocaleString()}` : ""}</div></div><button class="btn blue" data-bk="${id}" ${any || S.lvl >= need ? "" : "disabled"}>Summon</button></div>`).join(""));
   $("mb").querySelectorAll("[data-bk]").forEach((b) => (b.onclick = () => {
     closeModal(); const id = b.dataset.bk;
@@ -1776,9 +1776,9 @@ function openRacer() {
   const r = RACES[S.race];
   openModal("Mysterious Scientist", `<p>Your race: <b>${S.race} V${raceV()}</b> · ${r.perk}</p>` +
     secretRow("Reroll your race", "Get a random new race (your awakening level stays).", `<button class="btn" id="rr" ${S.beli < 3000000 ? "disabled" : ""}>${money(3000000)}</button>`) +
-    secretRow("Race V2", "Lv. 80 and $5,000,000: +6% damage and +5% health.", raceV() >= 2 ? "<b>✅</b>" : `<button class="btn blue" id="rv2" ${S.lvl >= 80 && S.beli >= 5000000 ? "" : "disabled"}>Awaken</button>`) +
-    secretRow("Race V3", `Defeat 3 Sea Kings (you have ${S.seaKings || 0}) and $10,000,000.`, raceV() >= 3 ? "<b>✅</b>" : `<button class="btn blue" id="rv3" ${raceV() === 2 && (S.seaKings || 0) >= 3 && S.beli >= 10000000 ? "" : "disabled"}>Awaken</button>`) +
-    secretRow("Race V4", `Defeat 2 Leviathans (you have ${S.leviKills || 0}), Lv. 200 and 500 Fragments (you have ${S.frags || 0}). Unlocks T: Race Awakening (+40% damage, faster, 30 s).`, raceV() >= 4 ? "<b>✅</b>" : `<button class="btn blue" id="rv4" ${raceV() === 3 && (S.leviKills || 0) >= 2 && S.lvl >= 200 && (S.frags || 0) >= 500 ? "" : "disabled"}>Awaken</button>`));
+    secretRow("Race V2", "Lv. 80 and $5,000,000: +6% damage and +5% health.", raceV() >= 2 ? "<b>Done</b>" : `<button class="btn blue" id="rv2" ${S.lvl >= 80 && S.beli >= 5000000 ? "" : "disabled"}>Awaken</button>`) +
+    secretRow("Race V3", `Defeat 3 Sea Kings (you have ${S.seaKings || 0}) and $10,000,000.`, raceV() >= 3 ? "<b>Done</b>" : `<button class="btn blue" id="rv3" ${raceV() === 2 && (S.seaKings || 0) >= 3 && S.beli >= 10000000 ? "" : "disabled"}>Awaken</button>`) +
+    secretRow("Race V4", `Defeat 2 Leviathans (you have ${S.leviKills || 0}), Lv. 200 and 500 Fragments (you have ${S.frags || 0}). Unlocks T: Race Awakening (+40% damage, faster, 30 s).`, raceV() >= 4 ? "<b>Done</b>" : `<button class="btn blue" id="rv4" ${raceV() === 3 && (S.leviKills || 0) >= 2 && S.lvl >= 200 && (S.frags || 0) >= 500 ? "" : "disabled"}>Awaken</button>`));
   const on = (id, f) => { const b = $(id); if (b) b.onclick = () => { f(); save(); SFX.win(); openRacer(); }; };
   on("rr", () => { if (S.beli < 3000000) return; S.beli -= 3000000; const o = Object.keys(RACES).filter((x) => x !== S.race); S.race = o[Math.floor(Math.random() * o.length)]; show(`You are now a ${S.race}!`, 3); });
   on("rv2", () => { S.beli -= 5000000; S.raceV = 2; show("Race V2 awakened!", 3); });
@@ -1817,7 +1817,7 @@ function raceAwaken() {
 function openAwakener() {
   const f = S.fruit, done = (S.awakened || []).includes(f), cost = f ? { Common: 300, Uncommon: 500, Rare: 800, Legendary: 1200, Mythical: 2000 }[FRUITS[f].rar] : 0;
   openModal("Awakening Expert", `<p>Bring me Fragments (from Sea Beasts, Leviathans and the Sea King) and I'll awaken your fruit: +25% fruit damage, forever.</p><p>Fragments: <b>${S.frags || 0}</b></p>` +
-    (f ? secretRow(`Awaken ${f}`, `Costs ${cost} Fragments.`, done ? "<b>✅ Awakened</b>" : `<button class="btn blue" id="awk" ${(S.frags || 0) >= cost ? "" : "disabled"}>Awaken</button>`) : "<p>Eat a fruit first.</p>"));
+    (f ? secretRow(`Awaken ${f}`, `Costs ${cost} Fragments.`, done ? "<b>Awakened</b>" : `<button class="btn blue" id="awk" ${(S.frags || 0) >= cost ? "" : "disabled"}>Awaken</button>`) : "<p>Eat a fruit first.</p>"));
   const b = $("awk"); if (b) b.onclick = () => { S.frags -= cost; S.awakened = [...(S.awakened || []), f]; save(); SFX.win(); show(`${f} AWAKENED!`, 3); openAwakener(); };
 }
 // Legendary Sword Dealer: shows up on a random island every 15 minutes, selling one of three swords.
@@ -1836,7 +1836,7 @@ function openMonk() {
   const need = Object.keys(STYLES).filter((n) => n !== "Combat" && n !== "God Human");
   const ready = need.filter((n) => (S.styles || []).includes(n) && ((S.mastery || {})["style:" + n] || 0) >= 300);
   const got = (S.styles || []).includes("God Human");
-  openModal("Ancient Monk", got ? "<p>You have mastered God Human.</p>" : `<p>Master every fighting style (own it with 300 mastery): <b>${ready.length}/${need.length}</b>. Then bring $15,000,000 and I'll teach you <b>God Human</b>.</p><p style="font-size:12px;opacity:.8">${need.map((n) => n + (ready.includes(n) ? " ✅" : " ❌")).join(" · ")}</p><div style="text-align:center"><button class="btn blue" id="gh" ${ready.length === need.length && S.beli >= 15000000 ? "" : "disabled"}>Learn God Human</button></div>`);
+  openModal("Ancient Monk", got ? "<p>You have mastered God Human.</p>" : `<p>Master every fighting style (own it with 300 mastery): <b>${ready.length}/${need.length}</b>. Then bring $15,000,000 and I'll teach you <b>God Human</b>.</p><p style="font-size:12px;opacity:.8">${need.map((n) => n + (ready.includes(n) ? " (ready)" : " (missing)")).join(" · ")}</p><div style="text-align:center"><button class="btn blue" id="gh" ${ready.length === need.length && S.beli >= 15000000 ? "" : "disabled"}>Learn God Human</button></div>`);
   const b = $("gh"); if (b) b.onclick = () => { S.beli -= 15000000; S.styles = [...(S.styles || []), "God Human"]; S.style = "God Human"; save(); SFX.win(); show("GOD HUMAN!", 4); closeModal(); drawSkills(); };
 }
 // ---- Dragon Transformation: you become a huge flying dragon for 40 seconds (or until out of energy)
@@ -2203,7 +2203,7 @@ const STAR_PRICE = { Common: 60, Uncommon: 120, Rare: 250, Legendary: 450, Mythi
 const canStar = () => !!(window.nebulux && window.nebulux.spend && window.nebulux.username !== "Anonymous");
 function openShop() {
   openModal("Fruit Dealer", `<p style="margin:0 0 6px;opacity:.85">Bought fruits go to your Fruits bag. Eat one from there.</p>` +
-    FRUIT_NAMES.map((n) => { const f = FRUITS[n]; return `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(f.rar)}<div style="font-size:12px;opacity:.8">${f.skills.map((s) => s[0] + ": " + s[1]).join(" · ")}</div></div><button class="btn" data-buy="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button>${(S.perm || []).includes(n) ? `<span style="margin-left:6px;font-size:12px;color:#ffd23a">✨ Permanent</span>` : canStar() ? `<button class="btn blue" data-star="${n}" style="margin-left:6px" title="Buy it forever with Stardust">✨ ${STAR_PRICE[f.rar]}</button>` : ""}</div>`; }).join(""));
+    FRUIT_NAMES.map((n) => { const f = FRUITS[n]; return `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(f.rar)}<div style="font-size:12px;opacity:.8">${f.skills.map((s) => s[0] + ": " + s[1]).join(" · ")}</div></div><button class="btn" data-buy="${n}" ${S.beli < f.price ? "disabled" : ""}>${money(f.price)}</button>${(S.perm || []).includes(n) ? `<span style="margin-left:6px;font-size:12px;color:#ffd23a">Permanent</span>` : canStar() ? `<button class="btn blue" data-star="${n}" style="margin-left:6px" title="Buy it forever with Stardust">${STAR_PRICE[f.rar]} Stardust</button>` : ""}</div>`; }).join(""));
   $("mb").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => { const n = b.dataset.buy; if (S.beli < FRUITS[n].price) return; S.beli -= FRUITS[n].price; S.inv.push(n); save(); show(`Bought ${n} Fruit!`, 1.5); openShop(); });
   $("mb").querySelectorAll("[data-star]").forEach((b) => b.onclick = async () => {
     const n = b.dataset.star; b.disabled = true;
@@ -2245,21 +2245,21 @@ function openGacha() {
 let invTab = "fruits";
 function openInventory(tab) {
   invTab = tab || "fruits";
-  const tabs = [["fruits", "🍎 Fruits"], ["swords", "🗡️ Swords"], ["styles", "👊 Styles"], ["items", "💎 Items"]];
+  const tabs = [["fruits", "Fruits"], ["swords", "Swords"], ["styles", "Styles"], ["items", "Items"]];
   const bar = `<div class="invtabs">${tabs.map(([id, l]) => `<button data-tab="${id}" class="${id === invTab ? "on" : ""}">${l}</button>`).join("")}</div>`;
   const hexc = (c) => "#" + c.toString(16).padStart(6, "0");
   if (invTab === "fruits") { openFruits(); return; }
   else if (invTab === "swords") {
     const list = S.swords || [];
-    openModal("Inventory", list.length ? `<div class="invgrid">${list.map((n) => { const w = SWORDS[n] || { color: 0xcccccc, mult: 1 }; return `<div class="tile ${S.sword === n ? "on" : ""}" data-sw="${n}"><div class="ic" style="background:${hexc(w.color)}">🗡️</div>${n}<div class="sub">x${w.mult} damage${S.sword === n ? " · equipped" : ""}</div></div>`; }).join("")}</div>` : "<p>No swords yet. Buy one from the Sword Dealer.</p>");
+    openModal("Inventory", list.length ? `<div class="invgrid">${list.map((n) => { const w = SWORDS[n] || { color: 0xcccccc, mult: 1 }; return `<div class="tile ${S.sword === n ? "on" : ""}" data-sw="${n}"><div class="ic" style="background:${hexc(w.color)}">${n[0]}</div>${n}<div class="sub">x${w.mult} damage${S.sword === n ? " · equipped" : ""}</div></div>`; }).join("")}</div>` : "<p>No swords yet. Buy one from the Sword Dealer.</p>");
   } else if (invTab === "styles") {
     const list = ["Combat", ...(S.styles || []).filter((n) => STYLES[n])];
-    openModal("Inventory", `<div class="invgrid">${list.map((n) => { const st = STYLES[n], m = Math.floor((S.mastery || {})["style:" + n] ?? 50); return `<div class="tile ${(S.style || "Combat") === n ? "on" : ""}" data-st="${n}"><div class="ic" style="background:${hexc(st.color)}">👊</div>${n}<div class="sub">x${st.mult} · mastery ${m}</div></div>`; }).join("")}</div>`);
+    openModal("Inventory", `<div class="invgrid">${list.map((n) => { const st = STYLES[n], m = Math.floor((S.mastery || {})["style:" + n] ?? 50); return `<div class="tile ${(S.style || "Combat") === n ? "on" : ""}" data-st="${n}"><div class="ic" style="background:${hexc(st.color)}">${n[0]}</div>${n}<div class="sub">x${st.mult} · mastery ${m}</div></div>`; }).join("")}</div>`);
   } else {
-    const it = [["💎 Fragments", (S.frags || 0).toLocaleString(), "From raids, sea beasts and the Sea King"], ["💰 Money", money(S.beli), "Beli"], [S.side === "Marine" ? "⚓ Honor" : "🏴‍☠️ Bounty", (S.side === "Marine" ? S.honor || 0 : S.bounty || 0).toLocaleString(), S.side || "No side yet"],
-      ["🧬 Race", `${S.race} V${raceV()}`, RACES[S.race] ? RACES[S.race].perk : ""], ["✊ Aura", S.haki ? "Learned" : "Not yet", "Haki Teacher"], ["👁️ Instinct", S.instinct2 ? "V2" : S.instinct ? "V1" : "Not yet", "Haki Teacher"],
-      ["🐉 Leviathans beaten", String(S.leviKills || 0), `Next one: Lv. ${300 + 50 * (S.leviKills || 0)}`], ["👑 Sea Kings beaten", String(S.seaKings || 0), ""], ["✨ Awakened fruits", (S.awakened || []).join(", ") || "None", "Awakening Expert"],
-      ["⛵ Boats", String((S.boats || []).length + 1), S.boatType || "Rowboat"], ["🦘 Jumps", String((S.skyJumps ? 12 : 2) + (S.race === "Angel" ? 1 : 0)), ""], ["🌊 Sea", seaTitle(), ""]];
+    const it = [["Fragments", (S.frags || 0).toLocaleString(), "From raids, sea beasts and the Sea King"], ["Money", money(S.beli), "Beli"], [S.side === "Marine" ? "Honor" : "Bounty", (S.side === "Marine" ? S.honor || 0 : S.bounty || 0).toLocaleString(), S.side || "No side yet"],
+      ["Race", `${S.race} V${raceV()}`, RACES[S.race] ? RACES[S.race].perk : ""], ["Aura", S.haki ? "Learned" : "Not yet", "Haki Teacher"], ["Instinct", S.instinct2 ? "V2" : S.instinct ? "V1" : "Not yet", "Haki Teacher"],
+      ["Leviathans beaten", String(S.leviKills || 0), `Next one: Lv. ${300 + 50 * (S.leviKills || 0)}`], ["Sea Kings beaten", String(S.seaKings || 0), ""], ["Awakened fruits", (S.awakened || []).join(", ") || "None", "Awakening Expert"],
+      ["Boats", String((S.boats || []).length + 1), S.boatType || "Rowboat"], ["Jumps", String((S.skyJumps ? 12 : 2) + (S.race === "Angel" ? 1 : 0)), ""], ["Sea", seaTitle(), ""]];
     openModal("Inventory", `<div class="stat2">${it.map(([a, b, c]) => `<div><small>${a}</small>${b}${c ? `<small>${c}</small>` : ""}</div>`).join("")}</div>`);
   }
   $("mb").insertAdjacentHTML("afterbegin", bar); $("mt").textContent = "Inventory";
@@ -2270,9 +2270,9 @@ function openInventory(tab) {
 function openFruits() {
   const cur = S.fruit ? `<div class="row" style="border-color:#ffd23a">${fruitIcon(S.fruit)}<div class="grow"><b>Eaten: ${S.fruit} Fruit</b> ${rarTag(FRUITS[S.fruit].rar)}<div style="font-size:12px;opacity:.8">You can't swim. Use a boat (B).</div></div></div>` : `<p>You haven't eaten a fruit. You can still swim!</p>`;
   const bag = S.inv.length ? S.inv.map((n, i) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div><button class="btn" data-eat="${i}">Eat</button><button class="btn gray" data-drop="${i}">Drop</button></div>`).join("") : `<p style="opacity:.7">Your bag is empty. Buy fruits from the Fruit Dealer, spin the Gacha, or open chests.</p>`;
-  const perm = (S.perm || []).length ? `<h3>Permanent fruits ✨</h3><p style="font-size:12px;opacity:.8;margin:0 0 6px">Bought with Stardust: switch between them any time, free.</p>` + S.perm.map((n) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div>${S.fruit === n ? '<span style="font-size:12px;color:#ffd23a">Using</span>' : `<button class="btn blue" data-use="${n}">Use</button>`}<button class="btn gray" data-pdrop="${n}" style="margin-left:6px">Drop</button></div>`).join("") : "";
+  const perm = (S.perm || []).length ? `<h3>Permanent fruits</h3><p style="font-size:12px;opacity:.8;margin:0 0 6px">Bought with Stardust: switch between them any time, free.</p>` + S.perm.map((n) => `<div class="row">${fruitIcon(n)}<div class="grow"><b>${n} Fruit</b> ${rarTag(FRUITS[n].rar)}</div>${S.fruit === n ? '<span style="font-size:12px;color:#ffd23a">Using</span>' : `<button class="btn blue" data-use="${n}">Use</button>`}<button class="btn gray" data-pdrop="${n}" style="margin-left:6px">Drop</button></div>`).join("") : "";
   openModal("Inventory", cur + perm + "<h3>Bag</h3>" + bag); if (invTab !== "fruits") invTab = "fruits";
-  $("mb").insertAdjacentHTML("afterbegin", `<div class="invtabs">${[["fruits", "🍎 Fruits"], ["swords", "🗡️ Swords"], ["styles", "👊 Styles"], ["items", "💎 Items"]].map(([id, l]) => `<button data-tab="${id}" class="${id === "fruits" ? "on" : ""}">${l}</button>`).join("")}</div>`);
+  $("mb").insertAdjacentHTML("afterbegin", `<div class="invtabs">${[["fruits", "Fruits"], ["swords", "Swords"], ["styles", "Styles"], ["items", "Items"]].map(([id, l]) => `<button data-tab="${id}" class="${id === "fruits" ? "on" : ""}">${l}</button>`).join("")}</div>`);
   $("mb").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => openInventory(b.dataset.tab)));
   $("mb").querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
     const n = b.dataset.use; S.fruit = n; save(); closeModal(); P.tool = 3; drawHot();
@@ -2312,20 +2312,20 @@ function openTravel() {
   if (S.sea === 0) {
     const ok = S.seaUnlocked && S.lvl >= 30;
     openModal("Sea Traveler", `<p>The Second Sea is dangerous: enemies start at <b>Lv. 30</b>.</p>
-      <div class="row"><div class="grow">Defeat Captain Ironjaw at Pirate Fort</div><b>${S.seaUnlocked ? "✅" : "❌"}</b></div>
-      <div class="row"><div class="grow">Reach Lv. 30</div><b>${S.lvl >= 30 ? "✅" : "❌ (Lv. " + S.lvl + ")"}</b></div>
+      <div class="row"><div class="grow">Defeat Captain Ironjaw at Pirate Fort</div><b>${S.seaUnlocked ? "Done" : "Not yet"}</b></div>
+      <div class="row"><div class="grow">Reach Lv. 30</div><b>${S.lvl >= 30 ? "" : "Not yet (Lv. " + S.lvl + ")"}</b></div>
       <div style="text-align:center;margin-top:10px"><button class="btn blue" id="go" ${ok ? "" : "disabled"}>Travel to the Second Sea</button></div>`);
     $("go").onclick = () => travel(1);
   } else {
     const ok3 = !!(S.bosses || {})["Elder Dragon"] && S.lvl >= 80;
     openModal("Sea Traveler", `<p>Where to?</p>
-      ${SEAS.map((x, i) => i === S.sea ? "" : `<div class="row"><div class="grow"><b>${x.name}</b>${i === 2 ? ` <div style="font-size:12px;opacity:.85">Needs Lv. 80 ${S.lvl >= 80 ? "✅" : "❌"} · defeat the Elder Dragon (Dragon Lair) ${(S.bosses || {})["Elder Dragon"] ? "✅" : "❌"}</div>` : ""}</div><button class="btn blue" data-sea="${i}" ${i === 2 && !ok3 ? "disabled" : ""}>Travel</button></div>`).join("")}`);
+      ${SEAS.map((x, i) => i === S.sea ? "" : `<div class="row"><div class="grow"><b>${x.name}</b>${i === 2 ? ` <div style="font-size:12px;opacity:.85">Needs Lv. 80 ${S.lvl >= 80 ? "Done" : "Not yet"} · defeat the Elder Dragon (Dragon Lair) ${(S.bosses || {})["Elder Dragon"] ? "Done" : "Not yet"}</div>` : ""}</div><button class="btn blue" data-sea="${i}" ${i === 2 && !ok3 ? "disabled" : ""}>Travel</button></div>`).join("")}`);
     $("mb").querySelectorAll("[data-sea]").forEach((b) => (b.onclick = () => travel(+b.dataset.sea)));
     if (S.sea === 2) {
       // deeper seas: each needs 60 more levels and the Rip Commander beaten in the sea before it
       const next = deepNow() + 1, need = 80 + next * 60, beat = (S.deepBeat || 0) >= next;
       $("mb").insertAdjacentHTML("beforeend", `<h3 style="margin:12px 0 6px">Deeper seas</h3>
-        <div class="row"><div class="grow"><b>Sea ${3 + next}</b><div style="font-size:12px;opacity:.85">Everything is ${next * 60} levels stronger · Needs Lv. ${need} ${S.lvl >= need ? "✅" : "❌"} · defeat the Rip Commander here ${beat ? "✅" : "❌"}</div></div><button class="btn blue" id="deeper" ${S.lvl >= need && beat ? "" : "disabled"}>Sail</button></div>
+        <div class="row"><div class="grow"><b>Sea ${3 + next}</b><div style="font-size:12px;opacity:.85">Everything is ${next * 60} levels stronger · Needs Lv. ${need} ${S.lvl >= need ? "Done" : "Not yet"} · defeat the Rip Commander here ${beat ? "Done" : "Not yet"}</div></div><button class="btn blue" id="deeper" ${S.lvl >= need && beat ? "" : "disabled"}>Sail</button></div>
         ${deepNow() ? `<div class="row"><div class="grow"><b>${deepNow() === 1 ? "Third Sea" : "Sea " + (2 + deepNow())}</b></div><button class="btn" id="shallower">Go back</button></div>` : ""}`);
       const go = (d) => { S.deep = d; closeModal(); reseedDeep(); netSwitchSea(); show(`Welcome to ${seaTitle()}!`, 3); };
       $("deeper").onclick = () => go(next);
@@ -2453,7 +2453,7 @@ function updateRemote(e, dt) {
   e.t += dt; e.b.g.position.copy(e.pos); e.b.g.rotation.y = e.yaw;
   if (e.swing > 0) { e.swing += dt * 4; if (e.swing >= 1) e.swing = 0; }
   animBody(e.b, old.distanceTo(e.pos) / Math.max(dt, 0.001), e.t, e.swing, false, e.walk);
-  const both = pvpOn() && e.pvp, text = `${e.name} [Lv. ${e.lvl}]${both ? " ⚔" : ""}`;
+  const both = pvpOn() && e.pvp, text = `${e.name} [Lv. ${e.lvl}]${both ? " [PvP]" : ""}`;
   if (text !== e.labelText) { scene.remove(e.label); e.label = makeLabel(text, both ? "#ff6b6b" : "#8fd3ff", 768); e.label.scale.set(7, 1.1, 1); scene.add(e.label); e.labelText = text; }
   const vis = (e.pos.distanceTo(P.pos) < 90 || (P.ken && lastIsl && islandAt(e.pos.x, e.pos.z) === lastIsl)) && e.b.g.visible;
   e.bar.visible = e.label.visible = vis;
@@ -2488,8 +2488,8 @@ addEventListener("touchstart", (e) => {
   }
 }, { passive: false });
 function drawHot() {
-  const slots = [[1, "Fists", "👊"], S.sword && [2, S.sword, "🗡️"], S.fruit && [3, S.fruit, "🍎"]].filter(Boolean);
-  $("hot").innerHTML = slots.map(([n, label, icon]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b><span style="font-size:20px">${icon}</span>${label}</div>`).join("");
+  const slots = [[1, "Fists"], S.sword && [2, S.sword], S.fruit && [3, S.fruit]].filter(Boolean);
+  $("hot").innerHTML = slots.map(([n, label]) => `<div class="slot ${P.tool === n ? "on" : ""}" data-t="${n}"><b>${n}</b>${label}</div>`).join("");
   $("hot").querySelectorAll(".slot").forEach((s) => s.onclick = () => equip(+s.dataset.t));
   P.body.sword.visible = P.tool === 2 && !!S.sword; if (S.sword) P.body.sword.blade.material = mat(SWORDS[S.sword].color);
 }
@@ -2769,8 +2769,8 @@ function tick() {
     $("xp").firstChild.style.width = `${(S.xp / xpNeed()) * 100}%`;
     $("beli").textContent = money(S.beli);
     const qq = S.quest; $("quest").style.display = qq ? "block" : "none";
-    if (qq) $("quest").innerHTML = `📜 Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
-    $("where").textContent = P.inGod ? `👼 God Island · ${Math.max(0, Math.ceil((P.godEnd - performance.now()) / 60000))} min left` : raid && raid.text ? raid.text : `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · ⛵" : ""}`;
+    if (qq) $("quest").innerHTML = `Defeat ${qq.mob}s <span style="float:right">${qq.have}/${qq.need}</span><div class="bar" style="height:6px;margin:4px 0 0"><i style="width:${(qq.have / qq.need) * 100}%;background:#ffd23a"></i></div>`;
+    $("where").textContent = P.inGod ? `God Island · ${Math.max(0, Math.ceil((P.godEnd - performance.now()) / 60000))} min left` : raid && raid.text ? raid.text : `${seaTitle()}${lastIsl ? " · " + lastIsl.name : " · Open sea"}${P.boat ? " · on a boat" : ""}`;
     if (started) { drawSkills(); drawMini(); }
   }
   renderer.render(scene, camera);

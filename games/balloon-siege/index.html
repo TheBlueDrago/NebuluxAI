@@ -17,7 +17,7 @@ canvas{display:block}
 .go{background:linear-gradient(#66bb6a,#2e7d32)}.gold{background:linear-gradient(#ffca28,#f57f17)}.red{background:linear-gradient(#ef5350,#b71c1c)}.blue{background:linear-gradient(#42a5f5,#1565c0)}
 .bar{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:5}
 .slot{width:78px;height:86px;border-radius:12px;background:rgba(10,14,30,.75);border:3px solid transparent;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:12px;position:relative;text-align:center}
-.slot .ic{font-size:30px;line-height:1}.slot .k{position:absolute;top:3px;left:6px;font-size:11px;opacity:.7}.slot .c{color:#ffe082}
+.slot .ic{font-size:30px;line-height:1}.ic i{display:inline-grid;place-items:center;width:1.1em;height:1.1em;border-radius:.28em;color:#fff;font:800 .42em/1 system-ui,sans-serif;letter-spacing:.02em;text-shadow:0 1px 1px rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}.slot .k{position:absolute;top:3px;left:6px;font-size:11px;opacity:.7}.slot .c{color:#ffe082}
 .slot.on{border-color:#ffe082;background:rgba(40,40,10,.85)}.slot.no{opacity:.45}
 .panel{position:fixed;right:10px;top:64px;width:300px;background:rgba(10,14,30,.9);color:#fff;border-radius:14px;padding:14px;z-index:6;display:none}
 .panel h3{font-size:19px;margin-bottom:2px}.panel p{font-size:13px;opacity:.85;margin:2px 0}
@@ -63,16 +63,16 @@ input.cin{font:inherit;font-size:22px;font-weight:900;letter-spacing:.15em;text-
 </head>
 <body>
 <div class="hud" id="hud">
-  <div class="chip">❤️ <span id="lives">100</span></div>
-  <div class="chip">💰 <span id="cash">650</span></div>
-  <div class="chip">🌊 Wave <span id="wave">0</span>/40</div>
+  <div class="chip">Lives <span id="lives">100</span></div>
+  <div class="chip">Cash <span id="cash">650</span></div>
+  <div class="chip">Wave <span id="wave">0</span>/40</div>
   <div class="chip" id="modechip"></div>
 </div>
 <div class="mates" id="mates"></div>
 <div class="right" id="topright">
-  <button class="btn" id="speed">⏩ 1x</button>
+  <button class="btn" id="speed">1x</button>
   <button class="btn go" id="start">▶ START WAVE (G)</button>
-  <button class="btn" id="quit">🏠</button>
+  <button class="btn" id="quit">Quit</button>
 </div>
 <div class="bar" id="bar"></div>
 <div class="tip" id="tip"></div>
@@ -87,17 +87,17 @@ input.cin{font:inherit;font-size:22px;font-weight:900;letter-spacing:.15em;text-
 </div>
 <div class="toast" id="toast"></div>
 <div id="joy"><div id="joyk"></div></div>
-<button class="btn blue" id="jumpb">⤴</button>
+<button class="btn blue" id="jumpb">Jump</button>
 
-<div id="hubhud"><span>🎈 BALLOON SIEGE LOBBY</span><span>🪙 <span id="hcoins">0</span> coins · 👥 <span id="hcount">1</span> online</span><small>Walk onto a pad: ▶ Play · 👥 Party · 🛒 Towers. Space jumps, Enter chats.</small></div>
+<div id="hubhud"><span>BALLOON SIEGE LOBBY</span><span><span id="hcoins">0</span> coins · <span id="hcount">1</span> online</span><small>Walk onto a pad: ▶ Play · Party · Towers. Space jumps, Enter chats.</small></div>
 <div id="chat"><div id="clog"></div><input id="cin" maxlength="120" placeholder="Say something nice… (Enter to send)" autocomplete="off"></div>
-<button class="btn" id="chatb">💬</button>
+<button class="btn" id="chatb">Chat</button>
 <div class="ov" id="lobby"><div class="box">
   <button class="btn" id="padx" title="Back to the lobby">✕</button>
-  <h1>🎈 BALLOON SIEGE</h1>
+  <h1>BALLOON SIEGE</h1>
   <p>Balloons are floating toward your castle! Build towers along the path and pop every last one. Survive 40 waves to win.</p>
-  <div class="coins">🪙 <span id="coins">0</span> coins</div>
-  <div class="tabs"><button class="btn on" data-tab="play">▶ PLAY</button><button class="btn" data-tab="party">👥 PARTY</button><button class="btn" data-tab="shop">🛒 TOWERS</button></div>
+  <div class="coins"><span id="coins">0</span> coins</div>
+  <div class="tabs"><button class="btn on" data-tab="play">▶ PLAY</button><button class="btn" data-tab="party">PARTY</button><button class="btn" data-tab="shop">TOWERS</button></div>
   <div id="tab-play">
     <p>Play on your own. Earn coins for every wave you survive, and a big bonus for winning.</p>
     <div class="row2"><button class="btn go" data-d="easy">EASY</button><button class="btn gold" data-d="medium">MEDIUM</button><button class="btn red" data-d="hard">HARD</button></div>
@@ -126,7 +126,7 @@ input.cin{font:inherit;font-size:22px;font-weight:900;letter-spacing:.15em;text-
 </div></div>
 <div class="ov dim" id="end" style="display:none"><div class="box" style="max-width:480px">
   <h1 id="et"></h1><p id="ed"></p>
-  <div class="coins" style="margin:10px 0">🪙 +<span id="earned">0</span></div>
+  <div class="coins" style="margin:10px 0">+<span id="earned">0</span> coins</div>
   <div><button class="btn go" id="tolobby">BACK TO LOBBY</button></div>
 </div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -311,72 +311,72 @@ function placeBalloon(o, rdt) {
 const X = (n) => ({ mul: n });
 const P = (n, up, mods) => ({ n, up, mods });
 const TOWERS = [
-  { id: "dart", n: "Dart Tower", ic: "🎯", cost: 200, price: 0, col: 0x8d6e63, d: "Fast darts. Good all-rounder.", base: { range: 14, rate: 1.1, dmg: 1, pierce: 2 }, paths: [
+  { id: "dart", n: "Dart Tower", ic: "", cost: 200, price: 0, col: 0x8d6e63, d: "Fast darts. Good all-rounder.", base: { range: 14, rate: 1.1, dmg: 1, pierce: 2 }, paths: [
     ["Sharp", [P("Sharper darts", 140, { pierce: 1 }), P("Razor darts", 220, { pierce: 2, popsSteel: true }), P("Spike storm", 600, { rate: X(1.5), pierce: 2 }), P("Blade volley", 1800, { dmg: 2, rate: X(1.5) }), P("Dart Master", 9000, { dmg: 4, rate: X(2), pierce: 6 })]],
     ["Speed", [P("Quick hands", 120, { rate: X(1.3) }), P("Quicker hands", 200, { rate: X(1.3) }), P("Triple shot", 700, { shots: 2 }), P("Super dart", 2500, { rate: X(2), dmg: 1 }), P("Dart Fury", 12000, { rate: X(2.5), shots: 2 })]],
     ["Reach", [P("Long reach", 100, { range: 4 }), P("Eagle eye", 180, { range: 4 }), P("Heavy darts", 600, { range: 8, dmg: 1 }), P("Crossbow", 1600, { dmg: 3, popsSteel: true }), P("Crossbow Legend", 8000, { dmg: 6, rate: X(2) })]],
   ] },
-  { id: "cannon", n: "Cannon", ic: "💣", cost: 450, price: 0, col: 0x37474f, d: "Splash damage. Pops Steel.", base: { range: 13, rate: .75, dmg: 1, splash: 3.5, popsSteel: true }, paths: [
+  { id: "cannon", n: "Cannon", ic: "", cost: 450, price: 0, col: 0x37474f, d: "Splash damage. Pops Steel.", base: { range: 13, rate: .75, dmg: 1, splash: 3.5, popsSteel: true }, paths: [
     ["Bombs", [P("Bigger bombs", 250, { splash: 1.5 }), P("Heavy bombs", 400, { dmg: 1 }), P("Really big bombs", 1200, { splash: 2, dmg: 2 }), P("Blimp buster", 3500, { dmg: 6 }), P("Bomb Mastery", 14000, { dmg: 15, splash: 3 })]],
     ["Reload", [P("Fast fuse", 200, { rate: X(1.3) }), P("Faster reload", 350, { rate: X(1.3) }), P("Cluster bombs", 900, { cluster: 4 }), P("More clusters", 2800, { cluster: 4, rate: X(1.5) }), P("Bomb Storm", 12000, { rate: X(2.5), cluster: 6 })]],
     ["Shock", [P("Long barrel", 150, { range: 4 }), P("Laser sights", 250, { range: 4 }), P("Concussion", 800, { stun: .5 }), P("Shockwave", 2200, { splash: 2, stun: .5 }), P("Earthshaker", 10000, { range: 8, dmg: 5, stun: 1 })]],
   ] },
-  { id: "frost", n: "Frost Tower", ic: "❄️", cost: 350, price: 0, col: 0x4fc3f7, d: "Slows everything nearby.", base: { range: 9, rate: .7, dmg: 0, slow: .5, dur: 2 }, paths: [
+  { id: "frost", n: "Frost Tower", ic: "", cost: 350, price: 0, col: 0x4fc3f7, d: "Slows everything nearby.", base: { range: 9, rate: .7, dmg: 0, slow: .5, dur: 2 }, paths: [
     ["Chill", [P("Wide chill", 150, { range: 2 }), P("Arctic wind", 300, { range: 3 }), P("Snowstorm", 900, { slow: X(.7) }), P("Absolute zero", 3000, { range: 4, dur: 1 }), P("Frost Mastery", 11000, { slow: X(.4), range: 5 })]],
     ["Shatter", [P("Cold snap", 200, { dur: 1 }), P("Brittle ice", 400, { brittle: 1 }), P("Ice shards", 900, { dmg: 1, popsSteel: true }), P("Icicles", 2500, { dmg: 2, rate: X(1.5) }), P("Glacier Mastery", 10000, { dmg: 5, rate: X(2) })]],
     ["Pulse", [P("Faster pulses", 200, { rate: X(1.3) }), P("Freeze blimps", 500, { bossSlow: true }), P("Deep freeze", 1000, { rate: X(1.4) }), P("Cryo core", 2800, { rate: X(1.6), dur: 1 }), P("Winter Mastery", 12000, { rate: X(2), dmg: 2 })]],
   ] },
-  { id: "goo", n: "Goo Tower", ic: "🟢", cost: 300, price: 200, col: 0x7cb342, d: "Covers balloons in goo so they crawl.", base: { range: 11, rate: 1, dmg: 0, goo: .55, pierce: 1, dur: 3 }, paths: [
+  { id: "goo", n: "Goo Tower", ic: "", cost: 300, price: 200, col: 0x7cb342, d: "Covers balloons in goo so they crawl.", base: { range: 11, rate: 1, dmg: 0, goo: .55, pierce: 1, dur: 3 }, paths: [
     ["Splash", [P("Splash goo", 180, { pierce: 2 }), P("Big splash", 320, { pierce: 3 }), P("Goo flood", 1000, { pierce: 6, rate: X(1.3) }), P("Goo tsunami", 2800, { pierce: 10, range: 4 }), P("Goo Mastery", 9000, { pierce: 20, rate: X(2) })]],
     ["Acid", [P("Sticky goo", 200, { goo: X(.8) }), P("Super sticky", 350, { goo: X(.75) }), P("Acid goo", 900, { dmg: 1, popsSteel: true }), P("Melting goo", 2600, { dmg: 2, dur: 2 }), P("Corrosive Mastery", 11000, { dmg: 5, rate: X(1.5) })]],
     ["Rain", [P("Long goo", 120, { dur: 1 }), P("Far shot", 250, { range: 4 }), P("Fast goo", 700, { rate: X(1.5) }), P("Goo rain", 2400, { rate: X(1.6), range: 4 }), P("Swamp Mastery", 10000, { rate: X(2.5), pierce: 5 })]],
   ] },
-  { id: "sniper", n: "Sniper", ic: "🔭", cost: 400, price: 250, col: 0x558b2f, d: "Hits anywhere on the map. Pops Steel.", base: { range: 999, rate: .55, dmg: 2, popsSteel: true }, paths: [
+  { id: "sniper", n: "Sniper", ic: "", cost: 400, price: 250, col: 0x558b2f, d: "Hits anywhere on the map. Pops Steel.", base: { range: 999, rate: .55, dmg: 2, popsSteel: true }, paths: [
     ["Power", [P("Full metal", 350, { dmg: 2 }), P("Large calibre", 600, { dmg: 3 }), P("Deadly precision", 1600, { dmg: 8 }), P("Blimp hunter", 4000, { dmg: 15 }), P("Sniper Mastery", 14000, { dmg: 40 })]],
     ["Speed", [P("Night vision", 200, { rate: X(1.2) }), P("Faster firing", 400, { rate: X(1.4) }), P("Semi-auto", 1500, { rate: X(2) }), P("Full auto", 4000, { rate: X(2) }), P("Elite Mastery", 13000, { rate: X(2), dmg: 5 })]],
     ["Support", [P("Bouncing bullet", 300, { bounce: 1 }), P("Ricochet", 500, { bounce: 2 }), P("Supply drop", 1800, { income: 150 }), P("Cash drop", 3500, { income: 400 }), P("Defender Mastery", 12000, { bounce: 5, income: 800 })]],
   ] },
-  { id: "farm", n: "Balloon Farm", ic: "🌾", cost: 900, price: 400, col: 0xf9a825, d: "Makes cash after every wave.", base: { range: 0, income: 90 }, paths: [
+  { id: "farm", n: "Balloon Farm", ic: "", cost: 900, price: 400, col: 0xf9a825, d: "Makes cash after every wave.", base: { range: 0, income: 90 }, paths: [
     ["Crops", [P("Bigger fields", 400, { income: 60 }), P("More crops", 700, { income: 90 }), P("Market stall", 1500, { income: 180 }), P("Market center", 4000, { income: 500 }), P("Farm Mastery", 14000, { income: 1500 })]],
     ["Bank", [P("Savings", 300, { interest: .01 }), P("Bank", 800, { interest: .02 }), P("Investments", 2000, { interest: .03 }), P("Central bank", 5000, { interest: .05 }), P("Wall Street Mastery", 15000, { interest: .1 })]],
     ["Harvest", [P("Fertilizer", 250, { income: X(1.1) }), P("Tractors", 600, { income: X(1.15) }), P("Lucky clover", 1600, { heal: 5 }), P("Healing crops", 3500, { heal: 15 }), P("Harvest Mastery", 12000, { income: X(1.5), heal: 30 })]],
   ] },
-  { id: "tesla", n: "Tesla Coil", ic: "⚡", cost: 650, price: 500, col: 0x5e35b1, d: "Lightning jumps between balloons. Pops Steel.", base: { range: 11, rate: 1.1, dmg: 1, chain: 3, popsSteel: true }, paths: [
+  { id: "tesla", n: "Tesla Coil", ic: "", cost: 650, price: 500, col: 0x5e35b1, d: "Lightning jumps between balloons. Pops Steel.", base: { range: 11, rate: 1.1, dmg: 1, chain: 3, popsSteel: true }, paths: [
     ["Arcs", [P("Longer arcs", 300, { chain: 2 }), P("Forked lightning", 500, { chain: 3 }), P("Storm", 1400, { chain: 5 }), P("Superstorm", 4000, { chain: 10, range: 4 }), P("Thunder Mastery", 15000, { chain: 20, dmg: 3 })]],
     ["Voltage", [P("Overcharge", 300, { dmg: 1 }), P("High voltage", 550, { dmg: 1 }), P("Plasma arc", 1500, { dmg: 3 }), P("Ion core", 4200, { dmg: 6 }), P("Tesla Mastery", 16000, { dmg: 15, rate: X(1.5) })]],
     ["Capacitor", [P("Fast capacitor", 250, { rate: X(1.3) }), P("Rapid coil", 450, { rate: X(1.3) }), P("Static field", 1300, { range: 4, rate: X(1.3) }), P("Lightning rod", 3600, { rate: X(2) }), P("Storm Mastery", 14000, { rate: X(2.5), range: 5 })]],
   ] },
-  { id: "mortar", n: "Mortar", ic: "🎆", cost: 600, price: 600, col: 0x6d4c41, d: "Lobs shells anywhere on the map. Pops Steel.", base: { range: 999, rate: .5, dmg: 1, splash: 4.5, popsSteel: true }, paths: [
+  { id: "mortar", n: "Mortar", ic: "", cost: 600, price: 600, col: 0x6d4c41, d: "Lobs shells anywhere on the map. Pops Steel.", base: { range: 999, rate: .5, dmg: 1, splash: 4.5, popsSteel: true }, paths: [
     ["Shells", [P("Bigger shells", 300, { splash: 1.5 }), P("Heavy shells", 550, { dmg: 1 }), P("Bunker buster", 1500, { dmg: 3 }), P("Shattering shells", 4000, { dmg: 6, splash: 1.5 }), P("Artillery Mastery", 14000, { dmg: 15, splash: 3 })]],
     ["Reload", [P("Quick reload", 300, { rate: X(1.3) }), P("Rapid reload", 500, { rate: X(1.4) }), P("Twin barrel", 1600, { rate: X(1.6) }), P("Barrage", 4200, { rate: X(2) }), P("Pop & Awe Mastery", 15000, { rate: X(2.5), dmg: 3 })]],
     ["Fire", [P("Burny stuff", 250, { dmg: 1 }), P("Napalm", 500, { dmg: 1 }), P("Shockwave", 1400, { stun: .5 }), P("Signal flare", 3600, { splash: 3 }), P("Inferno Mastery", 13000, { dmg: 4, stun: 1 })]],
   ] },
-  { id: "laser", n: "Laser Turret", ic: "🔴", cost: 850, price: 750, col: 0xc62828, d: "A beam that melts anything. Pops Steel.", base: { range: 15, rate: 6, dmg: 1, beams: 1, popsSteel: true }, paths: [
+  { id: "laser", n: "Laser Turret", ic: "", cost: 850, price: 750, col: 0xc62828, d: "A beam that melts anything. Pops Steel.", base: { range: 15, rate: 6, dmg: 1, beams: 1, popsSteel: true }, paths: [
     ["Heat", [P("Hotter beam", 450, { rate: X(1.3) }), P("Focused beam", 800, { dmg: 1 }), P("Burning beam", 2200, { dmg: 2, rate: X(1.3) }), P("Death ray", 5500, { dmg: 5 }), P("Laser Mastery", 18000, { dmg: 12, rate: X(1.5) })]],
     ["Prism", [P("Twin beams", 600, { beams: 1 }), P("Triple beams", 1000, { beams: 1 }), P("Prism", 2500, { beams: 3 }), P("Light show", 6000, { beams: 5, range: 4 }), P("Spectrum Mastery", 17000, { beams: 10, dmg: 3 })]],
     ["Lens", [P("Wide lens", 400, { range: 3 }), P("Long lens", 700, { range: 4 }), P("Overheat", 2000, { rate: X(1.5) }), P("Plasma core", 5000, { rate: X(1.8) }), P("Sun Mastery", 16000, { rate: X(2.5), range: 6 })]],
   ] },
-  { id: "dojo", n: "Shuriken Dojo", ic: "🥷", cost: 500, price: 350, col: 0x37474f, d: "Fast spinning stars that seek balloons.", base: { range: 16, rate: 1.6, dmg: 1, pierce: 3 }, paths: [
+  { id: "dojo", n: "Shuriken Dojo", ic: "", cost: 500, price: 350, col: 0x37474f, d: "Fast spinning stars that seek balloons.", base: { range: 16, rate: 1.6, dmg: 1, pierce: 3 }, paths: [
     ["Stars", [P("Sharp stars", 250, { pierce: 2 }), P("Double star", 450, { shots: 1 }), P("Steel stars", 1200, { popsSteel: true, dmg: 1 }), P("Star storm", 3500, { shots: 2, rate: X(1.5) }), P("Shadow Mastery", 14000, { dmg: 4, shots: 3, rate: X(1.5) })]],
     ["Focus", [P("Quick hands", 200, { rate: X(1.3) }), P("Long throw", 300, { range: 4 }), P("Flash bombs", 1100, { stun: .4 }), P("Smoke & mirrors", 3000, { stun: .6, rate: X(1.4) }), P("Grand Master", 13000, { rate: X(2.5), dmg: 3 })]],
     ["Poison", [P("Toxic tips", 250, { dmg: 1 }), P("Venom", 500, { dmg: 1 }), P("Seeking stars", 1300, { pierce: 5 }), P("Viper strike", 3800, { dmg: 4 }), P("Venom Mastery", 12000, { dmg: 8, pierce: 6 })]],
   ] },
-  { id: "spike", n: "Spike Layer", ic: "📌", cost: 550, price: 450, col: 0x795548, d: "Drops spike piles on the path. Great last line of defense.", base: { range: 12, rate: .8, dmg: 1, pierce: 6, life: 12 }, paths: [
+  { id: "spike", n: "Spike Layer", ic: "", cost: 550, price: 450, col: 0x795548, d: "Drops spike piles on the path. Great last line of defense.", base: { range: 12, rate: .8, dmg: 1, pierce: 6, life: 12 }, paths: [
     ["Spikes", [P("Bigger piles", 250, { pierce: 4 }), P("White-hot spikes", 500, { popsSteel: true }), P("Spiked balls", 1300, { dmg: 1, pierce: 4 }), P("Spike mines", 3600, { boom: 4 }), P("Spike Mastery", 13000, { dmg: 4, pierce: 20 })]],
     ["Factory", [P("Faster production", 300, { rate: X(1.3) }), P("Even faster", 500, { rate: X(1.4) }), P("Mass production", 1500, { rate: X(1.8) }), P("Assembly line", 4000, { rate: X(2) }), P("Factory Mastery", 14000, { rate: X(3) })]],
     ["Reach", [P("Long arm", 200, { range: 5 }), P("Lasting spikes", 300, { life: 10 }), P("Smart spikes", 1100, { range: 6 }), P("Perma spikes", 3000, { life: 30, pierce: 6 }), P("Carpet Mastery", 11000, { life: 60, pierce: 15, dmg: 2 })]],
   ] },
-  { id: "arcane", n: "Arcane Tower", ic: "🔮", cost: 600, price: 650, col: 0x7b1fa2, d: "Magic bolts that pass through balloons. Pops Steel.", base: { range: 14, rate: 1, dmg: 1, pierce: 4, popsSteel: true }, paths: [
+  { id: "arcane", n: "Arcane Tower", ic: "", cost: 600, price: 650, col: 0x7b1fa2, d: "Magic bolts that pass through balloons. Pops Steel.", base: { range: 14, rate: 1, dmg: 1, pierce: 4, popsSteel: true }, paths: [
     ["Arcane", [P("Bigger bolts", 300, { pierce: 3 }), P("Arcane blast", 500, { dmg: 1 }), P("Arcane spike", 1500, { dmg: 2, rate: X(1.3) }), P("Archmage", 4000, { dmg: 4, rate: X(1.5) }), P("Arcane Mastery", 15000, { dmg: 10, pierce: 10 })]],
     ["Fire", [P("Fireball", 300, { fire: 3 }), P("Hotter fire", 500, { fire: 1.5 }), P("Wall of fire", 1600, { wall: 1 }), P("Dragon's breath", 3800, { fire: 2, rate: X(1.4) }), P("Phoenix Mastery", 16000, { fire: 3, wall: 2, dmg: 3 })]],
     ["Spirit", [P("Guided magic", 250, { range: 4 }), P("Shimmer", 400, { range: 4 }), P("Twin spells", 1400, { shots: 1 }), P("Spirit army", 3800, { shots: 2, dmg: 2 }), P("Soul Mastery", 14000, { shots: 4, rate: X(2) })]],
   ] },
-  { id: "jet", n: "Sky Fighter", ic: "✈️", cost: 900, price: 900, col: 0x546e7a, d: "A plane that circles the sky and fires at balloons below.", sky: true, base: { range: 12, rate: 2, dmg: 1, pierce: 2, orbit: 18, fly: 1 }, paths: [
+  { id: "jet", n: "Sky Fighter", ic: "", cost: 900, price: 900, col: 0x546e7a, d: "A plane that circles the sky and fires at balloons below.", sky: true, base: { range: 12, rate: 2, dmg: 1, pierce: 2, orbit: 18, fly: 1 }, paths: [
     ["Guns", [P("Rapid guns", 350, { rate: X(1.3) }), P("Steel bullets", 600, { popsSteel: true, dmg: 1 }), P("Rotary cannons", 1800, { rate: X(1.8) }), P("Air superiority", 4500, { dmg: 3, shots: 2 }), P("Ace Mastery", 17000, { rate: X(2), dmg: 5, shots: 2 })]],
     ["Missiles", [P("Homing missiles", 400, { missile: 2.5 }), P("Bigger blasts", 700, { missile: 1.5 }), P("Cruise missiles", 2000, { missileDmg: 3 }), P("Bunker busters", 5000, { missileDmg: 8 }), P("Strike Mastery", 18000, { missileDmg: 20, missile: 2 })]],
     ["Bombers", [P("Wider loop", 300, { orbit: 8 }), P("Faster plane", 500, { fly: X(1.4) }), P("Carpet bombs", 1700, { bombs: 1 }), P("Heavy bombers", 4500, { bombs: 2, dmg: 2 }), P("Fortress Mastery", 16000, { bombs: 4, orbit: 10 })]],
   ] },
-  { id: "heli", n: "Heli Pilot", ic: "🚁", cost: 1000, price: 1100, col: 0x2e7d32, d: "A helicopter that chases the balloons wherever they go.", sky: true, base: { range: 13, rate: 2.2, dmg: 1, pierce: 2, fly: 14 }, paths: [
+  { id: "heli", n: "Heli Pilot", ic: "", cost: 1000, price: 1100, col: 0x2e7d32, d: "A helicopter that chases the balloons wherever they go.", sky: true, base: { range: 13, rate: 2.2, dmg: 1, pierce: 2, fly: 14 }, paths: [
     ["Guns", [P("Quad darts", 400, { shots: 1 }), P("Steel darts", 600, { popsSteel: true }), P("Rotor blast", 1600, { rotor: 1 }), P("Apache", 4500, { shots: 2, dmg: 2, rate: X(1.5) }), P("Gunship Mastery", 17000, { shots: 4, dmg: 4, rate: X(1.5) })]],
     ["Engine", [P("Faster rotors", 300, { fly: 6 }), P("Bigger engine", 500, { rate: X(1.3) }), P("Downdraft", 1500, { stun: .5 }), P("Hurricane", 4000, { stun: .8, rate: X(1.5) }), P("Storm Mastery", 15000, { rate: X(2), dmg: 3 })]],
     ["Support", [P("Longer range", 250, { range: 4 }), P("Medic drop", 500, { heal: 2 }), P("Supply crates", 1600, { income: 200 }), P("Rescue team", 4000, { heal: 8, income: 300 }), P("Support Mastery", 14000, { income: 900, heal: 20 })]],
@@ -542,7 +542,7 @@ function endWave() {
   inc += Math.min(3000, Math.round(cash * interest));
   cash += inc; lives += heal;
   if (wave >= 40) return finish(true);
-  announce(`+$${inc}${heal ? `<br><span style="font-size:20px">+${heal} ❤️</span>` : ""}`, 1.2);
+  announce(`+$${inc}${heal ? `<br><span style="font-size:20px">+${heal} lives</span>` : ""}`, 1.2);
   if (auto) setTimeout(() => { if (!running && playing && isHost()) startWave(); }, 1200);
 }
 function damage(o, dmg, src) {
@@ -735,7 +735,7 @@ function applyAct(a) {
     const tier = t.def.paths[p][1][t.lv[p]], cost = price(tier.up);
     if (cash < cost) return;
     cash -= cost; t.spent += cost; t.lv[p]++; showLevel(t);
-    if (t.lv[p] === 5) { announce(`👑 ${tier.n}!`, 1.6); sfx(523, .5, "triangle", .08, 3); } else sfx(523, .15, "square", .06, 2);
+    if (t.lv[p] === 5) { announce(`${tier.n}!`, 1.6); sfx(523, .5, "triangle", .08, 3); } else sfx(523, .15, "square", .06, 2);
   }
   if (a.a === "sell") { cash += Math.floor(t.spent * .7); removeTower(t); sfx(220, .15, "square", .05, .6); }
   if (a.a === "target") t.target = TARGETS[(TARGETS.indexOf(t.target) + 1) % 4];
@@ -784,10 +784,10 @@ function becomeHost() {
 // ---------- UI ----------
 function hud() {
   $("lives").textContent = Math.max(0, Math.ceil(lives)); $("cash").textContent = Math.floor(cash); $("wave").textContent = wave;
-  $("modechip").textContent = party ? "👥 Party · Hard" : diff[0].toUpperCase() + diff.slice(1);
+  $("modechip").textContent = party ? "Party · Hard" : diff[0].toUpperCase() + diff.slice(1);
   $("start").style.opacity = running ? .55 : 1;
-  $("start").textContent = running ? (auto ? "⏭ AUTO: ON" : "🌊 WAVE IN PROGRESS") : "▶ START WAVE (G)";
-  $("speed").textContent = `⏩ ${speed}x`;
+  $("start").textContent = running ? (auto ? "AUTO: ON" : "WAVE IN PROGRESS") : "▶ START WAVE (G)";
+  $("speed").textContent = `${speed}x`;
   document.querySelectorAll(".slot").forEach((el) => el.classList.toggle("no", cash < price(DEF[el.dataset.id].cost)));
   if (selected) panel();
 }
@@ -798,7 +798,7 @@ function drawBar() {
   SAVE.loadout.forEach((id, i) => {
     const t = DEF[id]; if (!t) return;
     const s = document.createElement("div"); s.className = "slot"; s.dataset.id = id;
-    s.innerHTML = `<span class="k">${i + 1}</span><span class="ic">${t.ic}</span><span class="n">${t.n}</span><span class="c">$${price(t.cost)}</span>`;
+    s.innerHTML = `<span class="k">${i + 1}</span><span class="ic"><i style="background:#${t.col.toString(16).padStart(6, "0")}">${t.n.split(/\s+/).map((w) => w[0]).join("").slice(0, 2)}</i></span><span class="n">${t.n}</span><span class="c">$${price(t.cost)}</span>`;
     s.onclick = (e) => { e.stopPropagation(); build(building === t ? null : t); };
     bar.appendChild(s);
   });
@@ -818,7 +818,7 @@ function select(t) {
 }
 function panel() {
   const t = selected, s = towerStats(t);
-  $("pn").textContent = `${t.def.ic} ${t.def.n}  ${t.lv.join("-")}`;
+  $("pn").textContent = `${t.def.n}  ${t.lv.join("-")}`;
   $("pd").textContent = t.def.d;
   $("ps").textContent = t.def.id === "farm" ? `Makes $${Math.round(s.income)} each wave${s.interest ? ` + ${Math.round(s.interest * 100)}% interest` : ""}${s.heal ? ` · +${s.heal} lives` : ""}` : `Range ${s.range > 900 ? "∞" : Math.round(s.range)} · ${Math.round(s.rate * 10) / 10}/s${s.dmg ? ` · damage ${s.dmg}` : ""}${s.popsSteel ? " · pops Steel" : ""}`;
   const box2 = $("paths"); box2.innerHTML = "";
@@ -827,18 +827,18 @@ function panel() {
     row.innerHTML = `<div class="pips">${[0, 1, 2, 3, 4].map((i) => `<i class="${i < t.lv[p] ? (i === 4 ? "m" : "on") : ""}"></i>`).join("")}</div>`;
     const b = document.createElement("button"); b.className = "btn";
     const lock = pathLock(t, p), tier = tiers[t.lv[p]];
-    if (lock === "max") { b.textContent = `👑 ${tiers[4].n}`; b.disabled = true; b.classList.add("mastery"); }
-    else if (lock) { b.textContent = `🔒 ${pname} (locked)`; b.disabled = true; }
+    if (lock === "max") { b.textContent = `${tiers[4].n}`; b.disabled = true; b.classList.add("mastery"); }
+    else if (lock) { b.textContent = `${pname} (locked)`; b.disabled = true; }
     else {
       const cost = price(tier.up);
-      b.innerHTML = `${t.lv[p] === 4 ? "👑 MASTERY: " : "⬆ "}${tier.n}<br><span style="color:#ffe082">$${cost}</span>`;
+      b.innerHTML = `${t.lv[p] === 4 ? "MASTERY: " : "Upgrade: "}${tier.n}<br><span style="color:#ffe082">$${cost}</span>`;
       if (t.lv[p] === 4) b.classList.add("mastery");
       b.disabled = cash < cost;
       b.onclick = () => act({ a: "up", id: t.id, p });
     }
     row.appendChild(b); box2.appendChild(row);
   });
-  $("ptarget").textContent = `🎯 ${t.target}`; $("ptarget").style.display = t.def.id === "farm" || t.def.id === "frost" ? "none" : "";
+  $("ptarget").textContent = `${t.target}`; $("ptarget").style.display = t.def.id === "farm" || t.def.id === "frost" ? "none" : "";
   $("psell").textContent = `Sell $${Math.floor(t.spent * .7)}`;
   const r = s.range > 900 ? .01 : s.range || .01; t.ring.scale.set(r, r, 1);
 }
@@ -1011,7 +1011,7 @@ function finish(won, quit) {
   if (survived > (SAVE.best[key] || 0)) SAVE.best[key] = survived;
   if (won) SAVE.wins++;
   save(); unlock(); playing = false;
-  $("et").textContent = won ? "🏆 VICTORY!" : quit ? "👋 LEFT THE GAME" : "💥 THE CASTLE FELL";
+  $("et").textContent = won ? "VICTORY!" : quit ? "LEFT THE GAME" : "THE CASTLE FELL";
   $("ed").textContent = won ? `You held off all 40 waves${party ? " with your party" : ` on ${diff}`}! Balloons popped: ${popped}.` : `You survived ${survived} wave${survived === 1 ? "" : "s"}. Balloons popped: ${popped}.`;
   $("earned").textContent = earned;
   $("end").style.display = "flex";
@@ -1044,9 +1044,9 @@ function drawShop() {
   for (const t of TOWERS) {
     const own = SAVE.owned.includes(t.id), eq = SAVE.loadout.includes(t.id);
     const c = document.createElement("div"); c.className = "card" + (eq ? " eq" : "");
-    c.innerHTML = `<span class="ic">${t.ic}</span><b>${t.n}</b><small>${t.d}<br>In game: $${t.cost}<br>Masteries: ${t.paths.map((p) => p[1][4].n).join(", ")}</small>`;
+    c.innerHTML = `<span class="ic"><i style="background:#${t.col.toString(16).padStart(6, "0")}">${t.n.split(/\s+/).map((w) => w[0]).join("").slice(0, 2)}</i></span><b>${t.n}</b><small>${t.d}<br>In game: $${t.cost}<br>Masteries: ${t.paths.map((p) => p[1][4].n).join(", ")}</small>`;
     const btn = document.createElement("button"); btn.className = "btn " + (own ? (eq ? "" : "blue") : "gold");
-    btn.textContent = own ? (eq ? "✓ Equipped" : "Equip") : `🪙 ${t.price}`;
+    btn.textContent = own ? (eq ? "✓ Equipped" : "Equip") : `${t.price} coins`;
     btn.disabled = !own && SAVE.coins < t.price;
     btn.onclick = () => {
       if (!own) { if (SAVE.coins < t.price) return; SAVE.coins -= t.price; SAVE.owned.push(t.id); if (SAVE.loadout.length < 5) SAVE.loadout.push(t.id); sfx(880, .2, "triangle", .07, 1.5); }
@@ -1065,7 +1065,7 @@ function joinParty(code) {
   lobbyWS.onopen = () => lobbyWS.send(JSON.stringify({ t: "join", name: NAME, fig: 0, q: "co", party: code }));
   lobbyWS.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-    if (m.t === "wait") $("pmembers").textContent = "👤 " + (m.players || []).map((p) => p.name).join("  👤 ") + `  (${m.count}/4)`;
+    if (m.t === "wait") $("pmembers").textContent = (m.players || []).map((p) => p.name).join(", ") + `  (${m.count}/4)`;
     if (m.t === "start") {
       const ws = lobbyWS; lobbyWS = null;
       const net = { ws, me: m.you, host: m.host };
@@ -1077,7 +1077,7 @@ function joinParty(code) {
   };
   lobbyWS.onerror = () => { $("perr").textContent = "Couldn't connect. Check your internet."; };
 }
-function drawMates() { $("mates").innerHTML = [...MATES.values()].map((x) => `<span>👤 ${x.name.replace(/[<>&]/g, "")}</span>`).join(""); }
+function drawMates() { $("mates").innerHTML = [...MATES.values()].map((x) => `<span>${x.name.replace(/[<>&]/g, "")}</span>`).join(""); }
 function addMate(id, name, i) {
   const c = makeChar(SHIRTS[i % 4], name); c.position.set(-12 + i * 2, 0, 5); scene.add(c);
   MATES.set(id, { c, to: c.position.clone(), yaw: 0, mv: 0, name }); drawMates();
@@ -1143,8 +1143,8 @@ function bigTag(text, color) {
 }
 const PADS = [
   { tab: "play", label: "▶ PLAY", css: "#2e7d32", color: 0x43a047, x: -17, z: -14 },
-  { tab: "party", label: "👥 PARTY", css: "#1565c0", color: 0x1e88e5, x: 0, z: -21 },
-  { tab: "shop", label: "🛒 TOWERS", css: "#ef6c00", color: 0xffa000, x: 17, z: -14 },
+  { tab: "party", label: "PARTY", css: "#1565c0", color: 0x1e88e5, x: 0, z: -21 },
+  { tab: "shop", label: "TOWERS", css: "#ef6c00", color: 0xffa000, x: 17, z: -14 },
 ];
 for (const p of PADS) {
   const g = new THREE.Group(); g.position.set(p.x, 0, p.z);
@@ -1189,7 +1189,7 @@ function hubConnect() {
     else if (m.t === "ljoin") { hubAdd(m.id, m.name); chatLine("", `${m.name} joined the lobby`); }
     else if (m.t === "left") { const x = HUBP.get(m.id); if (x) chatLine("", `${x.name} left`); hubDel(m.id); }
     else if (m.t === "chat") { chatLine(m.name, m.text, m.mine); bubble(m.mine ? player : (HUBP.get(m.from) || {}).c, m.text); }
-    else if (m.t === "chatno") chatLine("", "⚠ " + m.why);
+    else if (m.t === "chatno") chatLine("", "" + m.why);
     else if (m.t === "bs" && m.k === "lp") { const x = HUBP.get(m.from); if (x) { x.to.set(m.x, m.y, m.z); x.yaw = m.yaw; x.mv = m.mv; } }
   };
   ws.onclose = () => { if (hubWS === ws) hubWS = null; for (const id of [...HUBP.keys()]) hubDel(id); if (inHub) setTimeout(hubConnect, 3000); };
@@ -1206,7 +1206,7 @@ $("cin").onkeydown = (e) => {
   if (e.key !== "Enter") return;
   const t = e.target.value.trim();
   if (t && hubWS && hubWS.readyState === 1) hubWS.send(JSON.stringify({ t: "chat", text: t }));
-  else if (t) chatLine("", "⚠ Not connected yet. Try again in a moment.");
+  else if (t) chatLine("", "Not connected yet. Try again in a moment.");
   closeChat();
 };
 $("chatb").onclick = () => (chatOpen ? closeChat() : openChat());

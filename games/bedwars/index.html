@@ -16,7 +16,7 @@ canvas{display:block}
 #hotbar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:4px;pointer-events:auto}
 .slot{width:54px;height:54px;background:rgba(0,0,0,.45);border:3px solid rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;position:relative;cursor:pointer}
 .slot.on{border-color:#fff;background:rgba(255,255,255,.18)}
-.slot b{position:absolute;right:3px;bottom:0;font-size:13px}
+.slot b{position:absolute;right:3px;bottom:0;font-size:13px}.slot .sl{font-size:11px;font-weight:800;text-align:center;line-height:1.1;padding:0 2px}.hpb{display:inline-block;width:150px;height:12px;border-radius:6px;background:rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.35);vertical-align:middle;overflow:hidden}.hpb i{display:block;height:100%;background:linear-gradient(#ff6b6b,#d32f2f)}.hpab{color:#ffd54f}
 #hearts{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);font-size:17px;letter-spacing:1px;white-space:nowrap}
 #armorTxt{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);font-size:13px;opacity:.9}
 #res{position:absolute;left:12px;bottom:12px;font-size:17px;font-weight:800;line-height:1.5;background:rgba(0,0,0,.35);padding:6px 12px;border-radius:10px}
@@ -78,38 +78,38 @@ canvas{display:block}
   <button class="btn" data-q="bw1" style="background:#e53935">SOLOS</button>
   <button class="btn" data-q="bw2" style="background:#1e88e5">DUOS</button>
   <button class="btn" data-q="bw4" style="background:#43a047">SQUADS</button>
-  <button class="btn" id="practice" style="background:#8e24aa">🤖 PLAY WITH BOTS</button>
-  <button class="btn" id="v100" style="background:linear-gradient(#ff7043,#d84315)">💯 1 v 100</button>
-  <button class="btn" id="kitbtn" style="background:linear-gradient(#ffb300,#f57c00)">🧍 CHARACTER</button>
-  <button class="btn" id="partybtn" style="background:linear-gradient(#26c6da,#00838f)">👥 PARTY</button>
-  <div id="diffrow" style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;font-weight:800;color:#fff;text-shadow:0 2px 0 #0008">🤖 BOTS:
+  <button class="btn" id="practice" style="background:#8e24aa">PLAY WITH BOTS</button>
+  <button class="btn" id="v100" style="background:linear-gradient(#ff7043,#d84315)">1 v 100</button>
+  <button class="btn" id="kitbtn" style="background:linear-gradient(#ffb300,#f57c00)">CHARACTER</button>
+  <button class="btn" id="partybtn" style="background:linear-gradient(#26c6da,#00838f)">PARTY</button>
+  <div id="diffrow" style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;font-weight:800;color:#fff;text-shadow:0 2px 0 #0008">BOTS:
     <button class="btn diffb" data-d="easy" style="padding:6px 12px;font-size:14px">EASY</button>
     <button class="btn diffb" data-d="medium" style="padding:6px 12px;font-size:14px">MEDIUM</button>
     <button class="btn diffb" data-d="hard" style="padding:6px 12px;font-size:14px">HARD</button>
   </div>
   <div style="font-size:12px;color:#fffc;text-align:center;margin-top:4px;text-shadow:0 1px 0 #0008">With real players in the match, bots always play Hard.</div>
 </div>
-<div class="ov" id="kits"><div class="box" style="max-width:720px"><h2 style="margin:0;font-size:28px">🧍 PICK YOUR CHARACTER</h2><div style="opacity:.8;margin:4px 0 10px">Each one has a special power in every match.</div><div id="kitgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px"></div><button class="btn" id="kitclose" style="margin-top:12px;background:#455a64">✕ CLOSE</button></div></div>
+<div class="ov" id="kits"><div class="box" style="max-width:720px"><h2 style="margin:0;font-size:28px">PICK YOUR CHARACTER</h2><div style="opacity:.8;margin:4px 0 10px">Each one has a special power in every match.</div><div id="kitgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px"></div><button class="btn" id="kitclose" style="margin-top:12px;background:#455a64">✕ CLOSE</button></div></div>
 <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something nice… (Enter to send)"></div>
-<button class="btn" id="raidbtn" style="display:none;position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:9;background:linear-gradient(#ff5252,#b71c1c);font-size:22px">⚔️ LET THE RAID BEGIN (R)</button>
+<button class="btn" id="raidbtn" style="display:none;position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:9;background:linear-gradient(#ff5252,#b71c1c);font-size:22px">LET THE RAID BEGIN (R)</button>
 <div id="lockhint">Click to play · Esc to free the mouse</div>
 <div id="touch">
   <div id="joy"><div id="joyk"></div></div>
-  <div class="tb" id="tJump" style="right:30px;bottom:120px">⤴</div>
-  <div class="tb" id="tHit" style="right:110px;bottom:150px">⚔️</div>
-  <div class="tb" id="tUse" style="right:30px;bottom:200px">🧱</div>
-  <div class="tb" id="tShop" style="right:110px;bottom:230px;font-size:20px">🛒</div>
+  <div class="tb" id="tJump" style="right:30px;bottom:120px;font-size:14px;font-weight:800">Jump</div>
+  <div class="tb" id="tHit" style="right:110px;bottom:150px;font-size:14px;font-weight:800">Hit</div>
+  <div class="tb" id="tUse" style="right:30px;bottom:200px;font-size:14px;font-weight:800">Use</div>
+  <div class="tb" id="tShop" style="right:110px;bottom:230px;font-size:14px;font-weight:800">Shop</div>
   <div class="tb" id="tKill" style="right:30px;bottom:280px;font-size:20px" title="Respawn if you're stuck">↻</div>
 </div>
-<div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">🛒 ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><input id="promo" maxlength="40" placeholder="Promo code" style="padding:10px 12px;border-radius:10px;border:0;font-size:15px;width:220px"><button class="btn" id="promogo" style="background:#8e24aa;font-size:15px;padding:10px 16px">REDEEM</button></div><div id="promomsg" style="font-weight:800;margin-top:6px"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
+<div class="ov" id="shop"><div class="box"><h2 style="margin:0;font-size:30px">ITEM SHOP</h2><div id="shopres" style="font-weight:800;margin-top:6px"></div><div class="tabs" id="shoptabs"></div><div class="items" id="shopitems"></div><div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><input id="promo" maxlength="40" placeholder="Promo code" style="padding:10px 12px;border-radius:10px;border:0;font-size:15px;width:220px"><button class="btn" id="promogo" style="background:#8e24aa;font-size:15px;padding:10px 16px">REDEEM</button></div><div id="promomsg" style="font-weight:800;margin-top:6px"></div><button class="btn close" id="shopclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="chest"><div class="box"><h2 id="chtitle" style="margin:0;font-size:30px"></h2><p id="chsub" style="margin:6px 0 10px;font-weight:700;opacity:.85"></p><div id="chrows"></div><button class="btn close" id="chclose">✕ CLOSE (E)</button></div></div>
-<div class="ov" id="upg"><div class="box"><h2 style="margin:0;font-size:30px">💎 TEAM UPGRADES</h2><div id="upgres" style="font-weight:800;margin-top:6px"></div><div class="items" id="upgitems"></div><button class="btn close" id="upgclose">✕ CLOSE (E)</button></div></div>
+<div class="ov" id="upg"><div class="box"><h2 style="margin:0;font-size:30px">TEAM UPGRADES</h2><div id="upgres" style="font-weight:800;margin-top:6px"></div><div class="items" id="upgitems"></div><button class="btn close" id="upgclose">✕ CLOSE (E)</button></div></div>
 <div class="ov" id="queue" style="background:rgba(0,0,0,.4)"><div class="box"><h2 id="qtitle" style="margin:0;font-size:30px"></h2><p id="qtext" style="font-size:18px;font-weight:700"></p><div id="qlist" style="font-weight:700;opacity:.9"></div><button class="btn" id="qstart" style="display:none;background:#43a047;margin-top:10px">▶ START</button> <button class="btn close" id="qcancel">✕ LEAVE QUEUE</button></div></div>
-<div class="ov" id="party"><div class="box" style="max-width:460px;text-align:center"><h2 style="margin:0;font-size:28px">👥 PARTY</h2>
+<div class="ov" id="party"><div class="box" style="max-width:460px;text-align:center"><h2 style="margin:0;font-size:28px">PARTY</h2>
 <div id="pin" style="display:none"><p style="font-size:16px;opacity:.85;margin:8px 0">Your party code:</p><div id="pcode" style="font-size:44px;font-weight:900;letter-spacing:.15em;color:#ffe14a"></div><p style="font-size:15px;opacity:.85">Tell your friends this code. Then everyone picks the <b>same mode</b> (Solos, Duos or Squads) and one of you presses START. You'll be in one match together; teammates are filled in order, and bots fill the empty spots.</p><button class="btn" id="pleave" style="background:#e53935">LEAVE PARTY</button></div>
 <div id="pout"><p style="font-size:16px;opacity:.85;margin:8px 0">Play a private match with your friends.</p><button class="btn" id="pmake" style="background:#43a047">MAKE A PARTY</button><p style="margin:14px 0 6px;font-weight:800">or join one:</p><input id="pjoin" maxlength="5" placeholder="CODE" style="font:inherit;font-size:24px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;width:170px;text-align:center;padding:8px;border-radius:10px;border:0"> <button class="btn" id="pgo" style="background:#1e88e5">JOIN</button><p id="perr" style="color:#ff8a80;font-weight:700;min-height:1em"></p></div>
 <button class="btn close" id="pclose">✕ CLOSE</button></div></div>
-<div class="ov" id="results" style="background:radial-gradient(circle at 50% 30%,rgba(90,40,200,.75),rgba(10,0,40,.92))"><div class="box"><h1 id="rtitle" style="font-size:52px;margin:6px 0;font-style:italic"></h1><p id="rtext" style="font-size:17px;font-weight:700;line-height:1.6"></p><button class="btn" id="ragain" style="background:linear-gradient(#ffe14a,#ffb000);color:#3a2300">PLAY AGAIN</button> <button class="btn" id="rlobby" style="background:linear-gradient(#b8ff9f,#3ed14a);color:#0b3010">🏠 BACK TO LOBBY</button></div></div>
+<div class="ov" id="results" style="background:radial-gradient(circle at 50% 30%,rgba(90,40,200,.75),rgba(10,0,40,.92))"><div class="box"><h1 id="rtitle" style="font-size:52px;margin:6px 0;font-style:italic"></h1><p id="rtext" style="font-size:17px;font-weight:700;line-height:1.6"></p><button class="btn" id="ragain" style="background:linear-gradient(#ffe14a,#ffb000);color:#3a2300">PLAY AGAIN</button> <button class="btn" id="rlobby" style="background:linear-gradient(#b8ff9f,#3ed14a);color:#0b3010">BACK TO LOBBY</button></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -125,15 +125,15 @@ try{Object.assign(SAVE,JSON.parse(localStorage.getItem("bw-save")||"{}"))}catch(
 const save=()=>{try{localStorage.setItem("bw-save",JSON.stringify(SAVE))}catch(e){}};
 // Characters: pick one in the lobby; each has one power (bots get a random one).
 const KITS=[
- {id:"none",ic:"🙂",n:"Rookie",p:"No power. Pure skill.",c:"#90a4ae"},
- {id:"brute",ic:"🪓",n:"Brute",p:"Sword hits deal +1 damage.",c:"#e53935"},
- {id:"hunter",ic:"🏹",n:"Hunter",p:"Arrows deal 50% more damage.",c:"#43a047"},
- {id:"digger",ic:"⛏️",n:"Digger",p:"Breaks blocks 40% faster.",c:"#8d6e63"},
- {id:"harvest",ic:"🌾",n:"Harvester",p:"Gets 50% more from generators.",c:"#fdd835"},
- {id:"builder",ic:"🧱",n:"Builder",p:"Starts every life with 24 extra wool.",c:"#fb8c00"},
- {id:"guard",ic:"🛡️",n:"Guardian",p:"Has 26 health instead of 20.",c:"#1e88e5"},
- {id:"sprint",ic:"⚡",n:"Sprinter",p:"Moves 15% faster.",c:"#00acc1"},
- {id:"medic",ic:"❤️",n:"Medic",p:"Heals twice as fast.",c:"#ec407a"}];
+ {id:"none",ic:"",n:"Rookie",p:"No power. Pure skill.",c:"#90a4ae"},
+ {id:"brute",ic:"",n:"Brute",p:"Sword hits deal +1 damage.",c:"#e53935"},
+ {id:"hunter",ic:"",n:"Hunter",p:"Arrows deal 50% more damage.",c:"#43a047"},
+ {id:"digger",ic:"",n:"Digger",p:"Breaks blocks 40% faster.",c:"#8d6e63"},
+ {id:"harvest",ic:"",n:"Harvester",p:"Gets 50% more from generators.",c:"#fdd835"},
+ {id:"builder",ic:"",n:"Builder",p:"Starts every life with 24 extra wool.",c:"#fb8c00"},
+ {id:"guard",ic:"",n:"Guardian",p:"Has 26 health instead of 20.",c:"#1e88e5"},
+ {id:"sprint",ic:"",n:"Sprinter",p:"Moves 15% faster.",c:"#00acc1"},
+ {id:"medic",ic:"",n:"Medic",p:"Heals twice as fast.",c:"#ec407a"}];
 const kitOf=e=>(e&&e.kit)||"none";
 const randomKit=()=>KITS[1+Math.floor(Math.random()*(KITS.length-1))].id;
 // Bot difficulty: chosen in the lobby for matches with no other real players; Hard otherwise.
@@ -220,7 +220,7 @@ function rayEnt(o,d,e,max){const w=mine(e)?.9:.4,hh=mine(e)?2.6:1.9;const mn=[e.
 let AC=null;function sfx(f,d,type,vol){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type||"square";o.frequency.value=f;g.gain.value=vol||.05;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 
 // ---------- characters ----------
-const SWORDS=[{n:"Wood sword",c:0xa0723c,d:4,ic:"🗡️"},{n:"Stone sword",c:0x8d8d8d,d:5,ic:"🗡️"},{n:"Iron sword",c:0xe0e0e0,d:6,ic:"⚔️"},{n:"Diamond sword",c:0x4fe3e0,d:7,ic:"⚔️"},{n:"Rageblade",c:0xe0245e,d:9,ic:"🔱"}];
+const SWORDS=[{n:"Wood sword",c:0xa0723c,d:4,ic:"Wood"},{n:"Stone sword",c:0x8d8d8d,d:5,ic:"Stone"},{n:"Iron sword",c:0xe0e0e0,d:6,ic:"Iron"},{n:"Diamond sword",c:0x4fe3e0,d:7,ic:"Dia"},{n:"Rageblade",c:0xe0245e,d:9,ic:"Rage"}];
 const ARMORS=[{n:"Leather",red:.12},{n:"Chainmail",red:.3,c:0x9e9e9e},{n:"Iron",red:.45,c:0xdcdcdc},{n:"Diamond",red:.6,c:0x4fe3e0}];
 function label(text,color,scale){const c=document.createElement("canvas");c.width=256;c.height=64;const k=c.getContext("2d");k.fillStyle="rgba(0,0,0,.45)";k.fillRect(0,8,256,48);k.font="bold 34px Segoe UI, Arial";k.textAlign="center";k.fillStyle=color||"#fff";k.fillText(text,128,45);
  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(2*(scale||1),.5*(scale||1),1);s.renderOrder=9;return s}
@@ -278,7 +278,7 @@ function buildArena(){clearWorld();scene.background.setHex(0x8ccfff);scene.fog.c
   const ex=g.cx+g.px*2-g.ux*3,ez=g.cz+g.pz*2-g.uz*3,tx=g.cx-g.px*2-g.ux*3,tz=g.cz-g.pz*2-g.uz*3;
   setBlock(ex,3,ez,15);setBlock(tx,3,tz,16);
   NPCS.push({x:ex+.5,z:ez+.5,kind:"ender",team:i});NPCS.push({x:tx+.5,z:tz+.5,kind:"tchest",team:i});
-  const l1=label("🟪 ENDER CHEST","#c9a6ff",.8);l1.position.set(ex+.5,4.6,ez+.5);DEC.add(l1);const l2=label("📦 TEAM CHEST","#ffd27a",.8);l2.position.set(tx+.5,4.6,tz+.5);DEC.add(l2)}
+  const l1=label("ENDER CHEST","#c9a6ff",.8);l1.position.set(ex+.5,4.6,ez+.5);DEC.add(l1);const l2=label("TEAM CHEST","#ffd27a",.8);l2.position.set(tx+.5,4.6,tz+.5);DEC.add(l2)}
  for(const sx of[-1,1])for(const sz of[-1,1]){const cx=sx*30,cz=sz*30;island(cx,cz,3,2,1,true);setBlock(cx,2,cz,9);addGen(cx+.5,cz+.5,"diamond",-1)}
  island(0,0,7,2,6,true);for(const sx of[-1,1]){setBlock(sx*3,2,0,14);addGen(sx*3+.5,.5,"emerald",-1)}
  for(const[x,z]of[[4,4],[-4,-4],[4,-4],[-4,4]])for(let y=5;y<=7;y++)setBlock(x,y,z,6)}
@@ -292,7 +292,7 @@ function buildLobby(){clearWorld();scene.background.setHex(0x9ad6ff);scene.fog.c
  // practice portal (bots only)
  for(let y=3;y<=7;y++){setBlock(15,y,-2,7);setBlock(15,y,2,7)}for(let dz=-2;dz<=2;dz++)setBlock(15,8,dz,7);
  const pp=new THREE.Mesh(new THREE.PlaneGeometry(3,5),new THREE.MeshBasicMaterial({color:0xb04cff,transparent:true,opacity:.75,side:THREE.DoubleSide}));pp.rotation.y=Math.PI/2;pp.position.set(15.5,5.5,.5);DEC.add(pp);
- const pl2=label("🤖 PRACTICE","#fff",2.6);pl2.position.set(15.5,9.6,.5);DEC.add(pl2);PORTALS.push({q:"bots",x:15.5,z:.5,pl:pp,side:true});
+ const pl2=label("PRACTICE","#fff",2.6);pl2.position.set(15.5,9.6,.5);DEC.add(pl2);PORTALS.push({q:"bots",x:15.5,z:.5,pl:pp,side:true});
  const title=label("BEDWARS","#ffe14a",5);title.position.set(.5,13,-17);DEC.add(title);
  // leaderboard + your stats boards
  const mk=(x,rot,z)=>{const c=document.createElement("canvas");c.width=512;c.height=512;const t=new THREE.CanvasTexture(c);const m=new THREE.Mesh(new THREE.PlaneGeometry(7,7),new THREE.MeshBasicMaterial({map:t}));m.position.set(x,6.5,z||0);m.rotation.y=rot;DEC.add(m);return{c,t}};
@@ -300,11 +300,11 @@ function buildLobby(){clearWorld();scene.background.setHex(0x9ad6ff);scene.fog.c
  // bed statue in the middle
  setBlock(0,3,0,20);setBlock(1,3,0,20);for(const[x,z]of[[-1,-1],[2,-1],[-1,1],[2,1]])setBlock(x,3,z,10+((x+z+4)%4))}
 let BOARD=null,STATB=null,TOP=[];
-function drawBoards(){if(BOARD){const k=BOARD.c.getContext("2d");k.fillStyle="#1b0f4a";k.fillRect(0,0,512,512);k.fillStyle="#ffe14a";k.font="900 44px Segoe UI, Arial";k.textAlign="center";k.fillText("🏆 MOST WINS",256,60);
+function drawBoards(){if(BOARD){const k=BOARD.c.getContext("2d");k.fillStyle="#1b0f4a";k.fillRect(0,0,512,512);k.fillStyle="#ffe14a";k.font="900 44px Segoe UI, Arial";k.textAlign="center";k.fillText("MOST WINS",256,60);
   k.font="800 28px Segoe UI, Arial";k.textAlign="left";if(!TOP.length){k.fillStyle="#fff";k.fillText("Be the first! Win a game.",50,250)}
   TOP.slice(0,10).forEach((x,i)=>{k.fillStyle=i<3?["#ffd23f","#e6e6e6","#ff9a5a"][i]:"#fff";k.fillText(`${i+1}. ${String(x.name).slice(0,16)}`,40,120+i*38);k.textAlign="right";k.fillText(`${x.trophies}`,470,120+i*38);k.textAlign="left"});BOARD.t.needsUpdate=true}
  if(STATB){const k=STATB.c.getContext("2d");k.fillStyle="#0f2a4a";k.fillRect(0,0,512,512);k.fillStyle="#4fe3e0";k.font="900 44px Segoe UI, Arial";k.textAlign="center";k.fillText("YOUR STATS",256,60);k.font="800 32px Segoe UI, Arial";k.fillStyle="#fff";
-  [["👤",NAME],["🏆 Wins",SAVE.wins],["⚔️ Kills",SAVE.kills],["💀 Final kills",SAVE.finals],["🛏️ Beds broken",SAVE.beds],["🎮 Games",SAVE.games]].forEach(([a,b],i)=>{k.textAlign="left";k.fillText(a,40,130+i*60);k.textAlign="right";k.fillText(String(b).slice(0,14),470,130+i*60)});STATB.t.needsUpdate=true}}
+  [["Player",NAME],["Wins",SAVE.wins],["Kills",SAVE.kills],["Final kills",SAVE.finals],["Beds broken",SAVE.beds],["Games",SAVE.games]].forEach(([a,b],i)=>{k.textAlign="left";k.fillText(a,40,130+i*60);k.textAlign="right";k.fillText(String(b).slice(0,14),470,130+i*60)});STATB.t.needsUpdate=true}}
 
 // generators
 function addGen(x,z,kind,team){const y=3;const col={iron:0xe8e8e8,gold:0xffd54a,diamond:0x4fe3e0,emerald:0x2fd36b}[kind];
@@ -315,29 +315,29 @@ function addGen(x,z,kind,team){const y=3;const col={iron:0xe8e8e8,gold:0xffd54a,
   const pad=new THREE.Mesh(new THREE.BoxGeometry(1.6,.15,1.6),new THREE.MeshBasicMaterial({color:col}));pad.position.set(x,y+.08,z);DEC.add(pad)}GENS.push(g);return g}
 function genEvery(g){const f=g.team>=0?1+.5*TEAM_ST[g.team].forge:1;return{iron:1.1,gold:6,diamond:30,emerald:55}[g.kind]/f}
 function addNPC(x,z,kind,team){const m=makeChar(0x000000,null,kind==="shop"?0x2e7d32:0x6a1b9a);m.position.set(x,3,z);m.rotation.y=Math.atan2(-(ISL[team][0]-x),-(ISL[team][1]-z))+Math.PI;
- const lb=label(kind==="shop"?"🛒 ITEM SHOP":"💎 UPGRADES","#fff",1);lb.position.set(x,5.4,z);DEC.add(lb);scene.remove(m);DEC.add(m);NPCS.push({x,z,kind,team,mesh:m})}
+ const lb=label(kind==="shop"?"ITEM SHOP":"UPGRADES","#fff",1);lb.position.set(x,5.4,z);DEC.add(lb);scene.remove(m);DEC.add(m);NPCS.push({x,z,kind,team,mesh:m})}
 
 // ---------- shop ----------
 const SHOP={
- Blocks:[["wool","🧶","Wool x16",{iron:4},e=>{e.blocks.wool+=16}],["wood","🪵","Wood x16",{gold:4},e=>{e.blocks.wood+=16}],["end","🟨","End stone x12",{iron:24},e=>{e.blocks.end+=12}]],
- Weapons:[["s1","🗡️","Stone sword",{iron:10},e=>{e.sword=Math.max(e.sword,1)},e=>e.sword>=1],["s2","⚔️","Iron sword",{gold:7},e=>{e.sword=Math.max(e.sword,2)},e=>e.sword>=2],["s3","💎","Diamond sword",{emerald:4},e=>{e.sword=Math.max(e.sword,3)},e=>e.sword>=3],["s4","🔱","Rageblade",{emerald:5,diamond:5,iron:50,gold:10},e=>{e.sword=4},e=>e.sword>=4]],
- Tools:[["x1","🪓","Stone axe",{iron:10},e=>{e.axe=Math.max(e.axe,1)},e=>e.axe>=1],["x2","🪓","Iron axe",{gold:5},e=>{e.axe=Math.max(e.axe,2)},e=>e.axe>=2],["x3","💎","Diamond axe (one-taps beds)",{emerald:3},e=>{e.axe=3},e=>e.axe>=3]],
- Armor:[["a1","⛓️","Chainmail armor",{iron:24},e=>{e.armor=Math.max(e.armor,1)},e=>e.armor>=1],["a2","🛡️","Iron armor",{gold:12},e=>{e.armor=Math.max(e.armor,2)},e=>e.armor>=2],["a3","💠","Diamond armor",{emerald:6},e=>{e.armor=3},e=>e.armor>=3]],
- Ranged:[["bow","🏹","Bow",{gold:12},e=>{e.bow=true},e=>e.bow],["arrows","➶","Arrows x8",{gold:2},e=>{e.arrows+=8}]],
- Utility:[["fireball","🔥","Fireball",{iron:40},e=>{e.fireball++}]]};
-const RES_IC={iron:"⬜",gold:"🟨",diamond:"💎",emerald:"🟩"};
+ Blocks:[["wool","","Wool x16",{iron:4},e=>{e.blocks.wool+=16}],["wood","","Wood x16",{gold:4},e=>{e.blocks.wood+=16}],["end","","End stone x12",{iron:24},e=>{e.blocks.end+=12}]],
+ Weapons:[["s1","","Stone sword",{iron:10},e=>{e.sword=Math.max(e.sword,1)},e=>e.sword>=1],["s2","","Iron sword",{gold:7},e=>{e.sword=Math.max(e.sword,2)},e=>e.sword>=2],["s3","","Diamond sword",{emerald:4},e=>{e.sword=Math.max(e.sword,3)},e=>e.sword>=3],["s4","","Rageblade",{emerald:5,diamond:5,iron:50,gold:10},e=>{e.sword=4},e=>e.sword>=4]],
+ Tools:[["x1","","Stone axe",{iron:10},e=>{e.axe=Math.max(e.axe,1)},e=>e.axe>=1],["x2","","Iron axe",{gold:5},e=>{e.axe=Math.max(e.axe,2)},e=>e.axe>=2],["x3","","Diamond axe (one-taps beds)",{emerald:3},e=>{e.axe=3},e=>e.axe>=3]],
+ Armor:[["a1","","Chainmail armor",{iron:24},e=>{e.armor=Math.max(e.armor,1)},e=>e.armor>=1],["a2","","Iron armor",{gold:12},e=>{e.armor=Math.max(e.armor,2)},e=>e.armor>=2],["a3","","Diamond armor",{emerald:6},e=>{e.armor=3},e=>e.armor>=3]],
+ Ranged:[["bow","","Bow",{gold:12},e=>{e.bow=true},e=>e.bow],["arrows","➶","Arrows x8",{gold:2},e=>{e.arrows+=8}]],
+ Utility:[["fireball","","Fireball",{iron:40},e=>{e.fireball++}]]};
+const RES_IC={iron:"iron",gold:"gold",diamond:"diamonds",emerald:"emeralds"};
 const costTxt=c=>Object.entries(c).map(([k,v])=>`${v} ${RES_IC[k]}`).join(" ");
 const afford=(e,c)=>Object.entries(c).every(([k,v])=>e.res[k]>=v);
 function pay(e,c){for(const[k,v]of Object.entries(c))e.res[k]-=v}
 let shopTab="Blocks";
 const priceOf=(id,c)=>BIG()&&id==="fireball"?{iron:300,gold:40,emerald:2}:c;
-function drawShop(){$("shopres").innerHTML=Object.entries(P.res).map(([k,v])=>`${RES_IC[k]} ${v}`).join(" &nbsp; ");
+function drawShop(){$("shopres").innerHTML=Object.entries(P.res).map(([k,v])=>`${v} ${RES_IC[k]}`).join(" &nbsp; ");
  $("shoptabs").innerHTML=Object.keys(SHOP).map(t=>`<div class="tab ${t===shopTab?"on":""}" data-tab="${t}">${t}</div>`).join("");
- $("shopitems").innerHTML=SHOP[shopTab].map(([id,ic,nm,c0,_,owned],i)=>{const c=priceOf(id,c0);const has=owned&&owned(P);const ok=!has&&afford(P,c);return`<div class="item ${ok?"":"no"}" data-buy="${i}"><div class="ic">${ic}</div><div class="nm">${nm}</div><div class="co">${has?"✔ Owned":costTxt(c)}</div></div>`}).join("")}
+ $("shopitems").innerHTML=SHOP[shopTab].map(([id,ic,nm,c0,_,owned],i)=>{const c=priceOf(id,c0);const has=owned&&owned(P);const ok=!has&&afford(P,c);return`<div class="item ${ok?"":"no"}" data-buy="${i}"><div class="nm">${nm}</div><div class="co">${has?"Owned":costTxt(c)}</div></div>`}).join("")}
 function buy(i){const it=SHOP[shopTab][i];if(!it||!P.alive)return;const[id,,nm,c0,give,owned]=it;const c=priceOf(id,c0);if(owned&&owned(P)){return}if(!afford(P,c)){sfx(160,.15);return}pay(P,c);give(P);setArmorLook(P);sfx(880,.08);msg("Bought "+nm,1);hud();drawShop()}
-const UPGS=[["sharp","🗡️","Sharpness","+1 damage for your whole team",[4]],["prot","🛡️","Protection","Your team takes 6% less damage per level",[2,4,8]],["forge","🔥","Forge","Your generator makes iron and gold faster",[2,4]],["haste","⛏️","Haste","Your team breaks blocks faster",[2]],["heal","💗","Heal pool","Heal faster at your base",[1]]];
-function drawUpg(){$("upgres").innerHTML=Object.entries(P.res).map(([k,v])=>`${RES_IC[k]} ${v}`).join(" &nbsp; ");const T=TEAM_ST[P.team];
- $("upgitems").innerHTML=UPGS.map(([id,ic,nm,ds,costs],i)=>{const lv=T[id],max=lv>=costs.length,c=max?0:costs[lv];return`<div class="item ${!max&&P.res.diamond>=c?"":"no"}" data-upg="${i}"><div class="ic">${ic}</div><div class="nm">${nm} ${costs.length>1?(lv+"/"+costs.length):""}</div><div class="co">${ds}</div><div class="co" style="margin-top:4px">${max?"✔ Maxed":c+" 💎"}</div></div>`}).join("")}
+const UPGS=[["sharp","","Sharpness","+1 damage for your whole team",[4]],["prot","","Protection","Your team takes 6% less damage per level",[2,4,8]],["forge","","Forge","Your generator makes iron and gold faster",[2,4]],["haste","","Haste","Your team breaks blocks faster",[2]],["heal","","Heal pool","Heal faster at your base",[1]]];
+function drawUpg(){$("upgres").innerHTML=Object.entries(P.res).map(([k,v])=>`${v} ${RES_IC[k]}`).join(" &nbsp; ");const T=TEAM_ST[P.team];
+ $("upgitems").innerHTML=UPGS.map(([id,ic,nm,ds,costs],i)=>{const lv=T[id],max=lv>=costs.length,c=max?0:costs[lv];return`<div class="item ${!max&&P.res.diamond>=c?"":"no"}" data-upg="${i}"><div class="nm">${nm} ${costs.length>1?(lv+"/"+costs.length):""}</div><div class="co">${ds}</div><div class="co" style="margin-top:4px">${max?"Maxed":c+" diamonds"}</div></div>`}).join("")}
 function buyUpg(i){const[id,,nm,,costs]=UPGS[i];const T=TEAM_ST[P.team];const lv=T[id];if(lv>=costs.length||P.res.diamond<costs[lv]){sfx(160,.15);return}P.res.diamond-=costs[lv];T[id]=lv+1;send({k:"upg",team:P.team,u:id,lv:lv+1});sfx(990,.1);msg(`Team upgrade: ${nm}${costs.length>1?" "+(lv+1):""}`,1.2);drawUpg();hud()}
 function openPanel(id){if(!P||!P.alive)return;unlock();$(id).style.display="block";id==="shop"?drawShop():drawUpg()}
 function closePanels(){$("shop").style.display="none";$("upg").style.display="none";$("chest").style.display="none"}
@@ -349,16 +349,16 @@ $("shopclose").onclick=$("upgclose").onclick=()=>{closePanels();lock()};
 // ---------- chests ----------
 // Ender chest: only yours (every ender chest opens the same one) and it keeps everything when you die.
 // Team chest: one per island, shared with everyone (your teammates, and anyone raiding your base).
-const CH_ITEMS=[["iron","⬜","Iron"],["gold","🟨","Gold"],["diamond","💎","Diamonds"],["emerald","🟩","Emeralds"],["wool","🧶","Wool"],["wood","🪵","Wood"],["end","🟨","End stone"],["arrows","➶","Arrows"],["fireball","🔥","Fireballs"]];
+const CH_ITEMS=[["iron","","Iron"],["gold","","Gold"],["diamond","","Diamonds"],["emerald","","Emeralds"],["wool","","Wool"],["wood","","Wood"],["end","","End stone"],["arrows","➶","Arrows"],["fireball","","Fireballs"]];
 let ENDER={},TCHEST=[{},{},{},{}],chestAt=null;
 function itemGet(e,k){return k in e.res?e.res[k]:k in e.blocks?e.blocks[k]:e[k]||0}
 function itemSet(e,k,v){if(k in e.res)e.res[k]=v;else if(k in e.blocks)e.blocks[k]=v;else e[k]=v}
 function chestStore(){return chestAt.kind==="ender"?ENDER:TCHEST[chestAt.team]}
 function drawChest(){const st=chestStore(),mine=chestAt.kind==="ender";
- $("chtitle").textContent=mine?"🟪 YOUR ENDER CHEST":`📦 ${TEAMS[chestAt.team].n.toUpperCase()} TEAM CHEST`;
+ $("chtitle").textContent=mine?"YOUR ENDER CHEST":`${TEAMS[chestAt.team].n.toUpperCase()} TEAM CHEST`;
  $("chsub").textContent=mine?"Only you can open this. Everything here stays safe when you die.":(chestAt.team===P.team?"Your teammates can use this too, and so can anyone who raids your base.":"Another team's chest: take what you want!");
  $("chrows").innerHTML=`<div class="crow" style="background:none;padding:0 10px;font-size:12px;opacity:.8"><span>Item</span><span>You</span><span></span><span></span><span>Chest</span></div>`+
-  CH_ITEMS.map(([k,ic,nm])=>{const a=itemGet(P,k),b=st[k]||0;return`<div class="crow"><span>${ic} ${nm}</span><span>${a}</span><button data-put="${k}" ${a?"":"disabled"}>Put in ➡</button><button data-take="${k}" ${b?"":"disabled"} style="background:#43a047">⬅ Take</button><span>${b}</span></div>`}).join("")}
+  CH_ITEMS.map(([k,ic,nm])=>{const a=itemGet(P,k),b=st[k]||0;return`<div class="crow"><span>${nm}</span><span>${a}</span><button data-put="${k}" ${a?"":"disabled"}>Put in</button><button data-take="${k}" ${b?"":"disabled"} style="background:#43a047">Take</button><span>${b}</span></div>`}).join("")}
 function chestMove(k,put){const st=chestStore();if(put){const n=itemGet(P,k);if(!n)return;st[k]=(st[k]||0)+n;itemSet(P,k,0)}else{const n=st[k]||0;if(!n)return;itemSet(P,k,itemGet(P,k)+n);st[k]=0}
  if(chestAt.kind==="tchest")send({k:"chest",team:chestAt.team,c:st});sfx(put?500:700,.05,"triangle",.05);drawChest();hud()}
 $("chest").addEventListener("click",e=>{const a=e.target.closest("[data-put]"),b=e.target.closest("[data-take]");if(a)chestMove(a.dataset.put,true);if(b)chestMove(b.dataset.take,false)});
@@ -382,14 +382,14 @@ function fillUp(e){for(const r in e.res)e.res[r]=Math.max(e.res[r],9999);for(con
 const BATON_HASH="e2a4d8cb1c8590ffc1e06f882826b2fb2939ae98b48e751d78a4c360cdae9086";
 const TURRET_HASH="61fe51a9b155d3934ffb25d185f1f5a3daa6de4ce2f758dd7ee72172c5a7912e";
 $("promogo").onclick=()=>{const v=$("promo").value.trim();
- if(sha256(v)===BATON_HASH){$("promo").value="";if(!P||MODE!=="match"){$("promomsg").textContent="Use it during a match.";return}P.baton=true;$("promomsg").textContent="🏏 Knockback baton! One hit sends anyone across the map.";sfx(990,.2,"triangle",.08);hud();return}
+ if(sha256(v)===BATON_HASH){$("promo").value="";if(!P||MODE!=="match"){$("promomsg").textContent="Use it during a match.";return}P.baton=true;$("promomsg").textContent="Knockback baton! One hit sends anyone across the map.";sfx(990,.2,"triangle",.08);hud();return}
  if(sha256(v)===TURRET_HASH){$("promo").value="";if(P.gotTurrets){$("promomsg").textContent="You already got your turret"+(BIG()?"s":"")+" this match.";return}
-  P.gotTurrets=true;P.turret=BIG()?10:1;$("promomsg").textContent=BIG()?"🔥 10 fireball turrets! Place them, then start the raid to switch them on.":"🔥 1 base turret! It shoots anyone who comes onto your island.";sfx(990,.2,"triangle",.08);hud();return}if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="✅ Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
+  P.gotTurrets=true;P.turret=BIG()?10:1;$("promomsg").textContent=BIG()?"10 fireball turrets! Place them, then start the raid to switch them on.":"1 base turret! It shoots anyone who comes onto your island.";sfx(990,.2,"triangle",.08);hud();return}if(sha256(v)===PROMO_HASH){SAVE.promo=true;save();if(P)fillUp(P);$("promomsg").textContent="Unlocked: infinite materials, you keep everything when you die and respawn instantly!";$("promo").value="";sfx(990,.2,"triangle",.08);hud();drawShop()}else{$("promomsg").textContent="That code doesn't work.";sfx(160,.15)}};
 $("promo").addEventListener("keydown",e=>{e.stopPropagation();if(e.key==="Enter")$("promogo").click()});
 
 // ---------- hotbar ----------
 function hotbar(e){const h=[["sword","sword"]];if(e.baton)h.push(["baton","baton"]);if(e.turret)h.push(["turret","turret"]);if(e.bed2)h.push(["bed2","bed2"]);if(e.axe)h.push(["axe","axe"]);if(e.blocks.wool)h.push(["wool","wool"]);if(e.blocks.wood)h.push(["wood","wood"]);if(e.blocks.end)h.push(["end","end"]);if(e.bow)h.push(["bow","bow"]);if(e.fireball)h.push(["fireball","fireball"]);return h.map(x=>x[0])}
-const ICON={baton:"🏏",iron:"⬜",gold:"🟨",diamond:"💎",emerald:"🟩",turret:"🔥",bed2:"🛏️",axe:"🪓",sword:"🗡️",wool:"🧶",wood:"🪵",end:"🟨",bow:"🏹",gapple:"🍎",fireball:"🔥",pearl:"🟢"};
+const ICON={baton:"Baton",iron:"Iron",gold:"Gold",diamond:"Dia",emerald:"Emer",turret:"Turret",bed2:"Bed",axe:"Axe",sword:"Sword",wool:"Wool",wood:"Wood",end:"End",bow:"Bow",gapple:"Apple",fireball:"Fire",pearl:"Pearl"};
 function heldOf(e){const h=hotbar(e);if(e.sel>=h.length)e.sel=h.length-1;return h[Math.max(0,e.sel)]}
 function countOf(e,k){if(k in e.res)return e.res[k];if(k==="turret")return e.turret;return k==="wool"||k==="wood"||k==="end"?e.blocks[k]:k==="bow"?e.arrows:k==="sword"?0:e[k]}
 
@@ -398,11 +398,11 @@ let msgT=0,feedL=[];
 function msg(t,s,sub){$("big").textContent=t;$("big").style.opacity=1;$("sub").textContent=sub||"";$("sub").style.opacity=sub?1:0;msgT=s||2}
 function feed(t){feedL.unshift(t);feedL=feedL.slice(0,5);$("feed").innerHTML=feedL.join("<br>")}
 function hud(){if(!P)return;const h=hotbar(P);
- $("hotbar").innerHTML=h.map((k,i)=>`<div class="slot ${i===P.sel?"on":""}" data-sl="${i}">${k==="sword"?SWORDS[P.sword].ic:ICON[k]}${countOf(P,k)?`<b>${countOf(P,k)}</b>`:""}</div>`).join("");
- const hp=Math.max(0,Math.ceil(P.hp*20/maxHp(P)));let hs="";for(let i=0;i<10;i++)hs+=hp>=i*2+2?"❤️":hp>=i*2+1?"💔":"🖤";$("hearts").innerHTML=hs+(maxHp(P)>20?` ${Math.ceil(P.hp)}/${maxHp(P)}`:"")+(P.absorb>0?" 💛"+Math.ceil(P.absorb):"");
+ $("hotbar").innerHTML=h.map((k,i)=>`<div class="slot ${i===P.sel?"on":""}" data-sl="${i}"><span class="sl">${k==="sword"?SWORDS[P.sword].ic:ICON[k]}</span>${countOf(P,k)?`<b>${countOf(P,k)}</b>`:""}</div>`).join("");
+ const hp=Math.max(0,Math.ceil(P.hp*20/maxHp(P)));$("hearts").innerHTML=`<span class="hpb"><i style="width:${hp*5}%"></i></span> ${Math.ceil(P.hp)}/${maxHp(P)}`+(P.absorb>0?` <span class="hpab">+${Math.ceil(P.absorb)}</span>`:"");
  $("armorTxt").textContent=`${ARMORS[P.armor].n} armor · ${SWORDS[P.sword].n}`;
- $("res").innerHTML=Object.entries(P.res).map(([k,v])=>`${RES_IC[k]} ${v}`).join("<br>");
- $("teams").innerHTML=TEAMS.map((t,i)=>{const al=ENTS.filter(e=>e.team===i&&!e.out).length;return`<span style="color:${t.css}">■ ${t.n}</span> ${hasBed(i)?"✔":al?"✘":"☠"} ${al}${i===P.team?" ← YOU":""}`}).join("<br>")}
+ $("res").innerHTML=Object.entries(P.res).map(([k,v])=>`${v} ${RES_IC[k]}`).join("<br>");
+ $("teams").innerHTML=TEAMS.map((t,i)=>{const al=ENTS.filter(e=>e.team===i&&!e.out).length;return`<span style="color:${t.css}">■ ${t.n}</span> ${hasBed(i)?"bed":al?"no bed":"out"} ${al}${i===P.team?" ← YOU":""}`}).join("<br>")}
 $("hotbar").addEventListener("click",e=>{const s=e.target.closest("[data-sl]");if(s&&P){P.sel=+s.dataset.sl;hud()}});
 
 // ---------- first-person view model ----------
@@ -496,7 +496,7 @@ function bedAt(t){if(TEAM_ST[t].bed){const g=teamGeom(t);return new THREE.Vector
 // Parties: a 5-letter code friends share to play one private match together (the server keeps
 // each party's own line; see workers/nebulux-multiplayer). Kept for this visit only.
 let PARTY="";
-function paintParty(){$("pin").style.display=PARTY?"block":"none";$("pout").style.display=PARTY?"none":"block";$("pcode").textContent=PARTY;$("partybtn").textContent=PARTY?"👥 PARTY "+PARTY:"👥 PARTY";$("perr").textContent=""}
+function paintParty(){$("pin").style.display=PARTY?"block":"none";$("pout").style.display=PARTY?"none":"block";$("pcode").textContent=PARTY;$("partybtn").textContent=PARTY?"PARTY "+PARTY:"PARTY";$("perr").textContent=""}
 $("partybtn").onclick=()=>{unlock();paintParty();$("party").style.display="block"};
 $("pclose").onclick=()=>{$("party").style.display="none";lock()};
 $("pmake").onclick=()=>{const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";PARTY="";for(let i=0;i<5;i++)PARTY+=A[Math.floor(Math.random()*A.length)];paintParty()};
@@ -504,13 +504,13 @@ $("pgo").onclick=()=>{const c=$("pjoin").value.toUpperCase().replace(/[^A-Z0-9]/
 $("pjoin").onkeydown=e=>{e.stopPropagation();if(e.key==="Enter")$("pgo").onclick()};
 $("pleave").onclick=()=>{PARTY="";paintParty()};
 $("qstart").onclick=()=>{if(QWS&&QWS.readyState===1)QWS.send(JSON.stringify({t:"pstart"}))};
-function joinQueue(q){if(QWS)return;queueMode=q;unlock();$("queue").style.display="block";$("qtitle").textContent="🛏️ "+QNAME[q]+(PARTY?" · PARTY "+PARTY:"");$("qtext").textContent="Connecting…";$("qlist").textContent="";$("qstart").style.display="none";
+function joinQueue(q){if(QWS)return;queueMode=q;unlock();$("queue").style.display="block";$("qtitle").textContent=""+QNAME[q]+(PARTY?" · PARTY "+PARTY:"");$("qtext").textContent="Connecting…";$("qlist").textContent="";$("qstart").style.display="none";
  let started=false;const fallback=setTimeout(()=>{if(!started){leaveQueue();startMatch(q,null)}},6000);
  try{QWS=new WebSocket(WS_URL)}catch(e){clearTimeout(fallback);leaveQueue();startMatch(q,null);return}
  QWS.onopen=()=>QWS.send(JSON.stringify({t:"join",name:NAME,fig:0,q,party:PARTY||undefined}));
  QWS.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}
-  if(m.t==="wait"&&m.party){clearTimeout(fallback);const need={bw1:4,bw2:8,bw4:16}[q];$("qtext").textContent=`Party ${PARTY}: ${m.count} of ${need} here. Press START when everyone's in (bots fill the rest).`;$("qlist").innerHTML=(m.players||[]).map(p=>"👤 "+esc(p.name)).join(" &nbsp; ");$("qstart").style.display="inline-block";return}
-  if(m.t==="wait"){clearTimeout(fallback);const need={bw1:4,bw2:8,bw4:16}[q];$("qtext").textContent=`Waiting for players… ${m.count}/${need}${m.startsIn!=null?` · starts in ${m.startsIn}s (bots fill empty spots)`:""}`;$("qlist").innerHTML=(m.players||[]).map(p=>"👤 "+esc(p.name)).join(" &nbsp; ");
+  if(m.t==="wait"&&m.party){clearTimeout(fallback);const need={bw1:4,bw2:8,bw4:16}[q];$("qtext").textContent=`Party ${PARTY}: ${m.count} of ${need} here. Press START when everyone's in (bots fill the rest).`;$("qlist").innerHTML=(m.players||[]).map(p=>""+esc(p.name)).join(" &nbsp; ");$("qstart").style.display="inline-block";return}
+  if(m.t==="wait"){clearTimeout(fallback);const need={bw1:4,bw2:8,bw4:16}[q];$("qtext").textContent=`Waiting for players… ${m.count}/${need}${m.startsIn!=null?` · starts in ${m.startsIn}s (bots fill empty spots)`:""}`;$("qlist").innerHTML=(m.players||[]).map(p=>""+esc(p.name)).join(" &nbsp; ");
    if(m.startsIn!=null){let s=m.startsIn;clearInterval(QWS.tick);QWS.tick=setInterval(()=>{s=Math.max(0,s-1);$("qtext").textContent=`Waiting for players… ${m.count}/${need} · starts in ${s}s (bots fill empty spots)`},1000)}return}
   if(m.t==="start"){started=true;clearTimeout(fallback);clearInterval(QWS.tick);const ws=QWS;QWS=null;$("queue").style.display="none";NET={ws,me:m.you,host:m.host};ws.onmessage=onNet;ws.onclose=()=>{if(MODE==="match"&&!ended){msg("Disconnected",3,"The rest of the match plays with bots.");NET=null;for(const e of ENTS)if(e.remote){e.out=true;e.alive=false;if(e.mesh)e.mesh.visible=false}}};startMatch(q,m.players)}};
  QWS.onerror=()=>{if(!started){clearTimeout(fallback);leaveQueue();startMatch(q,null)}}}
@@ -521,9 +521,9 @@ $("practice").onclick=()=>{unlock();startMatch("bw2",null)};
 $("v100").onclick=()=>{unlock();startMatch("v100",null)};
 function paintDiff(){const d=SAVE.diff||"medium";document.querySelectorAll(".diffb").forEach(b=>{const on=b.dataset.d===d;b.style.background=on?({easy:"#43a047",medium:"#fb8c00",hard:"#e53935"})[d]:"#37474f";b.style.outline=on?"3px solid #fff":"none"})}
 document.querySelectorAll(".diffb").forEach(b=>b.onclick=()=>{SAVE.diff=b.dataset.d;save();paintDiff()});paintDiff();
-function paintKitBtn(){const k=KITS.find(x=>x.id===(SAVE.kit||"none"))||KITS[0];$("kitbtn").textContent=k.ic+" "+k.n.toUpperCase()}
+function paintKitBtn(){const k=KITS.find(x=>x.id===(SAVE.kit||"none"))||KITS[0];$("kitbtn").textContent="CHARACTER: "+k.n.toUpperCase()}
 function openKits(){const g=$("kitgrid");g.innerHTML="";for(const k of KITS){const on=(SAVE.kit||"none")===k.id;const d=document.createElement("button");d.className="btn";d.style.cssText="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;background:"+(on?k.c:"#263238")+";outline:"+(on?"3px solid #fff":"none")+";white-space:normal;text-align:center";
- d.innerHTML='<span style="font-size:40px;line-height:1">'+k.ic+'</span><b style="font-size:16px">'+k.n+'</b><span style="font-size:12px;font-weight:600;opacity:.9">'+k.p+'</span>';d.onclick=()=>{SAVE.kit=k.id;save();paintKitBtn();openKits()};g.appendChild(d)}$("kits").style.display="block"}
+ d.innerHTML='<span style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:'+k.c+';box-shadow:0 0 0 2px rgba(255,255,255,.6);font-size:20px;font-weight:900;line-height:1">'+k.n[0]+'</span><b style="font-size:16px">'+k.n+'</b><span style="font-size:12px;font-weight:600;opacity:.9">'+k.p+'</span>';d.onclick=()=>{SAVE.kit=k.id;save();paintKitBtn();openKits()};g.appendChild(d)}$("kits").style.display="block"}
 $("kitbtn").onclick=openKits;$("kitclose").onclick=()=>{$("kits").style.display="none"};paintKitBtn();
 
 // ---------- match ----------
@@ -535,8 +535,8 @@ function startMatch(q,players){MODE="match";ended=false;matchT=0;closeLobbyWS();
  const perTeam=[0,0,0,0];const assign=[];people.forEach((p,i)=>{const t=Math.floor(i/teamSize)%4;perTeam[t]++;assign.push([p,t])});
  for(const[p,t]of assign){const e=newEnt(p.id,p.name,t,false);if(NET?p.id===NET.me:true){e.kit=SAVE.kit||"none";e.local=true;P=e}else e.remote=true;addEnt(e)}
  let bi=0;const BN=["Steve","Alex","Blaze","Cobble","Pixel","Nova","Creeper","Diamond","Ender","Bolt","Rusty","Sky","Frost","Zap","Mango","Echo"];
- if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"🤖 Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.wave=Math.floor(i/15);e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
- else for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,"🤖 "+BN[bi%BN.length],t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
+ if(q==="v100"){P.bed2=1;const NUM=100;for(let i=0;i<NUM;i++){const t=1+(i%3),k=Math.floor(i/3);const e=newEnt("b"+bi,"Bot "+(i+1),t,true);bi++;addEnt(e);e.role=k<2?"defend":"attack";e.wave=Math.floor(i/15);e.think=Math.random()*2;e.target=0;e.blocks.wool=80;e.sword=1;e.res.iron=12}for(const t of[1,2,3])TEAM_ST[t].forge=2}
+ else for(let t=0;t<4;t++)for(let k=perTeam[t];k<teamSize;k++){const e=newEnt("b"+bi,BN[bi%BN.length]+" (bot)",t,true);bi++;addEnt(e);e.role=(k===teamSize-1&&teamSize>1&&perTeam[t]===0)?"defend":"attack";e.think=Math.random()}
  for(const e of ENTS)spawn(e);
  hud();updateView();msg(q==="v100"?"1 V 100":"BEDWARS",3,q==="v100"?"100 bots are coming for you. You have 5x health, 15x damage and no knockback!":`You are on the ${TEAMS[P.team].n} team. Protect your bed, break theirs!`);if(!TOUCH)feed("Right click: hit and place blocks · Left click: shoot, throw, eat · Hold left on a block: break it · K: respawn if you're stuck");sfx(523,.2,"triangle",.08);setTimeout(()=>sfx(784,.3,"triangle",.08),180);lock()}
 // K (or the ↻ button on phones): give up and respawn, for when you're stuck somewhere.
@@ -559,18 +559,18 @@ function die(e,byId){if(!e.alive)return;e.alive=false;e.hp=0;if(e.mesh)e.mesh.vi
  const kn=killer?killer.name:"the void";announceDeath(e,killer,final);
  if(killer&&!promoOn(e))giveLoot(killer,loot);
  send({k:"die",id:e.id,by:killer?killer.id:null,final,loot});if(e.local){unlock();closePanels();msg(final?"ELIMINATED":"YOU DIED",3,final?`Your bed is gone. Killed by ${kn}.`:(promoOn(e)?`Killed by ${kn}. Back in!`:`Killed by ${kn}. Respawning in 5 seconds…`));hud()}checkEnd()}
-function announceDeath(e,killer,final){const c=t=>`<span style="color:${TEAMS[t.team].css}">${esc(t.name)}</span>`;feed(killer?`${c(killer)} ⚔ ${c(e)}${final?" <b>FINAL KILL!</b>":""}`:`${c(e)} fell into the void${final?" <b>FINAL</b>":""}`);
+function announceDeath(e,killer,final){const c=t=>`<span style="color:${TEAMS[t.team].css}">${esc(t.name)}</span>`;feed(killer?`${c(killer)} beat ${c(e)}${final?" <b>FINAL KILL!</b>":""}`:`${c(e)} fell into the void${final?" <b>FINAL</b>":""}`);
  if(killer&&killer.local){SAVE.kills++;if(final)SAVE.finals++;save();sfx(660,.1,"triangle",.07)}}
 function giveLoot(k,loot){if(!loot)return;if(k.local||(k.bot&&isHost())){for(const r in loot)k.res[r]+=loot[r]||0;if(k.local){const t=Object.entries(loot).filter(([,v])=>v).map(([r,v])=>`+${v} ${RES_IC[r]}`).join(" ");if(t)feed(t);hud()}}}
 function breakBed(team,byE){if(!TEAM_ST[team].bed)return;TEAM_ST[team].bed=false;const g=teamGeom(team);for(const[bx,bz]of g.bed)setBlock(bx,3,bz,0);
- const who=byE?byE.name:"Someone";feed(`🛏️ <span style="color:${TEAMS[team].css}">${TEAMS[team].n} bed</span> destroyed by ${esc(who)}`);
+ const who=byE?byE.name:"Someone";feed(`<span style="color:${TEAMS[team].css}">${TEAMS[team].n} bed</span> destroyed by ${esc(who)}`);
  if(P&&P.team===team){msg("BED DESTROYED!",3,"You will no longer respawn!");sfx(200,.6,"sawtooth",.08)}else sfx(500,.25,"triangle",.07);
  if(byE&&byE.local){SAVE.beds++;save()}hud();checkEnd()}
 function checkEnd(){if(ended||!isHost())return;
  if(BIG()){const meIn=ENTS.some(e=>e.team===0&&!e.out&&(e.alive||hasBed(0))),botsIn=ENTS.some(e=>e.bot&&!e.out&&(e.alive||TEAM_ST[e.team].bed));if(!meIn)endMatch(-2);else if(!botsIn)endMatch(0);return}
  const alive=[0,1,2,3].filter(t=>ENTS.some(e=>e.team===t&&!e.out&&(e.alive||TEAM_ST[t].bed)));if(alive.length<=1){const w=alive.length?alive[0]:-1;send({k:"end",team:w});endMatch(w)}}
 function endMatch(w){if(ended)return;ended=true;MODE="results";unlock();$("lockhint").style.display="none";$("hint").style.display="none";closePanels();SAVE.games++;const won=P&&w===P.team;if(won)SAVE.wins++;save();
- $("rtitle").textContent=won?"🏆 VICTORY!":"GAME OVER";$("rtitle").style.color=won?"#ffe14a":"#fff";
+ $("rtitle").textContent=won?"VICTORY!":"GAME OVER";$("rtitle").style.color=won?"#ffe14a":"#fff";
  $("rtext").innerHTML=(w===-2?"The 100 bots got you!":w>=0?`<span style="color:${TEAMS[w].css}">${TEAMS[w].n} team</span> wins!`:"Nobody wins.")+`<br>Your kills this match are saved. Total wins: ${SAVE.wins} · kills: ${SAVE.kills} · beds broken: ${SAVE.beds}`;
  setTimeout(()=>{$("results").style.display="block"},1200);if(won)msg("VICTORY!",3);if(NET){const ws=NET.ws;setTimeout(()=>{try{ws.close()}catch(e){}},1500)}}
 $("ragain").onclick=()=>{$("results").style.display="none";NET=null;joinQueue(MATCH.q)};
@@ -622,7 +622,7 @@ function placeFrom(e,kind,at){if(e.blocks[kind]<=0)return false;let x,y,z;
  // not right on top of a generator or shop
  const t=kind==="wool"?10+e.team:kind==="wood"?4:5;setBlock(x,y,z,t,true);e.blocks[kind]--;send({k:"blk",x,y,z,b:t});if(e.local){sfx(220,.05,"triangle",.05);e.swingT=.2;VIEW.userData.sw=.2;hud()}return true}
 function breakAt(e,x,y,z,blast){const t=getB(x,y,z);if(!t)return;if(t===24){setBlock(x,y,z,0);send({k:"blk",x,y,z,b:0});if(!blast)openLucky(e);return}if(isBed(t)){const team=t-20;if(team===e.team){if(e.local)msg("That's your own bed!",1);return}
-  if(SECOND&&SECOND.x===x&&SECOND.y===y&&SECOND.z===z){setBlock(x,y,z,0);SECOND=null;send({k:"blk",x,y,z,b:0});feed(`🛏️ Your second bed was destroyed by ${esc(e.name)}`);if(P&&P.team===team)msg("SECOND BED DESTROYED!",2.5);hud();checkEnd();return}
+  if(SECOND&&SECOND.x===x&&SECOND.y===y&&SECOND.z===z){setBlock(x,y,z,0);SECOND=null;send({k:"blk",x,y,z,b:0});feed(`Your second bed was destroyed by ${esc(e.name)}`);if(P&&P.team===team)msg("SECOND BED DESTROYED!",2.5);hud();checkEnd();return}
   breakBed(team,e);send({k:"bed",team,by:e.id});return}
  setBlock(x,y,z,0);send({k:"blk",x,y,z,b:0});
  // the block you break goes into your inventory (not ones blown up by a fireball)
@@ -696,12 +696,12 @@ const LUCKY=[];let luckyWaves=0;
 function luckySpots(n){const out=[];const isl=[[0,0,6],[30,30,2],[-30,30,2],[30,-30,2],[-30,-30,2]];for(let i=0;i<4;i++){const g=teamGeom(i);isl.push([g.cx,g.cz,5])}
  for(let k=0;k<n*4&&out.length<n;k++){const [cx,cz,r]=isl[Math.floor(Math.random()*isl.length)];const x=cx+Math.round((Math.random()*2-1)*r),z=cz+Math.round((Math.random()*2-1)*r);let solid=false;for(let y=8;y>=0;y--)if(getB(x,y,z)){solid=true;break}if(solid&&!out.some(o=>o[0]===x&&o[1]===z))out.push([x,z])}return out}
 function dropLucky(list){for(const[x,z]of list){const m=new THREE.Mesh(boxGeo,BDEF[24].mat);m.position.set(x,45+Math.random()*10,z);scene.add(m);LUCKY.push({x,z,mesh:m,vy:0})}
- msg("🍀 LUCKY BLOCKS!",2.5,`${list.length} lucky blocks are falling from the sky. Break one for a surprise!`);sfx(880,.3,"triangle",.08)}
+ msg("LUCKY BLOCKS!",2.5,`${list.length} lucky blocks are falling from the sky. Break one for a surprise!`);sfx(880,.3,"triangle",.08)}
 function stepLucky(dt){if(isHost()){if(luckyWaves===0&&matchT>=120){luckyWaves=1;const l=luckySpots(5);send({k:"lucky",l});dropLucky(l)}else if(luckyWaves===1&&matchT>=300){luckyWaves=2;const l=luckySpots(10);send({k:"lucky",l});dropLucky(l)}}
  for(let i=LUCKY.length-1;i>=0;i--){const L=LUCKY[i];L.vy-=18*dt;L.mesh.position.y+=L.vy*dt;let top=-1e9;for(let y=Math.floor(L.mesh.position.y);y>=-6;y--)if(getB(L.x,y,L.z)){top=y+1;break}
   if(top>-1e9&&L.mesh.position.y<=top){scene.remove(L.mesh);LUCKY.splice(i,1);if(!getB(L.x,top,L.z))setBlock(L.x,top,L.z,24,true);sfx(160,.15,"square",.06)}else if(L.mesh.position.y<-30){scene.remove(L.mesh);LUCKY.splice(i,1)}}}
-const LUCK=[["diamond armor","💠",e=>{e.armor=3;setArmorLook(e)}],["the Rageblade","🔱",e=>{e.sword=4}],["100 emeralds","🟩",e=>{e.res.emerald+=100}],["100 diamonds","💎",e=>{e.res.diamond+=100}],["the knockback baton","🏏",e=>{e.baton=true}]];
-function openLucky(e){const [nm,ic,give]=LUCK[Math.floor(Math.random()*LUCK.length)];give(e);if(e.local){msg(`${ic} LUCKY!`,2.5,`You got ${nm}!`);sfx(1320,.25,"triangle",.09);hud()}feed(`🍀 ${esc(e.name)} got ${nm}`)}
+const LUCK=[["diamond armor","",e=>{e.armor=3;setArmorLook(e)}],["the Rageblade","",e=>{e.sword=4}],["100 emeralds","",e=>{e.res.emerald+=100}],["100 diamonds","",e=>{e.res.diamond+=100}],["the knockback baton","",e=>{e.baton=true}]];
+function openLucky(e){const [nm,ic,give]=LUCK[Math.floor(Math.random()*LUCK.length)];give(e);if(e.local){msg(`LUCKY!`,2.5,`You got ${nm}!`);sfx(1320,.25,"triangle",.09);hud()}feed(`${esc(e.name)} got ${nm}`)}
 
 // ---------- bots (run by the match host) ----------
 function nearestEnemy(b,r){let best=null,bd=r;for(const e of ENTS){if(!e.alive||e.team===b.team||(BIG()&&b.bot&&e.bot))continue;const d=e.pos.distanceTo(b.pos);if(d<bd){bd=d;best=e}}return best}
@@ -811,7 +811,7 @@ function onNet(ev){let m;try{m=JSON.parse(ev.data)}catch(e){return}
 // ---------- lobby ----------
 function enterLobby(){MODE="lobby";ended=false;NET=null;closePanels();buildLobby();for(const t of TEAM_ST)t.bed=true;
  P=newEnt("me",NAME,Math.abs(hash(NAME))%4,false);P.local=true;P.pos.set(.5,3.05,10);P.yaw=0;ENTS.push(P);
- $("lobbyui").style.display="flex";$("lobbytop").style.display="block";$("chat").style.display="block";$("lobbytop").innerHTML=`🛏️ BEDWARS · ${esc(NAME)}<br><span style="font-size:13px;opacity:.85">Walk into a portal or press a button to play · T to chat</span>`;
+ $("lobbyui").style.display="flex";$("lobbytop").style.display="block";$("chat").style.display="block";$("lobbytop").innerHTML=`BEDWARS · ${esc(NAME)}<br><span style="font-size:13px;opacity:.85">Walk into a portal or press a button to play · T to chat</span>`;
  GHOST.visible=false;["hotbar","hearts","res","teams","timer","armorTxt","feed"].forEach(i=>$(i).innerHTML="");feedL=[];$("hint").style.display="none";$("breakbar").style.display="none";$("big").style.opacity=0;$("sub").style.opacity=0;VIEW.visible=false;$("lockhint").style.display=TOUCH?"none":"block";connectLobby();drawBoards()}
 
 // ---------- main loop ----------
@@ -858,7 +858,7 @@ function stepMatch(dt){matchT+=dt;
  // generators (the host makes resources; everyone picks up what's next to them)
  for(let i=0;i<GENS.length;i++){const g=GENS[i];if(isHost()){g.t+=dt;const ev=genEvery(g);if(g.t>=ev){g.t-=ev;if(g.stock<g.max)g.stock++}}
   g.mesh.rotation.y+=dt*2;g.mesh.visible=g.stock>0;g.mesh.scale.setScalar(.8+Math.min(1,g.stock/8)*.6);
-  if(g.lab&&Math.random()<dt*4){const left=Math.ceil(genEvery(g)-g.t);const c=g.lab.material.map.image.getContext("2d");c.clearRect(0,0,256,64);c.fillStyle="rgba(0,0,0,.45)";c.fillRect(0,8,256,48);c.font="bold 24px Segoe UI, Arial";c.textAlign="center";c.fillStyle=g.kind==="diamond"?"#4fe3e0":"#2fd36b";c.fillText(`${g.kind==="diamond"?"💎 Diamonds":"🟩 Emeralds"} ${g.stock}${isHost()?` · ${left}s`:""}`,128,43);g.lab.material.map.needsUpdate=true}
+  if(g.lab&&Math.random()<dt*4){const left=Math.ceil(genEvery(g)-g.t);const c=g.lab.material.map.image.getContext("2d");c.clearRect(0,0,256,64);c.fillStyle="rgba(0,0,0,.45)";c.fillRect(0,8,256,48);c.font="bold 24px Segoe UI, Arial";c.textAlign="center";c.fillStyle=g.kind==="diamond"?"#4fe3e0":"#2fd36b";c.fillText(`${g.kind==="diamond"?"Diamonds":"Emeralds"} ${g.stock}${isHost()?` · ${left}s`:""}`,128,43);g.lab.material.map.needsUpdate=true}
   if(g.stock>0)for(const e of ENTS){if(!e.alive||!(e.local||(e.bot&&isHost())))continue;if(Math.hypot(e.pos.x-g.x,e.pos.z-g.z)<1.7&&Math.abs(e.pos.y-g.y)<2){e.res[g.kind]+=kitOf(e)==="harvest"?Math.ceil(g.stock*1.5):g.stock;if(e.local){sfx(1200,.04,"triangle",.04);hud()}g.stock=0;g.takenUntil=matchT+.8;send({k:"take",g:i});break}}}
  // bots
  if(isHost())for(const b of ENTS)if(b.bot)botTick(b,dt);
@@ -871,9 +871,9 @@ function stepMatch(dt){matchT+=dt;
   if(isHost()){send({k:"b",bots:ENTS.filter(e=>e.bot).map(b=>[b.id,+b.pos.x.toFixed(2),+b.pos.y.toFixed(2),+b.pos.z.toFixed(2),+b.yaw.toFixed(2),Math.ceil(b.hp),b.alive?1:0,b.sword,b.swingT>.15?1:0,b.out?1:0,b.armor,b.heldKind?b.heldKind.replace(/\d+$/,""):"sword"]),g:GENS.map(g=>g.stock)})}}
  P.swingT-=dt;
  // HUD bits
- const n=nearNPC();if(n&&!panelOpen()&&P.alive){$("hint").style.display="block";const what={shop:"item shop",upg:"team upgrades",ender:"your ender chest",tchest:"team chest"}[n.kind];$("hint").textContent=TOUCH?`Tap 🛒 for the ${what}`:`Press E for the ${what}`}else if(P.alive)$("hint").style.display="none";
+ const n=nearNPC();if(n&&!panelOpen()&&P.alive){$("hint").style.display="block";const what={shop:"item shop",upg:"team upgrades",ender:"your ender chest",tchest:"team chest"}[n.kind];$("hint").textContent=TOUCH?`Tap Shop for the ${what}`:`Press E for the ${what}`}else if(P.alive)$("hint").style.display="none";
  if(BIG()){$("raidbtn").style.display=!RAID&&P.alive&&!panelOpen()?"block":"none";if(!RAID&&Math.random()<dt*3&&!nearNPC())$("hint").style.display="block",$("hint").textContent="Get ready: build, buy and place turrets. Press R or the button when you want the bots to attack.";
-  if(RAID){const w=Math.min(7,Math.floor((matchT-RAID_T)/25)+1);if(w>waveShown){waveShown=w;if(w>1)msg(`WAVE ${w}`,2,"More bots are coming!");feed(`⚔️ Wave ${w} of 7 is attacking`)}}
+  if(RAID){const w=Math.min(7,Math.floor((matchT-RAID_T)/25)+1);if(w>waveShown){waveShown=w;if(w>1)msg(`WAVE ${w}`,2,"More bots are coming!");feed(`Wave ${w} of 7 is attacking`)}}
 }
  stepTurrets(dt);stepDrops(dt);stepLucky(dt);
  const mm=Math.floor(matchT/60),ss=Math.floor(matchT%60);$("timer").textContent=`${QNAME[MATCH.q].split(" ·")[0]} · ${mm}:${String(ss).padStart(2,"0")}`;

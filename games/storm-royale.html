@@ -453,10 +453,10 @@ function tick() {
   uiT -= dt;
   if (uiT <= 0 && me) {
     uiT = 0.1;
-    $("hp").firstChild.style.width = `${clamp(me.hp, 0, 100)}%`; $("hp").lastChild.textContent = `❤ ${Math.ceil(Math.max(0, me.hp))}`;
-    $("sh").firstChild.style.width = `${clamp(me.shield, 0, 100)}%`; $("sh").lastChild.textContent = `🛡 ${Math.ceil(me.shield)}`;
-    $("alive").textContent = `👤 ${fighters.filter((f) => !f.dead).length} left · 💀 ${me.kills}`;
-    $("zone").textContent = storm.shrinking ? `⚡ Storm closing ${Math.ceil(storm.t)}s` : PHASES[storm.phase] ? `⏳ Storm moves in ${Math.ceil(storm.t)}s` : "⚡ Final storm";
+    $("hp").firstChild.style.width = `${clamp(me.hp, 0, 100)}%`; $("hp").lastChild.textContent = `HP ${Math.ceil(Math.max(0, me.hp))}`;
+    $("sh").firstChild.style.width = `${clamp(me.shield, 0, 100)}%`; $("sh").lastChild.textContent = `Shield ${Math.ceil(me.shield)}`;
+    $("alive").textContent = `${fighters.filter((f) => !f.dead).length} left · ${me.kills} kills`;
+    $("zone").textContent = storm.shrinking ? `Storm closing ${Math.ceil(storm.t)}s` : PHASES[storm.phase] ? `Storm moves in ${Math.ceil(storm.t)}s` : "Final storm";
     if (me.reloadT > 0) $("prompt").style.display = "block", $("prompt").textContent = "Reloading…";
     drawMini();
     const g = gunOf(me); $("inv").querySelectorAll(".slot")[me.slot].querySelector(".am").textContent = g ? `${me.ammo[me.slot]} / ${me.reserve}` : "";
@@ -479,7 +479,7 @@ const LB = (() => {
   const el = document.createElement("div"); el.className = "lb";
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const draw = (list) => {
-    el.innerHTML = `<h3>🏆 Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
+    el.innerHTML = `<h3>Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
       : !list ? `<p>Loading…</p>` : !list.length ? `<p>No winners yet. Be the first!</p>`
       : `<ol>${list.slice(0, 5).map((r, i) => `<li class="${me && r.name === me ? "me" : ""}"><b>${i + 1}</b><span>${esc(r.name)}</span><i>${r.score}</i></li>`).join("")}</ol>`)
       + `<p>Your wins: <b>${wins}</b></p>`;

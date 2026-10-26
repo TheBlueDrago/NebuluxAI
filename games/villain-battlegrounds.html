@@ -66,13 +66,13 @@
 <div id="msg" class="sh"></div>
 <div id="big"></div>
 <div id="cross"></div>
-<div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"><button id="chatbtn">💬 Chat (/)</button></div>
+<div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"><button id="chatbtn">Chat (/)</button></div>
 <div id="touch">
   <div id="joy"><div id="knob"></div></div>
   <button class="tb" id="tM1" style="right:24px;bottom:110px;width:78px;height:78px">HIT</button>
   <button class="tb" id="tJump" style="right:112px;bottom:30px">JUMP</button>
   <button class="tb" id="tDash" style="right:24px;bottom:30px">DASH</button>
-  <button class="tb" id="tSwap" style="right:24px;top:90px;width:54px;height:54px;font-size:20px">🔄</button>
+  <button class="tb" id="tSwap" style="right:24px;top:90px;width:54px;height:54px;font-size:13px;font-weight:700">Swap</button>
   <button class="tb" id="tBlock" style="right:112px;bottom:112px">BLOCK</button>
 </div>
 
@@ -83,7 +83,7 @@
   <p class="keys" style="font-size:13px;margin-top:12px"><kbd>WASD</kbd> move · <kbd>Click</kbd> combo · <kbd>1</kbd>-<kbd>4</kbd> moves · <kbd>G</kbd> super · <kbd>Shift</kbd> or <kbd>Q</kbd> dash · <kbd>F</kbd> block · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> turn camera · <kbd>Esc</kbd> or <kbd>Ctrl</kbd> lock mouse · <kbd>/</kbd> chat · <kbd>T</kbd> switch fighter</p>
   <button class="big" id="play">FIGHT!</button>
   <div style="margin-top:14px;font-weight:700">
-    <button class="pk" id="privNew" style="background:#7c4dff;color:#fff">🔒 Make a private server</button>
+    <button class="pk" id="privNew" style="background:#7c4dff;color:#fff">Make a private server</button>
     <span style="margin:0 6px">or</span>
     <input id="privCode" maxlength="5" placeholder="CODE" style="width:90px;padding:10px;border-radius:10px;border:3px solid #000;font:inherit;font-weight:900;text-transform:uppercase;text-align:center">
     <button class="pk" id="privJoin">Join</button>
@@ -175,23 +175,23 @@ scene.children.forEach((m) => { if (m.isMesh && m.geometry.parameters && m.geome
 // "awaken" with G and all their moves get stronger and faster for a while.
 const CHARS = {
   hero: { name: "Caped Hero", color: "#ffd54f", look: { shirt: 0xffd54f, pants: 0xffd54f, skin: 0xf5c99a, cape: 0xffffff, bald: true }, desc: "Simple, very strong punches. G: choose ONE super punch.",
-    moves: [["Normal Punches", "👊", 4, "barrage"], ["Shove", "🖐️", 5, "shove"], ["Uppercut", "⬆️", 7, "uppercut"], ["Jump Slam", "💥", 9, "slam"]],
+    moves: [["Normal Punches", "", 4, "barrage"], ["Shove", "", 5, "shove"], ["Uppercut", "", 7, "uppercut"], ["Jump Slam", "", 9, "slam"]],
     supers: [["Serious Punch", "beam"], ["Table Flip", "flip"], ["Omni Punch", "omni"]] },
   sorcerer: { name: "Sorcerer", color: "#7c4dff", look: { shirt: 0x1a237e, pants: 0x1a237e, skin: 0xf5c99a, hair: 0xffffff, blindfold: true }, desc: "Cursed energy: pull, blast and trap. G: Awaken (all moves stronger).",
-    moves: [["Cursed Strike", "🟣", 4, "dashhit"], ["Blue Pull", "🔵", 6, "pull"], ["Red Blast", "🔴", 7, "blast"], ["Void Trap", "🌀", 10, "trap"]], awaken: "Purple",
-    awakeMoves: [["Violet Hollow", "💜", 7, "violet"], ["Infinite Wall", "🛡️", 8, "wall"], ["Endless Domain", "🌌", 12, "domain"], ["Black Flash", "⚡", 5, "blackflash"]] },
+    moves: [["Cursed Strike", "", 4, "dashhit"], ["Blue Pull", "", 6, "pull"], ["Red Blast", "", 7, "blast"], ["Void Trap", "", 10, "trap"]], awaken: "Purple",
+    awakeMoves: [["Violet Hollow", "", 7, "violet"], ["Infinite Wall", "", 8, "wall"], ["Endless Domain", "", 12, "domain"], ["Black Flash", "", 5, "blackflash"]] },
   ninja: { name: "Ninja", color: "#26a69a", look: { shirt: 0x263238, pants: 0x263238, skin: 0xf5c99a, mask: 0x263238, band: 0xd32f2f }, desc: "Fast: shurikens, blinks and blade rain. G: Awaken.",
-    moves: [["Shuriken", "✴️", 3, "shuriken"], ["Shadow Step", "💨", 5, "blink"], ["Kunai Rain", "🗡️", 8, "rain"], ["Smoke Bomb", "🌫️", 9, "smoke"]], awaken: "Shadow",
-    awakeMoves: [["Shadow Clones", "👥", 7, "clones"], ["Fire Dragon", "🐉", 8, "firebreath"], ["Thousand Blades", "🗡️", 6, "blades"], ["Phantom Strike", "👻", 5, "phantom"]] },
+    moves: [["Shuriken", "", 3, "shuriken"], ["Shadow Step", "", 5, "blink"], ["Kunai Rain", "", 8, "rain"], ["Smoke Bomb", "", 9, "smoke"]], awaken: "Shadow",
+    awakeMoves: [["Shadow Clones", "", 7, "clones"], ["Fire Dragon", "", 8, "firebreath"], ["Thousand Blades", "", 6, "blades"], ["Phantom Strike", "", 5, "phantom"]] },
   brute: { name: "Brute", color: "#8d6e63", look: { shirt: 0x5d4037, pants: 0x3e2723, skin: 0xd7a35a, band: 0xffb300 }, desc: "Huge hits: slams, throws and roars. G: Awaken (Titan).",
-    moves: [["Ground Pound", "🦍", 6, "pound"], ["Boulder Toss", "🪨", 7, "boulder"], ["Grab Slam", "✊", 8, "grab"], ["Roar", "📢", 10, "roar"]], awaken: "Titan",
-    awakeMoves: [["Earthquake", "🌋", 8, "quake"], ["Meteor Fist", "☄️", 7, "nuke"], ["Titan Grab", "🤜", 6, "grab"], ["Rage Roar", "😡", 8, "roar"]] },
+    moves: [["Ground Pound", "", 6, "pound"], ["Boulder Toss", "", 7, "boulder"], ["Grab Slam", "", 8, "grab"], ["Roar", "", 10, "roar"]], awaken: "Titan",
+    awakeMoves: [["Earthquake", "", 8, "quake"], ["Meteor Fist", "", 7, "nuke"], ["Titan Grab", "", 6, "grab"], ["Rage Roar", "", 8, "roar"]] },
   speedster: { name: "Speedster", color: "#ffeb3b", look: { shirt: 0xfdd835, pants: 0xc62828, skin: 0xf5c99a, visor: 0x29b6f6 }, desc: "Lightning fast kicks and zaps. G: Awaken (Storm).",
-    moves: [["Flash Kick", "⚡", 3, "dashhit"], ["Lightning Bolt", "🌩️", 6, "bolt"], ["Afterimage", "💨", 6, "blink"], ["Tornado Spin", "🌪️", 9, "tornado"]], awaken: "Storm",
-    awakeMoves: [["Thunder Rain", "⛈️", 7, "thunder"], ["Light Speed", "🌠", 5, "phantom"], ["Tornado Spin", "🌪️", 6, "tornado"], ["Giga Bolt", "🔱", 7, "cannon"]] },
+    moves: [["Flash Kick", "", 3, "dashhit"], ["Lightning Bolt", "", 6, "bolt"], ["Afterimage", "", 6, "blink"], ["Tornado Spin", "", 9, "tornado"]], awaken: "Storm",
+    awakeMoves: [["Thunder Rain", "", 7, "thunder"], ["Light Speed", "", 5, "phantom"], ["Tornado Spin", "", 6, "tornado"], ["Giga Bolt", "", 7, "cannon"]] },
   cyborg: { name: "Cyborg", color: "#ff7043", look: { shirt: 0x37474f, pants: 0x212121, skin: 0xffcc80, arms: 0x90a4ae, visor: 0xff5722 }, desc: "Fire and rockets. G: Awaken.",
-    moves: [["Flamethrower", "🔥", 5, "flame"], ["Machine Blows", "🤖", 6, "barrage"], ["Rocket Kick", "🚀", 7, "rocket"], ["Incinerate", "☄️", 10, "incinerate"]], awaken: "Overdrive",
-    awakeMoves: [["Overdrive Cannon", "💠", 7, "cannon"], ["Jet Barrage", "🤖", 6, "barrage"], ["Nuke Punch", "☢️", 9, "nuke"], ["Missile Swarm", "🚀", 8, "missiles"]] },
+    moves: [["Flamethrower", "", 5, "flame"], ["Machine Blows", "", 6, "barrage"], ["Rocket Kick", "", 7, "rocket"], ["Incinerate", "", 10, "incinerate"]], awaken: "Overdrive",
+    awakeMoves: [["Overdrive Cannon", "", 7, "cannon"], ["Jet Barrage", "", 6, "barrage"], ["Nuke Punch", "", 9, "nuke"], ["Missile Swarm", "", 8, "missiles"]] },
 };
 
 function makeBody(look) {
@@ -315,7 +315,7 @@ function ko(t, from) {
   t.dead = true; t.respawn = 3; t.b.g.visible = t.label.visible = t.bar.visible = false;
   burst(t.pos.clone().setY(2), t.ch.color === "#ffd54f" ? 0xffd54f : 0xff5252, 26, 12); SFX.ko();
   if (from && from !== t) { from.kills++; from.ult = Math.min(100, from.ult + 25); }
-  feed(`${from && from !== t ? from.name : "???"} ⚔ ${t.name}`);
+  feed(`${from && from !== t ? from.name : "???"} beat ${t.name}`);
   if (t === me) { show("You were knocked out!\nBack in 3 seconds", 2.5); if (from && from.remote) netSend({ t: "dead", to: from.id }); }
   if (from === me) { bigText("K.O.!", 900); if (NX && NX.score) NX.score("kills", (+localStorage.getItem("vb-kills") || 0) + 1); try { localStorage.setItem("vb-kills", (+localStorage.getItem("vb-kills") || 0) + 1); } catch { /* no storage */ } }
 }
@@ -485,7 +485,7 @@ function switchTo(id) {
 }
 function drawMoves() {
   const ch = me.ch;
-  $("moves").innerHTML = movesOf(me).map(([n, e], i) => `<div class="mv" data-i="${i}"><b>${i + 1}</b><em>${e}</em>${n}<div class="cd" style="display:none"></div></div>`).join("") + `<div class="mv ult" data-g="1"><b>G</b><em>⭐</em>${ch.supers ? "Choose super" : ch.awaken + " Awaken"}<div class="cd" style="display:none"></div></div>`;
+  $("moves").innerHTML = movesOf(me).map(([n, e], i) => `<div class="mv" data-i="${i}"><b>${i + 1}</b>${n}<div class="cd" style="display:none"></div></div>`).join("") + `<div class="mv ult" data-g="1"><b>G</b>${ch.supers ? "Choose super" : ch.awaken + " Awaken"}<div class="cd" style="display:none"></div></div>`;
   $("moves").querySelectorAll("[data-i]").forEach((el) => el.addEventListener("pointerdown", (e) => { e.preventDefault(); useMove(me, +el.dataset.i); }));
   $("moves").querySelector("[data-g]").addEventListener("pointerdown", (e) => { e.preventDefault(); trySuper(); });
 }
@@ -568,7 +568,7 @@ function netMessage(m) {
     hurt(me, Math.max(1, Math.min(120, Number(m.dmg) || 0)), f, { net: true, kb: clamp(+m.kb || 0, 0, 100), up: clamp(+m.up || 0, 0, 50), stun: clamp(+m.stun || 0.35, 0, 3), unblockable: !!m.ub });
     return true;
   }
-  if (m.t === "dead" && m.to === NET.you) { const f = remotes.get(m.from); me.kills++; me.ult = Math.min(100, me.ult + 25); bigText("K.O.!", 900); feed(`${ME} ⚔ ${f ? f.name : "a player"}`); if (NX && NX.score) NX.score("kills", (+localStorage.getItem("vb-kills") || 0) + 1); try { localStorage.setItem("vb-kills", (+localStorage.getItem("vb-kills") || 0) + 1); } catch { /* no storage */ } return true; }
+  if (m.t === "dead" && m.to === NET.you) { const f = remotes.get(m.from); me.kills++; me.ult = Math.min(100, me.ult + 25); bigText("K.O.!", 900); feed(`${ME} beat ${f ? f.name : "a player"}`); if (NX && NX.score) NX.score("kills", (+localStorage.getItem("vb-kills") || 0) + 1); try { localStorage.setItem("vb-kills", (+localStorage.getItem("vb-kills") || 0) + 1); } catch { /* no storage */ } return true; }
   if (m.t === "left") { dropRemote(m.from || m.id); return false; }
   return false;
 }
@@ -583,10 +583,10 @@ function stepRemote(f, dt) {
   const kk = Math.max(0.001, f.hp / f.maxHp); f.bar.fg.scale.x = kk; f.bar.fg.position.x = -1.15 * (1 - kk);
   f.label.position.copy(f.pos).setY(f.pos.y + 6.2);
 }
-function peopleLabel() { $("chatbtn").textContent = `💬 Chat (/) · ${NET.people} online`; }
+function peopleLabel() { $("chatbtn").textContent = `Chat (/) · ${NET.people} online`; }
 $("chatbtn").onclick = () => (chatting ? closeChat() : openChat());
 addEventListener("message", (e) => { if (e.data && e.data.type === "nebulux-chat") chatting ? closeChat() : openChat(); });
-const BOT_LINES = ["gg", "nice combo", "ez", "come here!", "1v1 me", "that super was crazy", "lol", "watch this", "not the dummy again 😂", "who wants to fight?"];
+const BOT_LINES = ["gg", "nice combo", "ez", "come here!", "1v1 me", "that super was crazy", "lol", "watch this", "not the dummy again", "who wants to fight?"];
 function botReply(t) { if (Math.random() < 0.6) setTimeout(() => { const b = pick(fighters.filter((f) => f.bot && !f.dead)); if (b) say(b.name, /hi|hello|hey/i.test(t) ? "hey!" : /gg/i.test(t) ? "gg!" : pick(BOT_LINES)); }, rnd(700, 2000)); }
 setInterval(() => { if (started && Math.random() < 0.35) { const b = pick(fighters.filter((f) => f.bot && !f.dead)); if (b) say(b.name, pick(BOT_LINES)); } }, 9000);
 

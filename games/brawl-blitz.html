@@ -35,7 +35,7 @@
 </style>
 </head>
 <body>
-<div id="score" class="sh"><div class="t" style="color:#64b5f6">💎 <span id="sb">0</span></div><div id="count"></div><div class="t" style="color:#ef5350">💎 <span id="sr">0</span></div></div>
+<div id="score" class="sh"><div class="t" style="color:#64b5f6">Gems <span id="sb">0</span></div><div id="count"></div><div class="t" style="color:#ef5350">Gems <span id="sr">0</span></div></div>
 <div id="msg" class="sh"></div>
 <div id="me" class="sh"><div id="myname"></div><div id="ammo"></div></div>
 <div id="super">SUPER</div>
@@ -72,7 +72,7 @@ const BRAWLERS = {
   Tank: { hp: 5600, speed: 8.5, color: 0x8d6e63, desc: "Big punches up close, lots of health. Super: charge forward and smash.", range: 6, reload: 1.0, shoot: (s, dir) => { for (let i = -1; i <= 1; i++) bullet(s, dir.clone().applyAxisAngle(V(0, 1, 0), i * 0.25), 26, 6, 700, 0.6); }, sup: (s, dir) => { s.charge = { dir: dir.clone(), t: 0.45, hit: new Set() }; } },
 };
 let pick = "Blaster";
-$("cards").innerHTML = Object.entries(BRAWLERS).map(([n, b]) => `<div class="card ${n === pick ? "on" : ""}" data-n="${n}"><h3 style="color:#${b.color.toString(16)}">${n}</h3><p>❤ ${b.hp} · range ${b.range}</p><p style="margin-top:6px">${b.desc}</p></div>`).join("");
+$("cards").innerHTML = Object.entries(BRAWLERS).map(([n, b]) => `<div class="card ${n === pick ? "on" : ""}" data-n="${n}"><h3 style="color:#${b.color.toString(16)}">${n}</h3><p>HP ${b.hp} · range ${b.range}</p><p style="margin-top:6px">${b.desc}</p></div>`).join("");
 $("cards").querySelectorAll(".card").forEach((c) => c.onclick = () => { pick = c.dataset.n; $("cards").querySelectorAll(".card").forEach((x) => x.classList.toggle("on", x === c)); });
 
 // ---------- scene ----------
@@ -314,7 +314,7 @@ function tick() {
       s.bar.position.copy(s.pos).setY(4.4); s.bar.quaternion.copy(camera.quaternion);
       const k = Math.max(0.001, s.hp / s.maxHp); s.bar.fg.scale.x = k; s.bar.fg.position.x = -1.15 * (1 - k); s.bar.fg.material.color.setHex(s.team === 0 ? (s === me ? 0x3ad13a : 0x42a5f5) : 0xef5350);
       s.label.position.copy(s.pos).setY(5.1);
-      if (s.gems !== s.shownGems) { s.shownGems = s.gems; scene.remove(s.gemLabel); s.gemLabel = makeLabel(`💎${s.gems}`, "#ea80fc", 256); s.gemLabel.scale.set(1.8, 0.9, 1); scene.add(s.gemLabel); }
+      if (s.gems !== s.shownGems) { s.shownGems = s.gems; scene.remove(s.gemLabel); s.gemLabel = makeLabel(`${s.gems} gems`, "#ea80fc", 256); s.gemLabel.scale.set(1.8, 0.9, 1); scene.add(s.gemLabel); }
       s.gemLabel.position.copy(s.pos).setY(5.8);
       if (s.spawnShield) s.spawnShield = Math.max(0, s.spawnShield - dt);
     }
@@ -378,7 +378,7 @@ const LB = (() => {
   const el = document.createElement("div"); el.className = "lb";
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const draw = (list) => {
-    el.innerHTML = `<h3>🏆 Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
+    el.innerHTML = `<h3>Most wins</h3>` + (!nx ? `<p>Play on nebuluxai.com to join the leaderboard</p>`
       : !list ? `<p>Loading…</p>` : !list.length ? `<p>No winners yet. Be the first!</p>`
       : `<ol>${list.slice(0, 5).map((r, i) => `<li class="${me && r.name === me ? "me" : ""}"><b>${i + 1}</b><span>${esc(r.name)}</span><i>${r.score}</i></li>`).join("")}</ol>`)
       + `<p>Your wins: <b>${wins}</b></p>`;
