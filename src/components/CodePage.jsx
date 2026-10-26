@@ -46,12 +46,13 @@ import CodeStats, { recordSession, recordMessage, readStats } from "@/components
 
 // Ideas for someone who hasn't asked Nebulux Code anything yet: tapping one puts it in the box.
 const CODE_STARTERS = [
-  ["🐛", "Fix a bug", "My code throws an error. Here it is, explain what's wrong and fix it:"],
-  ["🧮", "Write a function", "Write a JavaScript function that checks if a password is strong, with comments"],
-  ["📖", "Explain code", "Explain what this code does, line by line, in simple words:"],
-  ["🐍", "Learn Python", "Teach me Python loops with 3 short examples and a small exercise"],
+  [BugIcon, "Fix a bug", "My code throws an error. Here it is, explain what's wrong and fix it:"],
+  [CalcIcon, "Write a function", "Write a JavaScript function that checks if a password is strong, with comments"],
+  [ReadIcon, "Explain code", "Explain what this code does, line by line, in simple words:"],
+  [PyIcon, "Learn Python", "Teach me Python loops with 3 short examples and a small exercise"],
 ];
-import { GitBranch } from "lucide-react";
+import { GitBranch, Bug as BugIcon, Calculator as CalcIcon, BookOpenText as ReadIcon, SquareTerminal as PyIcon } from "lucide-react";
+import { isErrNote } from "@/lib/errNote";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import { savedToken, forgetToken, savedRepo, rememberRepo, connect, listRepos, listFiles, readFile, pushFile } from "@/lib/githubClient";
 
@@ -462,7 +463,7 @@ export default function CodePage({ userInitial }) {
       setLive("");
       const data = e?.response?.data;
       if (data?.credits) spend(data.credits);
-      setMessages((m) => [...m, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "⚠ Sorry, something went wrong. Please try again." }]);
+      setMessages((m) => [...m, { role: "ai", err: true, content: data?.error ? String(data.error) : isNetworkError(e) ? OFFLINE_NOTE : "Sorry, something went wrong. Please try again." }]);
     } finally {
       if (reqIdRef.current === myId) {
         setLoading(false);
@@ -481,7 +482,7 @@ export default function CodePage({ userInitial }) {
     waitForJob(p.id).then((j) => {
       try { localStorage.removeItem(PENDING_KEY); } catch { /* fine */ }
       if (j.credits) spend(j.credits);
-      setMessages((m) => [...m, { role: "ai", content: j.status === "done" ? j.content || "" : `⚠ ${j.error || "The cloud session lost this reply. Please try again."}` }]);
+      setMessages((m) => [...m, j.status === "done" ? { role: "ai", content: j.content || "" } : { role: "ai", err: true, content: j.error || "The cloud session lost this reply. Please try again." }]);
     }).finally(() => setLoading(false));
      
   }, []);
@@ -632,7 +633,7 @@ export default function CodePage({ userInitial }) {
                   <CodeStats userId={userId} names={AI_NAMES} />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {CODE_STARTERS.map(([icon, title, prompt]) => (
+                    {CODE_STARTERS.map(([StartIcon, title, prompt]) => (
                       <button
                         key={title}
                         type="button"
@@ -642,7 +643,7 @@ export default function CodePage({ userInitial }) {
                         }}
                         className="text-left rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] px-4 py-3 hover:bg-[var(--cl-hover)] transition-colors"
                       >
-                        <span className="text-[15px] font-medium text-[var(--cl-text)]">{icon} {title}</span>
+                        <span className="text-[15px] font-medium text-[var(--cl-text)]"><StartIcon className="inline-block w-4 h-4 mr-1.5 -mt-0.5 text-[var(--cl-faint)]" aria-hidden="true" />{title}</span>
                         <span className="block text-[13px] text-[var(--cl-faint)] mt-0.5 truncate">{prompt}</span>
                       </button>
                     ))}
@@ -680,7 +681,7 @@ export default function CodePage({ userInitial }) {
                           </>
                         );
                       })()}
-                      {i === messages.length - 1 && !loading && !exhausted && m.content.startsWith("⚠") && (
+                      {i === messages.length - 1 && !loading && !exhausted && isErrNote(m) && (
                         <button type="button" onClick={retryLast} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--cl-text)] px-3 py-1.5 text-xs font-semibold text-[var(--cl-bg)]">
                           <RotateCcw className="w-3.5 h-3.5" /> Try again
                         </button>
@@ -721,7 +722,7 @@ export default function CodePage({ userInitial }) {
                       </div>
                       {i === messages.length - 1 && !loading && !exhausted && (
                         <div className="flex flex-wrap gap-1.5 mt-2 font-sans">
-                          {(m.more ? ["Keep going from exactly where you stopped."] : followUps(messages[i - 1]?.role === "user" ? messages[i - 1].content : "", m.content)).map((f) => (
+                          {(m.more ? ["Keep going from exactly where you stopped."] : isErrNote(m) ? [] : followUps(messages[i - 1]?.role === "user" ? messages[i - 1].content : "", m.content)).map((f) => (
                             <button key={f} type="button" onClick={() => runPrompt(f)} className="px-2.5 py-1 rounded-lg border border-[var(--cl-border)] text-[12.5px] text-[var(--cl-muted)] hover:bg-[var(--cl-card)]">
                               {f}
                             </button>

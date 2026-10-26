@@ -9,7 +9,7 @@ export function followUps(question, answer) {
   try { if (localStorage.getItem("nx-followups") === "off") return []; } catch { /* fine */ }
   const a = String(answer || "");
   const q = String(question || "");
-  if (!a.trim() || a.startsWith("⚠") || /_\(stopped\)_\s*$/.test(a) || /Sorry, something went wrong/.test(a)) return [];
+  if (!a.trim() || /^\s*\u26A0/.test(a) || /_\(stopped\)_\s*$/.test(a) || /Sorry, something went wrong/.test(a)) return [];
   const out = [];
   if (/```quiz/.test(a)) {
     out.push("Quiz me again, a bit harder", "Make flashcards");

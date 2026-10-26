@@ -4,10 +4,10 @@ import CodeStats, { recordSession, recordMessage, readStats } from "@/components
 
 // Ideas for someone who hasn't asked anything yet: tapping one puts it in the box to edit or send.
 const STARTERS = [
-  ["📚", "Help with homework", "Explain how photosynthesis works, simply, then quiz me on it"],
-  ["✍️", "Write something", "Help me write a short, friendly email asking my teacher for an extension"],
-  ["🌐", "Make a website", "Make a website for my bakery with a menu, opening hours and an order button"],
-  ["🎮", "Make a game", "Make a simple game where you dodge falling stars and get points"],
+  [BookOpen, "Help with homework", "Explain how photosynthesis works, simply, then quiz me on it"],
+  [PenLine, "Write something", "Help me write a short, friendly email asking my teacher for an extension"],
+  [Globe, "Make a website", "Make a website for my bakery with a menu, opening hours and an order button"],
+  [Gamepad2, "Make a game", "Make a simple game where you dodge falling stars and get points"],
 ];
 import { askConfirm } from "@/lib/dialogs";
 import { showShortcuts } from "@/lib/shortcuts";
@@ -19,7 +19,8 @@ import AboutMeButton from "@/components/chat/AboutMeButton";
 import StudyModeButton from "@/components/chat/StudyModeButton";
 import { studyModeOn, studyBlock } from "@/lib/studyMode";
 import ReportReply from "@/components/chat/ReportReply";
-import { Plus, RotateCcw, Pencil, ImagePlus, Globe, X as XIcon } from "lucide-react";
+import { Plus, RotateCcw, Pencil, ImagePlus, Globe, X as XIcon, BookOpen, PenLine, Gamepad2 } from "lucide-react";
+import { isErrNote } from "@/lib/errNote";
 import NebuluxBrowser from "@/components/code/NebuluxBrowser";
 import AttachedFile from "@/components/chat/AttachedFile";
 import BlackholeIcon from "@/components/BlackholeIcon";
@@ -252,7 +253,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       if (data?.credits) spend?.[ai]?.(data.credits);
       if (data?.outOfCredits) setOutAt(new Date(nextRefresh()).toISOString());
       // Out-of-credits and "AI is busy" come back with a message worth showing as-is.
-      addMessage(convId, { role: "ai", content: data?.error ? `⚠ ${data.error}` : isNetworkError(e) ? `⚠ ${OFFLINE_NOTE}` : "⚠ Sorry, something went wrong. Please try again." });
+      addMessage(convId, { role: "ai", err: true, content: data?.error ? String(data.error) : isNetworkError(e) ? OFFLINE_NOTE : "Sorry, something went wrong. Please try again." });
     } finally {
       if (reqIdRef.current === myId) {
         setLoading(false);
@@ -474,7 +475,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 <CodeStats userId={shell?.currentUser?.id} names={AI_NAMES} kind="chat" />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {STARTERS.map(([icon, title, prompt]) => (
+                  {STARTERS.map(([StartIcon, title, prompt]) => (
                     <button
                       key={title}
                       type="button"
@@ -484,7 +485,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                       }}
                       className="text-left rounded-2xl bg-[var(--cl-card)] border border-[var(--cl-border)] px-4 py-3 hover:bg-[var(--cl-hover)] transition-colors"
                     >
-                      <span className="text-[15px] font-medium text-[var(--cl-text)]">{icon} {title}</span>
+                      <span className="text-[15px] font-medium text-[var(--cl-text)]"><StartIcon className="inline-block w-4 h-4 mr-1.5 -mt-0.5 text-[var(--cl-faint)]" aria-hidden="true" />{title}</span>
                       <span className="block text-[13px] text-[var(--cl-faint)] mt-0.5 truncate">{prompt}</span>
                     </button>
                   ))}
@@ -521,7 +522,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 ) : (
                   <>
                     <Markdown text={m.content} />
-                    {i === messages.length - 1 && !loading && !isExhausted && m.content.startsWith("⚠") && (
+                    {i === messages.length - 1 && !loading && !isExhausted && isErrNote(m) && (
                       <button
                         type="button"
                         onClick={retryLast}
@@ -553,7 +554,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                     </div>
                     {i === messages.length - 1 && !loading && !isExhausted && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {(m.more ? [KEEP_GOING] : followUps(messages[i - 1]?.role === "user" ? messages[i - 1].content : "", m.content)).map((f) => (
+                        {(m.more ? [KEEP_GOING] : isErrNote(m) ? [] : followUps(messages[i - 1]?.role === "user" ? messages[i - 1].content : "", m.content)).map((f) => (
                           <button
                             key={f}
                             type="button"
@@ -614,7 +615,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
 
           {outAt && !loading && conversation?.id && (
             <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              <p className="font-semibold">⚠ You ran out of credits.</p>
+              <p className="font-semibold">You ran out of credits.</p>
               <p className="mt-1 text-red-100/90">
                 They come back at {new Date(outAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} (in {waitText(Date.parse(outAt) - Date.now())}).
               </p>

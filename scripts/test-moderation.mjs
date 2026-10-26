@@ -74,7 +74,7 @@ let html = await page.text();
 assert(!html.includes("⚑ Report") && !html.includes("Made with Nebulux AI") && html.includes("blackhole-checkout"), "websites: bridge, no report link, no badge unless turned on");
 assert(prep.preparePage("<html><body></body></html>", "game", "g").includes("⚑ Report"), "games keep the report link");
 assert(prep.preparePage("<html><body></body></html>", "site", "s", { badge: true }).includes("Made with Nebulux AI"), "badge when the owner turns it on");
-assert(!prep.preparePage("<html><body></body></html>", "game", "g").includes("✨"), "no star in the badge");
+assert(!prep.preparePage("<html><body></body></html>", "game", "g").includes("\u2728"), "no star in the badge");
 
 [s, b] = await j(admin.onRequestPost({ request: req({ action: "hide", kind: "site", name: "nova" }, "admintok"), env }));
 assert(b.reports.length === 0 && b.hidden.length === 1 && b.hidden[0].name === "nova", "hide clears reports, listed as hidden");

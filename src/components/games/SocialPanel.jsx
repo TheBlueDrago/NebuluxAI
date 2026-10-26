@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { X, Loader2, UserPlus, Check, Trash2, Copy, Gamepad2 } from "lucide-react";
+import { X, Loader2, UserPlus, Check, Trash2, Copy, Gamepad2, Sparkles, Lock as LockIcon, MessageCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 // Avatar editor and friends list for Nebulux Games (functions/.../social.js). Your avatar is worn
@@ -24,12 +24,26 @@ const BACKS = [["none", "Nothing"], ["backpack", "Backpack"], ["cape", "Cape"], 
 const TRAILS = [["none", "No trail"], ["bubbles", "Bubble buddies"], ["stars", "Star buddies"], ["rainbow", "Rainbow buddies"]];
 const WALKS = [["normal", "Normal walk"], ["robot", "Robot"], ["zombie", "Zombie"], ["ninja", "Ninja run"], ["levitate", "Levitate"]];
 const FACES = [
-  ["smile", "🙂"],
-  ["grin", "😁"],
-  ["cool", "😎"],
-  ["angry", "😠"],
-  ["wink", "😉"],
+  ["smile", "Smile"],
+  ["grin", "Grin"],
+  ["cool", "Cool"],
+  ["angry", "Angry"],
+  ["wink", "Wink"],
 ];
+// The avatar's face, drawn (eyes, brows, mouth) instead of an emoji.
+const INK = "#2b2b2b";
+const eye = (cx, cy = 10) => <circle cx={cx} cy={cy} r="1.5" fill={INK} />;
+const line = (d, w = 1.7) => <path d={d} fill="none" stroke={INK} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />;
+const FACE_ART = {
+  smile: <>{eye(8.5)}{eye(15.5)}{line("M8 14.5c1.1 1.5 2.4 2.2 4 2.2s2.9-.7 4-2.2")}</>,
+  grin: <>{eye(8.5)}{eye(15.5)}<path d="M7.5 13.5h9a4.5 4.5 0 0 1-9 0z" fill={INK} /><path d="M8.3 13.9h7.4v1.1H8.3z" fill="#fff" /></>,
+  cool: <><rect x="4.8" y="8.4" width="6.2" height="3.6" rx="1.3" fill={INK} /><rect x="13" y="8.4" width="6.2" height="3.6" rx="1.3" fill={INK} />{line("M11 9.6h2", 1.4)}{line("M9.5 15.6c1.6.9 3.6.8 5.2-.7")}</>,
+  angry: <>{line("M6.5 7.3l4 1.6M17.5 7.3l-4 1.6")}{eye(8.6, 10.8)}{eye(15.4, 10.8)}{line("M8.6 16.8c1-1.2 2.2-1.8 3.4-1.8s2.4.6 3.4 1.8")}</>,
+  wink: <>{eye(8.5)}{line("M13.8 10.4c.8-.9 2.2-.9 3 0")}{line("M8 14.5c1.1 1.5 2.4 2.2 4 2.2s2.9-.7 4-2.2")}</>,
+};
+export function FaceArt({ id, size = 24 }) {
+  return <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">{FACE_ART[id] || FACE_ART.smile}</svg>;
+}
 const SWATCHES = {
   skin: ["#ffdbac", "#f5c99a", "#e0ac69", "#c68642", "#8d5524", "#5c3a21"],
   shirt: ["#d62828", "#1e88e5", "#43a047", "#fdd835", "#8e24aa", "#fb8c00", "#212121", "#ffffff"],
@@ -82,7 +96,7 @@ const DESIGN_BG = {
 const TRAIL_COLORS = { rainbow: ["#ff5252", "#ffd740", "#69f0ae", "#40c4ff", "#e040fb"], stars: ["#fff59d", "#ffe082", "#fff9c4"], bubbles: ["#b3e5fc", "#e1f5fe", "#b2ebf2"] };
 export function AvatarFigure({ a, size = 1 }) {
   const s = (n) => n * size;
-  const face = (FACES.find((f) => f[0] === a.face) || FACES[0])[1];
+  const face = <FaceArt id={(FACES.find((f) => f[0] === a.face) || FACES[0])[0]} size={s(24)} />;
   const part = (style, c, r = 3) => <div className="absolute" style={{ borderRadius: s(r), ...plastic(c), ...style }} />;
   const shorts = a.legs === "shorts";
   const back = a.back || "none", trail = a.trail || "none";
@@ -134,7 +148,7 @@ function useShop() {
   return [shop, load];
 }
 const locked = (shop, item) => !!(shop && item in shop.prices && !shop.owned.includes(item));
-const Star = () => <span aria-hidden="true">✨</span>;
+const Star = () => <Sparkles className="inline-block w-[1em] h-[1em] -mt-0.5" aria-hidden="true" />;
 
 function AvatarTab({ goShop }) {
   const [a, setA] = useState(null);
@@ -205,10 +219,10 @@ function AvatarTab({ goShop }) {
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Face</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {FACES.map(([id, e]) => (
-              <button key={id} type="button" onClick={() => set("face", id)} aria-label={`Face ${id}`} className={`relative w-9 h-9 rounded-lg text-lg ${a.face === id ? "bg-white/30 ring-2 ring-white" : "bg-white/10 hover:bg-white/20"}`}>
-                {e}
-                {locked(shop, "face:" + id) && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
+            {FACES.map(([id, label]) => (
+              <button key={id} type="button" onClick={() => set("face", id)} aria-label={`Face: ${label}`} title={label} className={`relative w-9 h-9 rounded-lg grid place-items-center ${a.face === id ? "bg-white/30 ring-2 ring-white" : "bg-white/10 hover:bg-white/20"}`}>
+                <span className="w-7 h-7 rounded-md grid place-items-center" style={{ background: a.skin || "#ffdbac" }}><FaceArt id={id} size={22} /></span>
+                {locked(shop, "face:" + id) && <LockIcon className="absolute -top-1 -right-1 w-3 h-3 text-white" aria-hidden="true" />}
               </button>
             ))}
           </div>
@@ -295,7 +309,7 @@ function ShopTab() {
           e.preventDefault();
           const code = e.currentTarget.code.value;
           const r = await call("promo", { code }, "promo");
-          if (r?.ok) setNote("Code redeemed! ✨");
+          if (r?.ok) setNote("Code redeemed!");
         }}
         className="flex gap-2 pt-2 border-t border-white/10"
       >
@@ -446,7 +460,7 @@ function FriendsTab({ onPlay }) {
             <span className="flex-1 min-w-0 truncate text-white">{f.name}</span>
             <span className="text-xs text-slate-400">{f.playing ? gameName(f.playing) : f.online ? "Online" : "Offline"}</span>
             <button onClick={() => setChatWith(f)} title={`Chat with ${f.name}`} className="relative px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
-              💬 Chat
+              <MessageCircle className="inline-block w-3.5 h-3.5 -mt-0.5 mr-1" aria-hidden="true" />Chat
               {f.unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">{f.unread}</span>}
             </button>
             <button onClick={() => act("remove", { id: f.id })} title="Remove friend" aria-label={`Remove ${f.name}`} className="p-1 rounded text-slate-500 hover:text-red-300">

@@ -4,7 +4,7 @@ import PageSize from "@/components/designer/PageSize";
 import Markdown from "@/components/chat/Markdown";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Globe, Search, RefreshCw, Plus, X, Crown, Rocket, Paperclip, RotateCcw, FileArchive } from "lucide-react";
+import { Loader2, Globe, Search, RefreshCw, Plus, X, Crown, Rocket, Paperclip, RotateCcw, FileArchive, CakeSlice, Palette, UtensilsCrossed, PartyPopper, BookOpen } from "lucide-react";
 import { zipToSite } from "@/lib/zipSite";
 import { checkUpload } from "@/lib/fileCheck";
 import BlackholeIcon from "@/components/BlackholeIcon";
@@ -57,14 +57,14 @@ const AI_NAMES = { ai: "Nebulux AI", code: "Galaxy", opus5: "Space", fable: "Neb
 const RESERVED = ["home", "www", "admin", "api", "mail", "infinity", "ai", "app", "login", "register", "support", "blog"];
 
 // One-tap improvements shown under the latest version of the site.
-// Ideas on the empty start screen: a label, an emoji and the request the AI gets.
+// Ideas on the empty start screen: a label, an icon and the request the AI gets.
 const SITE_IDEAS = [
-  ["Bakery or café", "🧁", "Build a warm, inviting website for a small bakery and café: a big hero photo, the menu with prices, opening hours, a map section and an order button."],
-  ["My portfolio", "🎨", "Build a personal portfolio website: a short intro about me, a grid of my projects with pictures, my skills, and a contact section."],
-  ["App landing page", "🚀", "Build a modern landing page for a new app: a bold headline, what it does in 3 features, screenshots, pricing plans and a sign-up button."],
-  ["Restaurant", "🍝", "Build an elegant restaurant website: a full-screen photo, the menu by course, a booking form, opening hours and reviews."],
-  ["Event or party", "🎉", "Build a fun event website: the date, time and place with a countdown, what's happening, and an RSVP form."],
-  ["School club", "📚", "Build a website for a school club: what we do, when and where we meet, upcoming events, photos and a join form."],
+  ["Bakery or café", CakeSlice, "Build a warm, inviting website for a small bakery and café: a big hero photo, the menu with prices, opening hours, a map section and an order button."],
+  ["My portfolio", Palette, "Build a personal portfolio website: a short intro about me, a grid of my projects with pictures, my skills, and a contact section."],
+  ["App landing page", Rocket, "Build a modern landing page for a new app: a bold headline, what it does in 3 features, screenshots, pricing plans and a sign-up button."],
+  ["Restaurant", UtensilsCrossed, "Build an elegant restaurant website: a full-screen photo, the menu by course, a booking form, opening hours and reviews."],
+  ["Event or party", PartyPopper, "Build a fun event website: the date, time and place with a countdown, what's happening, and an RSVP form."],
+  ["School club", BookOpen, "Build a website for a school club: what we do, when and where we meet, upcoming events, photos and a join form."],
 ];
 // One-tap improvements under the latest build: a short label, and the fuller request the AI gets.
 const SITE_TWEAKS = [
@@ -582,7 +582,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
         pushMsg({
           role: "ai",
           text: true,
-          content: "⚠ This website got too long for the AI to finish, so it wasn't shown (a half-finished page would be broken). Your previous version is kept. Try again, pick a higher effort, or ask for a simpler version.",
+          content: "This website got too long for the AI to finish, so it wasn't shown (a half-finished page would be broken). Your previous version is kept. Try again, pick a higher effort, or ask for a simpler version.",
         });
         return;
       }
@@ -619,9 +619,9 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
         content: timedOut
           ? "That took too long to generate — your website is big, so rewriting the whole page can run past the time limit. Ask for one smaller change at a time (e.g. \"change the pricing section\") and it will go through."
           : data?.outOfCredits || e?.response?.status === 503
-            ? `⚠ ${why}`
+            ? why
             : isNetworkError(e)
-              ? `⚠ ${OFFLINE_NOTE}`
+              ? OFFLINE_NOTE
               : `Sorry, something went wrong generating your website.${why ? ` (${why})` : ""} Please try again.`,
       });
     } finally {
@@ -914,14 +914,14 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 <p className="text-slate-300 font-medium">Describe your website</p>
                 <p className="text-slate-500 text-sm mt-1">Nebulux AI will build it live. Or start from an idea:</p>
                 <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-sm">
-                  {SITE_IDEAS.map(([label, emoji, ask]) => (
+                  {SITE_IDEAS.map(([label, IdeaIcon, ask]) => (
                     <button
                       key={label}
                       type="button"
                       onClick={() => runPrompt(ask, selectedAi)}
                       className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-[13px] text-slate-200 hover:border-sky-500/50 hover:bg-sky-500/10 transition-colors"
                     >
-                      <span className="text-lg leading-none">{emoji}</span>
+                      <IdeaIcon className="w-[18px] h-[18px] shrink-0 text-slate-300" aria-hidden="true" />
                       <span className="truncate">{label}</span>
                     </button>
                   ))}
@@ -1052,7 +1052,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 setChecking(true);
                 const chk = await checkUpload(f);
                 setChecking(false);
-                if (!chk.ok) { pushMsg({ role: "ai", text: true, content: "⚠ " + chk.reason }); return; }
+                if (!chk.ok) { pushMsg({ role: "ai", text: true, content: chk.reason }); return; }
                 try {
                   const site = await zipToSite(f);
                   pushMsg({ role: "ai", content: site.html, note: `Uploaded ${f.name}.${site.otherPages ? ` It has ${site.otherPages} more page${site.otherPages > 1 ? "s" : ""}; only the main page (index.html) is used here.` : ""} You can keep changing it with the AI.` });
@@ -1076,7 +1076,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 for (const f of fs) {
                   const chk = await checkUpload(f);
                   if (chk.ok) good.push(f);
-                  else pushMsg({ role: "ai", text: true, content: "⚠ " + chk.reason });
+                  else pushMsg({ role: "ai", text: true, content: chk.reason });
                 }
                 setChecking(false);
                 if (good.length) setFiles((prev) => [...prev, ...good]);

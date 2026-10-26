@@ -61,7 +61,7 @@ export function ChatShot({ className = "" }) {
       </div>
       <Bubble me>Can you explain photosynthesis simply?</Bubble>
       <Bubble>
-        Plants make their own food from sunlight 🌞. Their leaves take in light, water and air, and turn them into sugar, and they breathe out the
+        Plants make their own food from sunlight . Their leaves take in light, water and air, and turn them into sugar, and they breathe out the
         oxygen we need.
       </Bubble>
       <Bubble me>Now make me a quiz about it!</Bubble>

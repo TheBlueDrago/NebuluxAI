@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gamepad2, Play, Search, Loader2, Sparkles } from "lucide-react";
+import { Gamepad2, Play, Search, Loader2, Sparkles, Circle, Target, Ghost, Swords, Puzzle, CarFront, Volleyball, Map as MapIcon, Crown } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { builtInGameEntities } from "@/lib/builtInGames";
@@ -11,7 +11,7 @@ const GENRES = ["io", "shooting", "horror", "action", "arcade", "puzzle", "racin
 const GENRE_LABEL = { io: ".io" };
 const label = (g) => GENRE_LABEL[g] || g.charAt(0).toUpperCase() + g.slice(1);
 // A picture for each kind of game on its card.
-const ICON = { io: "🟣", shooting: "🎯", horror: "👻", action: "⚔️", arcade: "🕹️", puzzle: "🧩", racing: "🏎️", sports: "⚽", adventure: "🗺️", strategy: "♟️" };
+const ICON = { io: Circle, shooting: Target, horror: Ghost, action: Swords, arcade: Gamepad2, puzzle: Puzzle, racing: CarFront, sports: Volleyball, adventure: MapIcon, strategy: Crown };
 const THUMB = {
   io: "from-fuchsia-500 to-indigo-500",
   shooting: "from-red-500 to-orange-500",
@@ -109,7 +109,7 @@ export default function Arcade() {
               <div className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br ${THUMB[g.genre] || "from-indigo-500 to-fuchsia-500"} flex items-center justify-center`}>
                 {GAME_THUMBS.has(g.name) ? (
                   <img src={`/game-thumbs/${g.name}.jpg`} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                ) : ICON[g.genre] ? <span className="text-5xl drop-shadow-lg transition-transform group-hover:scale-110" aria-hidden="true">{ICON[g.genre]}</span> : <Gamepad2 className="w-9 h-9 text-white/90" />}
+                ) : React.createElement(ICON[g.genre] || Gamepad2, { className: "w-12 h-12 text-white/90 drop-shadow-lg transition-transform group-hover:scale-110", "aria-hidden": true })}
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
                   <Play className="w-8 h-8 text-white" />
                 </span>

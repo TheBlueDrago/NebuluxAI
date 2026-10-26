@@ -93,6 +93,8 @@ const safeComponents = { ...components, pre: (props) => <CodeBlock {...props} no
 // AI replies rendered as Markdown (headings, lists, bold, code, math). Raw HTML in a reply
 // is shown as text, never rendered (react-markdown's default). untrusted: no live previews.
 export default function Markdown({ text, untrusted = false }) {
+  // chats saved before error notes were flagged start with a warning sign (\u26A0): it isn't shown
+  text = String(text ?? "").replace(/(^|\n)[ \t]*\u26A0\uFE0F?[ \t]*/g, "$1");
   const { text: shown, hasMath } = prepareMath(text);
   const [math, setMath] = useState(null);
   useEffect(() => {

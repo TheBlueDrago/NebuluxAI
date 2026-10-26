@@ -464,7 +464,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
         pushMsg({
           role: "ai",
           text: true,
-          content: "⚠ This game got too long for the AI to finish, so it wasn't shown (a half-finished game would just be a black screen). Your previous version is kept. Try again, pick a higher effort, or ask for a simpler version.",
+          content: "This game got too long for the AI to finish, so it wasn't shown (a half-finished game would just be a black screen). Your previous version is kept. Try again, pick a higher effort, or ask for a simpler version.",
         });
         return;
       }
@@ -491,9 +491,9 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
         text: true,
         content:
           data?.outOfCredits || e?.response?.status === 503
-            ? `⚠ ${why}`
+            ? why
             : isNetworkError(e)
-              ? `⚠ ${OFFLINE_NOTE}`
+              ? OFFLINE_NOTE
               : `Sorry, something went wrong generating your game.${why ? ` (${why})` : ""} Please try again.`,
       });
     } finally {

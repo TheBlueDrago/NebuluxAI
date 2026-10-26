@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Sparkles as StardustIcon } from "lucide-react";
 import { gameThumb } from "@/lib/gameThumbs";
 import SocialPanel from "@/components/games/SocialPanel";
 import FriendsRow from "@/components/games/FriendsRow";
@@ -48,15 +49,15 @@ const THUMB = {
 };
 const thumb = (g) => THUMB[g.genre] || "from-indigo-500 to-fuchsia-500";
 const genreIcon = (g) => (GENRES.find((x) => x.id === g.genre) || {}).icon || Gamepad2;
-// The same picture for each kind of game as the public Arcade (src/pages/Arcade.jsx).
-const GENRE_PIC = { io: "🟣", shooting: "🎯", horror: "👻", action: "⚔️", arcade: "🕹️", puzzle: "🧩", racing: "🏎️", sports: "⚽", adventure: "🗺️", strategy: "♟️" };
+// A game without a screenshot shows its kind's icon (no emoji pictures).
+const GENRE_PIC = {};
 function GenreArt({ g, big }) {
   const Icon = genreIcon(g), pic = GENRE_PIC[g.genre], shot = gameThumb(g.name);
   if (shot) return <img src={shot} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />;
   return pic ? (
     <span className={`${big ? "text-7xl" : "text-5xl"} drop-shadow-lg transition-transform duration-200 group-hover:scale-110`} aria-hidden="true">{pic}</span>
   ) : (
-    <Icon className={`${big ? "w-16 h-16" : "w-8 h-8"} keep-color text-white/80`} />
+    <Icon className={`${big ? "w-20 h-20" : "w-12 h-12"} keep-color text-white/85 drop-shadow-lg transition-transform duration-200 group-hover:scale-110`} />
   );
 }
 
@@ -254,7 +255,7 @@ export default function GamesFront() {
         </div>
         {shell.currentUser && stardust !== null && (
           <button onClick={() => setSocial("shop")} title="Stardust: open the Shop" className="shrink-0 inline-flex items-center gap-1.5 px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold">
-            <span aria-hidden="true">✨</span> {stardust.toLocaleString()}
+            <StardustIcon className="w-4 h-4" aria-hidden="true" /> {stardust.toLocaleString()}
           </button>
         )}
         {shell.currentUser && (

@@ -79,7 +79,7 @@ export default async function (req) {
             )} | fee ${money(parseFloat(r.platformFee || '0') || 0)} | payout ${money(
               parseFloat(r.creatorPayout || '0') || 0
             )} | ${r.creatorEmail || ''} | ${r.paidAt}` +
-            (holdReasons(r, sales || [], down).length ? `\n    ⚠ HOLD: ${holdReasons(r, sales || [], down).join('; ')}` : '')
+            (holdReasons(r, sales || [], down).length ? `\n    HOLD: ${holdReasons(r, sales || [], down).join('; ')}` : '')
         )
         .join('\n');
       body =

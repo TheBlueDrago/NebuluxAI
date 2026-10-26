@@ -25,9 +25,9 @@ const countFlags = (list) => {
 function FlagCounts({ counts }) {
   return (
     <span className="flex items-center gap-2 text-xs">
-      <span className="text-red-300">🔴 {counts.red}</span>
-      <span className="text-amber-200">🟡 {counts.yellow}</span>
-      <span className="text-emerald-300">🟢 {counts.green}</span>
+      <span className="text-red-300 inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" />{counts.red}</span>
+      <span className="text-amber-200 inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-300" />{counts.yellow}</span>
+      <span className="text-emerald-300 inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" />{counts.green}</span>
     </span>
   );
 }
@@ -173,9 +173,9 @@ export default function PublishedContent() {
         <div className="flex flex-wrap items-center gap-1.5 mt-3">
           <span className="text-xs text-slate-400">Set flag:</span>
           {[
-            ["green", "🟢 Safe"],
-            ["yellow", "🟡 Unsure"],
-            ["red", "🔴 Bad"],
+            ["green", "Safe"],
+            ["yellow", "Unsure"],
+            ["red", "Bad"],
           ].map(([flag, label]) => (
             <button
               key={flag}
@@ -248,7 +248,7 @@ export default function PublishedContent() {
         </div>
         <div className="max-w-4xl mx-auto px-4 py-5 space-y-3">
           <p className="text-xs text-slate-500">
-            🔴 inappropriate for kids, copyright copy, phishing or 50%+ malware · 🟡 might be harmful · 🟢 looks safe. Use "AI check" for a closer look, or "Set flag" when
+            Red: inappropriate for kids, copyright copy, phishing or 50%+ malware · Yellow: might be harmful · Green: looks safe. Use "AI check" for a closer look, or "Set flag" when
             you know better (your flag resets if the page changes).
           </p>
           {!items && (

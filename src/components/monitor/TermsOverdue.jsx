@@ -39,7 +39,7 @@ export default function TermsOverdue({ onOpenUser }) {
           </p>
           {typeof data.accepted === "number" && (
             <p className="text-sm text-slate-300 mt-1">
-              ✅ {data.accepted} accepted · ⏳ {data.checked - data.accepted} haven't yet
+              {data.accepted} accepted · {data.checked - data.accepted} haven't yet
             </p>
           )}
           <ul className="mt-2 max-h-96 overflow-y-auto divide-y divide-slate-800 text-sm">

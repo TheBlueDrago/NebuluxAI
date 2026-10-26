@@ -1,12 +1,13 @@
+import { isErrNote } from "./errNote.js";
 // The recent conversation, sent with each new message so the AI can follow along ("make it
-// shorter", "why?", "next question"). Error notes (⚠) are left out, each message is capped,
+// shorter", "why?", "next question"). Error notes are left out, each message is capped,
 // and only the latest fit under the total. Credits are charged for the reply, not this.
 export const HISTORY_MESSAGES = 12;
 export const HISTORY_EACH = 2000;
 export const HISTORY_TOTAL = 12000;
 
 export function historyBlock(messages) {
-  const past = (messages || []).filter((m) => m && m.content && !(m.role === "ai" && String(m.content).startsWith("⚠")));
+  const past = (messages || []).filter((m) => m && m.content && !isErrNote(m));
   const lines = [];
   let total = 0;
   for (const m of past.slice(-HISTORY_MESSAGES).reverse()) {

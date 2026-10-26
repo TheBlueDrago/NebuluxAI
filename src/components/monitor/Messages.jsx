@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Mail, Check, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const TOPIC = { account: "Account", billing: "Billing", bug: "Bug", ai: "🤖 AI reply", security: "🔒 Security", parent: "👪 Parent / teacher", idea: "Idea", business: "💼 Business", partnership: "🤝 Partnership / investor", other: "Other" };
+const TOPIC = { account: "Account", billing: "Billing", bug: "Bug", ai: "AI reply", security: "Security", parent: "Parent / teacher", idea: "Idea", business: "Business", partnership: "Partnership / investor", other: "Other" };
 
 // Monitor → messages sent from the /contact page (functions/contact.js).
 export default function Messages() {

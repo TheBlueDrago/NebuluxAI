@@ -72,7 +72,7 @@ Also:
 
 - Monitor → **Security at a glance**: open reports, admin actions, countries.
 - Monitor → **Messages**: security reports come first, then parents and teachers, then AI
-  replies people reported as harmful or wrong (🤖). A harmful reply is worth a look at what
+  replies people reported as harmful or wrong (). A harmful reply is worth a look at what
   was asked, and a message back if the person left an email.
 - Monitor → **Before you pay creators**: pay only sales older than 14 days with no warnings,
   and check each order in the Wix dashboard for refunds or disputes first.

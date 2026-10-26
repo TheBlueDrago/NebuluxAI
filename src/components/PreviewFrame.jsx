@@ -147,7 +147,7 @@ export default function PreviewFrame({ html, title, className = "w-full h-full",
           return;
         }
         const price = Math.floor(Number(d.price));
-        askConfirm(`Use ${price} Stardust for "${String(d.what || "this").slice(0, 60)}" in ${title || "this game"}?`, { confirmLabel: `Use ${price} ✨` }).then((yes) => {
+        askConfirm(`Use ${price} Stardust for "${String(d.what || "this").slice(0, 60)}" in ${title || "this game"}?`, { confirmLabel: `Use ${price} Stardust` }).then((yes) => {
           if (!yes) return reply({ error: "Cancelled." });
           base44.functions
             .invoke("social", { action: "spend", game: nameRef.current, price })

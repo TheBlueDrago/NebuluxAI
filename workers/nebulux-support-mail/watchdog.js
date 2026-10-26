@@ -82,7 +82,7 @@ export async function watchdog(env) {
   }
   if (JSON.stringify(next) !== JSON.stringify(prev)) await env.KV.put(KEY, JSON.stringify(next));
   const when = new Date().toUTCString();
-  if (broke.length) await email(env, "⚠ Nebulux AI: something is down", `The watchdog found a problem (${when}):\n\n${broke.join("\n")}\n\nIt checks again every 15 minutes and will email you when it's working again.`);
-  if (fixed.length) await email(env, "✅ Nebulux AI: working again", `These are working again (${when}):\n\n${fixed.join("\n")}`);
+  if (broke.length) await email(env, "Nebulux AI: something is down", `The watchdog found a problem (${when}):\n\n${broke.join("\n")}\n\nIt checks again every 15 minutes and will email you when it's working again.`);
+  if (fixed.length) await email(env, "Nebulux AI: working again", `These are working again (${when}):\n\n${fixed.join("\n")}`);
   return results;
 }
