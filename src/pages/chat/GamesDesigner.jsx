@@ -42,6 +42,7 @@ import { useAppShell } from "@/components/AppShellContext";
 import useEscape from "@/hooks/useEscape";
 import useDialogFocus from "@/hooks/useDialogFocus";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
+import { isErrNote } from "@/lib/errNote";
 
 const STORE_KEY = GAME_DESIGNER_STORE_KEY;
 const TAKEN_KEY = "infinity-ai-taken-games";
@@ -748,7 +749,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
                         )}
                       </div>
                     ) : (
-                      <Markdown text={m.content} />
+                      <Markdown text={m.content} note={isErrNote(m)} />
                     )}
                   </div>
                 </div>

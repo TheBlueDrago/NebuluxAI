@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { WARN_SIGN } from "@/lib/errNote";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy, Check } from "lucide-react";
@@ -92,9 +93,11 @@ const safeComponents = { ...components, pre: (props) => <CodeBlock {...props} no
 
 // AI replies rendered as Markdown (headings, lists, bold, code, math). Raw HTML in a reply
 // is shown as text, never rendered (react-markdown's default). untrusted: no live previews.
-export default function Markdown({ text, untrusted = false }) {
-  // chats saved before error notes were flagged start with a warning sign (\u26A0): it isn't shown
-  text = String(text ?? "").replace(/(^|\n)[ \t]*\u26A0\uFE0F?[ \t]*/g, "$1");
+export default function Markdown({ text, untrusted = false, note = false }) {
+  // Nebulux AI's own error notes saved before they were flagged start with a warning sign (\u26A0): it isn't
+  // shown there. AI replies are left as they are, emojis and all.
+  text = String(text ?? "");
+  if (note) text = text.replace(WARN_SIGN, "");
   const { text: shown, hasMath } = prepareMath(text);
   const [math, setMath] = useState(null);
   useEffect(() => {

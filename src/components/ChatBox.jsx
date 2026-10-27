@@ -521,7 +521,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                   m.content
                 ) : (
                   <>
-                    <Markdown text={m.content} />
+                    <Markdown text={m.content} note={isErrNote(m)} />
                     {i === messages.length - 1 && !loading && !isExhausted && isErrNote(m) && (
                       <button
                         type="button"

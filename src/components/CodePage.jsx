@@ -673,7 +673,7 @@ export default function CodePage({ userInitial }) {
                           </>
                         );
                         const ask = askOf(m.content);
-                        if (!ask) return <Markdown text={m.content} />;
+                        if (!ask) return <Markdown text={m.content} note={isErrNote(m)} />;
                         return (
                           <>
                             {ask.rest && <Markdown text={ask.rest} />}

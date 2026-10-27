@@ -5,6 +5,7 @@ import { CHATS_CHANGED } from "@/lib/chatBackup";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import Markdown from "@/components/chat/Markdown";
+import { isErrNote } from "@/lib/errNote";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import usePageTitle from "@/hooks/usePageTitle";
 
@@ -130,7 +131,7 @@ export default function SharedChat() {
                     <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-[var(--cl-card)] px-4 py-2.5 text-[15px]">{m.content}</div>
                   </div>
                 ) : (
-                  <div key={i} className="text-[15px] leading-relaxed"><Markdown text={m.content} untrusted={!s.own} /></div>
+                  <div key={i} className="text-[15px] leading-relaxed"><Markdown text={m.content} untrusted={!s.own} note={isErrNote(m)} /></div>
                 )
               )}
             </div>

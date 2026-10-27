@@ -47,6 +47,7 @@ import useEscape from "@/hooks/useEscape";
 import useDialogFocus from "@/hooks/useDialogFocus";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import { privateInfoOnPage } from "@/lib/privateInfo";
+import { isErrNote } from "@/lib/errNote";
 
 const STORE_KEY = DESIGNER_STORE_KEY;
 const TAKEN_KEY = "infinity-ai-taken-sites";
@@ -974,7 +975,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                         )}
                       </div>
                     ) : (
-                      <Markdown text={m.content} />
+                      <Markdown text={m.content} note={isErrNote(m)} />
                     )}
                   </div>
                 </div>
