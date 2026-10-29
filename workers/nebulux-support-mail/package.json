@@ -11,7 +11,7 @@
   "type": "module",
   "dependencies": {
     "mimetext": "^3.0.28",
-    "postal-mime": "^3.0.1"
+    "postal-mime": "^4.1.4"
   },
   "private": true
 }
