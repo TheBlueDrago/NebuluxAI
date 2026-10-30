@@ -505,3 +505,8 @@ export function appsAskedAbout(text, connected) {
   const t = String(text || "");
   return connected.filter((k) => ASK[k] && ASK[k].test(t)).slice(0, 2);
 }
+// Apps a question is about that they haven't connected (so the AI can say where to connect them).
+export function appsNotConnected(text, connected) {
+  const t = String(text || "");
+  return Object.keys(ASK).filter((k) => !connected.includes(k) && ASK[k].test(t)).slice(0, 2);
+}

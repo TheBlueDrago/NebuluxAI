@@ -227,6 +227,8 @@ assert(appsAskedAbout("summarize my unread emails and my notion pages", conn).jo
 assert(appsAskedAbout("How do I zoom in on a photo? Write an email to my teacher. Bowling pins?", conn).length === 0, "everyday words don't read apps (zoom in, an email, pins)");
 assert(appsAskedAbout("what's on my calendar", ["gmail"]).length === 0, "only apps they connected");
 assert(appsAskedAbout("gmail calendar spotify notion", conn).length === 2, "at most two apps per question");
+assert(A.appsNotConnected("What's on my calendar? And my Strava runs?", ["strava"]).join() === "calendar", "an app they asked about but haven't connected is noticed (to say where to connect it)");
+assert(A.appsNotConnected("Write a poem about the sea", []).length === 0, "and nothing is noticed for an everyday question");
 
 // ---- the endpoint ----
 const C = await import(new URL("../functions/v1/connect/index.js", import.meta.url).href);
