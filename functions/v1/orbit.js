@@ -97,6 +97,9 @@ export const SCOPE_NEEDS = {
   drive: { read: G + "drive.readonly" },
   youtube: { read: G + "youtube.readonly" },
   tasks: { read: G + "tasks.readonly" },
+  // Google Keep (school and work accounts) and Contacts, connected from Connectors (functions/v1/connect)
+  keep: { read: G + "keep.readonly" },
+  contacts: { read: G + "contacts.readonly" },
 };
 // The permissions a connection is missing ("Needs additional access"). Connections made before Orbit
 // kept the granted list (scopes null) count as having what was asked for then.
@@ -150,7 +153,7 @@ export async function googleAccess(env, db, uid, provider) {
 }
 const gmailAccess = (env, db, uid) => googleAccess(env, db, uid, "gmail");
 // GitHub's permission doesn't expire; a 401 from GitHub means it was taken back.
-async function githubAccess(env, db, uid) {
+export async function githubAccess(env, db, uid) {
   const c = await db.prepare("SELECT refresh, email, status FROM orbit_connections WHERE user_id = ? AND provider = 'github'").bind(uid).first();
   if (!c) return { status: "none" };
   const tok = await unseal(env, c.refresh, connBind(uid, "github"));

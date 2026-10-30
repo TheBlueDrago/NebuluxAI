@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { showNotice } from "@/lib/dialogs";
+import { RESULT_TEXT } from "@/lib/connectors";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppShellProvider, useAppShell } from "@/components/AppShellContext";
 import Profile from "@/components/Profile";
@@ -26,6 +27,17 @@ function ChatLayout() {
   const loc = useLocation();
   const navigate = useNavigate();
   usePageTitle(appTitleFor(loc.pathname));
+
+  // Back from an app's permission page (Settings → Connectors): say how it went and show Connectors again.
+  useEffect(() => {
+    const p = new URLSearchParams(loc.search), app = p.get("connected"), result = p.get("result");
+    if (!app || !/^[a-z]{1,20}$/.test(app)) return;
+    navigate(loc.pathname, { replace: true });
+    const name = app.charAt(0).toUpperCase() + app.slice(1);
+    showNotice((RESULT_TEXT[result] || RESULT_TEXT.failed)(name));
+    openProfile("connectors");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Back from "Set up automatically" (Domain Connect, see designer/CustomDomain.jsx): the domain
   // company added the records, so check them now and say how it went.

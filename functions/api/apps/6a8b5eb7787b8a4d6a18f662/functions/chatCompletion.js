@@ -28,6 +28,8 @@
 // session limit, 50 credits per 5 hours for all of Nebulux AI (cloudflare-lib/creditSession.js).
 import { alertOwner } from "../../../../../cloudflare-lib/ownerAlerts.js";
 import { HELP_RULES } from "../../../../../cloudflare-lib/helpguide.js";
+import { appsAskedAbout, readText } from "../../../../../cloudflare-lib/apps.js";
+import { readAny } from "../../../../v1/connect/index.js";
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
 import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
@@ -460,6 +462,21 @@ function failure(err) {
   };
 }
 
+// What the person's connected apps say, for a question about one or two of them (at most two are read).
+async function appContext(env, uid, question) {
+  if (!env.DB || !question) return "";
+  try {
+    const rows = (await env.DB.prepare("SELECT provider FROM orbit_connections WHERE user_id = ? AND (status IS NULL OR status != 'reconnect')").bind(uid).all()).results || [];
+    const keys = appsAskedAbout(question, rows.map((r) => r.provider));
+    if (!keys.length) return "";
+    const reads = await Promise.all(keys.map((k) => readAny(env, env.DB, uid, k).catch(() => null)));
+    const text = reads.filter((x) => x && !x.error).map((x) => readText(x)).join("\n\n");
+    return text ? `From the person's connected apps (they connected these in Settings → Connectors; answer from this when it helps, and don't make up anything that isn't here):\n${text}\n\n` : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -564,7 +581,10 @@ export async function onRequestPost(context) {
 
     // "Who made you?": the model's own training says Google, so the reminder goes with the question.
     const idNote = !internal && asksWhoItIs(body.question) ? `${IDENTITY_NOTE}\n\n` : "";
-    const input = internal ? prompt : promptParts(idNote + prompt, body.images);
+    // Connected apps (Settings → Connectors, functions/v1/connect): a question about one of them
+    // ("what's on my calendar", "what was I listening to on Spotify") gets that app's latest first.
+    const appNote = !internal && !apiBill && body.noApps !== true ? await appContext(env, user.id, body.question) : "";
+    const input = internal ? prompt : promptParts(idNote + appNote + prompt, body.images);
     if (input && input.error) return json({ error: input.error }, 400);
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);

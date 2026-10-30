@@ -6,6 +6,7 @@ import { useAppShell } from "@/components/AppShellContext";
 import { readAboutMe, saveAboutMe, ABOUT_MAX } from "@/lib/aboutMe";
 import { savedToken, forgetToken, connect } from "@/lib/githubClient";
 import { showNotice } from "@/lib/dialogs";
+import ConnectorsPane from "@/components/ConnectorsPane";
 import { LANGUAGES, readLanguage, saveLanguage, readMotion, saveMotion, readNotify, saveNotify } from "@/lib/prefs";
 
 // The Settings window, laid out like Claude's: a search box and grouped sections on the left,
@@ -292,14 +293,13 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
       </>
     ),
     connectors: (
-      <>
-        <H first>Connectors</H>
-        <p className="text-[14px] text-[var(--cl-muted)]">Let Nebulux work with other apps you use.</p>
-        <div className="mt-4 rounded-xl border border-[var(--cl-border)] divide-y divide-[var(--cl-border)]">
+      <ConnectorsPane>
+        <p className="mt-6 mb-2 text-[12.5px] uppercase tracking-wide text-[var(--cl-muted)]">Built in</p>
+        <div className="rounded-xl border border-[var(--cl-border)] divide-y divide-[var(--cl-border)]">
           <div className="flex items-center gap-3 p-4">
             <Github className="w-6 h-6 text-[var(--cl-text)]" />
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] text-[var(--cl-text)]">GitHub</p>
+              <p className="text-[15px] text-[var(--cl-text)]">GitHub for Nebulux Code</p>
               <p className="text-[13px] text-[var(--cl-muted)]">{gh ? `Connected${ghUser ? ` as ${ghUser}` : ""}` : "Only in Nebulux Code (Pro and up): open and save code in your repositories."}</p>
             </div>
             {gh ? <Btn onClick={() => { forgetToken(); setGh(""); setGhUser(""); }}>Disconnect</Btn> : <Btn onClick={go(shell.goCode)}>Connect in Nebulux Code</Btn>}
@@ -313,7 +313,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
             <span className="flex items-center gap-1 text-[13px] text-emerald-400"><Check className="w-4 h-4" /> On</span>
           </div>
         </div>
-      </>
+      </ConnectorsPane>
     ),
     api: (
       <>

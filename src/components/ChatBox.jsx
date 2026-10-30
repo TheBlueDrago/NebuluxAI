@@ -13,6 +13,7 @@ import { askConfirm } from "@/lib/dialogs";
 import { showShortcuts } from "@/lib/shortcuts";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
+import WhatsAppSend from "@/components/chat/WhatsAppSend";
 import { historyBlock } from "@/lib/chatHistory";
 import { readAboutMe, aboutMeBlock } from "@/lib/aboutMe";
 import AboutMeButton from "@/components/chat/AboutMeButton";
@@ -545,6 +546,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                       )}
                       <ReadAloud text={m.content} />
                       <CopyButton getText={() => m.content} label="Copy reply" className="p-1 rounded-md text-slate-500 hover:text-slate-200" />
+                      <WhatsAppSend text={m.content} />
                       {m.used && (
                         <span className="text-[11.5px] text-slate-500 px-1" title="What this answer used">
                           {m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
