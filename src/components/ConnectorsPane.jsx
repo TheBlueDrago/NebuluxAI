@@ -8,7 +8,7 @@ import { showNotice, askConfirm } from "@/lib/dialogs";
 // connected as and, opened, what Nebulux sees there. Apps the owner hasn't finished setting up show
 // "Not set up yet" and start working as soon as they are (functions/v1/connect).
 const Logo = ({ k, size = 28 }) => (
-  <span className="shrink-0 grid place-items-center rounded-lg bg-white border border-[var(--cl-border)]" style={{ width: size + 8, height: size + 8 }}>
+  <span className="shrink-0 grid place-items-center rounded-lg border border-[var(--cl-border)]" style={{ width: size + 8, height: size + 8, background: "#fff" }}>
     <img src={`/logos/${k}.svg`} alt="" style={{ width: size - 6, height: size - 6 }} />
   </span>
 );
