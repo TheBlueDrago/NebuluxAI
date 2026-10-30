@@ -35,6 +35,12 @@ NEBULUX CODE
 - For Pro and higher. Connect GitHub (Sign in with GitHub), choose a repo, and ask the AI to change code. It always asks before changing or pushing anything.
 - Cloud sessions keep working on Nebulux's servers if you close the tab; local sessions stay in your browser.
 
+CONNECTORS
+- Settings, Connectors connects your other apps: Gmail, Google Calendar, Drive, Tasks, Keep, Contacts, YouTube, GitHub, Notion, Slack, Spotify, Discord, X, Reddit, Pinterest, TikTok, Instagram, Dropbox, Outlook, OneDrive, Microsoft To Do, Todoist, Asana, Linear, Zoom, Twitch, Strava, Oura, Fitbit and WhatsApp. Search or pick a category, then Connect and allow it on that app's own page.
+- Then ask about the app in any chat ("what's on my calendar this week?", "what was I playing on Spotify?") and Nebulux reads it first. Open a connected app in Connectors to see what Nebulux sees, or to Disconnect.
+- A connection is shared with Nebulux Orbit: connect once, both use it. Nothing is sent or posted (Slack, Discord, X, Todoist) until you press Send. An app marked "Not set up yet" isn't ready on Nebulux yet and will work once it is.
+- WhatsApp: turn it on and every reply gets a Send to WhatsApp button that opens WhatsApp with the reply ready.
+
 API (for developers)
 - nebuluxai.com/api: make API keys, try the Playground, read the docs. It uses a prepaid balance (add money in Billing there), separate from your plan. You can set a monthly spending limit on each key.
 
