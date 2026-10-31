@@ -43,4 +43,32 @@ The secrets go only in Cloudflare. Never put them in the code or send them to an
   2. Add the scope `.../auth/contacts.readonly` to the OAuth consent screen (Google Auth Platform → Data access).
 - **Google Keep** isn't offered. Google only allows its API for school and work (Workspace) accounts, and it refuses the `keep.readonly` scope for the Nebulux Google app.
 - **GitHub** uses the Nebulux Code GitHub app that's already set up.
-- **WhatsApp** needs nothing. When it's on, replies get a Send to WhatsApp button that opens WhatsApp with the text ready, and the person sends it there.
+- **WhatsApp** works without setup as a Send to WhatsApp button (it opens WhatsApp with the text ready, and the person sends it there). For the real connection, see below.
+
+## WhatsApp: the real connection (optional)
+
+With this, people link their own WhatsApp by sending a code to Nebulux's WhatsApp number. Then they can chat with Nebulux AI inside WhatsApp, and say "send this to my WhatsApp" in a Nebulux AI chat. It uses Meta's official WhatsApp Business Platform. Code: `cloudflare-lib/whatsapp.js` and the webhook `functions/v1/whatsapp.js`.
+
+What WhatsApp allows: Nebulux only messages a person's own number, and only within 24 hours of their last message to it. It never reads or sends anyone's personal chats. Replies to people who message first are free on Meta's side; Nebulux never starts a conversation, which is the part Meta charges for. Each person gets up to 30 answers a day there.
+
+1. On [developers.facebook.com](https://developers.facebook.com/apps), press **Create app** and pick the **Connect with customers through WhatsApp** use case. Connect it to a Meta business portfolio (make one if it asks).
+2. In the app, open **WhatsApp → API Setup**.
+   - Meta gives you a free **test number**. It can only message up to 5 numbers that you add there, which is fine for trying it.
+   - For everyone, add your own number under **Add phone number**. It must be a number that isn't already on WhatsApp. Verify it by text or call, and set the display name (for example "Nebulux AI").
+   - Copy the number's **Phone number ID**.
+3. Make a token that doesn't expire: [business.facebook.com/settings](https://business.facebook.com/settings) → **Users → System users** → **Add** (Admin). Press **Add assets**, give it the app and the WhatsApp account with full control, then **Generate new token** with `whatsapp_business_messaging` and `whatsapp_business_management`, set to never expire.
+4. Copy the **App secret** from the app's **App settings → Basic**.
+5. Make up a **verify token**: any long random text.
+6. In Cloudflare (the Nebulux AI Pages project → Settings → Variables and secrets), add four secrets, then redeploy:
+   - `WHATSAPP_TOKEN`: the token from step 3
+   - `WHATSAPP_PHONE_ID`: the Phone number ID from step 2
+   - `WHATSAPP_APP_SECRET`: the App secret from step 4
+   - `WHATSAPP_VERIFY_TOKEN`: the text from step 5
+7. Back in the Meta app, open **WhatsApp → Configuration → Webhook → Edit**:
+   - Callback URL: `https://nebuluxai.com/v1/whatsapp`
+   - Verify token: the same text as step 5
+   - Press **Verify and save**, then under **Webhook fields** subscribe to **messages**.
+8. In **App settings → Basic**, set the Privacy Policy URL to `https://nebuluxai.com/privacy`, then switch the app to **Live**.
+9. Try it: Nebulux AI → Settings → Connectors → WhatsApp → **Connect**, then send the code from your WhatsApp.
+
+Meta may ask you to verify the business (an LLC's documents work) before more people can use it, or ask for a payment method on the WhatsApp account. Nebulux only sends replies, which aren't charged, so skip anything that needs a card.

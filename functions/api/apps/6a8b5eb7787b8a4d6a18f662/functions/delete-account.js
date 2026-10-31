@@ -26,6 +26,7 @@ export async function onRequestPost(context) {
     }
     // Connected apps (Settings → Connectors, shared with Orbit): the kept permissions go too.
     if (env.DB) await env.DB.prepare("DELETE FROM orbit_connections WHERE user_id = ?").bind(user.id).run().catch(() => {});
+    if (env.DB) await env.DB.prepare("DELETE FROM whatsapp_links WHERE user_id = ?").bind(user.id).run().catch(() => {});
     // Saved game progress (game-save.js), one key per game.
     const saves = await kv.list({ prefix: `gamesave:${user.id}:` }).catch(() => null);
     for (const k of (saves && saves.keys) || []) await kv.delete(k.name).catch(() => {});

@@ -24,10 +24,24 @@ export const appsOn = () => {
   try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
 };
 export const rememberApps = (apps) => {
-  try { localStorage.setItem(KEY, JSON.stringify(apps.filter((a) => a.connected).map((a) => a.k))); } catch { /* fine */ }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(apps.filter((a) => a.connected).map((a) => a.k)));
+    localStorage.setItem(WA_KEY, apps.some((a) => a.k === "whatsapp" && a.linked) ? "1" : "0");
+  } catch { /* fine */ }
   window.dispatchEvent(new Event("nx-apps"));
 };
 export const whatsappLink = (text) => "https://wa.me/?text=" + encodeURIComponent(String(text || "").slice(0, 3000));
+
+// The person's own WhatsApp linked to their account (WhatsApp Business Platform, cloudflare-lib/whatsapp.js):
+// replies go straight to it, from a reply's button or by asking in the chat.
+const WA_KEY = "nx-wa-linked";
+export const waLinked = () => {
+  try { return localStorage.getItem(WA_KEY) === "1"; } catch { return false; }
+};
+export const sendToWhatsApp = (text) => connectCall({ action: "write", app: "whatsapp", op: "send", text, confirmed: true });
+// What to show when it couldn't be sent (with a link to message Nebulux first, after WhatsApp's 24 hours).
+export const whatsappError = (e) => (e && e.data && e.data.chat ? `${e.message} [Open WhatsApp](${e.data.chat})` : (e && e.message) || "Couldn't send it to WhatsApp.");
+export { waIntent } from "./waIntent.js";
 
 // Back from an app's own permission page: ?connected=<app>&result=connected|cancelled|failed|...
 export const RESULT_TEXT = {

@@ -14,6 +14,7 @@ import { showShortcuts } from "@/lib/shortcuts";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
 import WhatsAppSend from "@/components/chat/WhatsAppSend";
+import { waLinked, waIntent, sendToWhatsApp, whatsappError } from "@/lib/connectors";
 import { historyBlock } from "@/lib/chatHistory";
 import { readAboutMe, aboutMeBlock } from "@/lib/aboutMe";
 import AboutMeButton from "@/components/chat/AboutMeButton";
@@ -147,6 +148,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const spokenRef = useRef(false);
   const talkBackRef = useRef(false);
   const convIdRef = useRef(null);
+  // "…and send it to my WhatsApp": the answer goes to their linked WhatsApp once it's written.
+  const waAfterRef = useRef(false);
   const shell = useAppShell();
 
   const messages = conversation?.messages || [];
@@ -176,6 +179,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   // `before`: how many of the chat's messages come before this question (Try again leaves out
   // the answer it replaces); by default all of them.
   const runPrompt = async (text, ai, before = messages.length) => {
+    const sendAfter = waAfterRef.current;
+    waAfterRef.current = false;
     const history = (ai === "ai" ? studyBlock(studyModeOn()) : "") + aboutMeBlock(readAboutMe(shell?.currentUser?.id)) + historyBlock(messages.slice(0, before)) + q.steerBlock();
     let convId = conversation?.id || convIdRef.current;
     const isFirst = !convId || messages.length === 0;
@@ -216,7 +221,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     let pageNote = "";
     const cur = browserRef.current?.current?.();
     if (cur?.type === "page" && cur.text) pageNote = `The person has this web page open in the Nebulux Browser (${cur.url}). It is read-only for you: you can read it and talk about it, but you can't click, type, sign in, edit, commit, push or change anything on it or on any site (GitHub included); if they ask you to change something there, explain how they can do it themselves.\n${cur.text.slice(0, 8000)}\n\n`;
-    const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${history}${pageNote}${text}${fileNote}`;
+    const waNote = sendAfter ? "(When you've answered, Nebulux sends your answer to the person's own WhatsApp for them. Just write what they asked for; don't say you can't send it.)\n\n" : "";
+    const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${waNote}${history}${pageNote}${text}${fileNote}`;
     if (reqIdRef.current !== myId) return;
     try {
       const eff = effortFor(effort, text, { build: ai !== "ai" && intent.build });
@@ -241,6 +247,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       // what this answer used and how long it took, shown under it
       const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}) };
       addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) });
+      if (sendAfter && content.trim() && !res.cut) {
+        sendToWhatsApp(content)
+          .then(() => addMessage(convId, { role: "ai", content: "Sent to your WhatsApp." }))
+          .catch((e) => addMessage(convId, { role: "ai", err: true, content: whatsappError(e) }));
+      }
       if (talkBackRef.current) speakText(content);
       // Away on another tab: ring the bell and play the chime.
       if (typeof document !== "undefined" && document.hidden) addNotification({ kind: "ai", text: `Nebulux AI finished: ${text.slice(0, 60)}`, link: "/chat" });
@@ -337,11 +348,39 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       runPrompt(text, selectedAi);
       return;
     }
+    // "Send this to my WhatsApp" (their own number, linked in Connectors): the last answer, or what
+    // follows "WhatsApp:", goes now without asking the AI; "write … and send it to my WhatsApp" goes
+    // once the answer is written.
+    const wa = waLinked() ? waIntent(text) : null;
+    if (wa && !wa.after) { whatsappNow(text, wa); return; }
     if (isExhausted) return;
+    waAfterRef.current = !!wa;
     talkBackRef.current = spokenRef.current;
     spokenRef.current = false;
     if (talkBackRef.current) unlockSpeech();
     runPrompt(text, selectedAi);
+  };
+
+  const whatsappNow = async (text, wa) => {
+    let convId = conversation?.id || convIdRef.current;
+    const isFirst = !convId || messages.length === 0;
+    if (!convId) convId = createConversation();
+    convIdRef.current = convId;
+    const last = [...messages].reverse().find((m) => m.role === "ai" && !m.err && m.content !== "Sent to your WhatsApp.");
+    const body = wa.body || (last && last.content) || "";
+    addMessage(convId, { role: "user", content: text });
+    setInput("");
+    if (isFirst) renameConversation(convId, chatTitle(text));
+    if (!body) {
+      addMessage(convId, { role: "ai", content: "There's nothing to send yet. Ask me something first, or write \"send to my WhatsApp:\" followed by your message." });
+      return;
+    }
+    try {
+      await sendToWhatsApp(body);
+      addMessage(convId, { role: "ai", content: "Sent to your WhatsApp." });
+    } catch (e) {
+      addMessage(convId, { role: "ai", err: true, content: whatsappError(e) });
+    }
   };
 
   // Ask the last question again: drops the last reply (and the question, which

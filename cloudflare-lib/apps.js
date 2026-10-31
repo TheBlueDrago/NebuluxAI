@@ -117,12 +117,12 @@ export const APPS = {
   },
   discord: {
     n: "Discord", cat: "Social & Entertainment", about: "Your servers; post to a channel you pick",
-    env: "DISCORD", auth: "https://discord.com/oauth2/authorize", token: "https://discord.com/api/oauth2/token", scope: "identify guilds webhook.incoming", extra: { prompt: "consent" },
+    env: "DISCORD", auth: "https://discord.com/oauth2/authorize", token: "https://discord.com/api/v10/oauth2/token", scope: "identify guilds webhook.incoming", extra: { prompt: "consent" },
     // The channel picked on Discord's own page comes back as a webhook Nebulux can post to.
     keep: (t) => (t && t.webhook ? { hook: t.webhook.url, hookName: t.webhook.name, channel: t.webhook.channel_id } : {}),
-    account: async (tok) => { const d = (await j("https://discord.com/api/users/@me", bearer(tok))).data || {}; return d.global_name || d.username || ""; },
+    account: async (tok) => { const d = (await j("https://discord.com/api/v10/users/@me", bearer(tok))).data || {}; return d.global_name || d.username || ""; },
     read: async (tok, x) => {
-      const g = need(await j("https://discord.com/api/users/@me/guilds", bearer(tok)));
+      const g = need(await j("https://discord.com/api/v10/users/@me/guilds", bearer(tok)));
       return [x.hook ? sec("Posts go to", [item(x.hookName ? "Channel via " + x.hookName : "The channel you picked", "Pick a different one by reconnecting")]) : null, sec("Your servers", (g || []).slice(0, 25).map((s) => item(s.name, s.owner ? "You own it" : "")))].filter(Boolean);
     },
     write: { post: { label: "Post to your channel", run: async (tok, x, b) => { if (!x.hook) return false; const r = await j(x.hook + "?wait=true", { method: "POST", headers: { "Content-Type": "application/json", "User-Agent": UA }, body: JSON.stringify({ content: String(b.text || "").slice(0, 2000), allowed_mentions: { parse: [] } }) }); return r.ok; } } },
