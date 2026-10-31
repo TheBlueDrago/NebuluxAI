@@ -48,7 +48,6 @@ const API = [
     if (/instagram/.test(u)) return reply({ data: [{ access_token: "short", user_id: "1" }] });
     if (/discord/.test(u)) return reply({ access_token: "d1", expires_in: 604800, refresh_token: "dr", webhook: { url: "https://discord.com/api/webhooks/1/abc", name: "Orbit", channel_id: "9" } });
     if (/notion/.test(u)) return reply({ access_token: "n1", workspace_name: "Sam's Notion" });
-    if (/strava/.test(u)) return reply({ access_token: "s1", expires_in: 21600, refresh_token: "sr", athlete: { firstname: "Sam", lastname: "Lee" } });
     return reply({ access_token: "t1", expires_in: 3600, refresh_token: "r1", scope: "x" });
   }],
   [/graph\.instagram\.com\/access_token/, () => reply({ access_token: "long", expires_in: 5184000 })],
@@ -94,14 +93,6 @@ const API = [
   [/helix\/users/, () => reply({ data: [{ id: "7", display_name: "Sam" }] })],
   [/helix\/streams\/followed/, () => reply({ data: [{ user_name: "Streamer", title: "Speedrun", game_name: "Racing", viewer_count: 50 }] })],
   [/helix\/channels\/followed/, () => reply({ data: [{ broadcaster_name: "Streamer" }] })],
-  [/strava\.com\/api\/v3\/athlete\/activities/, () => reply([{ name: "Morning run", sport_type: "Run", distance: 5000, moving_time: 1800, start_date: "2026-10-29T10:00:00Z" }])],
-  [/ouraring\.com\/v2\/usercollection\/personal_info/, () => reply({ email: "sam@example.com" })],
-  [/ouraring\.com\/v2\/usercollection\/daily_sleep/, () => reply({ data: [{ day: "2026-10-29", score: 81 }] })],
-  [/ouraring\.com\/v2\/usercollection\/daily_readiness/, () => reply({ data: [{ day: "2026-10-29", score: 77 }] })],
-  [/ouraring\.com\/v2\/usercollection\/daily_activity/, () => reply({ data: [{ day: "2026-10-29", steps: 9000, score: 88 }] })],
-  [/fitbit\.com\/1\/user\/-\/profile/, () => reply({ user: { displayName: "Sam" } })],
-  [/fitbit\.com\/1\/user\/-\/activities/, () => reply({ summary: { steps: 8000, fairlyActiveMinutes: 10, veryActiveMinutes: 20, caloriesOut: 2100 } })],
-  [/fitbit\.com\/1\.2\/user\/-\/sleep/, () => reply({ summary: { totalMinutesAsleep: 470 } })],
 ];
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
@@ -116,7 +107,7 @@ for (const k of Object.keys(APPS)) { const e = APPS[k].env; env[e + "_CLIENT_ID"
 const db = fakeDb();
 
 // ---- set up or not ----
-assert(Object.keys(APPS).length >= 20, "at least 20 apps beyond Google's and GitHub: " + Object.keys(APPS).length);
+assert(Object.keys(APPS).length >= 18, "at least 18 apps beyond Google's and GitHub: " + Object.keys(APPS).length);
 assert(!isReady({}, "spotify") && !isReady({ SPOTIFY_CLIENT_ID: "x" }, "spotify") && isReady(env, "spotify"), "an app is ready only with both its id and secret");
 assert(isReady(env, "outlook") && isReady(env, "onedrive") && isReady(env, "mstodo"), "Microsoft's three apps share one Microsoft app");
 
@@ -156,8 +147,6 @@ const v = A.verifier();
 await startUrl(env, db, "u1", "x", "https://nebuluxai.com/");
 r = await finish(env, db, "x", "u1", "code6", v); tc = tokenCall();
 assert(r.ok && tc.init.body.includes("code_verifier=" + v) && tc.init.body.includes("client_id=id-X"), "X: the PKCE verifier and client id go with the code");
-r = await finish(env, db, "strava", "u1", "code7", "-");
-assert(r.account === "Sam Lee", "Strava: the athlete's name");
 for (const k of Object.keys(APPS)) if (!db.conns.has("u1|" + k)) await finish(env, db, k, "u1", "c-" + k, "-");
 assert(Object.keys(APPS).every((k) => db.conns.has("u1|" + k)), "every app connects");
 
@@ -220,14 +209,14 @@ assert(/Write something/.test(r.error), "an empty message isn't sent");
 assert(writesOf("slack")[0].where === "channel" && writesOf("notion").length === 0, "what can be sent is listed per app");
 
 // ---- which apps a chat question reads ----
-const conn = ["gmail", "calendar", "spotify", "notion", "strava", "zoom", "contacts", "pinterest"];
+const conn = ["gmail", "calendar", "spotify", "notion", "zoom", "contacts", "pinterest"];
 assert(appsAskedAbout("What was I listening to on Spotify?", conn).join() === "spotify", "Spotify questions read Spotify");
 assert(appsAskedAbout("What's on my calendar this week?", conn).join() === "calendar", "calendar questions read the calendar");
 assert(appsAskedAbout("summarize my unread emails and my notion pages", conn).join() === "gmail,notion", "two apps at once");
 assert(appsAskedAbout("How do I zoom in on a photo? Write an email to my teacher. Bowling pins?", conn).length === 0, "everyday words don't read apps (zoom in, an email, pins)");
 assert(appsAskedAbout("what's on my calendar", ["gmail"]).length === 0, "only apps they connected");
 assert(appsAskedAbout("gmail calendar spotify notion", conn).length === 2, "at most two apps per question");
-assert(A.appsNotConnected("What's on my calendar? And my Strava runs?", ["strava"]).join() === "calendar", "an app they asked about but haven't connected is noticed (to say where to connect it)");
+assert(A.appsNotConnected("What's on my calendar? And my Spotify playlists?", ["spotify"]).join() === "calendar", "an app they asked about but haven't connected is noticed (to say where to connect it)");
 assert(A.appsNotConnected("Write a poem about the sea", []).length === 0, "and nothing is noticed for an everyday question");
 
 // ---- the endpoint ----
@@ -236,7 +225,8 @@ const req = (body, auth = "Orbit " + "a".repeat(48), origin = "https://nebuluxor
 const call = async (body, auth, origin) => { const res = await C.onRequestPost({ request: req(body, auth, origin), env: { ...env, DB: db, GOOGLE_CLIENT_ID: "g" } }); return { status: res.status, cors: res.headers.get("access-control-allow-origin"), d: await res.json() }; };
 let x = await call({ action: "list" });
 const keys = x.d.apps.map((p) => p.k);
-assert(x.status === 200 && keys.length >= 29 && ["gmail", "contacts", "github", "whatsapp", "notion", "fitbit"].every((k) => keys.includes(k)), "an Orbit sign-in lists every app: " + keys.length);
+assert(x.status === 200 && keys.length >= 26 && ["gmail", "contacts", "github", "whatsapp", "notion", "twitch"].every((k) => keys.includes(k)), "an Orbit sign-in lists every app: " + keys.length);
+assert(!["strava", "oura", "fitbit"].some((k) => keys.includes(k)) && !A.appsNotConnected("How did I sleep? My Strava runs?", []).length, "Strava, Oura and Fitbit aren't offered");
 assert(!keys.includes("keep") && !A.appsNotConnected("Read my notes", []).length, "Google Keep isn't offered (Google only allows it for Workspace accounts)");
 assert(x.cors === "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Orbit's site may call it (CORS)");
 assert(x.d.apps.find((p) => p.k === "slack").connected && x.d.apps.find((p) => p.k === "slack").account === "Team Rocket", "connected apps show who they're connected as");
@@ -253,11 +243,11 @@ const noKeys = await C.onRequestPost({ request: req({ action: "start", app: "not
 assert(noKeys.status === 503 && (await noKeys.json()).notReady, "an app the owner hasn't set up says so");
 x = await call({ action: "start", app: "whatsapp" });
 assert(x.status === 200 && x.d.ok && db.conns.has("u1|whatsapp"), "WhatsApp turns on without a permission page");
-x = await call({ action: "read", app: "strava" });
-assert(x.status === 200 && x.d.text.includes("Morning run"), "read gives the sections and the AI's text");
+x = await call({ action: "read", app: "zoom" });
+assert(x.status === 200 && x.d.text.includes("Study group"), "read gives the sections and the AI's text");
 x = await call({ action: "write", app: "slack", op: "send", text: "hi", where: "C0GEN12345" });
 assert(x.status === 400, "the endpoint doesn't send without Send either");
-x = await call({ action: "disconnect", app: "strava" });
-assert(x.d.ok && !db.conns.has("u1|strava"), "Disconnect removes it");
+x = await call({ action: "disconnect", app: "zoom" });
+assert(x.d.ok && !db.conns.has("u1|zoom"), "Disconnect removes it");
 x = await call({ action: "start", app: "nope" });
 assert(x.status === 400, "unknown apps are refused");

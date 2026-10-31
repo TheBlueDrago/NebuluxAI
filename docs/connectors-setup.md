@@ -34,9 +34,6 @@ The secrets go only in Cloudflare. Never put them in the code or send them to an
 | Linear | `LINEAR_` | linear.app/settings/api/applications | read | |
 | Zoom | `ZOOM_` | marketplace.zoom.us → Develop → Build App → **General app**, user-managed | meeting:read:list_meetings, user:read:user | |
 | Twitch | `TWITCH_` | dev.twitch.tv/console/apps | user:read:follows | Client type: Confidential. |
-| Strava | `STRAVA_` | strava.com/settings/api | read, activity:read | Set "Authorization Callback Domain" to `nebuluxai.com`. |
-| Oura | `OURA_` | cloud.ouraring.com/oauth/applications | personal, daily | |
-| Fitbit | `FITBIT_` | dev.fitbit.com/apps/new, OAuth 2.0 type **Server** | activity, sleep, profile | |
 
 ## Apps that use the Google or GitHub apps you already have
 

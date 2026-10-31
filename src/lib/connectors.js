@@ -37,4 +37,4 @@ export const RESULT_TEXT = {
   unavailable: (n) => `${n} can't be connected right now. Please try again later.`,
   signin: () => "Please sign in, then connect the app again.",
 };
-export const CATS = ["Productivity", "Business", "Social & Entertainment", "Health & Fitness"];
+export const CATS = ["Productivity", "Business", "Social & Entertainment"];

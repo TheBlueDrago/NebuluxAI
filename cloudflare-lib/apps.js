@@ -34,7 +34,7 @@ async function j(url, init = {}) {
 const bearer = (tok, more = {}) => ({ headers: { Authorization: "Bearer " + tok, "User-Agent": UA, ...more } });
 const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
 const basic = (id, secret) => "Basic " + b64(id + ":" + secret);
-// PKCE (X and Fitbit ask for it)
+// PKCE (X asks for it)
 const b64u = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 export const verifier = () => b64u(crypto.getRandomValues(new Uint8Array(32)));
 export const challenge = async (v) => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v))));
@@ -286,39 +286,6 @@ export const APPS = {
       return [sec("Live now", ((live.data && live.data.data) || []).map((s) => item(s.user_name + ": " + s.title, [s.game_name, s.viewer_count + " watching"].filter(Boolean).join(" · ")))), sec("Channels you follow", ((follows.data && follows.data.data) || []).map((c) => item(c.broadcaster_name, "")))];
     },
   },
-  strava: {
-    n: "Strava", cat: "Health & Fitness", about: "Your recent runs, rides and workouts",
-    env: "STRAVA", auth: "https://www.strava.com/oauth/authorize", token: "https://www.strava.com/oauth/token", scope: "read,activity:read", extra: { approval_prompt: "auto" },
-    account: (tok, t) => (t && t.athlete ? [t.athlete.firstname, t.athlete.lastname].filter(Boolean).join(" ") : ""),
-    read: async (tok) => {
-      const a = need(await j("https://www.strava.com/api/v3/athlete/activities?per_page=12", bearer(tok)));
-      return [sec("Recent activities", (a || []).map((x) => item(x.name, [x.sport_type || x.type, x.distance ? km(x.distance) : "", x.moving_time ? mins(x.moving_time) : "", day(x.start_date)].filter(Boolean).join(" · "))))];
-    },
-  },
-  oura: {
-    n: "Oura", cat: "Health & Fitness", about: "Your sleep, readiness and activity scores",
-    env: "OURA", auth: "https://cloud.ouraring.com/oauth/authorize", token: "https://api.ouraring.com/oauth/token", scope: "personal daily",
-    account: async (tok) => ((await j("https://api.ouraring.com/v2/usercollection/personal_info", bearer(tok))).data || {}).email || "",
-    read: async (tok) => {
-      const q = qs({ start_date: ymd(Date.now() - 7 * 864e5), end_date: ymd(Date.now() + 864e5) });
-      const g = (k) => j(`https://api.ouraring.com/v2/usercollection/${k}?${q}`, bearer(tok));
-      const [sl, re, ac] = await Promise.all([g("daily_sleep"), g("daily_readiness"), g("daily_activity")]);
-      if (sl.status === 401) throw new AppError(401);
-      const rows = (r, f) => ((r.data && r.data.data) || []).slice(-7).reverse().map(f);
-      return [sec("Sleep score", rows(sl, (d) => item(d.day, String(d.score ?? "")))), sec("Readiness", rows(re, (d) => item(d.day, String(d.score ?? "")))), sec("Activity", rows(ac, (d) => item(d.day, [d.steps != null ? d.steps + " steps" : "", d.score != null ? "score " + d.score : ""].filter(Boolean).join(" · "))))];
-    },
-  },
-  fitbit: {
-    n: "Fitbit", cat: "Health & Fitness", about: "Your steps, activity and sleep",
-    env: "FITBIT", auth: "https://www.fitbit.com/oauth2/authorize", token: "https://api.fitbit.com/oauth2/token", basic: true, idInBody: true, pkce: true, scope: "activity sleep profile",
-    account: async (tok) => ((((await j("https://api.fitbit.com/1/user/-/profile.json", bearer(tok))).data || {}).user) || {}).displayName || "",
-    read: async (tok) => {
-      const a = need(await j("https://api.fitbit.com/1/user/-/activities/date/today.json", bearer(tok))) || {};
-      const s = (await j("https://api.fitbit.com/1.2/user/-/sleep/date/today.json", bearer(tok))).data || {};
-      const sm = a.summary || {}, ss = s.summary || {};
-      return [sec("Today", [item("Steps", String(sm.steps ?? "")), item("Active minutes", String((sm.fairlyActiveMinutes || 0) + (sm.veryActiveMinutes || 0))), item("Calories burned", String(sm.caloriesOut ?? "")), item("Sleep last night", ss.totalMinutesAsleep != null ? Math.floor(ss.totalMinutesAsleep / 60) + " h " + (ss.totalMinutesAsleep % 60) + " min" : "")])];
-    },
-  },
 };
 // Apps that need no developer app: WhatsApp drafts open in WhatsApp itself (wa.me), sent by the person.
 export const LINK_APPS = { whatsapp: { n: "WhatsApp", cat: "Business", about: "Send a reply or draft to a chat in WhatsApp" } };
@@ -493,7 +460,7 @@ const ASK = {
   discord: /\bdiscord\b/i, x: /\b(twitter|tweets?|my x (?:account|posts?|profile))\b/i, reddit: /\b(reddit|subreddits?)\b/i, pinterest: /\b(pinterest|my pins|my boards?)\b/i,
   tiktok: /\btik ?tok\b/i, instagram: /\b(instagram|insta|my ig)\b/i, dropbox: /\bdropbox\b/i, outlook: /\b(outlook|hotmail)\b/i, onedrive: /\bone ?drive\b/i,
   mstodo: /\b(microsoft to ?do|ms to ?do)\b/i, todoist: /\btodoist\b/i, asana: /\basana\b/i, linear: /\blinear (?:issues?|tickets?)\b|\bmy linear\b/i, zoom: /\bzoom (?:meetings?|calls?)\b|\bmy zoom\b/i,
-  twitch: /\btwitch\b/i, strava: /\b(strava|my runs?|my rides?|my workouts?)\b/i, oura: /\b(oura|my sleep|readiness)\b/i, fitbit: /\b(fitbit|my steps)\b/i,
+  twitch: /\btwitch\b/i,
 };
 export function appsAskedAbout(text, connected) {
   const t = String(text || "");
