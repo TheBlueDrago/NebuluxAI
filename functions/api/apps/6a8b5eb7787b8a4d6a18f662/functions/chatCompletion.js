@@ -28,7 +28,7 @@
 // session limit, 50 credits per 5 hours for all of Nebulux AI (cloudflare-lib/creditSession.js).
 import { alertOwner } from "../../../../../cloudflare-lib/ownerAlerts.js";
 import { HELP_RULES } from "../../../../../cloudflare-lib/helpguide.js";
-import { appsAskedAbout, appsNotConnected, readText, nameOf } from "../../../../../cloudflare-lib/apps.js";
+import { appsAskedAbout, appsNotConnected, readText, nameOf, isReady, GOOGLE_APPS } from "../../../../../cloudflare-lib/apps.js";
 import { readAny } from "../../../../v1/connect/index.js";
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
@@ -469,8 +469,12 @@ export async function appContext(env, uid, question) {
   try {
     const rows = (await env.DB.prepare("SELECT provider FROM orbit_connections WHERE user_id = ? AND (status IS NULL OR status != 'reconnect')").bind(uid).all()).results || [];
     const have = rows.map((r) => r.provider), keys = appsAskedAbout(question, have), missing = appsNotConnected(question, have);
-    // asked about an app they haven't connected: the AI says where to connect it instead of guessing
-    const note = missing.length ? `They asked about ${missing.map(nameOf).join(" and ")}, which they haven't connected, so you can't see it. If answering needs what's in it, don't guess: tell them they can connect it in Settings → Connectors and ask again. Otherwise just answer.\n\n` : "";
+    // asked about an app they haven't connected: the AI says where to connect it instead of guessing,
+    // or that it's coming soon when Nebulux can't connect to it yet (Connectors shows "Coming soon")
+    const ready = (k) => isReady(env, k) || (GOOGLE_APPS[k] ? !!env.GOOGLE_CLIENT_ID : k === "github" ? !!env.GITHUB_CLIENT_ID : false);
+    const can = missing.filter(ready), soon = missing.filter((k) => !ready(k));
+    const note = (can.length ? `They asked about ${can.map(nameOf).join(" and ")}, which they haven't connected, so you can't see it. If answering needs what's in it, don't guess: tell them they can connect it in Settings → Connectors and ask again. Otherwise just answer.\n\n` : "")
+      + (soon.length ? `They asked about ${soon.map(nameOf).join(" and ")}, which Nebulux can't connect to yet (it's coming soon), so you can't see it. If answering needs what's in it, say so briefly and don't guess. Otherwise just answer.\n\n` : "");
     if (!keys.length) return { text: note, read: [] };
     const reads = (await Promise.all(keys.map((k) => readAny(env, env.DB, uid, k, question).catch(() => null)))).filter((x) => x && !x.error);
     const text = reads.map((x) => readText(x)).join("\n\n");

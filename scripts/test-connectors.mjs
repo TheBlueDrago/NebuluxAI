@@ -290,3 +290,9 @@ assert(ctx.text.includes("essay.docx") && ctx.text.includes("Your Dropbox"), "Dr
   const deaf = Object.entries(TRY).flatMap(([k, l]) => l.filter((t) => !appsAskedAbout(t, [k]).includes(k) && !appIntent(t, [k])).map((t) => k + ": " + t));
   assert(Object.keys(TRY).length >= 20 && !deaf.length, "every \"Try asking\" example in Connectors is heard by the chat" + (deaf.length ? " (not: " + deaf.join("; ") + ")" : ""));
 }
+
+// ---- Asking about an app that isn't connected: connect it, or it's coming soon ----
+ctx = await CC.appContext({ ...env, DB: db }, "u9", "What's new in Slack?");
+assert(/connect it in Settings → Connectors/.test(ctx.text) && !/coming soon/.test(ctx.text) && !ctx.read.length, "an app they haven't connected: the AI says where to connect it");
+ctx = await CC.appContext({ ...env, DB: db, SLACK_CLIENT_ID: "", SLACK_CLIENT_SECRET: "" }, "u9", "What's new in Slack?");
+assert(/can't connect to yet \(it's coming soon\)/.test(ctx.text) && !/Settings → Connectors/.test(ctx.text), "an app Nebulux can't connect to yet: the AI says it's coming soon, not \"connect it\"");
