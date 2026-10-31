@@ -180,7 +180,8 @@ export default function ConnectorsPane({ children }) {
         </>
       )}
       {CATS.map((cat) => {
-        const l = list.filter((a) => a.cat === cat && (ql || !a.connected));
+        // apps that work come first; "Coming soon" ones after (the sort keeps each group's order)
+        const l = list.filter((a) => a.cat === cat && (ql || !a.connected)).sort((a, b) => Number(!!b.ready) - Number(!!a.ready));
         return l.length ? (
           <div key={cat}>
             <p className="mt-6 mb-2 text-[12.5px] uppercase tracking-wide text-[var(--cl-muted)]">{cat}</p>
