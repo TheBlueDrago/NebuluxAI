@@ -280,3 +280,13 @@ ctx = await CC.appContext({ ...env, DB: db }, "u1", "find my tax files in Dropbo
 assert(ctx.read.join() === "Dropbox" && ctx.text.includes("/Money/tax-2025.pdf") && !ctx.text.includes("essay.docx"), "Dropbox: \"find my tax files in Dropbox\" searches for them");
 ctx = await CC.appContext({ ...env, DB: db }, "u1", "what's in my dropbox about unicorns");
 assert(ctx.text.includes("essay.docx") && ctx.text.includes("Your Dropbox"), "Dropbox: when nothing matches it shows the top folder");
+
+// ---- Connectors' "Try asking" examples really reach their app ----
+{
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../src/components/ConnectorsPane.jsx", import.meta.url), "utf8");
+  const at = src.indexOf("const TRY = {");
+  const TRY = new Function(src.slice(at, src.indexOf("};", at) + 2).replace("const TRY =", "return"))();
+  const deaf = Object.entries(TRY).flatMap(([k, l]) => l.filter((t) => !appsAskedAbout(t, [k]).includes(k) && !appIntent(t, [k])).map((t) => k + ": " + t));
+  assert(Object.keys(TRY).length >= 20 && !deaf.length, "every \"Try asking\" example in Connectors is heard by the chat" + (deaf.length ? " (not: " + deaf.join("; ") + ")" : ""));
+}

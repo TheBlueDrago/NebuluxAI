@@ -15,6 +15,18 @@ const Logo = ({ k, size = 28 }) => (
 const Pill = ({ children, onClick, strong }) => (
   <button onClick={onClick} className={`rounded-lg px-3 py-1.5 text-[13.5px] shrink-0 ${strong ? "bg-[var(--cl-text)] text-[var(--cl-bg)] font-medium" : "border border-[var(--cl-border)] text-[var(--cl-text)] hover:bg-[var(--cl-hover)]"}`}>{children}</button>
 );
+// What to ask in a chat once an app is connected. Each one uses words the chat listens for
+// (ASK in cloudflare-lib/apps.js, src/lib/appIntent.js), so it really reads or sends.
+const TRY = {
+  gmail: ["What are my unread emails about?"], calendar: ["What's on my calendar this week?"], drive: ["What's new in my Google Drive?"],
+  tasks: ["What's on my Google Tasks list?"], youtube: ["Which YouTube channels do I follow?"], contacts: ["What's the email address of Sam?"],
+  github: ["Which pull requests are open on my GitHub?"], notion: ["What's in my Notion notes about the science fair?", "Summarize my latest Notion pages"],
+  slack: ["What's new in Slack?"], spotify: ["What was I listening to on Spotify?"], discord: ["Post See you at 5! to my Discord"],
+  dropbox: ["Find my tax files in Dropbox"], todoist: ["What's on my Todoist today?", "Add buy milk to my Todoist"], asana: ["What's due in Asana this week?"],
+  linear: ["What are my Linear issues?"], zoom: ["When is my next Zoom meeting?"], twitch: ["Who's live on Twitch right now?"],
+  outlook: ["What's new in my Outlook email?"], onedrive: ["What's new in my OneDrive?"], mstodo: ["What's on my Microsoft To Do list?"],
+  x: ["What did I tweet lately?"], reddit: ["What's new on my subreddits?"], pinterest: ["What's on my Pinterest boards?"], tiktok: ["How are my TikTok videos doing?"], instagram: ["How are my Instagram posts doing?"],
+};
 
 export default function ConnectorsPane({ children }) {
   const [apps, setApps] = useState(null);
@@ -134,6 +146,14 @@ export default function ConnectorsPane({ children }) {
             <div className="mt-2 flex justify-end"><Pill strong onClick={() => send(app, w)}>Send</Pill></div>
           </div>
         ))}
+        {app.connected && TRY[app.k] && (
+          <div className="mt-5">
+            <p className="text-[12.5px] uppercase tracking-wide text-[var(--cl-muted)] mb-1">Try asking in a chat</p>
+            <ul className="space-y-1">
+              {TRY[app.k].map((t) => <li key={t} className="text-[14px] text-[var(--cl-text)]">"{t}"</li>)}
+            </ul>
+          </div>
+        )}
         {app.connected && app.k !== "whatsapp" && (
           <div className="mt-6">
             <div className="flex items-center justify-between"><h3 className="text-[15px] font-semibold text-[var(--cl-text)]">What Nebulux sees</h3><Pill onClick={() => look(app.k)}>Refresh</Pill></div>
