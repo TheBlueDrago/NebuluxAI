@@ -116,5 +116,5 @@ async function streamOnce(body, onDelta, { signal, onMeta } = {}) {
 
   if (!final) throw fail(502, { error: "The connection to the AI was interrupted. Please try again." });
   if (final.error) throw fail(final.status || 503, final);
-  return { content, cut: !!final.cut, more: !!final.more, charged: final.charged, credits: final.credits, model: final.model, effort: final.effort };
+  return { content, cut: !!final.cut, more: !!final.more, charged: final.charged, credits: final.credits, model: final.model, effort: final.effort, read: Array.isArray(final.read) ? final.read : [] };
 }

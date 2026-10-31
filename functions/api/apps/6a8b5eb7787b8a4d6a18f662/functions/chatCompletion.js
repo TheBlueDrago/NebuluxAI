@@ -463,19 +463,20 @@ function failure(err) {
 }
 
 // What the person's connected apps say, for a question about one or two of them (at most two are read).
-async function appContext(env, uid, question) {
-  if (!env.DB || !question) return "";
+// { text, read }: what goes in front of the question, and the names of the apps it read (shown under the reply).
+export async function appContext(env, uid, question) {
+  if (!env.DB || !question) return { text: "", read: [] };
   try {
     const rows = (await env.DB.prepare("SELECT provider FROM orbit_connections WHERE user_id = ? AND (status IS NULL OR status != 'reconnect')").bind(uid).all()).results || [];
     const have = rows.map((r) => r.provider), keys = appsAskedAbout(question, have), missing = appsNotConnected(question, have);
     // asked about an app they haven't connected: the AI says where to connect it instead of guessing
     const note = missing.length ? `They asked about ${missing.map(nameOf).join(" and ")}, which they haven't connected, so you can't see it. If answering needs what's in it, don't guess: tell them they can connect it in Settings → Connectors and ask again. Otherwise just answer.\n\n` : "";
-    if (!keys.length) return note;
-    const reads = await Promise.all(keys.map((k) => readAny(env, env.DB, uid, k).catch(() => null)));
-    const text = reads.filter((x) => x && !x.error).map((x) => readText(x)).join("\n\n");
-    return note + (text ? `From the person's connected apps (they connected these in Settings → Connectors; answer from this when it helps, and don't make up anything that isn't here):\n${text}\n\n` : "");
+    if (!keys.length) return { text: note, read: [] };
+    const reads = (await Promise.all(keys.map((k) => readAny(env, env.DB, uid, k).catch(() => null)))).filter((x) => x && !x.error);
+    const text = reads.map((x) => readText(x)).join("\n\n");
+    return { read: text ? reads.map((x) => x.name) : [], text: note + (text ? `From the person's connected apps (they connected these in Settings → Connectors; answer from this when it helps, and don't make up anything that isn't here):\n${text}\n\n` : "") };
   } catch {
-    return "";
+    return { text: "", read: [] };
   }
 }
 
@@ -585,8 +586,9 @@ export async function onRequestPost(context) {
     const idNote = !internal && asksWhoItIs(body.question) ? `${IDENTITY_NOTE}\n\n` : "";
     // Connected apps (Settings → Connectors, functions/v1/connect): a question about one of them
     // ("what's on my calendar", "what was I listening to on Spotify") gets that app's latest first.
-    const appNote = !internal && !apiBill && body.noApps !== true ? await appContext(env, user.id, body.question) : "";
-    const input = internal ? prompt : promptParts(idNote + appNote + prompt, body.images);
+    const apps = !internal && !apiBill && body.noApps !== true ? await appContext(env, user.id, body.question) : { text: "", read: [] };
+    const readNote = apps.read.length ? { read: apps.read } : {};
+    const input = internal ? prompt : promptParts(idNote + apps.text + prompt, body.images);
     if (input && input.error) return json({ error: input.error }, 400);
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
@@ -620,7 +622,7 @@ export async function onRequestPost(context) {
       try {
         const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
         counted(context, "ok", r.model);
-        return json({ content: r.text, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, false, r.tokens)) });
+        return json({ content: r.text, model: r.model, effort, ...readNote, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, false, r.tokens)) });
       } catch (err) {
         // 503 rather than 502: Cloudflare replaces 502 bodies on the custom domain with a
         // bare "error code: 502", which hid this message from users.
@@ -651,7 +653,7 @@ export async function onRequestPost(context) {
         try {
           const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           counted(context, "ok", r.model);
-          await send({ done: true, model: r.model, effort, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped, r.tokens)) });
+          await send({ done: true, model: r.model, effort, ...readNote, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped, r.tokens)) });
         } catch (err) {
           counted(context, failKind(err));
           flagged(context, err, user, prompt);

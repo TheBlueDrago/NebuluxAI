@@ -245,7 +245,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       notifyDone(content);
       recordMessage(shell?.currentUser?.id, ai, text.length + content.length, "chat");
       // what this answer used and how long it took, shown under it
-      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}) };
+      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}), ...(res.read && res.read.length ? { read: res.read } : {}) };
       addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) });
       if (sendAfter && content.trim() && !res.cut) {
         sendToWhatsApp(content)
@@ -588,7 +588,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                       <WhatsAppSend text={m.content} />
                       {m.used && (
                         <span className="text-[11.5px] text-slate-500 px-1" title="What this answer used">
-                          {m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
+                          {m.used.read?.length ? `Read ${m.used.read.join(" and ")} · ` : ""}{m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
                         </span>
                       )}
                       <ReportReply question={messages[i - 1]?.role === "user" ? messages[i - 1].content : ""} reply={m.content} />
