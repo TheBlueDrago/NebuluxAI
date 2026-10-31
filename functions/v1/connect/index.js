@@ -77,7 +77,7 @@ export async function onRequestPost({ request, env }) {
     }
     const back = String(body.back || "");
     if (![...ORBIT_RETURN, ...NEBULUX_BACK].some((r) => r.test(back))) return out(request, { error: "That return address isn't a Nebulux one." }, 400);
-    if (!readyOf(env, k)) return out(request, { error: `${nameOf(k)} isn't set up on Nebulux yet. It'll work as soon as it is.`, notReady: true }, 503);
+    if (!readyOf(env, k)) return out(request, { error: `${nameOf(k)} is coming soon to Nebulux. It'll work as soon as it's ready.`, notReady: true }, 503);
     if (isGoogle(k) || k === "github") return out(request, { url: await connectAddress(env, db, "https://nebuluxai.com", uid, k, "", back) });
     return out(request, { url: await startUrl(env, db, uid, k, back) });
   }

@@ -6,7 +6,7 @@
 // Each app here needs the owner to make a developer app at that company and set two secrets on the
 // Nebulux AI Pages project: <ENV>_CLIENT_ID and <ENV>_CLIENT_SECRET (docs/connectors-setup.md), with
 // https://nebuluxai.com/v1/connect/callback as its redirect address. Until both are set the app shows
-// "Not set up yet" and nothing is sent anywhere.
+// "Coming soon" and nothing is sent anywhere.
 //
 // What's kept: the app's permission (access and refresh tokens, plus a Discord channel's webhook),
 // sealed (seal.js) and tied to the person and app. Reading is what the person (or the AI, for them)

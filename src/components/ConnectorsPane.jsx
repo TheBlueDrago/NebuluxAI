@@ -6,7 +6,7 @@ import { showNotice, askConfirm } from "@/lib/dialogs";
 // Settings → Connectors: every app Nebulux can work with, grouped like the rest of Settings.
 // Connect sends the person to the app's own permission page and back; a connected app shows who it's
 // connected as and, opened, what Nebulux sees there. Apps the owner hasn't finished setting up show
-// "Not set up yet" and start working as soon as they are (functions/v1/connect).
+// "Coming soon" and start working as soon as they are (functions/v1/connect).
 const Logo = ({ k, size = 28 }) => (
   <span className="shrink-0 grid place-items-center rounded-lg border border-[var(--cl-border)]" style={{ width: size + 8, height: size + 8, background: "#fff" }}>
     <img src={`/logos/${k}.svg`} alt="" style={{ width: size - 6, height: size - 6 }} />
@@ -54,7 +54,7 @@ export default function ConnectorsPane({ children }) {
     a.status === "reconnect" ? <Pill strong onClick={() => connect(a)}>Reconnect</Pill>
       : a.connected ? <span className="text-[13px] text-emerald-500 shrink-0">Connected</span>
       : a.ready ? <Pill onClick={() => connect(a)}>Connect</Pill>
-      : <span className="text-[12.5px] text-[var(--cl-muted)] shrink-0">Not set up yet</span>;
+      : <span className="text-[12.5px] text-[var(--cl-muted)] shrink-0">Coming soon</span>;
   const row = (a) => (
     <button key={a.k} onClick={() => setOpen(a.k)} className="w-full flex items-center gap-3 p-3 text-left hover:bg-[var(--cl-hover)] min-h-[56px]">
       <Logo k={a.k} />
@@ -82,7 +82,7 @@ export default function ConnectorsPane({ children }) {
           {app.connected ? <Pill onClick={() => disconnect(app)}>Disconnect</Pill> : right(app)}
         </div>
         {app.status === "reconnect" && <p className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[13.5px] text-[var(--cl-text)]">Nebulux's permission for {app.n} stopped working (it may have been taken back at {app.n}). Press Reconnect.</p>}
-        {!app.ready && !app.connected && <p className="mt-4 text-[13.5px] text-[var(--cl-muted)]">{app.n} isn't set up on Nebulux yet. It'll work here as soon as it is.</p>}
+        {!app.ready && !app.connected && <p className="mt-4 text-[13.5px] text-[var(--cl-muted)]">{app.n} is coming soon to Nebulux. It'll work here as soon as it's ready.</p>}
         <p className="mt-5 text-[13.5px] text-[var(--cl-muted)]">
           {app.k === "whatsapp"
             ? "When it's on, every reply gets a Send to WhatsApp button that opens WhatsApp with the reply ready. You pick the chat and press send there."

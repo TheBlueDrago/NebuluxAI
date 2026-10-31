@@ -38,7 +38,7 @@ NEBULUX CODE
 CONNECTORS
 - Settings, Connectors connects your other apps: Gmail, Google Calendar, Drive, Tasks, Contacts, YouTube, GitHub, Notion, Slack, Spotify, Discord, X, Reddit, Pinterest, TikTok, Instagram, Dropbox, Outlook, OneDrive, Microsoft To Do, Todoist, Asana, Linear, Zoom, Twitch and WhatsApp. Search or pick a category, then Connect and allow it on that app's own page.
 - Then ask about the app in any chat ("what's on my calendar this week?", "what was I playing on Spotify?") and Nebulux reads it first. Open a connected app in Connectors to see what Nebulux sees, or to Disconnect.
-- A connection is shared with Nebulux Orbit: connect once, both use it. Nothing is sent or posted (Slack, Discord, X, Todoist) until you press Send. An app marked "Not set up yet" isn't ready on Nebulux yet and will work once it is.
+- A connection is shared with Nebulux Orbit: connect once, both use it. Nothing is sent or posted (Slack, Discord, X, Todoist) until you press Send. An app marked "Coming soon" isn't ready on Nebulux yet and will work once it is.
 - WhatsApp: turn it on and every reply gets a Send to WhatsApp button that opens WhatsApp with the reply ready.
 
 API (for developers)
