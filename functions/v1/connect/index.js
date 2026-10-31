@@ -47,7 +47,7 @@ export async function readAny(env, db, uid, k) {
   try {
     return { app: k, name: nameOf(k), account: a.email || "", sections: (await GOOGLE_READ[k](a)).filter((s) => s && s.items && s.items.length) };
   } catch (e) {
-    return { app: k, name: nameOf(k), status: "down", error: e && (e.status === 401 || e.status === 403) ? `${nameOf(k)} didn't let Nebulux in. Try Reconnect in Connectors${k === "keep" ? " (Google Keep works with school and work Google accounts)" : ""}.` : `Couldn't reach ${nameOf(k)} just now.` };
+    return { app: k, name: nameOf(k), status: "down", error: e && (e.status === 401 || e.status === 403) ? `${nameOf(k)} didn't let Nebulux in. Try Reconnect in Connectors.` : `Couldn't reach ${nameOf(k)} just now.` };
   }
 }
 

@@ -97,8 +97,7 @@ export const SCOPE_NEEDS = {
   drive: { read: G + "drive.readonly" },
   youtube: { read: G + "youtube.readonly" },
   tasks: { read: G + "tasks.readonly" },
-  // Google Keep (school and work accounts) and Contacts, connected from Connectors (functions/v1/connect)
-  keep: { read: G + "keep.readonly" },
+  // Google Contacts, connected from Connectors (functions/v1/connect)
   contacts: { read: G + "contacts.readonly" },
 };
 // The permissions a connection is missing ("Needs additional access"). Connections made before Orbit

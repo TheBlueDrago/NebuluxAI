@@ -236,7 +236,8 @@ const req = (body, auth = "Orbit " + "a".repeat(48), origin = "https://nebuluxor
 const call = async (body, auth, origin) => { const res = await C.onRequestPost({ request: req(body, auth, origin), env: { ...env, DB: db, GOOGLE_CLIENT_ID: "g" } }); return { status: res.status, cors: res.headers.get("access-control-allow-origin"), d: await res.json() }; };
 let x = await call({ action: "list" });
 const keys = x.d.apps.map((p) => p.k);
-assert(x.status === 200 && keys.length >= 30 && ["gmail", "keep", "contacts", "github", "whatsapp", "notion", "fitbit"].every((k) => keys.includes(k)), "an Orbit sign-in lists every app: " + keys.length);
+assert(x.status === 200 && keys.length >= 29 && ["gmail", "contacts", "github", "whatsapp", "notion", "fitbit"].every((k) => keys.includes(k)), "an Orbit sign-in lists every app: " + keys.length);
+assert(!keys.includes("keep") && !A.appsNotConnected("Read my notes", []).length, "Google Keep isn't offered (Google only allows it for Workspace accounts)");
 assert(x.cors === "https://nebuluxorbit.thebluedragonstriker.workers.dev", "Orbit's site may call it (CORS)");
 assert(x.d.apps.find((p) => p.k === "slack").connected && x.d.apps.find((p) => p.k === "slack").account === "Team Rocket", "connected apps show who they're connected as");
 assert(x.d.apps.find((p) => p.k === "slack").writes.length === 1, "and what they can send");

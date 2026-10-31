@@ -41,10 +41,9 @@ The secrets go only in Cloudflare. Never put them in the code or send them to an
 ## Apps that use the Google or GitHub apps you already have
 
 - **Gmail, Google Calendar, Drive, Tasks, YouTube**: these already work.
-- **Google Keep and Google Contacts** use the same Google app. In Google Cloud Console → APIs & Services:
-  1. Turn on the **Google Keep API** and the **People API**.
-  2. Add the scopes `.../auth/keep.readonly` and `.../auth/contacts.readonly` to the OAuth consent screen.
-  
-  Google only allows Keep for school and work (Google Workspace) accounts. Personal Gmail accounts get "not allowed".
+- **Google Contacts** uses the same Google app. In Google Cloud Console → APIs & Services:
+  1. Turn on the **People API**.
+  2. Add the scope `.../auth/contacts.readonly` to the OAuth consent screen (Google Auth Platform → Data access).
+- **Google Keep** isn't offered. Google only allows its API for school and work (Workspace) accounts, and it refuses the `keep.readonly` scope for the Nebulux Google app.
 - **GitHub** uses the Nebulux Code GitHub app that's already set up.
 - **WhatsApp** needs nothing. When it's on, replies get a Send to WhatsApp button that opens WhatsApp with the text ready, and the person sends it there.

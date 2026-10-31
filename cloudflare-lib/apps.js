@@ -329,7 +329,6 @@ export const GOOGLE_APPS = {
   drive: { n: "Google Drive", cat: "Productivity", about: "See your files" },
   tasks: { n: "Google Tasks", cat: "Productivity", about: "See your to-do lists" },
   youtube: { n: "YouTube", cat: "Social & Entertainment", about: "Your subscriptions and playlists" },
-  keep: { n: "Google Keep", cat: "Productivity", about: "Read your notes (school and work Google accounts)" },
   contacts: { n: "Google Contacts", cat: "Productivity", about: "Find people's email addresses" },
 };
 export const GITHUB_APP = { github: { n: "GitHub", cat: "Business", about: "Your repositories, issues and pull requests" } };
@@ -446,7 +445,7 @@ export function readText(r, max = 3500) {
   return s.length > max ? s.slice(0, max - 1) + "…" : s.trim();
 }
 
-// ---- Google Keep and Contacts, and the Google apps and GitHub for Nebulux AI's chat ----
+// ---- Google Contacts, and the Google apps and GitHub for Nebulux AI's chat ----
 // (access comes from functions/v1/orbit.js googleAccess; GitHub's token from its connection)
 const gq = (a, url) => j(url, bearer(a.token));
 export const GOOGLE_READ = {
@@ -474,11 +473,6 @@ export const GOOGLE_READ = {
     const d = need(await gq(a, "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=20&order=relevance"));
     return [sec("Channels you follow", (d.items || []).map((s) => item(s.snippet && s.snippet.title, clip(s.snippet && s.snippet.description, 80))))];
   },
-  keep: async (a) => {
-    const d = need(await gq(a, "https://keep.googleapis.com/v1/notes?pageSize=20&filter=trashed=false"));
-    const body = (n) => (n.body && n.body.text && n.body.text.text) || ((n.body && n.body.list && n.body.list.listItems) || []).map((i) => (i.checked ? "[x] " : "[ ] ") + ((i.text && i.text.text) || "")).join("; ");
-    return [sec("Your notes", (d.notes || []).map((n) => item(n.title || clip(body(n), 60) || "Note", body(n))))];
-  },
   contacts: async (a) => {
     const d = need(await gq(a, "https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses&pageSize=100&sortOrder=LAST_MODIFIED_DESCENDING"));
     return [sec("Contacts", (d.connections || []).filter((p) => p.names && p.names.length).slice(0, 60).map((p) => item(p.names[0].displayName, ((p.emailAddresses || [])[0] || {}).value || "")))];
@@ -494,7 +488,7 @@ export const GOOGLE_READ = {
 // Which connected apps a chat message is about (Nebulux AI's chat reads those first).
 const ASK = {
   gmail: /\b(gmail|inbox|my e-?mails?|new e-?mails?|unread)\b/i, calendar: /\b(google calendar|my calendar|my schedule|my (?:events|meetings)|this week's plans)\b/i, drive: /\b(google drive|my drive|my files)\b/i,
-  tasks: /\b(google tasks|my to-?dos?|my tasks)\b/i, youtube: /\b(youtube|subscriptions)\b/i, keep: /\b(google keep|keep notes|my notes)\b/i, contacts: /\b(my contacts|google contacts|email address(?:es)? (?:of|for))\b/i,
+  tasks: /\b(google tasks|my to-?dos?|my tasks)\b/i, youtube: /\b(youtube|subscriptions)\b/i, contacts: /\b(my contacts|google contacts|email address(?:es)? (?:of|for))\b/i,
   github: /\b(github|my repos?|repositories|pull requests?)\b/i, notion: /\bnotion\b/i, slack: /\bslack\b/i, spotify: /\b(spotify|my music|listening to|my playlists?|top artists)\b/i,
   discord: /\bdiscord\b/i, x: /\b(twitter|tweets?|my x (?:account|posts?|profile))\b/i, reddit: /\b(reddit|subreddits?)\b/i, pinterest: /\b(pinterest|my pins|my boards?)\b/i,
   tiktok: /\btik ?tok\b/i, instagram: /\b(instagram|insta|my ig)\b/i, dropbox: /\bdropbox\b/i, outlook: /\b(outlook|hotmail)\b/i, onedrive: /\bone ?drive\b/i,
