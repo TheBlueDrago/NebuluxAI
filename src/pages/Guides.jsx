@@ -4,11 +4,13 @@ import { ArrowRight, BookOpen, Clock } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import { GUIDES } from "../../cloudflare-lib/guides.js";
 
-// Guides about using the AI itself; the rest are about building websites and games.
+// Guides about using the AI itself, about connecting other apps; the rest are about building websites and games.
 const AI_HELP = new Set(["ai-study-mode", "make-flashcards-with-ai", "ai-homework-help", "write-better-with-ai", "learn-to-code-with-ai", "resume-and-cover-letter-with-ai", "ai-for-small-business"]);
+const APPS = new Set(["zoom"]);
 const GROUPS = [
   { title: "Get help from the AI", guides: GUIDES.filter((g) => AI_HELP.has(g.slug)) },
-  { title: "Build websites and games", guides: GUIDES.filter((g) => !AI_HELP.has(g.slug)) },
+  { title: "Connect your apps", guides: GUIDES.filter((g) => APPS.has(g.slug)) },
+  { title: "Build websites and games", guides: GUIDES.filter((g) => !AI_HELP.has(g.slug) && !APPS.has(g.slug)) },
 ];
 
 // How-to guides: short, practical articles that answer what people search for ("how to make

@@ -5,7 +5,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 
 // Public /terms and /privacy pages, linked from sign-up, log-in, billing and the
 // report page. Plain language on purpose; keep them in step with what the app does.
-const UPDATED = "October 16, 2026";
+const UPDATED = "October 31, 2026";
 // Optional: a support address to show instead of the contact form (/contact).
 const CONTACT_EMAIL = "";
 
@@ -176,6 +176,7 @@ export function Privacy() {
           <li>If you're signed in, your chats are saved with your account so they show on all your devices. The website and game you are working on (even before you publish), published websites and games, and game progress are kept on our servers with your account.</li>
           <li>What you ask the AI goes to Google to get an answer; we keep only the start of your five latest questions, to keep the service safe.</li>
           <li>You can download a copy of your data or delete your account at any time.</li>
+          <li>If you connect other apps (like Zoom, Slack or Gmail), Nebulux reads them only when you ask, never sells what it reads, and you can disconnect them at any time.</li>
           <li>We store your password, but only scrambled (hashed), so no one can read it, not even us. We never store your card: our payment providers keep it and charge it for renewals.</li>
         </ul>
       </div>
@@ -188,6 +189,7 @@ export function Privacy() {
         <li><strong>What you make:</strong> the sites and games you publish, and the website and game you are working on.</li>
         <li><strong>Your chats:</strong> if you're signed in, your chats (the messages you send and the AI's answers) are saved with your account so they appear on every device you sign in on. They're private to your account: we don't read them, except when needed to look into a report, keep someone safe or follow the law. Pictures you attach aren't kept with your account. Deleting a chat deletes it from your account too. If you're not signed in, chats stay only in your browser.</li>
         <li><strong>Prompts:</strong> what you send the AI, including any images you attach in the chat, passes through our servers to Google to get an answer. We count the credits it uses, and keep the start (up to 300 characters) of your five most recent questions each month so our team can spot misuse and help if something goes wrong. Apart from the chats saved with your account (above), we don't keep the rest of the text, or any images.</li>
+        <li><strong>Connected apps:</strong> if you connect an app in Settings → Connectors (for example Zoom, Slack, Notion, Gmail or Google Calendar), you sign in on that company's own page and choose to allow it. We keep the permission the app gives us, encrypted, and the name of the account you connected (usually its email address or username). Nebulux AI and Nebulux Orbit share these connections, so you only connect once. We read an app only when you ask about it in a chat or open it in Connectors, and only what that app's page in Connectors shows under "What Nebulux sees" (for Zoom: your upcoming meetings' topic, start time and length). What it reads is sent with your question to Google to write the answer; we don't keep a separate copy, and it stays only in the chat where you asked until you delete that chat. Nothing is sent, posted or added to an app unless you press Send or confirm it first.</li>
         <li><strong>Usage:</strong> how many credits you use on each AI, your plan, and any promo code you use for a discount at checkout.</li>
         <li><strong>Payments:</strong> what you bought, when, and whether it renewed. Your card is entered on our payment provider's checkout page and saved by them, not by us; if your plan renews every month, they charge the saved card and only tell us that it was paid. We never see or store your card number.</li>
         <li><strong>Sign-in:</strong> your email address, and your password stored scrambled (hashed with a random salt) so it can't be read back, not even by us. We also keep which devices are signed in (as a scrambled token that expires after 60 days), and short-lived codes we email you to confirm your address or reset your password (they expire within an hour). To warn you if someone else signs in, we remember which kinds of devices you use (the browser, system and country, scrambled) and email you when a new one signs in. For two-step verification we keep the secret key for your authenticator app and the devices you chose to remember.</li>
@@ -222,6 +224,7 @@ export function Privacy() {
         <li><strong>Payment providers</strong> — run the checkout and handle your card when paid plans open. We never see or store your card number.</li>
         <li><strong>Resend</strong> — sends our emails (sign-up codes, a welcome email, password resets, two-step codes, low API balance alerts, support replies).</li>
         <li><strong>GitHub</strong> — only if you connect your GitHub account in Nebulux Code. Your GitHub token stays in your browser and is only sent to GitHub; the files you add to a chat are sent to the AI with your question.</li>
+        <li><strong>The apps you connect</strong> — only the ones you connect in Settings → Connectors. We use the permission you gave to read what you ask about, or to send something you confirmed, and nothing else. Each app's own privacy policy covers what it does with your data.</li>
         <li><strong>DuckDuckGo and the websites you open</strong> — when you use the Nebulux Browser in Nebulux Code, your searches go to DuckDuckGo and the pages you open are fetched by our server. The AI can see, read and act on whatever you open there, including pages you are signed in to.</li>
         <li><strong>Cloudflare</strong> — hosting and our database: accounts, sign-in, published pages, credits, drafts and game progress. Cloudflare Turnstile runs the robot check on sign-up and password reset. Cloud sessions in Nebulux Code run there and their replies are deleted after about a day.</li>
         <li><strong>API keys and API billing</strong> — we keep your API keys only in scrambled form (we can't read them back), plus each key's name and when and how often it's used, your API balances, and a history of what was added and what each request cost.</li>
@@ -240,11 +243,11 @@ export function Privacy() {
         what happens with the information Google gives us:
       </p>
       <ul>
-        <li><strong>What we get:</strong> your name, email address and profile picture (Google's "openid", "email" and "profile" permissions). We don't ask for your Gmail, Drive, contacts, calendar or anything else in your Google account.</li>
-        <li><strong>How we use it:</strong> only to create your account and sign you in, show your name and picture in the app, and, when you sign in to a website made with Nebulux AI, sign you in to that website and show its owner who signed in.</li>
-        <li><strong>Who we share it with:</strong> for website sign-ins, only that website's owner. Otherwise nobody, apart from Cloudflare, which stores our database for us. We never sell it, use it for ads, or use it to train AI models.</li>
+        <li><strong>What we get:</strong> when you sign in with Google, your name, email address and profile picture (Google's "openid", "email" and "profile" permissions). Signing in doesn't give us your Gmail, Drive, contacts, calendar or anything else in your Google account. If you also connect a Google app in Settings → Connectors, we ask only for that app's permission, and only after you choose it: Gmail ("gmail.readonly", plus "gmail.send" if you turn on sending), Google Calendar ("calendar.events"), Google Drive ("drive.readonly"), Google Tasks ("tasks.readonly"), YouTube ("youtube.readonly") or Google Contacts ("contacts.readonly").</li>
+        <li><strong>How we use it:</strong> to create your account and sign you in, show your name and picture in the app, and, when you sign in to a website made with Nebulux AI, sign you in to that website and show its owner who signed in. For a Google app you connected, only to show you what's in it and answer your questions about it when you ask. An email is sent or an event added only after you confirm it.</li>
+        <li><strong>Who we share it with:</strong> for website sign-ins, only that website's owner. What a connected Google app shows is sent with your question to Google's Gemini API to write the answer. Otherwise nobody, apart from Cloudflare, which stores our database for us. We never sell it, use it for ads, or use it to train AI models.</li>
         <li><strong>How it's kept safe:</strong> it's stored in our database on Cloudflare and only sent over secure (https) connections. Only the Nebulux AI team can look at accounts, and only to run the service, keep it safe or follow the law.</li>
-        <li><strong>Keeping and deleting:</strong> we keep it while your account is open. Deleting your account deletes it. For a website sign-in, it's kept until the website's owner removes you, the website is deleted, or you ask us to delete it through <Contact />. You can also remove Nebulux AI's access at any time at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">myaccount.google.com/permissions</a>.</li>
+        <li><strong>Keeping and deleting:</strong> we keep it while your account is open. Deleting your account deletes it, and disconnecting a Google app in Connectors deletes the permission we kept for it. For a website sign-in, it's kept until the website's owner removes you, the website is deleted, or you ask us to delete it through <Contact />. You can also remove Nebulux AI's access at any time at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">myaccount.google.com/permissions</a>.</li>
       </ul>
       <p>
         Nebulux AI's use and transfer of information received from Google APIs adheres to the{" "}
@@ -269,8 +272,13 @@ export function Privacy() {
         We keep your data while your account is open. You can download a copy of it at any time (Settings → Security →
         Download my data). You can delete your account at any time from your profile;
         that also deletes your published sites and games, your drafts, your game progress, the chats saved with your
-        account, and the chats and projects saved in that browser. We keep records we need for payments, fraud prevention or the law, and a
+        account, your connected apps, and the chats and projects saved in that browser. We keep records we need for payments, fraud prevention or the law, and a
         copy of any page we took down for breaking the rules.
+      </p>
+      <p>
+        To remove one connected app, open Settings → Connectors, pick the app and press Disconnect: we delete the permission we
+        kept for it. You can also remove Nebulux's access from that app's own settings (for Zoom: App Marketplace → Manage →
+        Added Apps → Remove).
       </p>
 
       <h2>Children</h2>

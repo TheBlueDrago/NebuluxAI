@@ -894,6 +894,54 @@ export const GUIDES = [
     cta: { label: "Make a website free", to: "/register?returnTo=%2Fchat%2Fdesigner" },
     related: ["make-a-website-with-ai", "make-a-website-on-your-phone"],
   },
+  {
+    // The Zoom app's documentation for the Zoom App Marketplace: adding, using and removing it.
+    slug: "zoom",
+    title: "How to use Zoom with Nebulux AI",
+    description:
+      "Connect your Zoom account to Nebulux AI, ask about your upcoming Zoom meetings in chat, and remove the connection whenever you want. It only reads.",
+    minutes: 2,
+    intro:
+      "The Zoom app lets Nebulux AI answer questions about your upcoming Zoom meetings. It only reads: it never creates, changes, joins or records meetings, and it reads only when you ask.",
+    sections: [
+      {
+        heading: "Add the Zoom app",
+        paragraphs: ["Sign in to Nebulux AI, open Settings, then Connectors. Find Zoom (search for it, or look under Business) and press Connect."],
+        list: [
+          "Zoom opens its own sign-in page. Sign in with the Zoom account you want to use.",
+          "Zoom shows what Nebulux AI asks for: your profile and the list of your meetings. Press Allow.",
+          "You come back to Nebulux AI, and Zoom shows Connected with your Zoom email address.",
+        ],
+      },
+      {
+        heading: "Ask about your meetings",
+        paragraphs: ["In any chat, ask about your Zoom meetings. When your question mentions your Zoom meetings, Nebulux AI reads your upcoming ones first and answers from them."],
+        list: ["\"What Zoom meetings do I have this week?\"", "\"When is my next Zoom meeting?\"", "\"Make a study plan around my Zoom meetings.\""],
+      },
+      {
+        heading: "See exactly what it reads",
+        paragraphs: ["Open Settings, Connectors, then Zoom. Under What Nebulux sees is everything Nebulux AI can read: each upcoming meeting's topic, start time and length. Press Refresh to load it again."],
+      },
+      {
+        heading: "Remove the Zoom app",
+        paragraphs: ["Open Settings, Connectors, then Zoom, and press Disconnect. Nebulux AI deletes the permission it kept, and it can't read your meetings any more."],
+        list: [
+          "To remove it on Zoom's side too, sign in at marketplace.zoom.us, open Manage, then Added Apps, and press Remove next to Nebulux AI.",
+          "Deleting your Nebulux AI account removes all your connected apps as well.",
+        ],
+      },
+      {
+        heading: "Your privacy",
+        list: [
+          "Nebulux AI never sells what it reads from Zoom, and other people can't see it.",
+          "What it reads goes with your question to the AI to write the answer, and stays only in that chat until you delete it.",
+          "Questions? Use the contact page. The Privacy Policy has the details.",
+        ],
+      },
+    ],
+    cta: { label: "Start free", to: "/register?returnTo=%2Fchat" },
+    more: { label: "Privacy Policy", to: "/privacy" },
+  },
 ];
 
 export const guideBySlug = (slug) => GUIDES.find((g) => g.slug === slug) || null;
