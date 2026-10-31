@@ -5,6 +5,7 @@
 // { …, after: true } (the answer to the rest of the message, once it's written), or null.
 const ASKS = [
   { app: "todoist", op: "add", name: "Todoist", re: /\b(?:add|put)\s+([\s\S]+?)\s+(?:to|on|in|into)\s+(?:my\s+)?todoist\b/i, after: false },
+  { app: "asana", op: "add", name: "Asana", re: /\b(?:add|put)\s+([\s\S]+?)\s+(?:to|on|in|into)\s+(?:my\s+)?asana\b/i, after: false },
   { app: "discord", op: "post", name: "Discord", re: /\b(?:post|send|share)\s+([\s\S]+?)\s+(?:to|on|in)\s+(?:my\s+)?discord(?:\s+channel)?\b/i, after: true },
 ];
 const POINTER = /^(?:it|this|that|the (?:answer|reply|last (?:one|answer|reply|message))|that (?:answer|reply)|this (?:answer|reply))$/i;

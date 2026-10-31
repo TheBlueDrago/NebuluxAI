@@ -288,6 +288,12 @@ export const APPS = {
       }
       return out.length ? out : [sec("Your tasks", [item("Nothing assigned to you", "")])];
     },
+    // a new task, assigned to them, in their first workspace (their own "My workspace" on a personal account)
+    write: { add: { label: "Add a task", run: async (tok, x, b) => {
+      const ws = (((await j("https://app.asana.com/api/1.0/users/me?opt_fields=workspaces.name", bearer(tok))).data || {}).data || {}).workspaces || [];
+      if (!ws.length) return false;
+      return (await j("https://app.asana.com/api/1.0/tasks", { method: "POST", ...bearer(tok, { "Content-Type": "application/json" }), body: JSON.stringify({ data: { name: String(b.text || "").slice(0, 500), workspace: ws[0].gid, assignee: "me" } }) })).ok;
+    } } },
   },
   linear: {
     n: "Linear", cat: "Business", about: "Issues assigned to you",

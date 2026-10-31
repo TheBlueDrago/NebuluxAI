@@ -419,11 +419,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     const last = lastAnswer();
     const body = act.body || (last && last.content) || "";
     if (!body) {
-      addMessage(convId, { role: "ai", note: true, content: `There's nothing to send yet. Tell me what to send, like "${act.op === "add" ? "add buy milk to my Todoist" : "post See you at 5! to my Discord"}".` });
+      addMessage(convId, { role: "ai", note: true, content: `There's nothing to send yet. Tell me what to send, like "${act.op === "add" ? "add buy milk to my " + act.name : "post See you at 5! to my Discord"}".` });
       return;
     }
     if (act.op === "add" && !act.body && body.length > 300) {
-      addMessage(convId, { role: "ai", note: true, content: "That answer is too long for one task. Tell me what to add, like \"add finish the poster to my Todoist\"." });
+      addMessage(convId, { role: "ai", note: true, content: `That answer is too long for one task. Tell me what to add, like "add finish the poster to my ${act.name}".` });
       return;
     }
     await appAct(convId, act, body);

@@ -205,6 +205,9 @@ r = await writeApp(env, db, "u1", "x", "post", { text: "a".repeat(400), confirme
 assert(r.ok && JSON.parse(calls.filter((c) => /2\/tweets$/.test(c.u)).pop().init.body).text.length === 280, "X posts are cut to 280 characters");
 r = await writeApp(env, db, "u1", "todoist", "add", { text: "Read chapter 3", due: "tomorrow", confirmed: true });
 assert(r.ok, "Todoist adds a task");
+r = await writeApp(env, db, "u1", "asana", "add", { text: "Call the dentist", confirmed: true });
+const atask = calls.filter((c) => /asana\.com\/api\/1\.0\/tasks$/.test(c.u) && c.init.method === "POST").pop();
+assert(r.ok && atask && JSON.stringify(JSON.parse(atask.init.body)) === '{"data":{"name":"Call the dentist","workspace":"W1","assignee":"me"}}', "Asana adds a task, assigned to them, in their workspace");
 r = await writeApp(env, db, "u1", "spotify", "post", { text: "x", confirmed: true });
 assert(/can't be sent/.test(r.error), "apps that only read can't send");
 r = await writeApp(env, db, "u1", "slack", "send", { text: "  ", confirmed: true });
@@ -274,6 +277,7 @@ assert(J("Add buy milk to my Todoist") === '{"app":"todoist","op":"add","name":"
 assert(J("add this to my todoist") === '{"app":"todoist","op":"add","name":"Todoist","last":true}' && J("make a study plan and add it to my Todoist") === "null", "chat: \"add this to my Todoist\" adds the last answer; a new answer isn't turned into one big task");
 assert(J("post this to my Discord") === '{"app":"discord","op":"post","name":"Discord","last":true}' && J("write a short hype message for the team and post it to my discord channel") === '{"app":"discord","op":"post","name":"Discord","after":true}' && J("post See you at 5! to discord") === '{"app":"discord","op":"post","name":"Discord","body":"See you at 5!"}', "chat: Discord posts the last answer, a new answer, or the words given");
 assert(J("Add buy milk to my Todoist", ["discord"]) === "null" && J("How do I add a task in Todoist?") === "null" && J("add 2 and 3") === "null", "chat: only apps that are connected, and questions about the apps aren't requests");
+assert(J("Add call the dentist to my Asana", ["asana"]) === '{"app":"asana","op":"add","name":"Asana","body":"call the dentist"}' && J("add this to asana", ["asana"]) === '{"app":"asana","op":"add","name":"Asana","last":true}' && J("Add call the dentist to my Asana") === "null", "chat: \"add call the dentist to my Asana\" adds it there, once Asana is connected");
 
 // ---- Dropbox searches for what the question is about ----
 ctx = await CC.appContext({ ...env, DB: db }, "u1", "find my tax files in Dropbox");
