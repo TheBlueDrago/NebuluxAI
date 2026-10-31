@@ -43,8 +43,9 @@ async function whoIs(request, db) {
 }
 
 // One read of any connected app, Google's and GitHub's included (for Nebulux AI's chat and the cards).
-export async function readAny(env, db, uid, k) {
-  if (APPS[k]) return readApp(env, db, uid, k);
+// q: the chat question, for apps that search for it (Notion).
+export async function readAny(env, db, uid, k, q = "") {
+  if (APPS[k]) return readApp(env, db, uid, k, q);
   if (!GOOGLE_READ[k]) return { app: k, name: nameOf(k), error: "Nothing to read from " + nameOf(k) + "." };
   const a = isGoogle(k) ? await googleAccess(env, db, uid, k) : await githubAccess(env, db, uid);
   if (!a.token) return { app: k, name: nameOf(k), status: a.status, error: a.status === "reconnect" ? `${nameOf(k)} needs reconnecting (Connectors → ${nameOf(k)} → Reconnect).` : a.status === "down" ? `Couldn't reach ${nameOf(k)} just now.` : `Connect ${nameOf(k)} first (Connectors).` };

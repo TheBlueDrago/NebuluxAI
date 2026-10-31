@@ -14,7 +14,8 @@ import { showShortcuts } from "@/lib/shortcuts";
 import Markdown, { CopyButton } from "@/components/chat/Markdown";
 import ReadAloud, { speakText, unlockSpeech } from "@/components/chat/ReadAloud";
 import WhatsAppSend from "@/components/chat/WhatsAppSend";
-import { waLinked, waIntent, sendToWhatsApp, whatsappError } from "@/lib/connectors";
+import { waLinked, waIntent, sendToWhatsApp, whatsappError, appsOn, connectCall } from "@/lib/connectors";
+import { appIntent } from "@/lib/appIntent";
 import { historyBlock } from "@/lib/chatHistory";
 import { readAboutMe, aboutMeBlock } from "@/lib/aboutMe";
 import AboutMeButton from "@/components/chat/AboutMeButton";
@@ -150,6 +151,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const convIdRef = useRef(null);
   // "…and send it to my WhatsApp": the answer goes to their linked WhatsApp once it's written.
   const waAfterRef = useRef(false);
+  // "…and post it to my Discord": the answer goes to that app (after a yes) once it's written.
+  const appAfterRef = useRef(null);
   const shell = useAppShell();
 
   const messages = conversation?.messages || [];
@@ -181,6 +184,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
   const runPrompt = async (text, ai, before = messages.length) => {
     const sendAfter = waAfterRef.current;
     waAfterRef.current = false;
+    const actAfter = appAfterRef.current;
+    appAfterRef.current = null;
     const history = (ai === "ai" ? studyBlock(studyModeOn()) : "") + aboutMeBlock(readAboutMe(shell?.currentUser?.id)) + historyBlock(messages.slice(0, before)) + q.steerBlock();
     let convId = conversation?.id || convIdRef.current;
     const isFirst = !convId || messages.length === 0;
@@ -221,7 +226,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     let pageNote = "";
     const cur = browserRef.current?.current?.();
     if (cur?.type === "page" && cur.text) pageNote = `The person has this web page open in the Nebulux Browser (${cur.url}). It is read-only for you: you can read it and talk about it, but you can't click, type, sign in, edit, commit, push or change anything on it or on any site (GitHub included); if they ask you to change something there, explain how they can do it themselves.\n${cur.text.slice(0, 8000)}\n\n`;
-    const waNote = sendAfter ? "(When you've answered, Nebulux sends your answer to the person's own WhatsApp for them. Just write what they asked for; don't say you can't send it.)\n\n" : "";
+    const waNote = sendAfter ? "(When you've answered, Nebulux sends your answer to the person's own WhatsApp for them. Just write what they asked for; don't say you can't send it.)\n\n"
+      : actAfter ? `(When you've answered, Nebulux posts your answer to the person's ${actAfter.name} channel for them, after they confirm. Just write what they asked for; don't say you can't post it.)\n\n` : "";
     const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${waNote}${history}${pageNote}${text}${fileNote}`;
     if (reqIdRef.current !== myId) return;
     try {
@@ -249,9 +255,10 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) });
       if (sendAfter && content.trim() && !res.cut) {
         sendToWhatsApp(content)
-          .then(() => addMessage(convId, { role: "ai", content: "Sent to your WhatsApp." }))
-          .catch((e) => addMessage(convId, { role: "ai", err: true, content: whatsappError(e) }));
+          .then(() => addMessage(convId, { role: "ai", note: true, content: "Sent to your WhatsApp." }))
+          .catch((e) => addMessage(convId, { role: "ai", note: true, err: true, content: whatsappError(e) }));
       }
+      if (actAfter && content.trim() && !res.cut) appAct(convId, actAfter, content);
       if (talkBackRef.current) speakText(content);
       // Away on another tab: ring the bell and play the chime.
       if (typeof document !== "undefined" && document.hidden) addNotification({ kind: "ai", text: `Nebulux AI finished: ${text.slice(0, 60)}`, link: "/chat" });
@@ -353,8 +360,12 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // once the answer is written.
     const wa = waLinked() ? waIntent(text) : null;
     if (wa && !wa.after) { whatsappNow(text, wa); return; }
+    // "Add buy milk to my Todoist", "post this to my Discord": done by the chat, after a yes.
+    const act = wa ? null : appIntent(text, appsOn());
+    if (act && !act.after) { appActNow(text, act); return; }
     if (isExhausted) return;
     waAfterRef.current = !!wa;
+    appAfterRef.current = act && act.after ? act : null;
     talkBackRef.current = spokenRef.current;
     spokenRef.current = false;
     if (talkBackRef.current) unlockSpeech();
@@ -366,21 +377,56 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     const isFirst = !convId || messages.length === 0;
     if (!convId) convId = createConversation();
     convIdRef.current = convId;
-    const last = [...messages].reverse().find((m) => m.role === "ai" && !m.err && m.content !== "Sent to your WhatsApp.");
+    const last = lastAnswer();
     const body = wa.body || (last && last.content) || "";
     addMessage(convId, { role: "user", content: text });
     setInput("");
     if (isFirst) renameConversation(convId, chatTitle(text));
     if (!body) {
-      addMessage(convId, { role: "ai", content: "There's nothing to send yet. Ask me something first, or write \"send to my WhatsApp:\" followed by your message." });
+      addMessage(convId, { role: "ai", note: true, content: "There's nothing to send yet. Ask me something first, or write \"send to my WhatsApp:\" followed by your message." });
       return;
     }
     try {
       await sendToWhatsApp(body);
-      addMessage(convId, { role: "ai", content: "Sent to your WhatsApp." });
+      addMessage(convId, { role: "ai", note: true, content: "Sent to your WhatsApp." });
     } catch (e) {
-      addMessage(convId, { role: "ai", err: true, content: whatsappError(e) });
+      addMessage(convId, { role: "ai", note: true, err: true, content: whatsappError(e) });
     }
+  };
+  // The last real answer (not one of these short notes like "Sent to your WhatsApp.").
+  const lastAnswer = () => [...messages].reverse().find((m) => m.role === "ai" && !m.err && !m.note && !/^(Sent to your WhatsApp|Added to your|Posted to your|Okay, I didn't)/.test(m.content || ""));
+
+  // Send to a connected app (Todoist, Discord) once the person says yes.
+  const appAct = async (convId, act, body) => {
+    const short = body.length > 300 ? body.slice(0, 300) + "…" : body;
+    const yes = await askConfirm(act.op === "add" ? `Add this to your ${act.name}?\n\n"${short}"` : `Post this to your ${act.name} channel?\n\n"${short}"`, { confirmLabel: act.op === "add" ? "Add" : "Post" });
+    if (!yes) { addMessage(convId, { role: "ai", note: true, content: "Okay, I didn't send it." }); return; }
+    try {
+      await connectCall({ action: "write", app: act.app, op: act.op, text: body, confirmed: true });
+      addMessage(convId, { role: "ai", note: true, content: act.op === "add" ? `Added to your ${act.name}.` : `Posted to your ${act.name} channel.` });
+    } catch (e) {
+      addMessage(convId, { role: "ai", note: true, err: true, content: e.message });
+    }
+  };
+  const appActNow = async (text, act) => {
+    let convId = conversation?.id || convIdRef.current;
+    const isFirst = !convId || messages.length === 0;
+    if (!convId) convId = createConversation();
+    convIdRef.current = convId;
+    addMessage(convId, { role: "user", content: text });
+    setInput("");
+    if (isFirst) renameConversation(convId, chatTitle(text));
+    const last = lastAnswer();
+    const body = act.body || (last && last.content) || "";
+    if (!body) {
+      addMessage(convId, { role: "ai", note: true, content: `There's nothing to send yet. Tell me what to send, like "${act.op === "add" ? "add buy milk to my Todoist" : "post See you at 5! to my Discord"}".` });
+      return;
+    }
+    if (act.op === "add" && !act.body && body.length > 300) {
+      addMessage(convId, { role: "ai", note: true, content: "That answer is too long for one task. Tell me what to add, like \"add finish the poster to my Todoist\"." });
+      return;
+    }
+    await appAct(convId, act, body);
   };
 
   // Ask the last question again: drops the last reply (and the question, which

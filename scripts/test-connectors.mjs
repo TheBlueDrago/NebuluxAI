@@ -38,7 +38,7 @@ function fakeDb() {
 }
 
 // ---- made-up app servers ----
-const calls = [];
+const calls = [], notionQueries = [];
 const reply = (data, status = 200) => new Response(data == null ? "" : JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
 let deny = ""; // a host that answers 401 (taken back)
 const API = [
@@ -52,7 +52,8 @@ const API = [
     return reply({ access_token: "t1", expires_in: 3600, refresh_token: "r1", scope: "x" });
   }],
   [/graph\.instagram\.com\/access_token/, () => reply({ access_token: "long", expires_in: 5184000 })],
-  [/api\.notion\.com\/v1\/search/, () => reply({ results: [{ object: "page", url: "https://notion.so/p", last_edited_time: "2026-10-29T10:00:00Z", properties: { Name: { type: "title", title: [{ plain_text: "Science notes" }] } } }] })],
+  [/api\.notion\.com\/v1\/search/, (u, i) => { const q = JSON.parse(i.body).query; notionQueries.push(q || ""); return reply({ results: q === "nothing matches" ? [] : [{ object: "page", id: "pg1", url: "https://notion.so/p", last_edited_time: "2026-10-29T10:00:00Z", properties: { Name: { type: "title", title: [{ plain_text: "Science notes" }] } } }] }); }],
+  [/api\.notion\.com\/v1\/blocks\/pg1\/children/, () => reply({ results: [{ type: "heading_2", heading_2: { rich_text: [{ plain_text: "Plan" }] } }, { type: "paragraph", paragraph: { rich_text: [{ plain_text: "Test 4 bean plants, 2 with music" }] } }, { type: "to_do", to_do: { checked: true, rich_text: [{ plain_text: "Buy pots" }] } }, { type: "image", image: {} }] })],
   [/slack\.com\/api\/conversations\.list/, () => reply({ ok: true, channels: [{ id: "C0GEN12345", name: "general", is_member: true, topic: { value: "Hi" } }, { id: "C0RND12345", name: "random", is_member: false }] })],
   [/slack\.com\/api\/conversations\.history/, () => reply({ ok: true, messages: [{ text: "Practice at 5", ts: "1761800000.0001" }] })],
   [/slack\.com\/api\/chat\.postMessage/, () => reply({ ok: true })],
@@ -79,6 +80,7 @@ const API = [
   [/graph\.instagram\.com\/me\?/, () => reply({ username: "sam", followers_count: 30, media_count: 3 })],
   [/get_current_account/, () => reply({ email: "sam@example.com" })],
   [/files\/list_folder/, () => reply({ entries: [{ ".tag": "file", name: "essay.docx", server_modified: "2026-10-29T10:00:00Z" }] })],
+  [/files\/search_v2/, (u, i) => reply({ matches: JSON.parse(i.body).query === "tax" ? [{ metadata: { metadata: { ".tag": "file", name: "tax-2025.pdf", path_display: "/Money/tax-2025.pdf", server_modified: "2026-04-10T10:00:00Z" } } }] : [] })],
   [/graph\.microsoft\.com\/v1\.0\/me\/messages/, () => reply({ value: [{ subject: "Field trip", isRead: false, from: { emailAddress: { name: "Ms. K" } }, bodyPreview: "Bring lunch" }] })],
   [/calendarView/, () => reply({ value: [{ subject: "Dentist", start: { dateTime: "2026-11-02T16:00:00" }, location: { displayName: "Clinic" } }] })],
   [/me\/drive\/root\/children/, () => reply({ value: [{ name: "Report.docx", lastModifiedDateTime: "2026-10-29T10:00:00Z" }] })],
@@ -251,9 +253,30 @@ let ctx = await CC.appContext({ ...env, DB: db }, "u1", "When is my next Zoom me
 assert(ctx.read.join() === "Zoom" && ctx.text.includes("Study group"), "a chat question about Zoom reads it, and says which app it read (shown under the reply)");
 ctx = await CC.appContext({ ...env, DB: db }, "u1", "Write a poem about the sea");
 assert(ctx.read.length === 0 && ctx.text === "", "an everyday question reads nothing");
+notionQueries.length = 0;
+ctx = await CC.appContext({ ...env, DB: db }, "u1", "What's in my Notion notes about the science fair?");
+assert(notionQueries[0] === "science fair" && ctx.read.join() === "Notion" && ctx.text.includes("Test 4 bean plants, 2 with music") && ctx.text.includes("[x] Buy pots") && ctx.text.includes("PLAN"), "Notion: the question's key words search the pages, and the best pages are read (" + JSON.stringify(notionQueries) + ")");
+notionQueries.length = 0;
+ctx = await CC.appContext({ ...env, DB: db }, "u1", "what did I write in Notion about nothing matches");
+assert(notionQueries.join("|") === "nothing matches|" && ctx.text.includes("Recently edited") && !ctx.text.includes("bean plants"), "Notion: when no page matches, the recently edited pages are listed instead");
+assert(A.searchWords("summarize my Notion pages", /\bnotion\b/gi) === "" && A.searchWords("Show my Notion page on Rome's history!", /\bnotion\b/gi) === "Rome's history", "a question with no topic just lists recent pages; a topic keeps its words");
 x = await call({ action: "write", app: "slack", op: "send", text: "hi", where: "C0GEN12345" });
 assert(x.status === 400, "the endpoint doesn't send without Send either");
 x = await call({ action: "disconnect", app: "zoom" });
 assert(x.d.ok && !db.conns.has("u1|zoom"), "Disconnect removes it");
 x = await call({ action: "start", app: "nope" });
 assert(x.status === 400, "unknown apps are refused");
+
+// ---- "add … to my Todoist" / "post … to my Discord" in a chat (src/lib/appIntent.js) ----
+const { appIntent } = await import(new URL("../src/lib/appIntent.js", import.meta.url).href);
+const on = ["todoist", "discord"], J = (t, c = on) => JSON.stringify(appIntent(t, c));
+assert(J("Add buy milk to my Todoist") === '{"app":"todoist","op":"add","name":"Todoist","body":"buy milk"}' && J('please add "finish the poster" to todoist') === '{"app":"todoist","op":"add","name":"Todoist","body":"finish the poster"}', "chat: \"add buy milk to my Todoist\" adds exactly that");
+assert(J("add this to my todoist") === '{"app":"todoist","op":"add","name":"Todoist","last":true}' && J("make a study plan and add it to my Todoist") === "null", "chat: \"add this to my Todoist\" adds the last answer; a new answer isn't turned into one big task");
+assert(J("post this to my Discord") === '{"app":"discord","op":"post","name":"Discord","last":true}' && J("write a short hype message for the team and post it to my discord channel") === '{"app":"discord","op":"post","name":"Discord","after":true}' && J("post See you at 5! to discord") === '{"app":"discord","op":"post","name":"Discord","body":"See you at 5!"}', "chat: Discord posts the last answer, a new answer, or the words given");
+assert(J("Add buy milk to my Todoist", ["discord"]) === "null" && J("How do I add a task in Todoist?") === "null" && J("add 2 and 3") === "null", "chat: only apps that are connected, and questions about the apps aren't requests");
+
+// ---- Dropbox searches for what the question is about ----
+ctx = await CC.appContext({ ...env, DB: db }, "u1", "find my tax files in Dropbox");
+assert(ctx.read.join() === "Dropbox" && ctx.text.includes("/Money/tax-2025.pdf") && !ctx.text.includes("essay.docx"), "Dropbox: \"find my tax files in Dropbox\" searches for them");
+ctx = await CC.appContext({ ...env, DB: db }, "u1", "what's in my dropbox about unicorns");
+assert(ctx.text.includes("essay.docx") && ctx.text.includes("Your Dropbox"), "Dropbox: when nothing matches it shows the top folder");

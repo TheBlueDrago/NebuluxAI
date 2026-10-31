@@ -40,6 +40,17 @@ export const verifier = () => b64u(crypto.getRandomValues(new Uint8Array(32)));
 export const challenge = async (v) => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v))));
 const sec = (title, items) => ({ title, items: items.filter(Boolean) });
 const item = (t, s, more) => ({ t: clip(t, 160), ...(s ? { s: clip(s, 200) } : {}), ...(more || {}) });
+// The words of a chat question worth searching an app for ("what's in my Notion notes about the science
+// fair?" -> "science fair"); "" when nothing is left. app: the app's own name, taken out too.
+const NOT_SEARCH = /\b(what'?s|what|whats|is|are|was|were|in|on|at|of|about|for|from|to|my|me|i|the|a|an|and|or|any|do|does|did|have|has|show|find|tell|give|read|check|look|see|search|summari[sz]e|please|can|could|you|notes?|pages?|docs?|documents?|files?|write|written|wrote|there|it|this|that|with)\b/gi;
+export const searchWords = (q, app) => String(q || "").replace(app || /$^/, " ").replace(/[^\p{L}\p{N}\s'-]/gu, " ").replace(NOT_SEARCH, " ").replace(/\s+/g, " ").trim().split(" ").filter((w) => w.length > 1).slice(0, 5).join(" ");
+// A Notion page's blocks as lines of text (headings, paragraphs, lists, to-dos, quotes).
+const notionLines = (blocks) => blocks.map((b) => {
+  const v = b && b[b.type];
+  const text = ((v && v.rich_text) || []).map((r) => r.plain_text || "").join("").trim();
+  if (!text) return "";
+  return b.type === "to_do" ? (v.checked ? "[x] " : "[ ] ") + text : /^heading_/.test(b.type) ? text.toUpperCase() : text;
+}).filter(Boolean);
 
 // A failed read: 401/403 means the permission is gone (reconnect); anything else is "try again".
 class AppError extends Error { constructor(status, msg) { super(msg || "app " + status); this.status = status; } }
@@ -59,10 +70,23 @@ export const APPS = {
     n: "Notion", cat: "Productivity", about: "Search and read your Notion pages",
     env: "NOTION", auth: "https://api.notion.com/v1/oauth/authorize", token: "https://api.notion.com/v1/oauth/token", extra: { owner: "user" }, basic: true, json: true,
     account: (tok, t) => (t && (t.workspace_name || (t.owner && t.owner.user && t.owner.user.name))) || "",
-    read: async (tok) => {
-      const d = need(await j("https://api.notion.com/v1/search", { method: "POST", ...bearer(tok, { "Notion-Version": "2022-06-28", "Content-Type": "application/json" }), body: JSON.stringify({ sort: { direction: "descending", timestamp: "last_edited_time" }, page_size: 12 }) }));
+    // q: the chat question. Its key words search the pages, and the two best pages are read, so
+    // "what's in my Notion notes about the science fair" sees what the notes say, not only their titles.
+    read: async (tok, x, env, q) => {
+      const H = bearer(tok, { "Notion-Version": "2022-06-28", "Content-Type": "application/json" });
+      const search = (query) => j("https://api.notion.com/v1/search", { method: "POST", ...H, body: JSON.stringify({ ...(query ? { query } : {}), sort: { direction: "descending", timestamp: "last_edited_time" }, page_size: 12 }) });
+      const words = searchWords(q, /\bnotion\b/gi);
+      let d = need(await search(words));
+      const found = !!words && (d.results || []).length > 0;
+      if (words && !found) d = need(await search(""));
       const title = (p) => { const props = p.properties || {}; const tp = Object.values(props).find((v) => v && v.type === "title"); const arr = (tp && tp.title) || p.title || []; return arr.map((x) => x.plain_text || "").join("") || "Untitled"; };
-      return [sec("Recently edited", (d.results || []).map((p) => item(title(p), (p.object === "database" ? "Database · " : "") + "edited " + day(p.last_edited_time), { u: p.url })))];
+      const list = sec(found ? `Pages about "${words}"` : "Recently edited", (d.results || []).map((p) => item(title(p), (p.object === "database" ? "Database · " : "") + "edited " + day(p.last_edited_time), { u: p.url })));
+      if (!found) return [list];
+      const pages = await Promise.all((d.results || []).filter((p) => p.object === "page").slice(0, 2).map(async (p) => {
+        const b = await j(`https://api.notion.com/v1/blocks/${p.id}/children?page_size=60`, H);
+        return sec("In " + title(p), notionLines((b.data && b.data.results) || []).slice(0, 14).map((l) => item(l)));
+      }));
+      return [list, ...pages];
     },
   },
   slack: {
@@ -191,8 +215,17 @@ export const APPS = {
     n: "Dropbox", cat: "Productivity", about: "See your files and folders",
     env: "DROPBOX", auth: "https://www.dropbox.com/oauth2/authorize", token: "https://api.dropboxapi.com/oauth2/token", extra: { token_access_type: "offline" },
     account: async (tok) => { const d = (await j("https://api.dropboxapi.com/2/users/get_current_account", { method: "POST", ...bearer(tok, { "Content-Type": "application/json" }), body: "null" })).data || {}; return d.email || (d.name && d.name.display_name) || ""; },
-    read: async (tok) => {
-      const d = need(await j("https://api.dropboxapi.com/2/files/list_folder", { method: "POST", ...bearer(tok, { "Content-Type": "application/json" }), body: JSON.stringify({ path: "", limit: 30 }) }));
+    // q: the chat question. "find my tax files in Dropbox" searches for "tax"; otherwise the top folder.
+    read: async (tok, x, env, q) => {
+      const H = bearer(tok, { "Content-Type": "application/json" });
+      const row = (f) => item((f[".tag"] === "folder" ? "Folder: " : "") + (f.path_display || f.name), f.server_modified ? "changed " + day(f.server_modified) : "");
+      const words = searchWords(q, /\bdrop ?box\b/gi);
+      if (words) {
+        const s = need(await j("https://api.dropboxapi.com/2/files/search_v2", { method: "POST", ...H, body: JSON.stringify({ query: words, options: { max_results: 20 } }) }));
+        const hits = (s.matches || []).map((m) => m.metadata && m.metadata.metadata).filter(Boolean);
+        if (hits.length) return [sec(`Files matching "${words}"`, hits.map(row))];
+      }
+      const d = need(await j("https://api.dropboxapi.com/2/files/list_folder", { method: "POST", ...H, body: JSON.stringify({ path: "", limit: 30 }) }));
       const e = (d.entries || []).sort((a, b) => String(b.server_modified || "").localeCompare(String(a.server_modified || "")));
       return [sec("Your Dropbox", e.slice(0, 25).map((f) => item((f[".tag"] === "folder" ? "Folder: " : "") + f.name, f.server_modified ? "changed " + day(f.server_modified) : "")))];
     },
@@ -380,11 +413,12 @@ export async function appAccess(env, db, uid, k) {
 }
 
 // Read one app: { app, account, sections } (or { error, reconnect }).
-export async function readApp(env, db, uid, k) {
+// q (optional): the chat question, for apps that can search for it (Notion).
+export async function readApp(env, db, uid, k, q = "") {
   const a = await appAccess(env, db, uid, k);
   if (!a.token) return gone(k, a.status);
   try {
-    return { app: k, name: nameOf(k), account: a.account, sections: (await APPS[k].read(a.token, a.x, env)).filter((s) => s && s.items && s.items.length) };
+    return { app: k, name: nameOf(k), account: a.account, sections: (await APPS[k].read(a.token, a.x, env, q)).filter((s) => s && s.items && s.items.length) };
   } catch (e) {
     if (e && (e.status === 401 || e.status === 403)) { await markReconnect(db, uid, k); return gone(k, "reconnect"); }
     return gone(k, "down");

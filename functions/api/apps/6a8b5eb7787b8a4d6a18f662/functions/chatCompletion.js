@@ -472,7 +472,7 @@ export async function appContext(env, uid, question) {
     // asked about an app they haven't connected: the AI says where to connect it instead of guessing
     const note = missing.length ? `They asked about ${missing.map(nameOf).join(" and ")}, which they haven't connected, so you can't see it. If answering needs what's in it, don't guess: tell them they can connect it in Settings → Connectors and ask again. Otherwise just answer.\n\n` : "";
     if (!keys.length) return { text: note, read: [] };
-    const reads = (await Promise.all(keys.map((k) => readAny(env, env.DB, uid, k).catch(() => null)))).filter((x) => x && !x.error);
+    const reads = (await Promise.all(keys.map((k) => readAny(env, env.DB, uid, k, question).catch(() => null)))).filter((x) => x && !x.error);
     const text = reads.map((x) => readText(x)).join("\n\n");
     return { read: text ? reads.map((x) => x.name) : [], text: note + (text ? `From the person's connected apps (they connected these in Settings → Connectors; answer from this when it helps, and don't make up anything that isn't here):\n${text}\n\n` : "") };
   } catch {
