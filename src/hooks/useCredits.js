@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { sessionState } from "@/lib/creditRefresh";
+import { myTeam } from "@/lib/myTeam";
 
 // Credits are counted and enforced on the server (the Cloudflare "credits" and
 // "chatCompletion" functions, see cloudflare-lib/credits.js). They used to live in
@@ -37,8 +38,7 @@ export function useCredits() {
 
   useEffect(() => {
     refresh();
-    base44.functions
-      .invoke("my-team")
+    myTeam()
       .then((r) => {
         const t = r?.data?.team;
         setTeam(t && t.active ? t : null);

@@ -18,6 +18,29 @@ const CODE_PLANS = ["pro", "team", "enterprise", "max", "secret"];
 
 const AppShellContext = createContext(null);
 
+// record-email only matters the first time an account is seen, and for an admin on each new network
+// (functions/.../record-email.js), so a device asks once per account (admins on every load): every
+// server call counts toward the free plan's daily requests.
+const recordEmail = (u) => {
+  if (!u?.id) return;
+  const key = `bh-seen:${u.id}`;
+  try {
+    if (u.role !== "admin" && localStorage.getItem(key) === "1") return;
+  } catch {
+    // Storage blocked: ask the server, as before.
+  }
+  base44.functions
+    .invoke("record-email")
+    .then(() => {
+      try {
+        localStorage.setItem(key, "1");
+      } catch {
+        // Storage blocked: it asks again next time.
+      }
+    })
+    .catch(() => {});
+};
+
 export const useAppShell = () => useContext(AppShellContext);
 
 export function AppShellProvider({ children }) {
@@ -40,12 +63,12 @@ export function AppShellProvider({ children }) {
   });
 
   useEffect(() => {
-    base44.functions.invoke("record-email").catch(() => {});
     base44.auth
       .me()
       .then((u) => {
         setCurrentUser(u);
         restoreChats(u?.id); // chats this account put aside when it last signed out here
+        recordEmail(u);
       })
       .catch(() => setCurrentUser(null))
       .finally(() => setAuthChecked(true));

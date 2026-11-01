@@ -136,14 +136,34 @@ const functions = {
   },
 };
 
+// Several parts of the app ask who's signed in as it opens: they share one answer while it's on its way and
+// for a few seconds after (every server call counts toward the free plan's daily requests). Changing the
+// account, signing in again, or me({ fresh: true }) asks the server again.
 let pendingMe = null;
+let meDone = 0;
+const ME_SHARE_MS = 10000;
 const auth = {
   hasToken: () => !!token,
-  me() {
-    if (!pendingMe) pendingMe = call("GET", `/apps/${appId}/entities/User/me`).finally(() => (pendingMe = null));
+  me({ fresh = false } = {}) {
+    if (fresh || !pendingMe || (meDone && Date.now() - meDone > ME_SHARE_MS)) {
+      const p = call("GET", `/apps/${appId}/entities/User/me`);
+      pendingMe = p;
+      meDone = 0;
+      p.then(
+        () => {
+          if (pendingMe === p) meDone = Date.now();
+        },
+        () => {
+          if (pendingMe === p) pendingMe = null;
+        }
+      );
+    }
     return pendingMe;
   },
-  updateMe: (data) => call("PUT", `/apps/${appId}/entities/User/me`, { data }),
+  updateMe: (data) => {
+    pendingMe = null;
+    return call("PUT", `/apps/${appId}/entities/User/me`, { data }).finally(() => (pendingMe = null));
+  },
   setToken(value, saveToStorage = true) {
     if (!value) return;
     pendingMe = null;

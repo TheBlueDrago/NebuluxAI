@@ -96,7 +96,7 @@ export default function TeamMembership({ onBack }) {
   const load = () => {
     Promise.all([
       base44.functions.invoke("my-team").catch(() => null),
-      base44.auth.me().catch(() => null),
+      base44.auth.me({ fresh: true }).catch(() => null),
     ]).then(([r, u]) => {
       setTeam(r?.data?.team ?? null);
       setMe(u);

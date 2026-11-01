@@ -89,11 +89,16 @@ assert(store.get("base44_access_token") === v.access_token, "setToken saves it")
 
 const me = await base44.auth.me();
 assert(me.email === "kid@example.com", "me() returns the person");
+const meGets = () => seen.filter((x) => x.path.endsWith("/User/me") && x.method === "GET").length;
 const [a, b] = await Promise.all([base44.auth.me(), base44.auth.me()]);
-assert(a.id === b.id && seen.filter((x) => x.path.endsWith("/User/me") && x.method === "GET").length === 3, "two me() at once share one request");
+assert(a.id === b.id && meGets() === 2, "two me() right after share the answer that just came (no new request)");
+const [c, d] = await Promise.all([base44.auth.me({ fresh: true }), base44.auth.me()]);
+assert(c.id === d.id && meGets() === 3, "me({ fresh: true }) asks again, and a me() at the same time shares that request");
 
 const upd = await base44.auth.updateMe({ full_name: "Kid" });
 assert(upd.full_name === "Kid", "updateMe works");
+const after = await base44.auth.me();
+assert(after.full_name === "Kid" && meGets() === 4, "after a change to the account, me() asks again (never the old name)");
 
 const g = await base44.entities.PublishedGame.create({ name: "mygame", title: "My Game", hidden: false });
 assert(g.id && g.created_by_id === me.id, "entities.create");

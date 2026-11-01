@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { myTeam } from "@/lib/myTeam";
 import useEscape from "@/hooks/useEscape";
 import useDialogFocus from "@/hooks/useDialogFocus";
 
@@ -28,8 +28,7 @@ export default function TeamWelcomePopup({ onAddPeople }) {
   const [team, setTeam] = useState(null);
 
   useEffect(() => {
-    base44.functions
-      .invoke("my-team")
+    myTeam()
       .then((r) => {
         const t = r.data?.team;
         if (!t || !t.isOwner || !t.active || !t.id) return;
