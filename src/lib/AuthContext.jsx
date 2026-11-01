@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44, getPublicSettings } from '@/api/base44Client';
+import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { clearSignIn, signInAgain, signOut } from '@/lib/signOut';
 
@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(!early);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(!!early);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   useEffect(() => {
     checkAppState();
@@ -46,16 +45,13 @@ export const AuthProvider = ({ children }) => {
       if (!early) setIsLoadingPublicSettings(true);
       setAuthError(null);
       
-      // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
-
-      // Ask who's signed in at the same time as the settings instead of after them, so the
-      // app appears one network round trip sooner (it matters most on phones).
+      // Who's signed in. (Base44's "public settings" were asked for first on every page; on Nebulux's own
+      // server they never say anything the app needs, so that call is gone: one less server request per
+      // visit, and a failed one can't show "Failed to load app" any more. The sign-up check's robot key
+      // is fetched by components/Turnstile.jsx when that form opens.)
       const signedIn = appParams.token ? base44.auth.me().then((u) => ({ u }), (e) => ({ e })) : null;
 
       try {
-        const publicSettings = await getPublicSettings();
-        setAppPublicSettings(publicSettings);
 
         // If we got the app public settings successfully, check if user is authenticated
         if (signedIn) {
@@ -170,7 +166,6 @@ export const AuthProvider = ({ children }) => {
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
-      appPublicSettings,
       authChecked,
       logout,
       navigateToLogin,
