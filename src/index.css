@@ -182,6 +182,11 @@
 .light .text-green-300 { color: #15803d; }
 .light .text-red-300 { color: #b91c1c; }
 .light .text-red-400 { color: #dc2626; }
+/* The Games page (pages/chat/GamesFront.jsx) has its own dark grays and a light/dark switch: in light mode the
+   grays turn light too, so the theme's dark text (game names, headings, the top bar's icons) can be read */
+.light .games-home { background-color: #f3f4f6; }
+.light .games-home .bg-\[\#191b1d\] { background-color: #ffffff; }
+.light .games-home .border-black\/40 { border-color: rgb(15 23 42 / 0.1); }
 
 .sidebar-scroll::-webkit-scrollbar {
   width: 6px;
