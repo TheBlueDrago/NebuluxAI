@@ -18,6 +18,7 @@
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
+import { sendEmail } from "../../../../../cloudflare-lib/mail.js";
 
 const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const REMEMBER_DAYS = 90;
@@ -89,22 +90,17 @@ export const maskEmail = (e) => {
 };
 
 async function sendCode(env, to, code) {
-  if (!env.RESEND_API_KEY) return false;
+  if (!env.RESEND_API_KEY) return { ok: false };
   try {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        from: "Nebulux AI <support@nebuluxai.com>",
-        to: [to],
-        subject: `${code} is your Nebulux AI sign-in code`,
-        text: `Your Nebulux AI sign-in code is ${code}\n\nIt works for 10 minutes. If you didn't try to sign in, change your password: someone may know it.\n\nNebulux AI`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:420px;margin:auto;padding:24px;color:#0f172a"><p>Your Nebulux AI sign-in code:</p><p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${code}</p><p style="color:#475569;font-size:14px">It works for 10 minutes. If you didn't try to sign in, change your password: someone may know it.</p><p style="color:#475569;font-size:14px">Nebulux AI</p></div>`,
-      }),
+    return await sendEmail(env, {
+      to,
+      subject: `${code} is your Nebulux AI sign-in code`,
+      text: `Your Nebulux AI sign-in code is ${code}\n\nIt works for 10 minutes. If you didn't try to sign in, change your password: someone may know it.\n\nNebulux AI`,
+      html: `<div style="font-family:system-ui,sans-serif;max-width:420px;margin:auto;padding:24px;color:#0f172a"><p>Your Nebulux AI sign-in code:</p><p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${code}</p><p style="color:#475569;font-size:14px">It works for 10 minutes. If you didn't try to sign in, change your password: someone may know it.</p><p style="color:#475569;font-size:14px">Nebulux AI</p></div>`,
+      kind: "code",
     });
-    return r.ok;
   } catch {
-    return false;
+    return { ok: false };
   }
 }
 
@@ -128,7 +124,7 @@ export async function onRequestPost(context) {
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
       await kv.put(`twofa-code:${user.id}`, await sha(`${user.id}:${code}`), { expirationTtl: 600 });
       const sent = await sendCode(env, user.email, code);
-      if (!sent) return json({ error: "Couldn't send the email right now. Try again in a minute." }, 502);
+      if (!sent.ok) return json({ error: sent.full ? "We've sent all the emails we can for today. Use the code from your authenticator app if you have one, or try again tomorrow." : "Couldn't send the email right now. Try again in a minute." }, sent.full ? 503 : 502);
       return json({ sent: true, email: maskEmail(user.email) });
     }
     // The emailed code, once: right and not older than 10 minutes.

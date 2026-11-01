@@ -2,9 +2,10 @@
 // about: a new account, a plan bought or asked for, a blocked website or game, a rude username,
 // a message the AI's safety filter blocked, or suspicious activity like many failed sign-ins.
 // Sent with Resend (RESEND_API_KEY), whose free plan allows 100 emails a day for everything,
-// sign-up codes included, so owner alerts are capped at ALERTS_PER_DAY and the same alert
-// (same key) isn't sent again within an hour.
+// sign-up codes included, so owner alerts stop early in the day's emails (cloudflare-lib/mail.js),
+// are capped at ALERTS_PER_DAY, and the same alert (same key) isn't sent again within an hour.
 import { allow } from "./ratelimit.js";
+import { sendEmail } from "./mail.js";
 
 const ALERTS_PER_DAY = 80;
 
@@ -23,8 +24,9 @@ export function placeOf(request) {
   return [cf.city, cf.region, cf.country].filter(Boolean).join(", ") || "unknown";
 }
 
-// alertOwner(env, { key, subject, lines }): lines is a list of "Label: value" strings.
-export async function alertOwner(env, { key, subject, lines }) {
+// alertOwner(env, { key, subject, lines, kind }): lines is a list of "Label: value" strings. kind "newacct"
+// (a new account) stops earliest in the day's emails, so a busy day's sign-ups still get their codes.
+export async function alertOwner(env, { key, subject, lines, kind = "alert" }) {
   try {
     if (!env || !env.RESEND_API_KEY || !env.DB) return false;
     if (key && !(await allow(`owner-alert:${key}`, 1, 3600))) return false;
@@ -38,12 +40,7 @@ export async function alertOwner(env, { key, subject, lines }) {
       .split("\n")
       .map((l) => (l ? `<div>${esc(l)}</div>` : "<br>"))
       .join("")}</div>`;
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: "Nebulux AI <support@nebuluxai.com>", to, subject: `[Nebulux] ${subject}`, text, html }),
-    });
-    return r.ok;
+    return (await sendEmail(env, { to, subject: `[Nebulux] ${subject}`, text, html, kind })).ok;
   } catch {
     return false;
   }

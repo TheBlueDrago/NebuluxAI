@@ -10,6 +10,7 @@
 // of reply (the output: 1 credit per started 10,000 characters, times the effort level, the same
 // credits as chatting). Galaxy is 2x, Space 3x, Nebula 5x (Nebula: $0.50 in, $0.50 per credit out).
 import { CHARS_PER_CREDIT, EFFORT_MULT } from "./credits.js";
+import { sendEmail } from "./mail.js";
 
 export const BASE = 10000; // $0.10 in millicents
 export const PRICES = { "nebulux-ai": 1, galaxy: 2, space: 3, nebula: 5 }; // multipliers
@@ -94,10 +95,5 @@ export async function lowBalanceEmail(env, userId, model, before, after) {
   if (!email) return false;
   const name = NAMES[model] || model;
   const text = `Your ${name} API balance is down to ${dollars(Math.max(0, after))}.\n\nWhen it runs out, your API keys and website AI that use ${name} stop working. Add funds on the Nebulux Platform: https://nebuluxai.com/api (Billing).`;
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ from: "Nebulux AI <support@nebuluxai.com>", to: [email], subject: `Your ${name} API balance is low`, text }),
-  });
-  return true;
+  return (await sendEmail(env, { to: email, subject: `Your ${name} API balance is low`, text, kind: "notice" })).ok;
 }

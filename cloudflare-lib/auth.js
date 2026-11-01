@@ -14,6 +14,7 @@ import { create, getRow, all } from "./db.js";
 import { passwordProblem } from "../src/lib/passwordCheck.js";
 import { turnstileOk, TURNSTILE_FAILED } from "./turnstile.js";
 import { alertOwner, placeOf, rudeText } from "./ownerAlerts.js";
+import { sendEmail, FULL_MESSAGE } from "./mail.js";
 
 const SESSION_DAYS = 60;
 const enc = new TextEncoder();
@@ -51,14 +52,13 @@ function checkPassword(p, email) {
   if (problem) throw new AuthError(400, problem);
 }
 
-async function sendMail(env, to, subject, text, html) {
+// kind: "code" (sign-up codes and password links, which may use the whole day's emails), or an extra
+// like "welcome" or "device" that stops earlier (cloudflare-lib/mail.js).
+async function sendMail(env, to, subject, text, html, kind = "code") {
   if (!env.RESEND_API_KEY) throw new AuthError(503, "Email isn't set up yet. Please try again later.");
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ from: "Nebulux AI <support@nebuluxai.com>", to: [to], subject, text, html }),
-  }).catch(() => null);
-  if (!r || !r.ok) throw new AuthError(502, "We couldn't send the email. Please try again in a minute.");
+  const r = await sendEmail(env, { to, subject, text, html, kind });
+  if (r.full) throw new AuthError(503, FULL_MESSAGE + " Or use Continue with Google, which doesn't need an email from us.");
+  if (!r.ok) throw new AuthError(502, "We couldn't send the email. Please try again in a minute.");
 }
 
 const box = (inner) => `<div style="font-family:system-ui,sans-serif;max-width:420px;margin:auto;padding:24px;color:#0f172a">${inner}<p style="color:#475569;font-size:14px">Nebulux AI</p></div>`;
@@ -141,7 +141,7 @@ export async function noteDevice(db, env, request, userId, email) {
     const when = new Date().toUTCString();
     const text = `Someone just signed in to your Nebulux AI account from a new device:\n\n${d.label}${d.place ? `, near ${d.place}` : ""}\n${when}\n\nIf this was you, you can ignore this email.\n\nIf it wasn't you: change your password right away (https://nebuluxai.com/forgot-password), then go to Settings → Security → Sign out on all devices.`;
     const html = box(`<h2 style="margin:0 0 12px">New sign-in to your account</h2><p>Someone just signed in to your Nebulux AI account from a new device:</p><p style="background:#f1f5f9;border-radius:8px;padding:12px"><b>${d.label}</b>${d.place ? `<br>near ${d.place}` : ""}<br><span style="color:#475569">${when}</span></p><p>If this was you, you can ignore this email.</p><p><b>If it wasn't you:</b> <a href="https://nebuluxai.com/forgot-password" style="color:#6d28d9">change your password</a> right away, then go to Settings → Security → Sign out on all devices.</p>`);
-    await sendMail(env, email, "New sign-in to your Nebulux AI account", text, html);
+    await sendMail(env, email, "New sign-in to your Nebulux AI account", text, html, "device");
     return true;
   } catch {
     return false;
@@ -223,7 +223,7 @@ async function sendWelcome(env, email) {
   ];
   const text = `Welcome to Nebulux AI!\n\nThree things to try:\n\n${tries.map(([t, d, u], i) => `${i + 1}. ${t}: ${d}\n   ${u}`).join("\n\n")}\n\nHave fun!`;
   const html = box(`<h2 style="margin:0 0 12px">Welcome to Nebulux AI!</h2><p>Three things to try:</p>${tries.map(([t, d, u]) => `<p style="margin:14px 0"><a href="${u}" style="color:#6d28d9;font-weight:600">${t}</a><br><span style="color:#475569">${d}</span></p>`).join("")}<p>Have fun!</p>`);
-  await sendMail(env, email, "Welcome to Nebulux AI", text, html).catch(() => {});
+  await sendMail(env, email, "Welcome to Nebulux AI", text, html, "welcome").catch(() => {});
 }
 
 async function verifyOtp(db, env, body, request) {
@@ -246,7 +246,7 @@ async function verifyOtp(db, env, body, request) {
     const u = await getRow(db, "User", row.user_id).catch(() => null);
     const name = String((u && u.full_name) || "").trim() || "(no name)";
     const rude = rudeText(name);
-    await alertOwner(env, { subject: `New account: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `From: ${placeOf(request)}`] });
+    await alertOwner(env, { kind: "newacct", subject: `New account: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `From: ${placeOf(request)}`] });
     if (rude) await alertOwner(env, { key: `rude-name:${row.user_id}`, subject: `Inappropriate username: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `Flagged word: ${rude}`, "You can rename or ban them in Monitor."] });
   }
   if (env) await noteDevice(db, env, request, row.user_id, email);
@@ -417,7 +417,7 @@ export async function googleCallback(db, env, request) {
   if (!row && user) {
     const name = String(user.full_name || "").trim() || "(no name)";
     const rude = rudeText(name);
-    await alertOwner(env, { subject: `New account: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, "Signed up with: Google", `From: ${placeOf(request)}`] });
+    await alertOwner(env, { kind: "newacct", subject: `New account: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, "Signed up with: Google", `From: ${placeOf(request)}`] });
     if (rude) await alertOwner(env, { key: `rude-name:${userId}`, subject: `Inappropriate username: ${name}`, lines: [`Username: ${name}`, `Email: ${email}`, `Flagged word: ${rude}`, "You can rename or ban them in Monitor."] });
   }
   // No password yet (new, or moved over from Base44): Google only confirms who they are. They're

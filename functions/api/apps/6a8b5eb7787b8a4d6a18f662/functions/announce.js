@@ -6,6 +6,7 @@
 import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { blockedBy, unverified } from "../../../../../cloudflare-lib/bans.js";
+import { sendEmail } from "../../../../../cloudflare-lib/mail.js";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -51,21 +52,23 @@ export async function onRequestPost(context) {
       if (!subject || !text) return json({ error: "Subject and text are needed." }, 400);
       let sent = 0;
       let failed = 0;
+      let stopped = false;
       for (const r of list) {
         const key = `announce:${id}:${r.id}`;
         if (await kv.get(key)) continue;
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-          body: JSON.stringify({ from: "Nebulux AI <support@nebuluxai.com>", to: [r.email], subject, text: `${text}\n\nNebulux AI` }),
-        }).catch(() => null);
-        if (res && res.ok) {
+        const res = await sendEmail(env, { to: r.email, subject, text: `${text}\n\nNebulux AI`, kind: "announce" });
+        // Today's share of the emails is used (sign-up codes keep the rest): the others get it tomorrow.
+        if (res.full) {
+          stopped = true;
+          break;
+        }
+        if (res.ok) {
           sent++;
           await kv.put(key, "1");
         } else failed++;
         await wait(600); // Resend allows about 2 emails a second
       }
-      return json({ sent, failed, total: list.length });
+      return json({ sent, failed, total: list.length, ...(stopped ? { stopped: "Stopped at today's email limit. Send it again tomorrow: people who already got it are skipped." } : {}) });
     }
     return json({ error: "Unknown action." }, 400);
   } catch (err) {
