@@ -197,7 +197,7 @@ function Billing() {
         {yearPrice && (
           <div className="mt-4 inline-flex rounded-full bg-slate-800/80 p-1" role="group" aria-label="Billing">
             {[[false, "Monthly"], [true, `Yearly · save ${YEARLY_OFF}%`]].map(([v, label]) => (
-              <button key={label} type="button" onClick={() => setYearly(v)} aria-pressed={yearly === v} className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${yearly === v ? "bg-white text-slate-900" : "text-slate-300 hover:text-white"}`}>
+              <button key={label} type="button" onClick={() => setYearly(v)} aria-pressed={yearly === v} className={`tap-area px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${yearly === v ? "bg-white text-slate-900" : "text-slate-300 hover:text-white"}`}>
                 {label}
               </button>
             ))}

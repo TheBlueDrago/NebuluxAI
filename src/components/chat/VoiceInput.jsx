@@ -54,7 +54,7 @@ export default function VoiceInput({ onText, disabled }) {
         disabled={disabled}
         title={listening ? "Stop listening" : "Speak your message"}
         aria-label={listening ? "Stop listening" : "Speak your message"}
-        className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
+        className={`tap-area p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
           listening ? "bg-red-500/20 text-red-300 animate-pulse" : "text-slate-300 hover:bg-slate-800 hover:text-white"
         }`}
       >

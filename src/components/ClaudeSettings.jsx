@@ -47,7 +47,7 @@ const Btn = ({ children, onClick, danger }) => (
   <button onClick={onClick} className={`rounded-lg border px-3 py-1.5 text-[13.5px] ${danger ? "border-red-500/40 text-red-400 hover:bg-red-500/10" : "border-[var(--cl-border)] text-[var(--cl-text)] hover:bg-[var(--cl-hover)]"}`}>{children}</button>
 );
 const Toggle = ({ on, onChange, label }) => (
-  <button role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} className={`w-11 h-6 rounded-full relative transition-colors ${on ? "bg-blue-500" : "bg-[var(--cl-hover)]"}`}>
+  <button role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} className={`tap-area w-11 h-6 rounded-full relative transition-colors ${on ? "bg-blue-500" : "bg-[var(--cl-hover)]"}`}>
     <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
   </button>
 );
@@ -59,7 +59,7 @@ const Segmented = ({ value, onChange, options }) => (
   </div>
 );
 const Select = ({ value, onChange, options }) => (
-  <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent text-[14.5px] text-[var(--cl-text)] outline-none cursor-pointer text-right">
+  <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent text-[14.5px] text-[var(--cl-text)] outline-none cursor-pointer text-right py-2.5 -my-2.5 pl-2">
     {options.map(([k, l]) => <option key={k} value={k} className="bg-[var(--cl-card)]">{l}</option>)}
   </select>
 );

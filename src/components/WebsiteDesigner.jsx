@@ -809,7 +809,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             <button
               onClick={reload}
               title="Reload preview"
-              className="p-1.5 mr-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 transition-colors shrink-0"
+              className="tap-area p-1.5 mr-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 transition-colors shrink-0"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -1026,7 +1026,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
               <button
                 onClick={() => fileInputRef.current?.click()}
                 title="Attach images or files"
-                className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                className="tap-area p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>

@@ -61,7 +61,7 @@ export default function OutOfCredits({ tier, canSwitch = true }) {
                 {cost}/mo
               </span>
             </span>
-            <span className="block text-xs text-indigo-100 mt-0.5">
+            <span className="block text-xs text-[#e0e7ff] mt-0.5">
               +{upgrade.extra} {name} credits right away{upgrade.salePrice ? " · new-member price" : ""}
             </span>
           </button>
