@@ -1,9 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Subscriptions from "@/components/Subscriptions";
 
 export default function Plans() {
   const navigate = useNavigate();
+  useEffect(() => {
+    document.title = "Plans · Nebulux AI";
+    return () => {
+      document.title = "Nebulux AI";
+    };
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black overflow-hidden">
       <Subscriptions
