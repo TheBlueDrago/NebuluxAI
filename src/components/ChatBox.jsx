@@ -227,7 +227,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     const cur = browserRef.current?.current?.();
     if (cur?.type === "page" && cur.text) pageNote = `The person has this web page open in the Nebulux Browser (${cur.url}). It is read-only for you: you can read it and talk about it, but you can't click, type, sign in, edit, commit, push or change anything on it or on any site (GitHub included); if they ask you to change something there, explain how they can do it themselves.\n${cur.text.slice(0, 8000)}\n\n`;
     const waNote = sendAfter ? "(When you've answered, Nebulux sends your answer to the person's own WhatsApp for them. Just write what they asked for; don't say you can't send it.)\n\n"
-      : actAfter ? `(When you've answered, Nebulux posts your answer to the person's ${actAfter.name} channel for them, after they confirm. Just write what they asked for; don't say you can't post it.)\n\n` : "";
+      : actAfter ? `(When you've answered, Nebulux posts your answer to ${actAfter.where ? actAfter.where + " in the person's " + actAfter.name : "the person's " + actAfter.name + " channel"} for them, after they confirm. Just write what they asked for; don't say you can't post it.)\n\n` : "";
     const fullPrompt = `${sys ? sys + "\n\n" : ""}${modeNote}${cardNote}${waNote}${history}${pageNote}${text}${fileNote}`;
     if (reqIdRef.current !== myId) return;
     try {
@@ -362,7 +362,8 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     if (wa && !wa.after) { whatsappNow(text, wa); return; }
     // "Add buy milk to my Todoist", "post this to my Discord": done by the chat, after a yes.
     const act = wa ? null : appIntent(text, appsOn());
-    if (act && !act.after) { appActNow(text, act); return; }
+    // (a Slack message with no channel asks which one first, before anything is written)
+    if (act && (!act.after || act.where === "")) { appActNow(text, act); return; }
     if (isExhausted) return;
     waAfterRef.current = !!wa;
     appAfterRef.current = act && act.after ? act : null;
@@ -394,16 +395,17 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     }
   };
   // The last real answer (not one of these short notes like "Sent to your WhatsApp.").
-  const lastAnswer = () => [...messages].reverse().find((m) => m.role === "ai" && !m.err && !m.note && !/^(Sent to your WhatsApp|Added to your|Posted to your|Okay, I didn't)/.test(m.content || ""));
+  const lastAnswer = () => [...messages].reverse().find((m) => m.role === "ai" && !m.err && !m.note && !/^(Sent to your WhatsApp|Sent to #|Added to your|Posted to your|Okay, I didn't)/.test(m.content || ""));
 
-  // Send to a connected app (Todoist, Discord) once the person says yes.
+  // Send to a connected app (Todoist, Discord, Slack) once the person says yes.
   const appAct = async (convId, act, body) => {
     const short = body.length > 300 ? body.slice(0, 300) + "…" : body;
-    const yes = await askConfirm(act.op === "add" ? `Add this to your ${act.name}?\n\n"${short}"` : `Post this to your ${act.name} channel?\n\n"${short}"`, { confirmLabel: act.op === "add" ? "Add" : "Post" });
+    const ask = act.op === "add" ? `Add this to your ${act.name}?` : act.where ? `Send this to ${act.where} in your ${act.name}?` : `Post this to your ${act.name} channel?`;
+    const yes = await askConfirm(`${ask}\n\n"${short}"`, { confirmLabel: act.op === "add" ? "Add" : act.op === "send" ? "Send" : "Post" });
     if (!yes) { addMessage(convId, { role: "ai", note: true, content: "Okay, I didn't send it." }); return; }
     try {
-      await connectCall({ action: "write", app: act.app, op: act.op, text: body, confirmed: true });
-      addMessage(convId, { role: "ai", note: true, content: act.op === "add" ? `Added to your ${act.name}.` : `Posted to your ${act.name} channel.` });
+      await connectCall({ action: "write", app: act.app, op: act.op, text: body, confirmed: true, ...(act.where ? { where: act.where } : {}) });
+      addMessage(convId, { role: "ai", note: true, content: act.op === "add" ? `Added to your ${act.name}.` : act.where ? `Sent to ${act.where} in your ${act.name}.` : `Posted to your ${act.name} channel.` });
     } catch (e) {
       addMessage(convId, { role: "ai", note: true, err: true, content: e.message });
     }
@@ -416,10 +418,14 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     addMessage(convId, { role: "user", content: text });
     setInput("");
     if (isFirst) renameConversation(convId, chatTitle(text));
+    if (act.where === "") {
+      addMessage(convId, { role: "ai", note: true, content: `Which ${act.name} channel? Say it with the channel, like "send See you at 5 to #general on Slack".` });
+      return;
+    }
     const last = lastAnswer();
     const body = act.body || (last && last.content) || "";
     if (!body) {
-      addMessage(convId, { role: "ai", note: true, content: `There's nothing to send yet. Tell me what to send, like "${act.op === "add" ? "add buy milk to my " + act.name : "post See you at 5! to my Discord"}".` });
+      addMessage(convId, { role: "ai", note: true, content: `There's nothing to send yet. Tell me what to send, like "${act.op === "add" ? "add buy milk to my " + act.name : act.op === "send" ? "send See you at 5 to #general on Slack" : "post See you at 5! to my Discord"}".` });
       return;
     }
     if (act.op === "add" && !act.body && body.length > 300) {

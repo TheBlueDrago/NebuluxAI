@@ -114,7 +114,7 @@ export const APPS = {
         const want = channel.replace(/^#/, "").toLowerCase();
         const l = await j("https://slack.com/api/conversations.list?" + qs({ types: "public_channel,private_channel", exclude_archived: "true", limit: 200 }), bearer(tok));
         const hit = ((l.data && l.data.channels) || []).find((c) => c.is_member && String(c.name).toLowerCase() === want);
-        if (!hit) return false;
+        if (!hit) return { error: `You're not in a Slack channel called #${want}. Pick one you're in.` };
         channel = hit.id;
       }
       const r = await j("https://slack.com/api/chat.postMessage", { method: "POST", ...bearer(tok, { "Content-Type": "application/json; charset=utf-8" }), body: JSON.stringify({ channel, text: String(b.text || "").slice(0, 4000) }) });
@@ -440,7 +440,8 @@ export async function writeApp(env, db, uid, k, op, body) {
   if (!String(body.text || "").trim()) return { error: "Write something to send first." };
   const a = await appAccess(env, db, uid, k);
   if (!a.token) return gone(k, a.status);
-  return (await w.run(a.token, a.x, body).catch(() => false)) ? { ok: true } : { error: `${nameOf(k)} didn't take it. Try again in a moment.` };
+  const r = await w.run(a.token, a.x, body).catch(() => false);
+  return r && r.error ? { error: r.error } : r ? { ok: true } : { error: `${nameOf(k)} didn't take it. Try again in a moment.` };
 }
 export const writesOf = (k) => Object.entries((APPS[k] && APPS[k].write) || {}).map(([op, w]) => ({ op, label: w.label, where: w.where || "" }));
 

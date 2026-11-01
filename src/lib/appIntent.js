@@ -2,11 +2,14 @@
 // A chat message asking to send something to a connected app, done by the chat itself (and always
 // confirmed first): "add buy milk to my Todoist", "post this to my Discord", "write a poem and post it
 // to my Discord". Returns { app, op, name, body } (send that text), { …, last: true } (the last answer),
-// { …, after: true } (the answer to the rest of the message, once it's written), or null.
+// { …, after: true } (the answer to the rest of the message, once it's written), or null. Slack also gets
+// where: "#general" (or "" when they didn't say which channel).
 const ASKS = [
   { app: "todoist", op: "add", name: "Todoist", re: /\b(?:add|put)\s+([\s\S]+?)\s+(?:to|on|in|into)\s+(?:my\s+)?todoist\b/i, after: false },
   { app: "asana", op: "add", name: "Asana", re: /\b(?:add|put)\s+([\s\S]+?)\s+(?:to|on|in|into)\s+(?:my\s+)?asana\b/i, after: false },
   { app: "discord", op: "post", name: "Discord", re: /\b(?:post|send|share)\s+([\s\S]+?)\s+(?:to|on|in)\s+(?:my\s+)?discord(?:\s+channel)?\b/i, after: true },
+  // "send See you at 5 to #general on Slack", "post this to my Slack #random", "… in Slack channel general"
+  { app: "slack", op: "send", name: "Slack", channel: true, re: /\b(?:post|send|share)\s+([\s\S]+?)\s+(?:to|on|in|into)\s+(?:(?:the\s+)?#(?<c1>[\w.-]+)\s+(?:channel\s+)?(?:on|in)\s+)?(?:my\s+)?slack(?:\s+#(?<c2>[\w.-]+)|\s+channel\s+#?(?<c3>[\w.-]+))?(?![\w-])/i, after: true },
 ];
 const POINTER = /^(?:it|this|that|the (?:answer|reply|last (?:one|answer|reply|message))|that (?:answer|reply)|this (?:answer|reply))$/i;
 const FILLER = /\b(?:please|pls|now|thanks|thank you|can you|could you|would you|ok|okay|and|then)\b/gi;
@@ -22,7 +25,8 @@ export function appIntent(text, connected = []) {
     const m = a.re.exec(t);
     if (!m) continue;
     const what = m[1].trim().replace(/^["“']|["”']$/g, "").trim();
-    const base = { app: a.app, op: a.op, name: a.name };
+    const c = m.groups && (m.groups.c1 || m.groups.c2 || m.groups.c3);
+    const base = { app: a.app, op: a.op, name: a.name, ...(a.channel ? { where: c ? "#" + c.toLowerCase() : "" } : {}) };
     if (!POINTER.test(what)) return what ? { ...base, body: what } : null;
     const before = t.slice(0, m.index).replace(FILLER, "").replace(/[^a-z0-9]+/gi, "");
     if (!before) return { ...base, last: true };

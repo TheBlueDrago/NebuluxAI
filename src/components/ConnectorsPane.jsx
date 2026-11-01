@@ -21,7 +21,7 @@ const TRY = {
   gmail: ["What are my unread emails about?"], calendar: ["What's on my calendar this week?"], drive: ["What's new in my Google Drive?"],
   tasks: ["What's on my Google Tasks list?"], youtube: ["Which YouTube channels do I follow?"], contacts: ["What's the email address of Sam?"],
   github: ["Which pull requests are open on my GitHub?"], notion: ["What's in my Notion notes about the science fair?", "Summarize my latest Notion pages"],
-  slack: ["What's new in Slack?"], spotify: ["What was I listening to on Spotify?"], discord: ["Post See you at 5! to my Discord"],
+  slack: ["What's new in Slack?", "Send See you at 5 to #general on Slack"], spotify: ["What was I listening to on Spotify?"], discord: ["Post See you at 5! to my Discord"],
   dropbox: ["Find my tax files in Dropbox"], todoist: ["What's on my Todoist today?", "Add buy milk to my Todoist"], asana: ["What's due in Asana this week?", "Add call the dentist to my Asana"],
   linear: ["What are my Linear issues?"], zoom: ["When is my next Zoom meeting?"], twitch: ["Who's live on Twitch right now?"],
   outlook: ["What's new in my Outlook email?"], onedrive: ["What's new in my OneDrive?"], mstodo: ["What's on my Microsoft To Do list?"],

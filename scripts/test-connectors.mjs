@@ -197,7 +197,7 @@ assert(r.ok && JSON.parse(post.init.body).channel === "C0GEN12345", "Slack sends
 r = await writeApp(env, db, "u1", "slack", "send", { text: "hi", where: "#General", confirmed: true });
 assert(r.ok && JSON.parse(calls.filter((c) => /chat\.postMessage/.test(c.u)).pop().init.body).channel === "C0GEN12345", "a Slack draft to #general finds that channel");
 r = await writeApp(env, db, "u1", "slack", "send", { text: "hi", where: "#random", confirmed: true });
-assert(!r.ok, "but not one they aren't in");
+assert(!r.ok && r.error === "You're not in a Slack channel called #random. Pick one you're in.", "but not one they aren't in, and it says so");
 r = await writeApp(env, db, "u1", "discord", "post", { text: "@everyone hi", confirmed: true });
 const hook = calls.filter((c) => /webhooks/.test(c.u)).pop();
 assert(r.ok && JSON.parse(hook.init.body).allowed_mentions.parse.length === 0, "Discord posts to the picked channel and can't ping everyone");
@@ -278,6 +278,11 @@ assert(J("add this to my todoist") === '{"app":"todoist","op":"add","name":"Todo
 assert(J("post this to my Discord") === '{"app":"discord","op":"post","name":"Discord","last":true}' && J("write a short hype message for the team and post it to my discord channel") === '{"app":"discord","op":"post","name":"Discord","after":true}' && J("post See you at 5! to discord") === '{"app":"discord","op":"post","name":"Discord","body":"See you at 5!"}', "chat: Discord posts the last answer, a new answer, or the words given");
 assert(J("Add buy milk to my Todoist", ["discord"]) === "null" && J("How do I add a task in Todoist?") === "null" && J("add 2 and 3") === "null", "chat: only apps that are connected, and questions about the apps aren't requests");
 assert(J("Add call the dentist to my Asana", ["asana"]) === '{"app":"asana","op":"add","name":"Asana","body":"call the dentist"}' && J("add this to asana", ["asana"]) === '{"app":"asana","op":"add","name":"Asana","last":true}' && J("Add call the dentist to my Asana") === "null", "chat: \"add call the dentist to my Asana\" adds it there, once Asana is connected");
+{
+  const S = (t) => J(t, ["slack", "discord"]);
+  assert(S("Send See you at 5 to #general on Slack") === '{"app":"slack","op":"send","name":"Slack","where":"#general","body":"See you at 5"}' && S("post this to my Slack #Random") === '{"app":"slack","op":"send","name":"Slack","where":"#random","last":true}' && S("post this in Slack channel general") === '{"app":"slack","op":"send","name":"Slack","where":"#general","last":true}', "chat: \"send See you at 5 to #general on Slack\" sends it to that channel");
+  assert(S("write a poem and post it to #general on slack") === '{"app":"slack","op":"send","name":"Slack","where":"#general","after":true}' && S("post hello to slack") === '{"app":"slack","op":"send","name":"Slack","where":"","body":"hello"}' && S("How do I send a message in Slack?") === "null" && J("Send See you at 5 to #general on Slack") === "null" && S("post this to my Discord") === '{"app":"discord","op":"post","name":"Discord","last":true}', "chat: Slack writes a new answer for a channel, asks which channel when none is named, and leaves Discord alone");
+}
 
 // ---- Dropbox searches for what the question is about ----
 ctx = await CC.appContext({ ...env, DB: db }, "u1", "find my tax files in Dropbox");
