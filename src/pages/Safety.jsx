@@ -157,10 +157,10 @@ export default function Safety() {
           ))}
         </ul>
         <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          <Link to="/contact?topic=billing" className="inline-flex items-center gap-1.5 font-semibold text-white hover:text-sky-200">
+          <Link to="/contact?topic=billing" className="tap-area inline-flex items-center gap-1.5 font-semibold text-white hover:text-sky-200">
             Ask about a payment <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
-          <Link to="/contact?topic=parent" className="inline-flex items-center gap-1.5 font-semibold text-white hover:text-sky-200">
+          <Link to="/contact?topic=parent" className="tap-area inline-flex items-center gap-1.5 font-semibold text-white hover:text-sky-200">
             Contact us as a parent or teacher <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
         </div>
@@ -199,7 +199,7 @@ export default function Safety() {
           <Flag className="w-7 h-7 text-rose-300" />
           <h2 className="mt-3 text-xl font-semibold text-white">Seen something wrong?</h2>
           <p className="mt-2 text-slate-400 text-sm">Report a site or game that looks like a scam, bullies someone, copies someone else, or isn't OK for kids.</p>
-          <Link to="/report" className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-rose-200">
+          <Link to="/report" className="tap-area mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-rose-200">
             Report a page <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -209,10 +209,10 @@ export default function Safety() {
           <p className="mt-2 text-slate-400 text-sm">
             If you think you've found a way to get into accounts, credits or payments, please tell us privately first so we can fix it. We read every message.
           </p>
-          <Link to="/contact?topic=security" className="mt-4 mr-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-indigo-200">
+          <Link to="/contact?topic=security" className="tap-area mt-4 mr-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-indigo-200">
             Send a private message <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
-          <a href={`mailto:${CONTACT_EMAIL}?subject=Security%20report`} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-indigo-200 break-all">
+          <a href={`mailto:${CONTACT_EMAIL}?subject=Security%20report`} className="tap-area mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-indigo-200 break-all">
             {CONTACT_EMAIL} <ArrowRight className="w-4 h-4 shrink-0" />
           </a>
         </div>

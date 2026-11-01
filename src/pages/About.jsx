@@ -62,7 +62,7 @@ export default function About() {
               {CONTACT_PHONE}
             </a>
           </div>
-          <Link to="/contact" className="mt-6 inline-flex items-center gap-2 text-indigo-300 font-semibold hover:text-indigo-200">
+          <Link to="/contact" className="tap-area mt-6 inline-flex items-center gap-2 text-indigo-300 font-semibold hover:text-indigo-200">
             Send us a message <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

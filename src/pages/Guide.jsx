@@ -18,7 +18,7 @@ export default function Guide() {
         <section className="text-center py-24">
           <h1 className="text-3xl font-bold text-white">We couldn't find that guide</h1>
           <p className="mt-3 text-slate-400">It may have moved. Here are all of them:</p>
-          <Link to="/guides" className="inline-flex items-center gap-1 mt-6 text-indigo-300 hover:text-indigo-200">
+          <Link to="/guides" className="tap-area inline-flex items-center gap-1 mt-6 text-indigo-300 hover:text-indigo-200">
             All guides <ArrowRight className="w-4 h-4" />
           </Link>
         </section>
@@ -32,7 +32,7 @@ export default function Guide() {
   return (
     <PublicLayout title={g.title}>
       <article className="max-w-2xl mx-auto pt-6 sm:pt-10">
-        <Link to="/guides" className="inline-flex items-center gap-1 text-sm text-indigo-300 hover:text-indigo-200">
+        <Link to="/guides" className="tap-area inline-flex items-center gap-1 text-sm text-indigo-300 hover:text-indigo-200">
           <ArrowLeft className="w-4 h-4" /> All guides
         </Link>
         <h1 className="mt-4 text-3xl sm:text-5xl font-bold text-white leading-tight">{g.title}</h1>

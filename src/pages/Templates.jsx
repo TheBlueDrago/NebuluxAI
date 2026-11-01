@@ -68,7 +68,7 @@ export default function Templates() {
                 <h2 className="font-semibold text-white">{t.title}</h2>
                 <p className="text-xs text-slate-400">{t.blurb}</p>
                 {guideFor(t.id) && (
-                  <Link to={`/guides/${guideFor(t.id).slug}`} className="text-xs text-indigo-300 hover:underline">
+                  <Link to={`/guides/${guideFor(t.id).slug}`} className="tap-area text-xs text-indigo-300 hover:underline">
                     How-to guide
                   </Link>
                 )}

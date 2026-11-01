@@ -305,7 +305,7 @@ export default function Landing() {
           >
             Start chatting free <ArrowRight className="w-4 h-4" />
           </Link>
-          <Link to="/ideas" className="ml-4 inline-flex items-center gap-1 text-sm text-indigo-300 hover:text-indigo-200">
+          <Link to="/ideas" className="tap-area ml-4 inline-flex items-center gap-1 text-sm text-indigo-300 hover:text-indigo-200">
             Things to ask it <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -367,7 +367,7 @@ export default function Landing() {
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Play one now</h2>
             <p className="mt-2 text-slate-400">3D games made with Nebulux AI, for phones and computers. No account needed; sign in to get on the leaderboards.</p>
           </div>
-          <Link to="/arcade" className="shrink-0 text-sm text-indigo-300 hover:text-indigo-200">All games</Link>
+          <Link to="/arcade" className="tap-area shrink-0 text-sm text-indigo-300 hover:text-indigo-200">All games</Link>
         </div>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {GAMES.map((g) => (
@@ -399,7 +399,7 @@ export default function Landing() {
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Start from a template</h2>
             <p className="mt-2 text-slate-400">Try one right now, then make it yours by chatting with the AI.</p>
           </div>
-          <Link to="/templates" className="shrink-0 text-sm text-indigo-300 hover:text-indigo-200">All templates</Link>
+          <Link to="/templates" className="tap-area shrink-0 text-sm text-indigo-300 hover:text-indigo-200">All templates</Link>
         </div>
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           {HOME_TEMPLATES.map((t) => (

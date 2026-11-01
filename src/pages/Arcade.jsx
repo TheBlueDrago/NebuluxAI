@@ -75,12 +75,12 @@ export default function Arcade() {
             className="flex-1 bg-transparent outline-none text-sm text-slate-100 placeholder:text-slate-500"
           />
         </label>
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto py-1.5 -my-1.5">
           {["all", ...genresInUse].map((id) => (
             <button
               key={id}
               onClick={() => setGenre(id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs border transition-colors ${
+              className={`shrink-0 px-3.5 py-3 rounded-full text-xs border transition-colors ${
                 genre === id ? "bg-white text-slate-900 border-white" : "bg-slate-900/60 text-slate-300 border-slate-700/60 hover:text-white"
               }`}
             >

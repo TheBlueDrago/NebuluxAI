@@ -60,7 +60,7 @@ export default function Play() {
       <header className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-white/10">
         <GameMenu name={name} leaveTo="/" onRespawn={() => setResetKey((k) => k + 1)} />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="font-semibold truncate">{game?.title || name}</span>
+          <h1 className="text-base font-semibold truncate">{game?.title || name}</h1>
           {game?.genre && <span className="hidden sm:inline text-xs text-slate-400 capitalize shrink-0">· {game.genre}</span>}
         </div>
         {canRemix && (
@@ -70,7 +70,7 @@ export default function Play() {
         )}
         {game && !game.missing && <GameBoards name={name} />}
         {game && !game.missing && (
-          <ShareLink url={window.location.href} title={game.title || name} className="bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" />
+          <ShareLink url={window.location.href} title={game.title || name} className="tap-area bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" />
         )}
         {!findBuiltInGame(name) && game && !game.missing && (
           <a
@@ -103,7 +103,7 @@ export default function Play() {
         ))}
         <Link
           to={makeYourOwn}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-xs font-semibold hover:opacity-90"
+          className="tap-area shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-xs font-semibold hover:opacity-90"
         >
           <Sparkles className="w-3.5 h-3.5" /> Make your own
         </Link>

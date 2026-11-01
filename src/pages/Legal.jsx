@@ -22,7 +22,7 @@ function LegalPage({ title, other, children }) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-300 px-4 py-10">
       <article className="max-w-2xl mx-auto text-sm leading-relaxed [&_h2]:text-white [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-2 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_li]:mb-1 [&_a]:text-indigo-300 [&_a]:underline">
-        <Link to="/" className="!no-underline !text-slate-400 hover:!text-white inline-flex items-center gap-1.5 text-sm">
+        <Link to="/" className="tap-area !no-underline !text-slate-400 hover:!text-white inline-flex items-center gap-1.5 text-sm">
           <ArrowLeft className="w-4 h-4" /> Nebulux AI
         </Link>
         <h1 className="text-3xl font-bold text-white mt-6">{title}</h1>
