@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "description": "Plain files (the app's code, pictures, logos, videos) are served straight from Cloudflare's free static hosting, without starting the server code (functions/), so they don't count toward the free plan's 100,000 server requests a day. Everything else, pages included, still goes through functions/. Tested in scripts/test-routes.mjs.",
+  "include": ["/*"],
+  "exclude": [
+    "/assets/*",
+    "/logos/*",
+    "/game-thumbs/*",
+    "/apple-touch-icon.png",
+    "/blackhole.svg",
+    "/favicon-64.png",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/icon-maskable-512.png",
+    "/logo-small.jpg",
+    "/logo.png",
+    "/manifest.json",
+    "/nebulux-ad-poster.jpg",
+    "/nebulux-ad.mp4",
+    "/nebulux-reel.mp4",
+    "/og-image.jpg",
+    "/sw.js"
+  ]
+}

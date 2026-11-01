@@ -1,7 +1,8 @@
 // Maintenance for the Pages address (nebuluxai.pages.dev), which doesn't go through the site
 // router Worker that shows "temporarily down" on nebuluxai.com (workers/nebulux-site-router,
 // MAINTENANCE there). Only the background calls other parts of the site make here keep working:
-// the support email's AI reply and the router looking up published pages.
+// the support email's AI reply and the router looking up published pages. (Plain files like the app's
+// code and pictures never reach this file: public/_routes.json serves them directly.)
 import { useOwnDb } from "../cloudflare-lib/published.js";
 import { logError } from "../cloudflare-lib/errorlog.js";
 import { hybridKV } from "../cloudflare-lib/hybridkv.js";
