@@ -123,7 +123,7 @@ export function ShopShot({ className = "" }) {
           <ShoppingBag className="w-12 h-12 text-orange-500" />
         </div>
         <p className="mt-3 font-semibold">Handmade candle</p>
-        <p className="text-sm text-slate-500">Vanilla &amp; cedar, 8 oz</p>
+        <p className="text-sm text-[#475569]">Vanilla &amp; cedar, 8 oz</p>
         <div className="mt-3 flex items-center justify-between">
           <span className="text-lg font-bold">$14.00</span>
           <span className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">Buy now</span>
