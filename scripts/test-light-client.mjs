@@ -143,6 +143,15 @@ assert(e.response?.status === 402 && e.message === "Out of credits for today.", 
 globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: "x" } }), { status: 429, headers: { "content-type": "application/json" } });
 e = await base44.functions.invoke("echo", {}).catch((x) => x);
 assert(e.message === "Too many requests at once. Please wait a moment and try again.", "a non-text error falls back to plain words (" + e.message + ")");
+globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: "That plan is not open yet." } }), { status: 400, headers: { "content-type": "application/json" } });
+e = await base44.functions.invoke("echo", {}).catch((x) => x);
+assert(e.message === "That plan is not open yet.", "an error object's own message is used, never [object Object] (" + e.message + ")");
+globalThis.fetch = async () => new Response(JSON.stringify({ error: "Wrong code. Try again." }), { status: 400, headers: { "content-type": "application/json" } });
+e = await base44.auth.me({ fresh: true }).catch((x) => x);
+assert(e.status === 400 && e.message === "Wrong code. Try again.", "a sign-in or data answer's plain error text is shown (" + e.message + ")");
+globalThis.fetch = async () => new Response(JSON.stringify({ detail: [{ loc: ["x"], msg: "bad" }] }), { status: 422, headers: { "content-type": "application/json" } });
+e = await base44.auth.me({ fresh: true }).catch((x) => x);
+assert(e.message === "Something went wrong (error 422). Please try again.", "a list of details isn't shown as [object Object] (" + e.message + ")");
 globalThis.fetch = async () => new Response("", { status: 503 });
 e = await base44.auth.me({ fresh: true }).catch((x) => x);
 assert(e.status === 503 && /having trouble/.test(e.message), "the same for auth and entities calls (" + e.message + ")");

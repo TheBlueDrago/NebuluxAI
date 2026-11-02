@@ -9,6 +9,13 @@ export function isNetworkError(e, online = typeof navigator === "undefined" ? tr
 
 export const OFFLINE_NOTE = "Couldn't reach Nebulux AI. You may be offline, or the connection dropped. Check your connection and try again.";
 
+// The server's own words from an error answer: the first of these that is real text (an object here used to
+// become the message "[object Object]"), or "" when there are none.
+export function serverText(body) {
+  for (const v of [body?.error, body?.error?.message, body?.message, body?.detail]) if (typeof v === "string" && v.trim()) return v;
+  return "";
+}
+
 // The words for a server answer that came without its own message (instead of "Request failed with status code 500").
 export function statusNote(status) {
   if (status === 401) return "Please sign in again.";

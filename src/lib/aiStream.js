@@ -1,5 +1,5 @@
 import { appParams } from "@/lib/app-params";
-import { statusNote } from "@/lib/netError";
+import { statusNote, serverText } from "@/lib/netError";
 // Settings → Capabilities → Web search.
 const noWeb = () => { try { return localStorage.getItem("nx-web") === "off"; } catch { return false; } };
 import { startActivity, updateActivity, finishActivity } from "@/lib/aiActivity";
@@ -75,7 +75,7 @@ async function streamOnce(body, onDelta, { signal, onMeta } = {}) {
   });
 
   const fail = (status, data) => {
-    const err = new Error(data?.error || statusNote(status));
+    const err = new Error(serverText(data) || statusNote(status));
     err.response = { status, data };
     return err;
   };
