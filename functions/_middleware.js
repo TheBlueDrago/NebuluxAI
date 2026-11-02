@@ -11,7 +11,7 @@ const ALLOWED = [/^\/api\/support-reply$/, /^\/api\/apps\/[^/]+\/functions\/get-
 const MAINTENANCE = true;
 
 const DOWN_PAGE =
-  "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex'><title>Nebulux AI</title><style>body{background:#05060f;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}h1{font-size:22px;font-weight:600;max-width:420px;line-height:1.4}</style></head><body><h1>Sorry, Nebulux AI is down for maintenance right now. Come back soon!</h1></body></html>";
+  "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='robots' content='noindex'><title>Nebulux AI</title><link rel='icon' href='https://nebuluxai.com/favicon-64.png'><style>body{background:#05060f;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}h1{font-size:22px;font-weight:600;max-width:420px;line-height:1.4}</style></head><body><h1>Sorry, Nebulux AI is down for maintenance right now. Come back soon!</h1></body></html>";
 
 export async function onRequest(context) {
   useOwnDb(context.env && context.env.DB);
