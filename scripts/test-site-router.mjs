@@ -90,6 +90,8 @@ assert(res.status === 404, "deeper addresses aren't sites");
   const downHtml = await r.text();
   assert(r.status === 503 && downHtml.includes("down for maintenance"), "maintenance: visitors see the down page");
   assert(downHtml.includes("<link rel='icon' href='https://nebuluxai.com/favicon-64.png'>"), "the down page has the Nebulux tab icon");
+  const safe = (x) => x.headers.get("x-frame-options") === "SAMEORIGIN" && /max-age=31536000/.test(x.headers.get("strict-transport-security") || "") && x.headers.get("x-content-type-options") === "nosniff" && /frame-ancestors 'self'/.test(x.headers.get("content-security-policy") || "");
+  assert(safe(r), "the down page can't be framed by other sites, and says HTTPS only and no type guessing");
   r = await worker.fetch(new Request("https://nebuluxai.com/favicon-64.png"), env);
   assert(r.status !== 503 && asked.includes("https://nebuluxai.com/favicon-64.png"), "and the icon itself gets through while the site is down");
   r = await worker.fetch(new Request("https://nova.nebuluxai.com/"), env);
@@ -99,6 +101,7 @@ assert(res.status === 404, "deeper addresses aren't sites");
   r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123"), env);
   // The owner's link alone doesn't unlock anything: it asks for the owner password first.
   assert(r.status !== 302 && !/nx_owner=/.test(r.headers.get("set-cookie") || "") && /password/i.test(await r.text()), "the owner's link asks for the owner password before unlocking");
+  assert(r.headers.get("x-frame-options") === "SAMEORIGIN" && /frame-ancestors 'self'/.test(r.headers.get("content-security-policy") || ""), "the owner password page can't be shown inside another website's frame");
   r = await worker.fetch(new Request("https://nova.nebuluxai.com/", { headers: { cookie: "nx_owner=owner-secret-123" } }), env);
   assert(r.status === 200, "the owner gets in");
 }

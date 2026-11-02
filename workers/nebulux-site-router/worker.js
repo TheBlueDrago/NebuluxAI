@@ -336,6 +336,25 @@ async function crashed(request, env, ctx, err) {
 }
 var ERROR_PAGE = DOWN_PAGE.replace(/<h1>[^<]*<\/h1>/, "<h1>Sorry, something went wrong. Please try again in a minute.</h1>");
 
+// Pages this router makes itself (down for maintenance, owner sign-in, blocked) get the same safety headers as the
+// app (public/_headers): no framing by other sites, HTTPS only, no file-type guessing. People's sites keep their own.
+var OWN_HEADERS = {
+  "x-frame-options": "SAMEORIGIN",
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "content-security-policy": "frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
+};
+function own(res) {
+  if (!res) return res;
+  try {
+    for (var k in OWN_HEADERS) if (!res.headers.has(k)) res.headers.set(k, OWN_HEADERS[k]);
+    return res;
+  } catch (e) {
+    return res;
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     try {
@@ -358,9 +377,9 @@ async function route(request, env) {
     // nebuluxai.com and name.nebuluxai.com go down (owner's request, 2026-10-04).
     if (!root) return customDomain(host);
     var shut = await ownerBlock(request, env, url);
-    if (shut) return shut;
+    if (shut) return own(shut);
     var down = await maintenance(request, env, url);
-    if (down) return down;
+    if (down) return own(down);
     if (host === root || host === "www." + root) {
       var res = await fetch(request);
       // A code file from an older version (gone after an update) comes back from Pages as the app
