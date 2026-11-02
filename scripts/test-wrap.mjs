@@ -45,3 +45,15 @@ for (const f of ["src/pages/About.jsx", "src/pages/Contact.jsx"]) {
   assert(/<EmailText email=\{CONTACT_EMAIL\}/.test(src) && !/break-all">\{CONTACT_EMAIL\}/.test(src), `${f.split("/").pop()} shows the email with EmailText`);
 }
 assert(/<wbr \/>/.test(readFileSync(join(root, "src/components/EmailText.jsx"), "utf8")), "EmailText lets the address break after the @");
+
+// tailwindcss-animate also defines duration-*, ease-* and delay-*, so a custom value like duration-[380ms]
+// matches two plugins and Tailwind silently leaves it out (the sidebar and the intro screen lost their timing).
+// Custom timings use the CSS property itself: [transition-duration:380ms].
+{
+  const { readdirSync, statSync } = await import("node:fs");
+  const files = [];
+  const walk = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p); else if (/\.(jsx?|tsx?)$/.test(n)) files.push(p); } };
+  walk(join(root, "src"));
+  const bad = files.flatMap((f) => (readFileSync(f, "utf8").match(/(?<![\w-])(duration|ease|delay)-\[[^\]]+\]/g) || []).map((m) => f.slice(root.length + 1) + ": " + m));
+  assert(!bad.length, "no duration-[…], ease-[…] or delay-[…] classes, which Tailwind drops here" + (bad.length ? ": " + bad.join(", ") : ""));
+}

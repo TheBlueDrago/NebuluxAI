@@ -30,7 +30,7 @@ import BlackholeIcon from "@/components/BlackholeIcon";
 import ThinkingDots from "@/components/ThinkingDots";
 import AiChooser from "@/components/AiChooser";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
-import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
+import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
 
 // No modes: answer normally, and write code only when the person asks for something to be made.
@@ -343,15 +343,12 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // stays in the box if not).
     const risky = privateInfoIn(text);
     if (risky && !await askConfirm(`This looks like it has ${risky} in it. It's safer not to share that with the AI (or anyone online). Send it anyway?`)) return;
-    // Sent while it's still answering: "after you finish…" waits; anything else switches to it now,
-    // and the interrupted request is finished afterwards.
+    // Sent while it's still answering: it stops where it is (what it wrote stays) and answers this right
+    // away, told what it had written so it can carry on. Nothing waits in a queue (owner, 2026-11-02).
     if (loading) {
       setInput("");
-      if (isAfterMsg(text)) { q.push(text); return; }
-      const earlier = [...messages].reverse().find((m) => m.role === "user")?.content || "";
       q.setSteer(live);
       stop(true);
-      if (earlier) q.push(`Now go back and finish my earlier request where you left off: ${earlier}`);
       runPrompt(text, selectedAi);
       return;
     }
@@ -503,7 +500,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     return () => window.removeEventListener("keydown", onKey);
   }, [shell]);
 
-  const queued = loading || q.paused;
+  const queued = loading;
   const canSend = input.trim().length > 0 && (queued || !isExhausted);
 
   const announce = useReplyAnnouncer(messages, loading, conversation?.id);

@@ -53,7 +53,7 @@ export default function Splash() {
   if (phase === "gone") return null;
   return (
     // One click or tap anywhere skips it, just this time.
-    <div onPointerDown={() => setPhase("leaving")} onTransitionEnd={() => phase === "leaving" && setPhase("gone")} className={`fixed inset-0 z-[100] transition-opacity duration-[600ms] ease-in-out ${phase === "leaving" ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+    <div onPointerDown={() => setPhase("leaving")} onTransitionEnd={() => phase === "leaving" && setPhase("gone")} className={`fixed inset-0 z-[100] transition-opacity [transition-duration:600ms] ease-in-out ${phase === "leaving" ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
       <Intro />
     </div>
   );

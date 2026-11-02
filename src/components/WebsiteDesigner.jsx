@@ -9,7 +9,7 @@ import { zipToSite } from "@/lib/zipSite";
 import { checkUpload } from "@/lib/fileCheck";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
-import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
+import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { DISCUSS_NOTE, resolveIntent } from "@/hooks/useBuildMode";
 import { base44 } from "@/api/base44Client";
 import { showNotice as showNoticeLater } from "@/lib/dialogs";
@@ -638,13 +638,11 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
   const send = () => {
     const text = input.trim();
     if (!text) return;
-    // Sent while it's still working: "after you finish…" waits; anything else switches to it now,
-    // and the interrupted request is finished afterwards.
+    // Sent while it's still working: it stops and starts on this right away, told that the request
+    // before it wasn't finished so it does both. Nothing waits in a queue (owner, 2026-11-02).
     if (loading) {
-      if (isAfterMsg(text)) { setInput(""); q.push(text); return; }
-      const earlier = [...messagesRef.current].reverse().find((m) => m.role === "user")?.content || "";
+      q.setSteer("(the change for the request before this one, which wasn't finished yet)");
       stop();
-      if (earlier) q.push(`Now go back and finish my earlier request where you left off: ${earlier}`);
       runPrompt(text, selectedAi);
       return;
     }
@@ -652,7 +650,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
     runPrompt(text, selectedAi);
   };
 
-  const queued = loading || q.paused;
+  const queued = loading;
   const canSend = input.trim().length > 0 && (queued || !sendExhausted);
 
   const handleKeyDown = (e) => {

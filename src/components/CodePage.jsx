@@ -19,7 +19,7 @@ import EffortPicker from "@/components/chat/EffortPicker";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import ThinkingDots from "@/components/ThinkingDots";
 import SendOrStopButton from "@/components/chat/SendOrStopButton";
-import useMessageQueue, { isAfterMsg } from "@/hooks/useMessageQueue";
+import useMessageQueue from "@/hooks/useMessageQueue";
 import useBuildMode, { resolveIntent } from "@/hooks/useBuildMode";
 
 // Nebulux Code has no modes: it does whichever the message needs.
@@ -542,15 +542,13 @@ export default function CodePage({ userInitial }) {
       setTimeout(() => publishTo(target), 700);
       return;
     }
-    // Sent while it's still answering: "after you finish…" waits; anything else switches to it now,
-    // and the interrupted request is finished afterwards. The credits and time keep counting.
+    // Sent while it's still answering: it stops where it is (what it wrote stays) and answers this right
+    // away, told what it had written so it can carry on. Nothing waits in a queue (owner, 2026-11-02).
+    // The credits and time keep counting.
     if (loading) {
       setInput("");
-      if (isAfterMsg(text)) { q.push(text); return; }
-      const earlier = [...messages].reverse().find((m) => m.role === "user")?.content || "";
       q.setSteer(live);
       stop(true);
-      if (earlier) q.push(`Now go back and finish my earlier request where you left off: ${earlier}`);
       runPrompt(text);
       return;
     }
@@ -566,7 +564,7 @@ export default function CodePage({ userInitial }) {
     runPrompt(question, n - 2);
   };
 
-  const queued = loading || q.paused;
+  const queued = loading;
   const canSend = input.trim().length > 0 && (queued || !exhausted);
 
   const newCodeChat = () => {

@@ -98,7 +98,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
 
   return (
     <aside
-      className={`h-[100dvh] flex flex-col bg-[var(--cl-side)] border-r border-[color-mix(in_srgb,var(--cl-border)_60%,transparent)] text-[var(--cl-muted)] transition-[width] duration-200 ${
+      className={`h-[100dvh] flex flex-col bg-[var(--cl-side)] border-r border-[color-mix(in_srgb,var(--cl-border)_60%,transparent)] text-[var(--cl-muted)] transition-[width] [transition-duration:380ms] [transition-timing-function:cubic-bezier(.32,.72,0,1)] ${
         mobile ? "fixed left-0 top-0 z-50 w-[288px] shadow-2xl" : collapsed ? "w-[56px] shrink-0" : "w-[288px] shrink-0"
       }`}
     >
