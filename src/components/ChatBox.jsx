@@ -697,7 +697,6 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
             <div className="flex justify-start">
               <div className="bg-slate-800 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2.5">
                 <ThinkingDots className="py-1.5" />
-                {q.queue.length > 0 && <span className="text-slate-400 text-sm">{q.queue.length} up next</span>}
                 <LiveCost activityKey={conversation?.id ? `chat:${conversation.id}` : null} />
               </div>
             </div>

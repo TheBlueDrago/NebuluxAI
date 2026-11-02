@@ -742,7 +742,7 @@ export default function CodePage({ userInitial }) {
             {loading && !live && (
               <div className="flex items-center gap-2.5 text-[var(--cl-muted)]">
                 <ThinkingDots />
-                {(browsing || q.queue.length > 0) && <span className="text-sm">{browsing ? "Searching the web…" : ""}{q.queue.length > 0 ? `${browsing ? " · " : ""}${q.queue.length} up next` : ""}</span>}
+                {browsing && <span className="text-sm">Searching the web…</span>}
                 <LiveCost activityKey="code:live" since={runRef.current.start} extra={runRef.current.credits} />
               </div>
             )}
