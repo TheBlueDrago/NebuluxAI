@@ -137,7 +137,7 @@ export default function DialogHost() {
           {d.message}
         </p>
         {d.type === "text" && (
-          <input
+          <input aria-labelledby="bh-dialog-message"
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}

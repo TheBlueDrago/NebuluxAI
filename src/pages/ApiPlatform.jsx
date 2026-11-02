@@ -305,7 +305,7 @@ export default function ApiPlatform() {
                 <button onClick={() => setCreating(false)} aria-label="Close" className="p-1 rounded-md text-[var(--cl-muted)] hover:bg-[var(--cl-hover)]"><X className="w-5 h-5" /></button>
               </div>
               <label className="block text-[13px] text-[var(--cl-muted)] mb-1">Name your key</label>
-              <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="my-website-key" maxLength={60} className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-3 py-2 outline-none focus:border-[var(--cl-focus)] text-[14px]" />
+              <input aria-label="Key name" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="my-website-key" maxLength={60} className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-3 py-2 outline-none focus:border-[var(--cl-focus)] text-[14px]" />
               {err && <p className="mt-2 text-[13px] text-amber-300">{err}</p>}
               <div className="mt-5 flex justify-end gap-2">
                 <button onClick={() => setCreating(false)} className="rounded-lg border border-[var(--cl-border)] px-4 py-2 text-[14px] text-[var(--cl-muted)]">Cancel</button>
@@ -455,7 +455,7 @@ export default function ApiPlatform() {
         {user?.role === "admin" && (
           <div className="rounded-xl border border-dashed border-[var(--cl-border)] p-4 mb-4 flex flex-wrap items-center gap-2 text-[13.5px]">
             <span className="text-[var(--cl-muted)]">Admin: add test balance to {MODELS.find((x) => x[0] === fundModel)?.[1]} on your account</span>
-            <input type="number" min="1" max="1000" value={grantAmt} onChange={(e) => setGrantAmt(Number(e.target.value))} className="w-24 rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-2 py-1" />
+            <input aria-label="Test balance in dollars" type="number" min="1" max="1000" value={grantAmt} onChange={(e) => setGrantAmt(Number(e.target.value))} className="w-24 rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-2 py-1" />
             <button onClick={() => billCall({ action: "grant", model: fundModel, dollars: grantAmt }, "grant")} disabled={busy === "grant"} className="rounded-lg border border-[var(--cl-border)] px-3 py-1">Add</button>
           </div>
         )}

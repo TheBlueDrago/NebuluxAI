@@ -43,10 +43,10 @@ export default function SiteVariables({ site }) {
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_") }))} placeholder={form.type === "secret" ? "API_KEY" : "PHONE_NUMBER"} maxLength={40}
+          <input aria-label="Variable name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_") }))} placeholder={form.type === "secret" ? "API_KEY" : "PHONE_NUMBER"} maxLength={40}
             className="w-44 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[13px] text-slate-100 font-mono outline-none focus:border-sky-500" />
           <div className="relative flex-1 min-w-[180px]">
-            <input value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} type={form.type === "secret" && !peek ? "password" : "text"} placeholder="Value" autoComplete="off"
+            <input aria-label="Variable value" value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} type={form.type === "secret" && !peek ? "password" : "text"} placeholder="Value" autoComplete="off"
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 pr-9 text-[13px] text-slate-100 outline-none focus:border-sky-500" />
             {form.type === "secret" && <button type="button" onClick={() => setPeek((p) => !p)} className="absolute right-2 top-2 text-slate-500 hover:text-white">{peek ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>}
           </div>

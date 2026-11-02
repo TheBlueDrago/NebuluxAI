@@ -251,7 +251,7 @@ function Billing() {
 
         <div className="mt-5">
           <div className="flex items-center gap-2">
-            <input
+            <input aria-label="Promo code"
               type="text"
               value={promoInput}
               onChange={(e) => setPromoInput(e.target.value.toUpperCase())}

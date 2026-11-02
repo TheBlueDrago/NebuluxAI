@@ -167,7 +167,7 @@ function DomainDialog({ siteName, allowed, trial, onUpgrade, initialHost, onClos
           <div className="mt-4 space-y-3">
             <p className="text-slate-300">You need a domain first (from a seller like Namecheap, GoDaddy, Porkbun or Cloudflare). Then type it here:</p>
             <div className="flex gap-2">
-              <input
+              <input aria-label="Your domain"
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
                 placeholder="www.mybakery.com"

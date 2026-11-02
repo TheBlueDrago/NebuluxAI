@@ -166,7 +166,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
         >
           <div className="relative">
             {secure ? <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--cl-faint)]" /> : <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--cl-faint)]" />}
-            <input
+            <input aria-label="Web address"
               value={address}
               onChange={(ev) => setAddress(ev.target.value)}
               onFocus={(ev) => ev.target.select()}
@@ -198,7 +198,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
             >
               <div className="relative">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--cl-faint)]" />
-                <input name="q" autoFocus placeholder="Search the web" className="w-full rounded-full bg-[var(--cl-card)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] pl-10 pr-4 py-2.5 text-[14px] text-[var(--cl-text)] outline-none placeholder:text-[var(--cl-faint)] shadow-lg" />
+                <input aria-label="Search the web" name="q" autoFocus placeholder="Search the web" className="w-full rounded-full bg-[var(--cl-card)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] pl-10 pr-4 py-2.5 text-[14px] text-[var(--cl-text)] outline-none placeholder:text-[var(--cl-faint)] shadow-lg" />
               </div>
             </form>
             <p className="mt-4 max-w-sm text-[12px] text-[var(--cl-faint)]">While the browser is open, the AI can read the page you have open here. It can't click, type or change anything on any site.</p>

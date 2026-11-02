@@ -145,7 +145,7 @@ export default function GitHubPush({ html, siteName, plan, onUpgrade }) {
                   <li>Pick the repositories to allow, and set <b>Contents</b> to <b>Read and write</b>.</li>
                   <li>Copy the token and paste it here.</li>
                 </ol>
-                <input
+                <input aria-label="GitHub token"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
                   placeholder="github_pat_…"
@@ -170,7 +170,7 @@ export default function GitHubPush({ html, siteName, plan, onUpgrade }) {
               <>
                 <p className="text-xs text-slate-400 mb-1.5">Repository</p>
                 <div className="relative mb-3">
-                  <select
+                  <select aria-label="GitHub project"
                     value={selectedRepo}
                     onChange={(e) => {
                       setSelectedRepo(e.target.value);

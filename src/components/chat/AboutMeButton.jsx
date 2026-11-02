@@ -53,7 +53,7 @@ export default function AboutMeButton({ userId }) {
               <p className="mt-1 text-sm text-slate-400">
                 Tell the AI a little about yourself and how you like answers. It&apos;s used with every message you send, and kept only on this device.
               </p>
-              <textarea
+              <textarea aria-label="About you"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value.slice(0, ABOUT_MAX))}
                 rows={4}

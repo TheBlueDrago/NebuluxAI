@@ -58,8 +58,8 @@ const Segmented = ({ value, onChange, options }) => (
     ))}
   </div>
 );
-const Select = ({ value, onChange, options }) => (
-  <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent text-[14.5px] text-[var(--cl-text)] outline-none cursor-pointer text-right py-2.5 -my-2.5 pl-2">
+const Select = ({ value, onChange, options, label }) => (
+  <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent text-[14.5px] text-[var(--cl-text)] outline-none cursor-pointer text-right py-2.5 -my-2.5 pl-2">
     {options.map(([k, l]) => <option key={k} value={k} className="bg-[var(--cl-card)]">{l}</option>)}
   </select>
 );
@@ -170,12 +170,12 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
         <Row title="Theme">
           <Segmented value={theme} onChange={pickTheme} options={[["system", <Monitor key="s" className="w-4 h-4" />], ["light", <Sun key="l" className="w-4 h-4" />], ["dark", <Moon key="d" className="w-4 h-4" />]]} />
         </Row>
-        <Row title="Chat font"><Select value={font} onChange={pickFont} options={FONTS} /></Row>
+        <Row title="Chat font"><Select label="Chat font" value={font} onChange={pickFont} options={FONTS} /></Row>
         <Row title="Motion" sub="Reduce animation in streaming responses and other interface elements.">
           <Segmented value={motion} onChange={(v) => (setMotion(v), saveMotion(v))} options={[["system", "System"], ["reduced", "Reduced"]]} />
         </Row>
         <H>Language</H>
-        <Row title="Reply language" sub="The language Nebulux AI answers in."><Select value={lang} onChange={(v) => (setLang(v), saveLanguage(v))} options={LANGUAGES.map((l) => [l, l])} /></Row>
+        <Row title="Reply language" sub="The language Nebulux AI answers in."><Select label="Reply language" value={lang} onChange={(v) => (setLang(v), saveLanguage(v))} options={LANGUAGES.map((l) => [l, l])} /></Row>
         <H>Notifications</H>
         <Row title="Response completions" sub="Get notified when Nebulux AI has finished a response. Useful for long-running tasks.">
           <Toggle on={notify} onChange={pickNotify} label="Response completions" />
@@ -187,7 +187,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
         <H first>Account</H>
         <label className="block text-[13.5px] text-[var(--cl-muted)] mt-4 mb-1">Full name</label>
         <div className="flex gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14.5px]" />
+          <input aria-label="Your name" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14.5px]" />
           <button onClick={saveProfile} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-4 text-[13.5px] font-medium">Save</button>
         </div>
         <Row title="Email" sub={currentUser?.email} />
@@ -273,7 +273,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
       <>
         <H first>Memory</H>
         <p className="text-[14px] text-[var(--cl-muted)] mb-3">What Nebulux AI should know about you. It's sent with your messages so answers fit you, and kept only in this browser.</p>
-        <textarea value={about} onChange={(e) => setAbout(e.target.value.slice(0, ABOUT_MAX))} rows={6} placeholder="e.g. I'm in 8th grade, I like games, keep answers short." className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14.5px] resize-none" />
+        <textarea aria-label="About you" value={about} onChange={(e) => setAbout(e.target.value.slice(0, ABOUT_MAX))} rows={6} placeholder="e.g. I'm in 8th grade, I like games, keep answers short." className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] focus:border-[var(--cl-focus)] px-3 py-2 outline-none text-[var(--cl-text)] text-[14.5px] resize-none" />
         <div className="flex justify-between items-center mt-2">
           <span className="text-[12.5px] text-[var(--cl-faint)]">{about.length}/{ABOUT_MAX}</span>
           <div className="flex gap-2">
@@ -331,7 +331,7 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
         <nav className="sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-[var(--cl-border)] p-2 pr-12 sm:p-3 flex flex-row sm:flex-col overflow-x-auto sm:overflow-x-visible sm:overflow-y-auto">
           <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] px-3 py-2 mb-3">
             <Search className="w-4 h-4 text-[var(--cl-muted)]" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="flex-1 bg-transparent outline-none text-[14.5px] text-[var(--cl-text)] placeholder:text-[var(--cl-faint)]" />
+            <input aria-label="Search settings" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="flex-1 bg-transparent outline-none text-[14.5px] text-[var(--cl-text)] placeholder:text-[var(--cl-faint)]" />
           </div>
           {GROUPS.map(([group, items]) => {
             const shown = items.filter(([, l]) => !ql || l.toLowerCase().includes(ql));

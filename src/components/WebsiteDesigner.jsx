@@ -881,7 +881,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
               {effPlan} plan · {cap} people max (incl. you) · {members.length + 1}/{cap} used
             </p>
             <div className="flex items-center gap-2">
-              <input
+              <input aria-label="Email to invite"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 onKeyDown={(e) => {
@@ -1010,7 +1010,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
             <SessionMeter />
             {sendExhausted && !loading && <OutOfCredits tier={TIER_OF_AI[selectedAi]} />}
             <div className="flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-sky-500/50 transition-colors">
-              <textarea
+              <textarea aria-label="Message the website designer"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}

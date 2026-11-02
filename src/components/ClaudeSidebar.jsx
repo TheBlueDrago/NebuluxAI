@@ -147,7 +147,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
           {searching && (
             <div className="px-3 mt-1.5 relative">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--cl-faint)]" />
-              <input
+              <input aria-label="Search chats"
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -167,7 +167,7 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
               >
                 {editingId === c.id ? (
                   <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
-                    <input
+                    <input aria-label="Chat name"
                       autoFocus
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}

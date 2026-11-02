@@ -204,7 +204,7 @@ export default function SiteDashboard({ siteName, onRename, html, plan, onUpgrad
         <H sub="Name, badge and taking the site down.">Settings</H>
         <Card title="Site name" sub="Letters, numbers and hyphens. It's also your address.">
           <div className="flex gap-2">
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} className="flex-1 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-[13.5px] outline-none focus:border-indigo-500 text-white" />
+            <input aria-label="New name" value={newName} onChange={(e) => setNewName(e.target.value)} className="flex-1 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-[13.5px] outline-none focus:border-indigo-500 text-white" />
             <Btn onClick={() => onRename(newName)} disabled={!newName || newName === siteName}>Save</Btn>
           </div>
         </Card>

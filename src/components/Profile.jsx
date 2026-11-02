@@ -293,7 +293,7 @@ export default function Profile({ open, onClose, onBack, initialView = "main", o
                 <label className="text-xs text-slate-400">
                   Type <span className="font-semibold text-red-400">DELETE</span> to confirm
                 </label>
-                <input
+                <input aria-label="Type DELETE to confirm"
                   value={delText}
                   onChange={(e) => setDelText(e.target.value)}
                   placeholder="DELETE"

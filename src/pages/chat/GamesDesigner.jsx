@@ -783,7 +783,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
             <SessionMeter />
             {sendExhausted && !loading && <OutOfCredits tier={TIER_OF_AI[selectedAi]} />}
             <div className="flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-fuchsia-500/50 transition-colors">
-              <textarea
+              <textarea aria-label="Describe your game"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}

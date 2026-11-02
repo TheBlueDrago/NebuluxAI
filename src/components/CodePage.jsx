@@ -152,7 +152,7 @@ function AskBox({ ask, onAnswer, disabled }) {
           </button>
         ))}
         <form onSubmit={(e) => { e.preventDefault(); if (other.trim()) onAnswer(other.trim()); }} className="flex gap-1.5">
-          <input value={other} onChange={(e) => setOther(e.target.value)} disabled={disabled} placeholder="Other…" className="flex-1 rounded-lg border border-[var(--cl-border)] bg-transparent px-3 py-2 text-[13.5px] outline-none text-[var(--cl-text)] focus:border-[var(--cl-focus)]" />
+          <input aria-label="Something else" value={other} onChange={(e) => setOther(e.target.value)} disabled={disabled} placeholder="Other…" className="flex-1 rounded-lg border border-[var(--cl-border)] bg-transparent px-3 py-2 text-[13.5px] outline-none text-[var(--cl-text)] focus:border-[var(--cl-focus)]" />
           <button disabled={disabled || !other.trim()} className="rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-3 text-[13px] font-medium disabled:opacity-40">Send</button>
         </form>
       </div>
@@ -779,7 +779,7 @@ export default function CodePage({ userInitial }) {
                   )}
                 </div>
                 {ghToken ? (
-                  <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="rounded-lg bg-[var(--cl-card)] px-2.5 py-1.5 outline-none text-[var(--cl-text)] max-w-[16rem]">
+                  <select aria-label="GitHub project" value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="rounded-lg bg-[var(--cl-card)] px-2.5 py-1.5 outline-none text-[var(--cl-text)] max-w-[16rem]">
                     <option value="">{ghBusy === "repos" ? "Loading repositories…" : "Choose repo"}</option>
                     {repos.map((r) => (
                       <option key={r.full_name} value={r.full_name}>{r.full_name}</option>
@@ -822,7 +822,7 @@ export default function CodePage({ userInitial }) {
             )}
             <div className="claude-composer bg-[var(--cl-card)] border border-[var(--cl-border)] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,.25)] focus-within:border-[var(--cl-focus)] transition-colors">
               <div className="flex items-end gap-2">
-                <textarea
+                <textarea aria-label="Message Nebulux Code"
                   ref={inputBoxRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -888,7 +888,7 @@ export default function CodePage({ userInitial }) {
                       <LogOut className="w-3.5 h-3.5" /> Disconnect
                     </button>
                   </div>
-                  <select value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-2 text-[13.5px] outline-none text-[var(--cl-text)]">
+                  <select aria-label="GitHub project" value={repo} onChange={(e) => { setRepo(e.target.value); rememberRepo("code", e.target.value); setAttached([]); }} className="w-full rounded-lg bg-[var(--cl-card)] border border-[var(--cl-border)] px-3 py-2 text-[13.5px] outline-none text-[var(--cl-text)]">
                     <option value="">{ghBusy === "repos" ? "Loading repositories…" : "Choose repo"}</option>
                     {repos.map((r) => (
                       <option key={r.full_name} value={r.full_name}>{r.full_name}{r.private ? " (private)" : ""}</option>

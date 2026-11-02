@@ -313,7 +313,7 @@ function ShopTab() {
         }}
         className="flex gap-2 pt-2 border-t border-white/10"
       >
-        <input name="code" placeholder="Promo code" maxLength={40} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 uppercase" />
+        <input aria-label="Promo code" name="code" placeholder="Promo code" maxLength={40} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 uppercase" />
         <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">Redeem</button>
       </form>
       <p className="text-[11px] text-slate-500">Stardust is free and only for avatar items. It can't be bought or traded.</p>
@@ -360,7 +360,7 @@ function FriendChat({ friend, onBack }) {
       </div>
       {note && <p className="text-xs text-amber-200 pb-1">{note}</p>}
       <form onSubmit={send} className="flex gap-2">
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder={`Message ${friend.name}`} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500" />
+        <input aria-label={`Message ${friend.name}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder={`Message ${friend.name}`} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500" />
         <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white text-sm font-semibold">Send</button>
       </form>
       <p className="mt-2 text-[11px] text-slate-500">No links, phone numbers, emails or other personal info: those messages aren't sent.</p>
@@ -414,7 +414,7 @@ function FriendsTab({ onPlay }) {
         }}
         className="flex gap-2"
       >
-        <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="Friend code or username" maxLength={80} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500" />
+        <input aria-label="Friend code or username" value={who} onChange={(e) => setWho(e.target.value)} placeholder="Friend code or username" maxLength={80} className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 focus:border-white/40 outline-none px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500" />
         <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white text-sm font-semibold">
           <UserPlus className="w-4 h-4" /> Add
         </button>

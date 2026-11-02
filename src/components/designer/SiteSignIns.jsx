@@ -120,8 +120,8 @@ export default function SiteSignIns({ site }) {
           <li>Paste the client ID and client secret here.</li>
         </ol>
         <div className="mt-3 grid gap-2">
-          <input value={id} onChange={(e) => setId(e.target.value)} placeholder="123456-abc.apps.googleusercontent.com" className={field} />
-          <input value={secret} onChange={(e) => setSecret(e.target.value)} type="password" placeholder={cfg?.own ? "Client secret (saved; paste a new one to change it)" : "Client secret"} className={field} />
+          <input aria-label="Google client ID" value={id} onChange={(e) => setId(e.target.value)} placeholder="123456-abc.apps.googleusercontent.com" className={field} />
+          <input aria-label="Google client secret" value={secret} onChange={(e) => setSecret(e.target.value)} type="password" placeholder={cfg?.own ? "Client secret (saved; paste a new one to change it)" : "Client secret"} className={field} />
           <div className="flex justify-end">
             <button onClick={saveOwn} disabled={busy === "save" || (cfg?.canOwn && (!id || !secret))} className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 text-[13px] font-medium text-white disabled:opacity-40">{busy === "save" ? "Saving…" : cfg?.canOwn ? "Save" : "Upgrade to use this"}</button>
           </div>

@@ -142,7 +142,7 @@ export default function GitHubOpen({ siteName, plan, onUpgrade, hasPage, onOpen 
                     <li>Pick the repositories to allow, and set <b>Contents</b> to <b>Read and write</b>.</li>
                     <li>Copy the token and paste it here.</li>
                   </ol>
-                  <input
+                  <input aria-label="GitHub token"
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value)}
                     placeholder="github_pat_…"

@@ -182,7 +182,7 @@ export default function Monitor({ onBack }) {
 
       <div className="w-full max-w-3xl mt-6 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-        <input
+        <input aria-label="Search by name or email"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or email…"

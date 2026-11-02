@@ -326,7 +326,7 @@ export default function TeamMembership({ onBack }) {
             className="mt-4"
           >
             <div className="flex gap-2">
-              <input
+              <input aria-label="Email to add"
                 value={addEmail}
                 onChange={(e) => setAddEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addMember()}

@@ -415,7 +415,7 @@ export default function DesignerDashboard() {
           </div>
 
           <div className="max-w-2xl mx-auto bg-slate-900/70 border border-slate-700/50 focus-within:border-indigo-500/60 rounded-2xl p-3 sm:p-4 shadow-2xl transition-colors">
-            <textarea
+            <textarea aria-label="Describe the website you want"
               ref={textareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}

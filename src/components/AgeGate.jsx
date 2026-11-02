@@ -49,7 +49,7 @@ export default function AgeGate() {
           <>
             <h2 className="text-xl font-semibold">When's your birthday?</h2>
             <p className="mt-2 text-sm text-slate-400">This helps us set up your account. You can only enter it once, so make sure it's right.</p>
-            <input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} className="mt-5 w-full rounded-xl bg-slate-800 border border-white/10 px-3 py-2.5 text-center" />
+            <input aria-label="Your birthday" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} className="mt-5 w-full rounded-xl bg-slate-800 border border-white/10 px-3 py-2.5 text-center" />
             {err && <p className="mt-2 text-sm text-red-300">{err}</p>}
             <button onClick={save} disabled={busy} className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-2.5 font-semibold text-white disabled:opacity-60">{busy ? "Saving…" : "Continue"}</button>
           </>

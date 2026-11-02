@@ -75,7 +75,7 @@ export default function HelpChat({ open, onClose }) {
           {busy && <Loader2 className="h-4 w-4 animate-spin text-[var(--cl-muted)]" />}
         </div>
         <form onSubmit={(e) => { e.preventDefault(); ask(); }} className="flex items-end gap-2 border-t border-[var(--cl-border)] p-3">
-          <textarea
+          <textarea aria-label="Ask a question"
             ref={field}
             value={input}
             onChange={(e) => setInput(e.target.value)}

@@ -137,12 +137,12 @@ export default function ConnectorsPane({ children }) {
           <div key={w.op} className="mt-5 rounded-xl border border-[var(--cl-border)] p-4">
             <p className="text-[15px] text-[var(--cl-text)] mb-2">{w.label}</p>
             {w.where && (
-              <select value={draft.where} onChange={(e) => setDraft({ ...draft, where: e.target.value })} className="w-full mb-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-bg)] text-[var(--cl-text)] px-3 py-2 text-[14px]">
+              <select aria-label="Where to send it" value={draft.where} onChange={(e) => setDraft({ ...draft, where: e.target.value })} className="w-full mb-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-bg)] text-[var(--cl-text)] px-3 py-2 text-[14px]">
                 <option value="">Pick a {w.where}</option>
                 {places.map((p) => <option key={p.id} value={p.id}>{p.t}</option>)}
               </select>
             )}
-            <textarea value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} rows={3} placeholder="Write it here" className="w-full rounded-lg border border-[var(--cl-border)] bg-[var(--cl-bg)] text-[var(--cl-text)] px-3 py-2 text-[14px] resize-y" />
+            <textarea aria-label="Message" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} rows={3} placeholder="Write it here" className="w-full rounded-lg border border-[var(--cl-border)] bg-[var(--cl-bg)] text-[var(--cl-text)] px-3 py-2 text-[14px] resize-y" />
             <div className="mt-2 flex justify-end"><Pill strong onClick={() => send(app, w)}>Send</Pill></div>
           </div>
         ))}
