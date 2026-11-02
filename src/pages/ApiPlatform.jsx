@@ -29,7 +29,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle
 function CopyBtn({ text, label = "Copy" }) {
   const [ok, setOk] = useState(false);
   return (
-    <button onClick={async () => { try { await navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); } catch { /* fine */ } }} className="inline-flex items-center gap-1 rounded-md border border-[var(--cl-border)] px-2 py-1 text-[12px] text-[var(--cl-muted)] hover:text-[var(--cl-text)]">
+    <button onClick={async () => { try { await navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); } catch { /* fine */ } }} className="tap-area inline-flex items-center gap-1 rounded-md border border-[var(--cl-border)] px-2 py-1 text-[12px] text-[var(--cl-muted)] hover:text-[var(--cl-text)]">
       {ok ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {ok ? "Copied" : label}
     </button>
   );
