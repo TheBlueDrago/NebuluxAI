@@ -53,9 +53,10 @@ export default function About() {
           <h2 className="text-2xl font-bold text-white">Get in touch</h2>
           <p className="mt-2 text-slate-400">Questions, ideas, business or press: we read everything.</p>
           <div className="mt-5 space-y-3">
-            <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-3 text-slate-200 hover:text-white break-all">
+            <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-3 text-slate-200 hover:text-white">
               <span className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center"><Mail className="w-5 h-5 text-indigo-300" /></span>
-              {CONTACT_EMAIL}
+              {/* On a small phone it breaks after the @, not in the middle of ".com". */}
+              <span className="min-w-0 [overflow-wrap:anywhere]">{CONTACT_EMAIL.split("@")[0]}@<wbr />{CONTACT_EMAIL.split("@")[1]}</span>
             </a>
             <a href={CONTACT_PHONE_LINK} className="flex items-center gap-3 text-slate-200 hover:text-white">
               <span className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center"><Phone className="w-5 h-5 text-indigo-300" /></span>

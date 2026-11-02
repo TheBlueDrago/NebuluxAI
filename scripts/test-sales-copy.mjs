@@ -20,3 +20,6 @@ assert(/SALES_OPEN \? "Just need a few more credits\?[^"]*" : "[^"]*coming soon 
 const all = cards + pricing + landing;
 assert(!/to="\/pricing#/.test(all) || /id="packs"/.test(pricing), "no link to a pricing page section that isn't there");
 console.log(open ? "(sales are open now)" : "(sales are closed now)");
+// What search engines and link previews show for /pricing says the same.
+const { PAGES } = await import("../cloudflare-lib/pagemeta.js");
+assert(open ? /credit packs start/.test(PAGES.pricing.description) : /coming soon/i.test(PAGES.pricing.description) && !/packs start at/.test(PAGES.pricing.description), "the pricing page's search description follows SALES_OPEN too");

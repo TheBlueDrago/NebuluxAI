@@ -10,16 +10,21 @@ const ROOT = new URL("../", import.meta.url);
 const file = new URL("public/sitemap.xml", ROOT);
 const PAGES = { "": "Home", arcade: "Arcade", templates: "Templates", business: "Business", pricing: "Pricing", enterprise: "Enterprise", about: "About", status: "Status", showcase: "Showcase", guides: "Guides", "whats-new": "WhatsNew", ideas: "Ideas", register: "Register", safety: "Safety", terms: "Legal", privacy: "Legal", contact: "Contact" };
 
+// Pages whose words also live in other files (the home page is Landing.jsx and its sections; the
+// pricing page shows the plan cards).
+const ALSO = { "": ["src/pages/Landing.jsx", "src/components/landing"], pricing: ["src/components/landing/PricingCards.jsx", "src/lib/publicPlans.js"] };
+
 const sourceOf = (path) => {
   const [first, second] = path.replace(/^\//, "").split("/");
-  if (first === "guides" && second) return "cloudflare-lib/guides.js";
-  if (first === "play" && second) return `games/${second}.html`;
-  if (first in PAGES) return `src/pages/${PAGES[first]}.jsx`;
-  return null;
+  if (first === "guides" && second) return ["cloudflare-lib/guides.js"];
+  if (first === "play" && second) return [`games/${second}.html`];
+  if (first in PAGES) return [`src/pages/${PAGES[first]}.jsx`, ...(ALSO[first] || [])];
+  return [];
 };
-const lastChange = (rel) => {
-  if (!rel || !existsSync(new URL(rel, ROOT))) return null;
-  const d = execSync(`git log -1 --format=%cs -- "${rel}"`, { cwd: new URL(".", ROOT), encoding: "utf8" }).trim();
+const lastChange = (rels) => {
+  const found = rels.filter((rel) => existsSync(new URL(rel, ROOT)));
+  if (!found.length) return null;
+  const d = execSync(`git log -1 --format=%cs -- ${found.map((r) => `"${r}"`).join(" ")}`, { cwd: new URL(".", ROOT), encoding: "utf8" }).trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
 };
 
