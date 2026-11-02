@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 import PricingCards from "@/components/landing/PricingCards";
+import { SALES_OPEN } from "@/lib/salesOpen";
 
 const QUESTIONS = [
-  ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs, like building a whole website, use more than a quick question. Every plan gets a fresh allowance each month, and you can buy one-time packs any time."],
+  ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs, like building a whole website, use more than a quick question. Every plan gets a fresh allowance each month" + (SALES_OPEN ? ", and you can buy one-time packs any time." : ". One-time packs are coming soon.")],
   ["What are Galaxy, Space and Nebula?", "Extra AI models on Pro and Team: Galaxy for programming, and Space and Nebula for more detailed websites and writing. Each has its own credits."],
   ["Is paying safe?", "Yes. You pay on our payment provider's secure checkout page, so we never see or store your card number, and prices are set on our server, not in your browser. Plans are monthly and credit packs are one-time."],
   ["Can I cancel?", "Yes. Plans are monthly, or yearly with 10% off (yearly plans still get fresh credits every month, just at a lower price). If you stop paying you go back to the Free plan when your month or year ends, and keep your account."],
@@ -19,7 +20,9 @@ export default function Pricing() {
     <PublicLayout title="Pricing">
       <section className="text-center pt-10 pb-12">
         <h1 className="text-4xl sm:text-6xl font-bold text-white">Simple prices</h1>
-        <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">Start free. Pro is $15 a month, Team is $20 a month for up to 3 people (or pay yearly and save 10%), and credit packs start at $0.99 with no subscription.</p>
+        <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">{SALES_OPEN
+            ? "Start free. Pro is $15 a month, Team is $20 a month for up to 3 people (or pay yearly and save 10%), and credit packs start at $0.99 with no subscription."
+            : "Start free. Paid plans are coming soon: Pro will be $15 a month and Team $20 a month for up to 3 people (or pay yearly and save 10%), and credit packs will start at $0.99 with no subscription."}</p>
       </section>
       <PricingCards />
       <section className="mt-20 max-w-3xl mx-auto">

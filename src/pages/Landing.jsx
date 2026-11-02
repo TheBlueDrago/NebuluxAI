@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import SiteThumb from "@/components/SiteThumb";
 import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 import PricingCards from "@/components/landing/PricingCards";
+import { SALES_OPEN } from "@/lib/salesOpen";
 import { HeroCollage, ChatShot, SiteShot, GameShot, ShopShot, TeamShot, SafetyShot, EnterpriseShot } from "@/components/landing/ProductShots";
 import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company";
 import { siteUrl } from "@/lib/blackholeDomain";
@@ -469,8 +470,8 @@ export default function Landing() {
         </Reveal>
         <PricingCards />
         <p className="mt-6 text-center text-slate-400">
-          Just need a few more credits? One-time packs start at $0.99, no subscription.{" "}
-          <Link to="/pricing#packs" className="text-indigo-300 hover:text-indigo-200">See credit packs</Link>
+          {SALES_OPEN ? "Just need a few more credits? One-time packs start at $0.99, no subscription." : "One-time credit packs, from $0.99 with no subscription, are coming soon too."}{" "}
+          <Link to="/pricing" className="text-indigo-300 hover:text-indigo-200">See all prices</Link>
         </p>
       </section>
 

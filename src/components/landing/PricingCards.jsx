@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { PUBLIC_PLANS, YEARLY_OFF } from "@/lib/publicPlans";
+import { SALES_OPEN } from "@/lib/salesOpen";
 
 // Free / Pro / Team / Enterprise cards for the public pages. Paid plans are bought from the
 // app's Shop, so new people sign up first and land there; Enterprise goes to the
 // application page. Monthly or yearly (a small discount for paying a year at once).
+// While paid plans can't be bought yet (lib/salesOpen.js), Pro and Team say Coming soon instead of Choose.
 export default function PricingCards() {
   const { isAuthenticated } = useAuth();
   const [yearlyOn, setYearlyOn] = useState(false);
@@ -65,6 +67,9 @@ export default function PricingCards() {
                   </li>
                 ))}
               </ul>
+              {!SALES_OPEN && (p.id === "pro" || p.id === "team") ? (
+                <span aria-disabled="true" className="mt-6 py-3 rounded-full text-center font-semibold bg-slate-800/60 text-slate-400 cursor-default">Coming soon</span>
+              ) : (
               <Link
                 to={go(p.id)}
                 className={`mt-6 py-3 rounded-full text-center font-semibold ${
@@ -73,6 +78,7 @@ export default function PricingCards() {
               >
                 {p.id === "free" ? "Get started for free" : p.id === "enterprise" ? "Contact sales" : `Choose ${p.name}${y ? " yearly" : ""}`}
               </Link>
+              )}
             </div>
           );
         })}
