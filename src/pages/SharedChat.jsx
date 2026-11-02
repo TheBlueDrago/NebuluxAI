@@ -128,7 +128,7 @@ export default function SharedChat() {
               {s.messages.map((m, i) =>
                 m.role === "user" ? (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-[var(--cl-card)] px-4 py-2.5 text-[15px]">{m.content}</div>
+                    <div className="max-w-[85%] whitespace-pre-wrap [overflow-wrap:anywhere] rounded-2xl bg-[var(--cl-card)] px-4 py-2.5 text-[15px]">{m.content}</div>
                   </div>
                 ) : (
                   <div key={i} className="text-[15px] leading-relaxed"><Markdown text={m.content} untrusted={!s.own} note={isErrNote(m)} /></div>

@@ -36,9 +36,10 @@ export function WorkspaceShell() {
       {!isMobile && <ClaudeSidebar shell={shell} collapsed={collapsed} onToggle={toggle} path={loc.pathname} />}
       {isMobile && (
         <>
+          {/* A solid card, so chat text scrolling underneath never shows through it. */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-30 p-2 rounded-lg text-[var(--cl-muted)] hover:bg-[var(--cl-card)]"
+            className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-30 p-2 rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] text-[var(--cl-muted)] shadow-lg shadow-black/20 hover:bg-[var(--cl-hover)]"
             aria-label="Menu: chats and tools"
           >
             <Menu className="w-5 h-5" />

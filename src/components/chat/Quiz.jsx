@@ -9,7 +9,7 @@ export default function Quiz({ text }) {
   const [i, setI] = useState(0);
   const [picked, setPicked] = useState(null);
   const [score, setScore] = useState(0);
-  if (!qs.length) return <pre className="bg-black/40 border border-slate-700/60 rounded-lg p-3 text-[12.5px] whitespace-pre-wrap">{text}</pre>;
+  if (!qs.length) return <pre className="bg-black/40 border border-slate-700/60 rounded-lg p-3 text-[12.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{text}</pre>;
 
   const done = i >= qs.length;
   if (done) {

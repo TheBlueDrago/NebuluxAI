@@ -600,11 +600,11 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                 className={
                   claude
                     ? m.role === "user"
-                      ? "max-w-[80%] min-w-0 px-4 py-2.5 rounded-2xl whitespace-pre-wrap bg-[var(--cl-hover)] text-[var(--cl-text)] text-[15px] leading-relaxed"
+                      ? "max-w-[80%] min-w-0 px-4 py-2.5 rounded-2xl whitespace-pre-wrap [overflow-wrap:anywhere] bg-[var(--cl-hover)] text-[var(--cl-text)] text-[15px] leading-relaxed"
                       : "w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif"
                     : `max-w-[80%] min-w-0 px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                         m.role === "user"
-                          ? "whitespace-pre-wrap bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm"
+                          ? "whitespace-pre-wrap [overflow-wrap:anywhere] bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm"
                           : "bg-slate-800 text-slate-100 rounded-bl-sm border border-slate-700/50"
                       }`
                 }
@@ -623,7 +623,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                         <RotateCcw className="w-3.5 h-3.5" /> Try again
                       </button>
                     )}
-                    <div className="flex flex-wrap justify-end gap-1 mt-1 -mb-1">
+                    <div className="msg-acts flex flex-wrap justify-end gap-1 mt-1 -mb-1">
                       {i === messages.length - 1 && !loading && !isExhausted && (
                         <button
                           type="button"
@@ -664,7 +664,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               </div>
               {m.role === "user" && (
                 <span className="order-first self-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
-                  <CopyButton getText={() => m.content} label="Copy message" className="p-1 rounded-md text-slate-500 hover:text-slate-200" />
+                  <CopyButton getText={() => m.content} label="Copy message" className="tap-sm p-1 rounded-md text-slate-500 hover:text-slate-200" />
                 </span>
               )}
               {m.role === "user" && !loading && (i === messages.length - 1 || i === messages.length - 2) && (
@@ -673,7 +673,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                   onClick={editLast}
                   title="Edit this message"
                   aria-label="Edit this message"
-                  className="order-first self-center p-1 rounded-md text-slate-500 hover:text-slate-200"
+                  className="tap-sm order-first self-center p-1 rounded-md text-slate-500 hover:text-slate-200"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>

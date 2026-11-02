@@ -221,7 +221,7 @@ const NebuluxBrowser = forwardRef(function NebuluxBrowser(_, ref) {
           (entry.html ? (
             <iframe ref={frameRef} key={entry.own ? tab.id + ":" + tab.idx : entry.url} title={entry.title || entry.url} srcDoc={entry.own ? entry.html : entry.html + LINK_SCRIPT} sandbox="allow-scripts" referrerPolicy="no-referrer" className="w-full h-full bg-white border-0" />
           ) : (
-            <div className="h-full overflow-y-auto px-4 py-3 whitespace-pre-wrap text-[13.5px] text-[var(--cl-muted)]">{entry.text}</div>
+            <div className="h-full overflow-y-auto px-4 py-3 whitespace-pre-wrap [overflow-wrap:anywhere] text-[13.5px] text-[var(--cl-muted)]">{entry.text}</div>
           ))}
         {busy && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[var(--cl-accent)] to-[var(--cl-accent2)] animate-pulse" />}
       </div>

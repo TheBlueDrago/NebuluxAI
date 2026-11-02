@@ -12,7 +12,7 @@ export default function LiveReply({ text, accent = "text-sky-300", label = "Writ
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-bl-sm bg-slate-800 text-slate-100 border border-slate-700/50 text-sm space-y-2">
-        {intro && <p className="whitespace-pre-wrap">{intro}</p>}
+        {intro && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{intro}</p>}
         {i >= 0 && (
           <p className={`flex items-center gap-2 font-medium ${accent}`}>
             <BlackholeIcon className="w-4 h-4 animate-spin" />

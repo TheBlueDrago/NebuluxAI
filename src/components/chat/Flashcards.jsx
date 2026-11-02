@@ -8,7 +8,7 @@ export default function Flashcards({ text }) {
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [known, setKnown] = useState(() => new Set());
-  if (!cards.length) return <pre className="bg-black/40 border border-slate-700/60 rounded-lg p-3 text-[12.5px] whitespace-pre-wrap">{text}</pre>;
+  if (!cards.length) return <pre className="bg-black/40 border border-slate-700/60 rounded-lg p-3 text-[12.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{text}</pre>;
 
   const go = (d) => {
     setFlipped(false);

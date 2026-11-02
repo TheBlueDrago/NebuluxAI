@@ -946,7 +946,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                   <div className="max-w-[85%] min-w-0 px-3.5 py-2.5 rounded-2xl rounded-bl-sm bg-slate-800 text-slate-100 border border-slate-700/50 text-sm">
                     {built ? (
                       <div className="space-y-2">
-                        {m.note && <p className="whitespace-pre-wrap">{m.note}</p>}
+                        {m.note && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.note}</p>}
                         <span className="block text-emerald-300 font-medium">✓ Website updated</span>
                         {m === lastAi && !loading && !sendExhausted && (
                           // One tap to improve the site (each is a normal message, so it's charged like one).

@@ -288,6 +288,13 @@ html[data-chat-font="system"] .font-serif { font-family: ui-sans-serif, system-u
   aside nav > button, aside nav > a { min-height: 42px; }
 }
 
+/* Phones: the small icon buttons under and beside chat messages (copy, read aloud, edit, report...) get a
+   finger-sized touch area (about 38px tall); they look the same. */
+@media (max-width: 640px) {
+  .msg-acts > button, .msg-acts > a, .tap-sm { position: relative; }
+  .msg-acts > button::after, .msg-acts > a::after, .tap-sm::after { content: ""; position: absolute; inset: -8px -4px; }
+}
+
 @layer utilities {
   /* Small text links and icon buttons: a finger-sized touch area (about 40px tall) without moving anything. */
   .tap-area {

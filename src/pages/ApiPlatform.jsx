@@ -359,7 +359,7 @@ export default function ApiPlatform() {
           </div>
           {pgOut && !pgOut.loading && (
             <div className="grid gap-2">
-              {pgOut.data?.content && <div className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-4 text-[15px] leading-relaxed whitespace-pre-wrap font-serif">{pgOut.data.content}</div>}
+              {pgOut.data?.content && <div className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-4 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] font-serif">{pgOut.data.content}</div>}
               {pgOut.data?.error && <p className="flex items-start gap-2 text-[13.5px] text-amber-300"><AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" /> {pgOut.data.error.message}</p>}
               <Code lang={`response · ${pgOut.status} · ${pgOut.ms} ms`}>{JSON.stringify(pgOut.data, null, 2)}</Code>
             </div>

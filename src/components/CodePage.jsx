@@ -653,7 +653,7 @@ export default function CodePage({ userInitial }) {
             )}
             {messages.map((m, i) => (
               <div key={i} className={`flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={m.role === "user" ? "max-w-[80%] min-w-0 px-4 py-2.5 rounded-2xl whitespace-pre-wrap bg-[var(--cl-hover)] text-[var(--cl-text)] text-[15px] leading-relaxed" : "w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif"}>
+                <div className={m.role === "user" ? "max-w-[80%] min-w-0 px-4 py-2.5 rounded-2xl whitespace-pre-wrap [overflow-wrap:anywhere] bg-[var(--cl-hover)] text-[var(--cl-text)] text-[15px] leading-relaxed" : "w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif"}>
                   {m.role === "user" ? (
                     m.content
                   ) : (
