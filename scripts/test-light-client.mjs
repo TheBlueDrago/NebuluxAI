@@ -128,5 +128,22 @@ globalThis.fetch = async () => {
   throw new TypeError("Failed to fetch");
 };
 e = await base44.functions.invoke("echo", {}).catch((x) => x);
-assert(e.message === "Network Error" && !e.response, "offline looks like axios's Network Error");
+assert(e.code === "ERR_NETWORK" && /^Couldn't reach Nebulux AI/.test(e.message) && !e.response, "offline says Couldn't reach Nebulux AI in plain words (code ERR_NETWORK, no response), not Network Error");
+{
+  const { isNetworkError } = await import(new URL("../src/lib/netError.js", import.meta.url).href);
+  assert(isNetworkError(e, true), "and it still counts as a connection problem");
+}
+// A server answer without its own message is put in plain words; one with a message keeps it.
+globalThis.fetch = async () => new Response("<html>Bad gateway</html>", { status: 502, headers: { "content-type": "text/html" } });
+e = await base44.functions.invoke("echo", {}).catch((x) => x);
+assert(e.response?.status === 502 && e.message === "Nebulux AI is having trouble right now. Please try again in a minute.", "a 502 with no message says Nebulux AI is having trouble, not Request failed with status code 502 (" + e.message + ")");
+globalThis.fetch = async () => new Response(JSON.stringify({ error: "Out of credits for today." }), { status: 402, headers: { "content-type": "application/json" } });
+e = await base44.functions.invoke("echo", {}).catch((x) => x);
+assert(e.response?.status === 402 && e.message === "Out of credits for today.", "a function's own error message becomes the error's message");
+globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: "x" } }), { status: 429, headers: { "content-type": "application/json" } });
+e = await base44.functions.invoke("echo", {}).catch((x) => x);
+assert(e.message === "Too many requests at once. Please wait a moment and try again.", "a non-text error falls back to plain words (" + e.message + ")");
+globalThis.fetch = async () => new Response("", { status: 503 });
+e = await base44.auth.me({ fresh: true }).catch((x) => x);
+assert(e.status === 503 && /having trouble/.test(e.message), "the same for auth and entities calls (" + e.message + ")");
 writeFileSync(out, "");

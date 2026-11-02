@@ -8,6 +8,7 @@
 //   - functions.invoke resolves to an axios-style response ({ data, status, headers }) and fails
 //     with an axios-style error ({ message, status, response: { data, status } }).
 import { appParams } from '@/lib/app-params';
+import { OFFLINE_NOTE, statusNote } from '@/lib/netError';
 
 const { appId, functionsVersion } = appParams;
 let token = appParams.token || null;
@@ -47,7 +48,7 @@ async function readBody(res) {
 }
 
 function networkError(e) {
-  const err = new Error("Network Error");
+  const err = new Error(OFFLINE_NOTE);
   err.code = "ERR_NETWORK";
   err.cause = e;
   return err;
@@ -67,7 +68,7 @@ async function call(method, path, { params, data } = {}) {
   }
   const body = await readBody(res);
   if (res.ok) return body;
-  const message = body?.error?.message || body?.message || body?.detail || `Request failed with status code ${res.status}`;
+  const message = body?.error?.message || body?.message || body?.detail || statusNote(res.status);
   const err = new Error(message);
   err.name = "Base44Error";
   err.status = res.status;
@@ -127,7 +128,7 @@ const functions = {
     }
     const response = { data: await readBody(res), status: res.status, statusText: res.statusText, headers: res.headers };
     if (res.ok) return response;
-    const err = new Error(`Request failed with status code ${res.status}`);
+    const err = new Error(typeof response.data?.error === "string" && response.data.error ? response.data.error : statusNote(res.status));
     err.name = "AxiosError";
     err.code = res.status >= 500 ? "ERR_BAD_RESPONSE" : "ERR_BAD_REQUEST";
     err.status = res.status;
