@@ -4,6 +4,7 @@ import { Sparkles, ShieldCheck, Heart, Rocket, Mail, Phone, ArrowRight } from "l
 import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 import { ChatShot, SiteShot } from "@/components/landing/ProductShots";
 import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company";
+import EmailText from "@/components/EmailText";
 
 const VALUES = [
   { icon: Sparkles, title: "Anyone can make things", text: "You shouldn't need to learn to code to put a website or a game on the internet. Describing it should be enough." },
@@ -55,8 +56,7 @@ export default function About() {
           <div className="mt-5 space-y-3">
             <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-3 text-slate-200 hover:text-white">
               <span className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center"><Mail className="w-5 h-5 text-indigo-300" /></span>
-              {/* On a small phone it breaks after the @, not in the middle of ".com". */}
-              <span className="min-w-0 [overflow-wrap:anywhere]">{CONTACT_EMAIL.split("@")[0]}@<wbr />{CONTACT_EMAIL.split("@")[1]}</span>
+              <EmailText email={CONTACT_EMAIL} />
             </a>
             <a href={CONTACT_PHONE_LINK} className="flex items-center gap-3 text-slate-200 hover:text-white">
               <span className="w-10 h-10 shrink-0 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center"><Phone className="w-5 h-5 text-indigo-300" /></span>

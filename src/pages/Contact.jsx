@@ -6,6 +6,7 @@ import PublicLayout from "@/components/PublicLayout";
 import Honeypot from "@/components/Honeypot";
 import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company";
 import EmailTypoHint, { useEmailTypo } from "@/components/EmailTypoHint";
+import EmailText from "@/components/EmailText";
 
 // Keys must match TOPICS in cloudflare-lib/contact.js.
 const TOPICS = [
@@ -82,7 +83,7 @@ export default function Contact() {
             <span className="w-12 h-12 shrink-0 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center"><Mail className="w-6 h-6 text-indigo-300" /></span>
             <span className="min-w-0">
               <span className="block text-sm text-slate-400">Email us</span>
-              <span className="block text-white text-sm sm:text-base font-medium break-all">{CONTACT_EMAIL}</span>
+              <EmailText email={CONTACT_EMAIL} className="block text-white text-sm sm:text-base font-medium" />
             </span>
           </a>
           <a href={CONTACT_PHONE_LINK} className="flex items-center gap-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 p-5 hover:border-indigo-500/50">

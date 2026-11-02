@@ -38,3 +38,10 @@ assert(/\.msg-acts > button::after[^{]*\{[^}]*inset:/.test(css), "index.css give
 
 const page = readFileSync(join(root, "index.html"), "utf8");
 assert(/<meta name="viewport" content="[^"]*interactive-widget=resizes-content/.test(page), "on Android the page shrinks when the keyboard opens, so the chat box stays above it");
+
+// The big email address on About and Contact breaks after the @ on small phones (break-all left "om" alone).
+for (const f of ["src/pages/About.jsx", "src/pages/Contact.jsx"]) {
+  const src = readFileSync(join(root, f), "utf8");
+  assert(/<EmailText email=\{CONTACT_EMAIL\}/.test(src) && !/break-all">\{CONTACT_EMAIL\}/.test(src), `${f.split("/").pop()} shows the email with EmailText`);
+}
+assert(/<wbr \/>/.test(readFileSync(join(root, "src/components/EmailText.jsx"), "utf8")), "EmailText lets the address break after the @");
