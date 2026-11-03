@@ -787,7 +787,7 @@ export default function GamesDesigner({ onToggleSidebar, onOpenProfile, onUpgrad
                 onKeyDown={handleKeyDown}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : "Describe the game you want..."}
+                placeholder={queued ? "Type to change what it's doing" : "Describe the game you want..."}
                 rows={1}
                 className="flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"
               />

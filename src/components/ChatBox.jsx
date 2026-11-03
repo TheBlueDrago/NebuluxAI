@@ -765,7 +765,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               }}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={queued ? "Reply to change what it's doing, or say \"after you finish…\"" : claude ? "How can I help you today?" : "Message Nebulux AI..."}
+              placeholder={queued ? "Type to change what it's doing" : claude ? "How can I help you today?" : "Message Nebulux AI..."}
               rows={claude && empty ? 2 : 1}
               className={claude ? "flex-1 bg-transparent resize-none outline-none text-[var(--cl-text)] placeholder:text-[var(--cl-faint)] px-4 pt-3.5 pb-1 max-h-60 text-[15px]" : "flex-1 bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 px-4 py-3 max-h-32 text-sm"}
             />
