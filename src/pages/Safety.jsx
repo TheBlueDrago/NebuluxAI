@@ -17,7 +17,7 @@ const SECTIONS = [
       "Checkout is run by our payment provider on its own secure page. We never see or store your card number.",
       "Prices are worked out on our server, not in your browser, so nobody can change what something costs.",
       "A payment only counts once the payment provider's signed message confirms it.",
-      "Plans are monthly. If you stop paying you go back to the Free plan and keep your account. Credit packs are one-time, with no subscription.",
+      "Plans are monthly. If you stop paying you go back to the Free plan and keep your account. Usage credits are a one-time payment, and you can set how much they spend a day.",
     ],
   },
   {
@@ -69,7 +69,7 @@ const SECTIONS = [
 // $5 a month), the purchase list and data download (Settings), deletion, and the filters.
 const PARENTS = [
   "Nebulux AI is for ages 13 and up. Anyone under 18 needs a parent or guardian's permission, especially before buying anything.",
-  "It's free to use. Paid plans are monthly and credit packs are one-time, and every purchase goes through a secure checkout that shows the price first.",
+  "It's free to use. Paid plans are monthly, and every purchase goes through a secure checkout that shows the price first.",
   "Every purchase is listed in Settings → Subscriptions. To cancel a plan or ask about a charge, contact us and pick \"Plans, credits or payments\".",
   "The AI is told to keep what it writes suitable for young people, published pages are checked before they go live.",
   "The chat asks before sending anything that looks like a phone number, home address, password or card number, and a flag under every AI reply lets you report one that isn't right.",

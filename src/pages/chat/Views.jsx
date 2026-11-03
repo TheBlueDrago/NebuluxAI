@@ -15,7 +15,6 @@ export function PlansView() {
       offer={shell.credits.offer}
       onPro={() => shell.goBilling("pro")}
       onTeam={() => shell.goBilling("team")}
-      onBuyPack={(id) => shell.goBilling(id)}
     />
   );
 }

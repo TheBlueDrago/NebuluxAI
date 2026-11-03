@@ -15,7 +15,10 @@ const cards = read("components/landing/PricingCards.jsx"), pricing = read("pages
 assert(/import \{ SALES_OPEN \} from "@\/lib\/salesOpen"/.test(cards) && /!SALES_OPEN && \(p\.id === "pro" \|\| p\.id === "team"\)[\s\S]{0,300}Coming soon/.test(cards), "the Pro and Team cards say Coming soon while sales are closed");
 assert(/SALES_OPEN\s*\?\s*"Start free\. Pro is[^"]*"\s*:\s*"Start free\. Paid plans are coming soon/.test(pricing), "the pricing page's first line says paid plans are coming soon while sales are closed");
 assert(/SALES_OPEN \? ", and paid plans get higher limits\." : "\. Paid plans with higher limits are coming soon\."/.test(pricing), "the usage limits answer says paid plans are coming soon while sales are closed");
-assert(/SALES_OPEN \? "Just need a few more credits\?[^"]*" : "[^"]*coming soon too\."/.test(landing), "the home page says packs are coming soon too while sales are closed");
+assert(/SALES_OPEN \? "Hit your 5-hour limit\?[^"]*" : "Usage credits[^"]*coming soon too\."/.test(landing), "the home page says usage credits are coming soon too while sales are closed");
+// No credit packs or referrals any more (owner, 2026-11-03): usage credits instead.
+const all2 = cards + pricing + landing + read("pages/Billing.jsx") + read("components/Subscriptions.jsx");
+assert(!/credit packs?|one-time packs?|refer (a )?friend/i.test(all2), "no page offers credit packs or referrals");
 // Links to a section of another page only where that section exists.
 const all = cards + pricing + landing;
 assert(!/to="\/pricing#/.test(all) || /id="packs"/.test(pricing), "no link to a pricing page section that isn't there");

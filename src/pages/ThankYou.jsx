@@ -7,7 +7,7 @@ import MotionPrefs from "@/components/MotionPrefs";
 import usePageTitle from "@/hooks/usePageTitle";
 import { addNotification } from "@/lib/notifications";
 
-// After paying. Plans and credit packs come back here from create-checkout; purchases on a
+// After paying. Plans come back here from create-checkout; purchases on a
 // site someone made come back with ?site=<name> from site-checkout (older checkouts without
 // it get the wording that covers both).
 export default function ThankYouPage() {

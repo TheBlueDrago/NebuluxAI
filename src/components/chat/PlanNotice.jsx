@@ -37,19 +37,19 @@ export default function PlanNotice() {
       ? {
           key: `bh-note-trial-ending:${planEndsAt}`,
           icon: Clock,
-          text: `Your free week of Pro ends in ${left(planEndsAt)}. Your new-member discount, ${offer.discountPct}% off any plan (credit packs ${offer.packDiscountPct || 20}% off), lasts until 48 hours after that.`,
+          text: `Your free week of Pro ends in ${left(planEndsAt)}. Your new-member discount, ${offer.discountPct}% off any plan, lasts until 48 hours after that.`,
           action: "Keep Pro",
         }
       : {
           key: `bh-note-trial-start:${planEndsAt}`,
           icon: Sparkles,
-          text: `Your free week of Pro has started: all 4 AIs and more credits, for ${left(planEndsAt)}. ZIP downloads and connecting a GitHub repo aren't included in the free week; they come with a paid plan. As a new member you also get ${offer.discountPct}% off any plan (${offer.packDiscountPct || 20}% off a credit pack), once.`,
+          text: `Your free week of Pro has started: all 4 AIs, for ${left(planEndsAt)}. ZIP downloads and connecting a GitHub repo aren't included in the free week; they come with a paid plan. As a new member you also get ${offer.discountPct}% off any plan, once.`,
         };
   } else if (offer.discountAvailable) {
     note = {
       key: `bh-note-offer:${offer.discountEndsAt}`,
       icon: Sparkles,
-      text: `New-member offer: ${offer.discountPct}% off any plan (kept as long as you stay subscribed) or ${offer.packDiscountPct || 20}% off a credit pack, for ${left(offer.discountEndsAt)}. One purchase only.`,
+      text: `New-member offer: ${offer.discountPct}% off any plan (kept as long as you stay subscribed), for ${left(offer.discountEndsAt)}. One purchase only.`,
       action: "See plans",
     };
   }

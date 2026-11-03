@@ -2,43 +2,16 @@ import React, { useState, useEffect } from "react";
 import PaymentsNotice from "@/components/PaymentsNotice";
 import { PUBLIC_PLANS, YEARLY_OFF } from "@/lib/publicPlans";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, ShieldCheck, Users, Zap, Gift, Lock, CalendarClock } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck, Users, Gift, Lock, CalendarClock } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { paymentError } from "@/lib/paymentError";
-import { CREDIT_PACKS, PACK_SIZES, packsForTier } from "../../cloudflare-lib/creditPacks.js";
-import { TIER_NAMES, TIERS } from "../../cloudflare-lib/planTotals.js";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
 import { savedDiscount, saveDiscount, promoPctFor } from "@/lib/promoDiscount";
 import MotionPrefs from "@/components/MotionPrefs";
 import usePageTitle from "@/hooks/usePageTitle";
 
 const money = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
-// The pack of `size` credits for another AI.
-const packId = (tier, size) => packsForTier(tier).find(([, p]) => p.credits === size)?.[0];
-
-// A one-time credit pack laid out like a plan (prices are checked again by create-checkout).
-function packPlan(id) {
-  const p = CREDIT_PACKS[id];
-  const amount = Number(p.price);
-  return {
-    name: `${p.credits} ${TIER_NAMES[p.tier]} credits`,
-    amount,
-    price: `${money(amount)} one-time`,
-    gradient: "from-amber-500 to-orange-500",
-    glow: "bg-amber-600/15",
-    features: [
-      "One-time purchase, no subscription",
-      "Added to your account as soon as the payment goes through",
-      "They don't reset at the end of the month: they stay until you use them",
-      "Used before your monthly credits",
-    ],
-    button: `Buy — ${money(amount)}`,
-    icon: Zap,
-    pack: true,
-  };
-}
-
 export default function BillingPage() {
   return (
     <MotionPrefs>
@@ -52,8 +25,6 @@ function Billing() {
   const navigate = useNavigate();
   const location = useLocation();
   const requested = location.state?.productId ?? "pro";
-  // Credit packs: which AI and size, switchable here.
-  const [chosenPack, setChosenPack] = useState(CREDIT_PACKS[requested] ? requested : null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -69,8 +40,8 @@ function Billing() {
       .invoke("credits")
       .then((r) => {
         const o = r.data?.offer;
-        // The new-member discount covers plans and credit packs; using it on either ends it.
-        setOfferPct(o?.discountAvailable ? (CREDIT_PACKS[requested] ? o.packDiscountPct || 20 : o.discountPct) : 0);
+        // The new-member discount covers plans; using it ends it.
+        setOfferPct(o?.discountAvailable ? o.discountPct : 0);
       })
       .catch(() => {});
   }, [requested]);
@@ -82,7 +53,7 @@ function Billing() {
       price: "$20 / month",
       gradient: "from-sky-500 to-indigo-500",
       glow: "bg-sky-600/15",
-      features: ["4 AI's (incl. Space and Nebula)", "500 Nebulux AI credits / month", "250 Galaxy credits / month (shared)", "150 Space credits / month", "100 Nebula credits / month", "Add up to 2 people — shared credits"],
+      features: ["4 AI's (incl. Space and Nebula)", "Higher usage limits than Pro, shared by every AI", "Add up to 2 people"],
       button: "Subscribe — $20/mo",
       icon: Users,
     },
@@ -92,17 +63,17 @@ function Billing() {
       price: "$15 / month",
       gradient: "from-emerald-500 to-teal-500",
       glow: "bg-emerald-600/15",
-      features: ["4 AI's (incl. Space and Nebula)", "300 Nebulux AI credits / month", "150 Galaxy credits / month", "100 Space credits / month", "75 Nebula credits / month"],
+      features: ["4 AI's (incl. Space and Nebula)", "Higher usage limits than Free, shared by every AI"],
       button: "Subscribe — $15/mo",
       icon: ShieldCheck,
     },
   };
-  // Only plans and credit packs can be bought here; anything else (e.g. the old Secret) is Pro.
-  const productId = chosenPack || (PLANS[requested] ? requested : "pro");
-  const plan = PLANS[productId] || packPlan(productId);
+  // Only plans can be bought here; anything else (e.g. the old Secret) is Pro.
+  const productId = PLANS[requested] ? requested : "pro";
+  const plan = PLANS[productId];
   // Monthly or yearly (a small discount, src/lib/publicPlans.js); from the pricing page's switch too.
   const [yearly, setYearly] = useState(() => new URLSearchParams(location.search).get("billing") === "yearly" || location.state?.billing === "yearly");
-  const yearPrice = !plan.pack && PUBLIC_PLANS.find((x) => x.id === productId)?.yearly;
+  const yearPrice = PUBLIC_PLANS.find((x) => x.id === productId)?.yearly;
   // The bigger of the new-member offer and the promo code (they don't stack).
   const promoPct = promoPctFor(promo, productId);
   const usingPromo = promoPct > offerPct;
@@ -169,7 +140,7 @@ function Billing() {
           Billing
         </span>
       </h1>
-      <p className="text-slate-400 mt-3 text-center">{plan.pack ? "Buy credits" : `Upgrade to ${productId === "team" ? "Team" : "Pro"}`}</p>
+      <p className="text-slate-400 mt-3 text-center">{`Upgrade to ${productId === "team" ? "Team" : "Pro"}`}</p>
       <PaymentsNotice className="mt-4" />
 
       <div className="mt-10 w-full max-w-md bg-slate-900/70 backdrop-blur-xl border border-slate-700/40 rounded-3xl p-8 shadow-2xl">
@@ -182,9 +153,9 @@ function Billing() {
             <p className="text-slate-400 text-sm">
               {pct ? (
                 <>
-                  <s className="opacity-60">{plan.price}</s> {finalPrice} {plan.pack ? "one-time" : "/ month"} ·{" "}
+                  <s className="opacity-60">{plan.price}</s> {finalPrice} / month ·{" "}
                   {usingPromo ? `${promo.code}: ${pct}% off` : `${pct}% off`}
-                  {plan.pack ? "" : ", yours for as long as you stay subscribed"}
+                  , yours for as long as you stay subscribed
                 </>
               ) : yearPrice && yearly ? (
                 <>{yearPrice.price} / year · {yearPrice.perMonth} a month, save {YEARLY_OFF}%</>
@@ -201,45 +172,6 @@ function Billing() {
                 {label}
               </button>
             ))}
-          </div>
-        )}
-
-        {plan.pack && (
-          <div className="mt-5 space-y-3">
-            <div className="flex flex-wrap gap-1.5">
-              {TIERS.map((t) => {
-                const on = CREDIT_PACKS[productId].tier === t;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setChosenPack(packId(t, CREDIT_PACKS[productId].credits))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                      on ? "bg-amber-500/20 border-amber-400/60 text-amber-200" : "border-slate-700 text-slate-300 hover:bg-slate-800"
-                    }`}
-                  >
-                    {TIER_NAMES[t]}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {PACK_SIZES.map((n) => {
-                const id = packId(CREDIT_PACKS[productId].tier, n);
-                const on = id === productId;
-                return (
-                  <button
-                    key={n}
-                    onClick={() => setChosenPack(id)}
-                    className={`rounded-xl border px-2 py-2 text-center transition-colors ${
-                      on ? "bg-amber-500/20 border-amber-400/60" : "border-slate-700 hover:bg-slate-800"
-                    }`}
-                  >
-                    <span className="block text-lg font-bold text-white">{n}</span>
-                    <span className="block text-xs text-slate-400">{money(Number(CREDIT_PACKS[id].price))}</span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         )}
 
@@ -288,7 +220,7 @@ function Billing() {
         </div>
 
         <p className="mt-5 pt-4 border-t border-slate-700/40 text-xs text-slate-400 leading-relaxed">
-          Each AI reply uses credits: 1 for every 10,000 characters it writes (a normal answer is 1), times the effort level you pick. Longer builds and higher effort use more.
+          Every AI shares your usage limits, one that resets 5 hours after your first message and a weekly one, like Claude. Longer replies, more thinking and stronger AIs use more.
         </p>
 
         {error && <p className="mt-4 text-sm text-red-400 text-center">{error}</p>}
@@ -302,7 +234,7 @@ function Billing() {
           />
           <span className="text-xs text-slate-300 leading-relaxed">
             I agree to the <Link to="/terms" className="underline hover:text-white">Terms</Link> and understand that{" "}
-            {plan.pack ? "this is a one-time payment" : "this plan is billed every month until I stop it"}. I'm allowed to make this
+            this plan is billed every month until I stop it. I'm allowed to make this
             purchase (if I'm under 18, a parent or guardian said yes).
           </span>
         </label>
@@ -312,7 +244,7 @@ function Billing() {
           disabled={loading || !agreed}
           className={`mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br ${plan.gradient} text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : !pct ? plan.button : plan.pack ? `Buy — ${finalPrice}` : `Subscribe — ${finalPrice}/mo`}
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : !pct ? plan.button : `Subscribe — ${finalPrice}/mo`}
         </button>
         {/* Why paying here is safe (everything here is what the payment code does; see /safety). */}
         <ul className="mt-4 space-y-1.5 text-xs text-slate-400">
@@ -322,9 +254,7 @@ function Billing() {
           </li>
           <li className="flex items-start gap-2">
             <CalendarClock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-400" />
-            {plan.pack
-              ? "One payment, no subscription. The credits don't reset at the end of the month."
-              : "Billed monthly. If you stop paying you go back to the Free plan and keep your account."}
+            Billed monthly. If you stop paying you go back to the Free plan and keep your account.
           </li>
           <li className="flex items-start gap-2">
             <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-400" />

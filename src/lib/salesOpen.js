@@ -1,4 +1,4 @@
-// Plans and credit packs can't be bought for now ("coming soon in later updates", owner,
+// Plans can't be bought for now ("coming soon in later updates", owner,
 // 2026-09-27). The Shop and Billing show them greyed out with a note. Checkout refuses too
 // (SALES_OPEN in base44/functions/create-checkout). Set both to true to open buying again.
 export const SALES_OPEN = false;

@@ -9,6 +9,7 @@ const EnterpriseApply = lazy(() => import("@/pages/Enterprise"));
 import { useNavigate, Link } from "react-router-dom";
 import { savedDiscount, promoPctFor } from "@/lib/promoDiscount";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
+import { openBuyUsage } from "@/lib/usageCredits";
 
 function FreeCard({ onFree }) {
   const features = ["100,000 tokens every 5 hours", "1,000,000 tokens a week, shared by every AI", "3 websites and unlimited games", "ZIP, two-way GitHub sync and custom domains"];
@@ -181,9 +182,9 @@ function SectionTitle({ title, sub }) {
   );
 }
 
-// The Shop: plans at the top, then one-time credit packs for every AI, then promo codes.
+// The Shop: the plans, then usage credits (money that extends the 5-hour limit, like Claude's extra usage).
 // offer: the signed-in user's new-member offer (from the credit status), if any.
-// Greyed out and unclickable while plans and packs are "coming soon" (lib/salesOpen.js).
+// Greyed out and unclickable while plans are "coming soon" (lib/salesOpen.js).
 function Soon({ children }) {
   if (SALES_OPEN) return children;
   return (
@@ -196,8 +197,7 @@ function Soon({ children }) {
   );
 }
 
-// onBuyPack(productId): open Billing on a credit pack.
-export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer }) {
+export default function Subscriptions({ onFree, onPro, onTeam, offer }) {
   const pct = offer?.discountAvailable ? offer.discountPct : 0;
   const navigate = useNavigate();
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
@@ -215,20 +215,19 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
       <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center">
         <span className="bh-wordmark bg-gradient-to-r from-white via-indigo-200 to-fuchsia-200 bg-clip-text text-transparent">Plans</span>
       </h1>
-      <p className="text-slate-400 mt-3 text-center">Plans and credits</p>
+      <p className="text-slate-400 mt-3 text-center">Plans and usage credits</p>
       <PaymentsNotice className="mt-4" />
       <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
         <span className="inline-flex items-center gap-1.5">
           <Lock className="w-3.5 h-3.5 text-emerald-400" /> Secure checkout, we never see your card
         </span>
         <span>Plans are monthly</span>
-        <span>Credit packs are one-time</span>
         <span>Prices in US dollars</span>
         <Link to="/safety" className="inline-block py-2 underline hover:text-slate-200">Trust &amp; safety</Link>
       </p>
 
       <div className="mt-10">
-        <SectionTitle title="Plans" sub="Monthly credits for every AI, plus more features" />
+        <SectionTitle title="Plans" sub="Higher usage limits for every AI, plus more features" />
       </div>
       {!SALES_OPEN && (
         <p className="mt-4 px-4 py-2 rounded-full bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-sm text-center">{COMING_SOON} For now, everyone gets the Free plan.</p>
@@ -262,6 +261,14 @@ export default function Subscriptions({ onFree, onPro, onTeam, onBuyPack, offer 
             </div>
           </div>
         )}
+      </div>
+
+      <div className="mt-10 w-full max-w-3xl">
+        <SectionTitle title="Usage credits" sub="Keep going when you hit your 5-hour limit" />
+        <div className="mt-4 rounded-3xl bg-slate-900/80 border border-slate-700/60 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+          <p className="flex-1 text-sm text-slate-300">Add money, from $5 to $500 ($100 is recommended). When your 5-hour limit runs out, usage credits keep every AI going until it resets. They don't extend the weekly limit, and what they pay for still counts toward it. You can set how much they spend a day in Settings, Usage.</p>
+          <button onClick={openBuyUsage} className="shrink-0 px-5 py-2.5 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-200">Buy usage credits</button>
+        </div>
       </div>
 
       <div className="mt-10 w-full max-w-md mx-auto">

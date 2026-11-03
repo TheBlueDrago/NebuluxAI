@@ -66,6 +66,15 @@ export function useCredits() {
     return () => clearTimeout(t);
   }, [lim.resetAt, refresh]);
 
+  // Usage credits' daily spending limit (Settings → Usage): dollars a day, or null for no limit.
+  // -> the saved { balance, dailyLimit, spentToday }; throws the server's message when it isn't valid.
+  const saveDailyLimit = useCallback(async (limit) => {
+    const r = await base44.functions.invoke("credits", { action: "set-daily-limit", limit });
+    const uc = r?.data?.usageCredits;
+    if (uc) setStatus((s) => (s ? { ...s, usageCredits: uc } : s));
+    return uc;
+  }, []);
+
   const tier = (k) => status?.tiers?.[k] || NONE;
   // Every AI can be used until a shared limit is used up (and until the first load finishes, nothing
   // is blocked: the server checks anyway).
@@ -106,6 +115,9 @@ export function useCredits() {
     // which one is used up ("session", "week" or null)
     limits,
     limitOut: lim.out,
+    // { balance, dailyLimit, spentToday } in dollars (cloudflare-lib/usageCredits.js), or null
+    usageCredits: status?.usageCredits || null,
+    saveDailyLimit,
     sessionOut: !!lim.out,
     // Banned or blocked by an admin, as the server sees it (the ban screen uses this too).
     blocked: status?.blocked === true,

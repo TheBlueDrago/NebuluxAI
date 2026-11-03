@@ -559,7 +559,7 @@ export async function onRequestPost(context) {
     let pool = null;
     const limits = limitsFor(ent.plan);
     if (!internal && !apiBill && env.DB && !sessionExempt(user)) {
-      pool = await openPool(env.DB, user.id, limits);
+      pool = await openPool(env.DB, user.id, limits, Date.now(), ent.plan);
       if (!pool.ok) return json({ error: limitMessage(pool.view), limit: pool.out, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
     }
 

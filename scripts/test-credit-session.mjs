@@ -41,30 +41,46 @@ assert(use({ tokens: { answer: 0, thinking: 0 }, text: "" }) === 1, "every messa
 assert(S.maxCharsFor(10000, "medium", "ai") > S.maxCharsFor(5000, "medium", "ai") && S.maxCharsFor(10000, "medium", "space5") < S.maxCharsFor(10000, "medium", "ai") && S.maxCharsFor(0, "medium", "ai") === 0, "how long a reply can get follows what's left, the AI and the effort");
 
 // ---- the two limits ----
-const T = Date.parse("2026-11-03T12:00:00Z");
+const T = Date.parse("2026-11-03T18:00:00Z"); // a Tuesday
+const W = S.weekWindow(T);
+assert(new Date(W.start).toISOString() === "2026-10-29T13:00:00.000Z" && new Date(W.end).toISOString() === "2026-11-05T14:00:00.000Z", "the week runs from Thursday 8:00 AM Central to the next one (CDT before Nov 1, CST after)");
+assert(S.weekWindow(Date.parse("2026-11-05T13:59:00Z")).start === W.start && S.weekWindow(Date.parse("2026-11-05T14:00:00Z")).start === W.end, "it resets at exactly 8:00 AM Central on Thursday, for everyone");
+assert(new Date(S.weekWindow(Date.parse("2026-07-01T00:00:00Z")).end).toISOString() === "2026-07-02T13:00:00.000Z", "in summer it's still 8:00 AM Central (CDT)");
 assert((await S.readPool(db, "u1")) === null, "no limits running before the first message");
-let o = await S.openPool(db, "u1", L, T);
-assert(o.ok && o.row.sStart === T && o.row.wStart === T && o.left === 100000, "the first message starts both timers (nothing used yet)");
+let o = await S.openPool(db, "u1", L, T, "free");
+assert(o.ok && o.row.sStart === T && o.row.wStart === W.start && o.left === 100000, "the first message starts the 5 hours and joins this week (nothing used yet)");
 await S.chargePool(db, "u1", o.row, 2300, L);
 let v = S.poolView(await S.readPool(db, "u1"), L, T + 1000);
-assert(v.session.used === 2300 && v.session.pct === 2 && v.session.resetAt === T + 5 * 3600e3 && v.week.used === 2300 && v.week.resetAt === T + 7 * 864e5 && !v.out, `a message counts toward both (${v.session.pct}% of the 5 hours, resets 5 hours and 7 days after the first message)`);
-o = await S.openPool(db, "u1", L, T + 3600e3);
+assert(v.session.used === 2300 && v.session.pct === 2 && v.session.resetAt === T + 5 * 3600e3 && v.week.used === 2300 && v.week.resetAt === W.end && !v.out, `a message counts toward both (${v.session.pct}% of the 5 hours, which reset 5 hours after the first message; the week resets Thursday)`);
+o = await S.openPool(db, "u1", L, T + 3600e3, "free");
 assert(o.ok && o.row.sStart === T, "a later message joins the same 5 hours (the timer doesn't restart)");
 await S.chargePool(db, "u1", o.row, 500000, L);
 v = S.poolView(await S.readPool(db, "u1"), L, T + 3600e3);
 assert(v.session.used === 100000 && v.session.pct === 100 && v.out === "session", "the 5-hour limit never goes past 100,000, and then it's used up");
-o = await S.openPool(db, "u1", L, T + 2 * 3600e3);
+o = await S.openPool(db, "u1", L, T + 2 * 3600e3, "free");
 assert(!o.ok && o.out === "session", "with the 5-hour limit used up, the next message waits");
-o = await S.openPool(db, "u1", L, T + 5 * 3600e3 + 1);
-assert(o.ok && o.row.sStart === T + 5 * 3600e3 + 1 && o.row.sUsed === 0 && o.row.wStart === T && o.row.wUsed === 502300, "after 5 hours a new session starts, but the week keeps counting");
-await S.chargePool(db, "u1", { sStart: T, wStart: T }, 3000, L);
+o = await S.openPool(db, "u1", L, T + 5 * 3600e3 + 1, "free");
+assert(o.ok && o.row.sStart === T + 5 * 3600e3 + 1 && o.row.sUsed === 0 && o.row.wStart === W.start && o.row.wUsed === 502300, "after 5 hours a new session starts, but the week keeps counting");
+await S.chargePool(db, "u1", { sStart: T, wStart: W.start }, 3000, L);
 v = S.poolView(await S.readPool(db, "u1"), L, T + 5 * 3600e3 + 2);
 assert(v.session.used === 0 && v.week.used === 505300, "a reply from the old session isn't charged to the new one (the week still counts it)");
 sq.prepare("UPDATE token_pool SET w_used = 1000000 WHERE user_id = 'u1'").run();
-o = await S.openPool(db, "u1", L, T + 6 * 3600e3);
-assert(!o.ok && o.out === "week" && /weekly limit/.test(S.limitMessage(o.view, T + 6 * 3600e3)) && /resets in \d+ days?/.test(S.limitMessage(o.view, T + 6 * 3600e3)), "the weekly limit stops every AI too, and says when it resets: " + S.limitMessage(o.view, T + 6 * 3600e3));
-o = await S.openPool(db, "u1", L, T + 7 * 864e5 + 1);
-assert(o.ok && o.row.wUsed === 0 && o.row.wStart === T + 7 * 864e5 + 1, "after 7 days a new week starts");
+o = await S.openPool(db, "u1", L, T + 6 * 3600e3, "free");
+assert(!o.ok && o.out === "week" && /weekly limit/.test(S.limitMessage(o.view, T + 6 * 3600e3)) && /resets in 1 day \d+ hours?/.test(S.limitMessage(o.view, T + 6 * 3600e3)), "the weekly limit stops every AI too, and says when Thursday's reset comes: " + S.limitMessage(o.view, T + 6 * 3600e3));
+o = await S.openPool(db, "u1", L, W.end + 1, "free");
+assert(o.ok && o.row.wUsed === 0 && o.row.wStart === W.end, "on Thursday at 8:00 AM Central a new week starts");
+// upgrading resets both limits straight away; a smaller plan doesn't
+o = await S.openPool(db, "u2", L, T, "free");
+await S.chargePool(db, "u2", o.row, 60000, L);
+let up = await S.readPool(db, "u2", "pro");
+v = S.poolView(up, L, T + 1000);
+assert(up.plan === "pro" && v.session.used === 0 && v.week.used === 0 && v.session.resetAt === null, "upgrading resets both limits straight away (the next message starts new 5 hours)");
+o = await S.openPool(db, "u2", L, T + 2000, "pro");
+await S.chargePool(db, "u2", o.row, 5000, L);
+up = await S.readPool(db, "u2", "free");
+assert(up.plan === "free" && up.sUsed === 5000 && up.wUsed === 5000, "moving to a smaller plan doesn't reset anything");
+up = await S.readPool(db, "u2", "team");
+assert(up.sUsed === 0 && up.wUsed === 0 && up.plan === "team", "...and upgrading again resets again");
 assert(S.sessionExempt({ email: "hiuhinarra@gmail.com" }) && !S.sessionExempt({ email: "kid@example.com" }), "the owner's accounts have no limits");
 
 // ---- the AI itself (chatCompletion.js): one pool for every AI ----
@@ -151,3 +167,30 @@ assert(app.resetsText(N + (3 * 60 + 12) * 60000, N) === "Resets in 3 hr 12 min" 
 assert(/^Resets \w{3} \d/.test(app.resetsText(N + 3 * 864e5, N, true)), "app: the weekly limit names the day: " + app.resetsText(N + 3 * 864e5, N, true));
 const cc = await import(R + "src/lib/creditCost.js");
 assert(cc.cutNote({ cutBy: "session" }) === cc.SESSION_CUT_NOTE && /usage limit/.test(cc.SESSION_CUT_NOTE) && !/Upgrade/.test(cc.SESSION_CUT_NOTE + cc.OUT_OF_CREDITS_NOTE), "app: a reply stopped by a limit says so (not 'upgrade your plan')");
+
+// ---- usage credits (cloudflare-lib/usageCredits.js, src/lib/usageCredits.js) ----
+const U = await import(R + "cloudflare-lib/usageCredits.js");
+assert(U.parseDailyLimit("25") === 25 && U.parseDailyLimit("$100") === 100 && U.parseDailyLimit(null) === null && U.parseDailyLimit("") === null, "a daily spending limit is whole dollars, or none");
+assert(U.parseDailyLimit("0") === undefined && U.parseDailyLimit("501") === undefined && U.parseDailyLimit("2.5") === undefined && U.parseDailyLimit("lots") === undefined, "...from $1 to $500");
+let uc = await U.usageCreditsView(db, "u5");
+assert(uc.balance === 0 && uc.dailyLimit === null && uc.spentToday === 0, "nobody has usage credits yet (not on sale), and there's no daily limit to start with");
+uc = await U.setDailyLimit(db, "u5", 40);
+assert(uc.dailyLimit === 40 && (await U.usageCreditsView(db, "u5")).dailyLimit === 40, "the daily limit is saved");
+uc = await U.setDailyLimit(db, "u5", null);
+assert(uc.dailyLimit === null, "...and can be taken off");
+const creditsFn = (await import(R + "functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/credits.js")).onRequest;
+me = { id: "u9", role: "user", email: "kid9@example.com" };
+const setLimit = async (limit) => {
+  const r = await creditsFn({ request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify({ action: "set-daily-limit", limit }) }), env: { PUBLISHED_HTML: kv, DB: db } });
+  return [r.status, await r.json()];
+};
+let [cs, cb] = await setLimit("600");
+assert(cs === 400 && /\$1 to \$500/.test(cb.error), "Settings: a daily limit over $500 is refused with plain words");
+[cs, cb] = await setLimit("50");
+assert(cs === 200 && cb.usageCredits.dailyLimit === 50, "Settings: a daily limit of $50 is saved for this person");
+[st, b] = await send({});
+assert(st === 200 && b.credits.usageCredits && b.credits.usageCredits.dailyLimit === 50 && b.credits.usageCredits.balance === 0, "the credit status the app gets carries the usage credits balance and daily limit");
+const ua = await import(R + "src/lib/usageCredits.js");
+assert(ua.USAGE_MIN === 5 && ua.USAGE_MAX === 500 && ua.USAGE_RECOMMENDED === 100 && ua.USAGE_PRESETS.includes(100), "buying usage credits: $5 to $500, $100 recommended");
+assert(ua.usageAmount("5") === 5 && ua.usageAmount("$500") === 500 && ua.usageAmount("4") === null && ua.usageAmount("501") === null && ua.usageAmount("7.5") === null, "an amount typed in has to be whole dollars from $5 to $500");
+assert(ua.USAGE_CREDITS_ON_SALE === false, "usage credits stay coming soon until there's a checkout for them");

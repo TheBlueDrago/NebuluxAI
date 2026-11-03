@@ -25,7 +25,7 @@ export default function PaymentsNotice({ className = "" }) {
     <div role="status" className={`w-full max-w-2xl flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-left ${className}`}>
       <PauseCircle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
       <p className="text-sm text-amber-100">
-        <b>Buying is paused for a little while.</b> Our payment provider is having a break, so plans and credit packs can't be bought right now, and nobody is
+        <b>Buying is paused for a little while.</b> Our payment provider is having a break, so plans and usage credits can't be bought right now, and nobody is
         being charged. Your plan and credits keep working as normal. Please check back soon.
       </p>
     </div>

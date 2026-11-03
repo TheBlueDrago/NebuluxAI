@@ -9,7 +9,7 @@ const UPDATES = [
   {
     date: "November 2026",
     items: [
-      { icon: Zap, text: "Usage limits like Claude: every AI now shares one pool instead of separate credits for each. Free gives you 100,000 tokens every 5 hours and 1,000,000 a week. Only your message, the reply and the AI's thinking count (not your earlier chat), and thinking counts lightly, so a reply on Medium uses far less than before. Stronger AIs use more: Galaxy 1.5 times as much, Space twice and Nebula three times. See how much you've used, and when it resets, in Settings, Usage." },
+      { icon: Zap, text: "Usage limits like Claude: every AI now shares one pool instead of separate credits for each. Free gives you 100,000 tokens every 5 hours and 1,000,000 a week (the week resets every Thursday at 8:00 AM Central time), and upgrading resets both straight away. Only your message, the reply and the AI's thinking count (not your earlier chat), and thinking counts lightly, so a reply on Medium uses far less than before. Stronger AIs use more: Galaxy 1.5 times as much, Space twice and Nebula three times. See how much you've used, and when it resets, in Settings, Usage." },
       { icon: Zap, text: "Send a message while the AI is still writing and it goes out right away: the AI stops, reads it and does what it says." },
     ],
   },
@@ -36,7 +36,6 @@ const UPDATES = [
     date: "September 2026",
     items: [
       { icon: ShieldCheck, text: "Safer everywhere: the app and every published site on nebuluxai.com only open over a secure connection, other websites can't take over your tab, and published pages can't load old plugins or redirect all their links somewhere else." },
-      { icon: Gift, text: "Refer a friend and get more: if someone you referred upgrades, you get free credits for every AI (25 each for Pro, 50 each for Team, 5 each per seat for Enterprise)." },
       { icon: BookOpen, text: "Tap-to-answer quizzes: say Quiz me (or tap Quiz me on this) and answer multiple-choice questions right in the chat, with the reason for each answer and your score at the end." },
       { icon: Globe, text: "QR codes: after you publish, or from your list of websites, show a QR code so people nearby can scan it and open your site or game on their phone." },
       { icon: Sparkles, text: "One-tap improvements in the Website and Game Designers: Make it harder, Add sound effects, Add a high score, Make it look more modern, Add a contact form and more." },
@@ -67,7 +66,6 @@ const UPDATES = [
       { icon: Zap, text: "The app opens much faster, especially when added to your phone's home screen, with no flash of the wrong colours." },
       { icon: ShieldCheck, text: "Every new account confirms its email with a code, fake accounts are limited, and sign-in always stays on nebuluxai.com." },
       { icon: ShieldCheck, text: "Buttons that ask \"Are you sure?\" now work in every browser, including the ones built into other apps." },
-      { icon: Sparkles, text: "Lower prices for credit packs, and a new-member discount on them too." },
     ],
   },
 ];

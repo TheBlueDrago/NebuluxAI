@@ -30,6 +30,7 @@ export { TIERS, TIER_OF_MODEL, TIER_NAMES, PLAN_TOTALS } from "./planTotals.js";
 import { TIERS, PLAN_TOTALS } from "./planTotals.js";
 import { blockedBy, unverified, emailRemoved, removedEmailKey } from "./bans.js";
 import { readPool, poolView, limitsFor, sessionExempt } from "./creditSession.js";
+import { usageCreditsView } from "./usageCredits.js";
 const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4, admin: 5 };
 
 // Whole credits: 1 per started 10,000 characters of reply, times the effort level.
@@ -247,7 +248,9 @@ export async function creditStatus(kv, ent, db) {
     ...(ent.blocked && ent.blockReason ? { blockReason: ent.blockReason } : {}),
     ...(ent.blocked ? { blockedUntil: ent.blockedUntil || null } : {}),
     tiers,
-    ...(db ? { limits: sessionExempt(ent.user) ? null : poolView(await readPool(db, ent.user.id).catch(() => null), limitsFor(ent.plan)) } : {}),
+    ...(db ? { limits: sessionExempt(ent.user) ? null : poolView(await readPool(db, ent.user.id, ent.plan).catch(() => null), limitsFor(ent.plan)) } : {}),
+    // Usage credits (usageCredits.js): the balance that can extend the 5-hour limit, and the daily spending limit.
+    ...(db ? { usageCredits: await usageCreditsView(db, ent.user.id).catch(() => null) } : {}),
     planSource: ent.planSource || "free",
     planEndsAt: ent.planEndsAt || null,
     offer: ent.offer || null,
@@ -355,22 +358,6 @@ export async function giveBonusTo(kv, userId, amounts, once) {
   for (const t of TIERS) b[t] = Math.max(0, (Number(b[t]) || 0) + Math.trunc(Number(amounts[t]) || 0));
   await putJSON(kv, key, b);
   return true;
-}
-
-// Referral upgrade rewards: when someone who joined through a referral link
-// starts paying, whoever referred them gets credits of every AI:
-// Pro 25 each, Team 50 each, Enterprise 5 each per seat. Once per plan per referred person.
-export const UPGRADE_REWARD = { pro: 25, team: 50, enterprise: 5 };
-async function rewardReferrers(kv, user, plan, seats) {
-  const per = UPGRADE_REWARD[plan];
-  if (!per) return;
-  const each = plan === "enterprise" ? per * Math.max(1, Number(seats) || 1) : per;
-  const seen = `refupgrade:${user.id}:${plan}`;
-  if (await kv.get(seen)) return;
-  await kv.put(seen, "1");
-  const referrers = new Set([await kv.get(`referredby:${user.id}`)].filter((r) => r && r !== user.id));
-  const amounts = Object.fromEntries(TIERS.map((t) => [t, each]));
-  for (const r of referrers) await giveBonusTo(kv, r, amounts, `${seen}`);
 }
 
 // Admin-only: record plan grants, bans/blocks and (for the one-time snapshot) bonus balances.

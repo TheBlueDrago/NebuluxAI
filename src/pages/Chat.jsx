@@ -7,6 +7,7 @@ import { AppShellProvider, useAppShell } from "@/components/AppShellContext";
 import Profile from "@/components/Profile";
 import ClaudeSettings, { SETTINGS_TABS } from "@/components/ClaudeSettings";
 import BusyNotice from "@/components/BusyNotice";
+import BuyUsageCredits from "@/components/chat/BuyUsageCredits";
 import PromoExpiredPopup from "@/components/PromoExpiredPopup";
 import TeamWelcomePopup from "@/components/TeamWelcomePopup";
 import BanScreen from "@/components/BanScreen";
@@ -91,6 +92,7 @@ function ChatLayout() {
       )}
 
       <BusyNotice />
+      <BuyUsageCredits />
       <ClaudeSettings open={claudeView} initialTab={profileView} onClose={closeProfile} />
       <Profile
         open={profileOpen}

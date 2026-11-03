@@ -54,17 +54,17 @@ export function Terms() {
 
       <h2>Plans and credits</h2>
       <ul>
-        <li>Using the AIs costs credits. Your plan gives you a monthly allowance, and you can also buy credit packs. Promo codes give a percentage off at checkout.</li>
+        <li>Using the AIs counts toward usage limits that every AI shares: one that resets 5 hours after your first message and a weekly one that resets every Thursday at 8:00 AM Central time. Promo codes give a percentage off at checkout.</li>
         <li>Credits have no cash value, can't be sold or transferred, and may expire as described in the app.</li>
         <li>Paid plans are charged through our payment providers at the price shown before you pay. They save your card and charge it each month while your plan renews; we never see or store your card number. Your password is stored by us, scrambled (hashed) so it can't be read, not even by us; keep it secret, and you're responsible for what's done with your account.</li>
-        <li>Instead of a plan you can buy a one-time pack of credits for one AI. Bought credits are used before your monthly allowance and don't reset at the end of the month. The new-member discount doesn't apply to credit packs.</li>
+        <li>Usage credits are bought as an amount of money, from $5 to $500. They're used only when your 5-hour limit runs out, until it resets. They never extend the weekly limit, and what they pay for still counts toward it. You can set how much of them may be spent a day. The new-member discount doesn't apply to usage credits.</li>
         <li>Some promo codes give a discount instead of credits. Each person can use a discount code once, it only works on what it says it's for, and it may have an end date or a limited number of uses. It doesn't combine with the new-member discount: the bigger of the two is used.</li>
         <li>Credits or rewards gained by cheating — fake sign-ups, exploiting bugs — can be removed, and the account can be suspended.</li>
       </ul>
 
       <h2>New-member offer</h2>
       <ul>
-        <li>Paid plans and credit packs are coming soon and can't be bought yet. There is no free trial.</li>
+        <li>Paid plans and usage credits are coming soon and can't be bought yet. There is no free trial.</li>
       </ul>
 
       <h2>Enterprise</h2>
