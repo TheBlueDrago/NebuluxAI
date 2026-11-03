@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { sessionState } from "@/lib/creditRefresh";
+import { limitsState } from "@/lib/creditRefresh";
 import { myTeam } from "@/lib/myTeam";
 
 // Credits are counted and enforced on the server (the Cloudflare "credits" and
@@ -55,20 +55,21 @@ export function useCredits() {
     [refresh]
   );
 
-  // The session limit (cloudflare-lib/creditSession.js: 50 credits per 5-hour session, used by how
-  // much work each reply takes, shared by every AI and chat): while it's used up, every AI waits; when it resets, the status is
-  // read again so sending opens up by itself.
-  const session = status?.session || null;
-  const ses = sessionState(session);
+  // The usage limits, like Claude's (cloudflare-lib/creditSession.js): a 5-hour limit and a weekly limit
+  // that every AI and chat shares. While one is used up, every AI waits; when it resets, the status is
+  // read again so sending opens up by itself. The per-AI monthly credits no longer limit anything.
+  const limits = status ? status.limits ?? null : undefined;
+  const lim = limitsState(limits || null);
   useEffect(() => {
-    if (!ses.resetAt) return undefined;
-    const t = setTimeout(refresh, Math.min(2147483000, ses.resetAt - Date.now() + 1500));
+    if (!lim.resetAt) return undefined;
+    const t = setTimeout(refresh, Math.min(2147483000, lim.resetAt - Date.now() + 1500));
     return () => clearTimeout(t);
-  }, [ses.resetAt, refresh]);
+  }, [lim.resetAt, refresh]);
 
   const tier = (k) => status?.tiers?.[k] || NONE;
-  // Until the first load finishes, don't block sending — the server checks anyway.
-  const remainingOf = (k) => (status ? tier(k).remaining : Infinity);
+  // Every AI can be used until a shared limit is used up (and until the first load finishes, nothing
+  // is blocked: the server checks anyway).
+  const remainingOf = () => (lim.out ? 0 : Infinity);
 
   const aiRemaining = remainingOf("ai");
   const aiCodeRemaining = remainingOf("aiCode");
@@ -88,10 +89,10 @@ export function useCredits() {
     aiCodeRemaining,
     galaxy5Remaining,
     space5Remaining,
-    aiExhausted: aiRemaining <= 0 || ses.out,
-    aiCodeExhausted: aiCodeRemaining <= 0 || ses.out,
-    galaxy5Exhausted: galaxy5Remaining <= 0 || ses.out,
-    space5Exhausted: space5Remaining <= 0 || ses.out,
+    aiExhausted: !!lim.out,
+    aiCodeExhausted: !!lim.out,
+    galaxy5Exhausted: !!lim.out,
+    space5Exhausted: !!lim.out,
     plan: status?.plan || "free",
     // Where the plan comes from ("free", "paid", "trial", "grant", "member", "admin"), when it
     // ends, the new-account offer, and (Enterprise) the seats in the shared pool.
@@ -101,9 +102,11 @@ export function useCredits() {
     seats: status?.seats || null,
     shared: !!status?.shared,
     tiers: status?.tiers || null,
-    // { limit, hours, used, remaining, resetAt } (null for the owner's accounts), and whether it's used up
-    session,
-    sessionOut: ses.out,
+    // { session, week, out } (null for the owner's accounts: no limits; undefined until loaded), and
+    // which one is used up ("session", "week" or null)
+    limits,
+    limitOut: lim.out,
+    sessionOut: !!lim.out,
     // Banned or blocked by an admin, as the server sees it (the ban screen uses this too).
     blocked: status?.blocked === true,
     blockedUntil: status?.blockedUntil || null,

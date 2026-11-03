@@ -22,22 +22,28 @@ export function nextRefresh(now = Date.now()) {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
 }
 
-// The session limit (cloudflare-lib/creditSession.js): 50 credits per 5-hour session, one limit for
-// every AI and chat, used by how much work each reply takes (a quick answer costs a fraction of one);
-// a session's timer starts with its first message. `session` is the server's { limit, hours, used,
-// remaining, resetAt }. -> { left, out, resetAt, running }: a session whose time is up counts as fresh.
-export function sessionState(session, now = Date.now()) {
-  if (!session) return { left: Infinity, out: false, resetAt: null, running: false };
-  const running = !!session.resetAt && session.resetAt > now;
-  const left = running ? Math.max(0, session.remaining) : session.limit;
-  return { left, out: running && left <= 0, resetAt: running ? session.resetAt : null, running };
+// The usage limits every AI shares, like Claude's (cloudflare-lib/creditSession.js poolView: a 5-hour
+// limit and a weekly limit, in tokens). `limits` is the server's { session, week, out }, or null (the
+// owner: no limits). -> { out: "session" | "week" | null, resetAt (when the used-up one resets),
+// session: { pct, resetAt }, week: { pct, resetAt } }; a limit whose time is up counts as fresh (0%)
+// even before the next check.
+export function limitsState(limits, now = Date.now()) {
+  if (!limits) return { out: null, resetAt: null, session: null, week: null };
+  const win = (w) => (w && w.resetAt && w.resetAt > now ? { pct: Math.min(100, w.pct || 0), resetAt: w.resetAt, full: w.left <= 0 } : { pct: 0, resetAt: null, full: false });
+  const session = win(limits.session), week = win(limits.week);
+  const out = week.full ? "week" : session.full ? "session" : null;
+  return { out, resetAt: out === "week" ? week.resetAt : out === "session" ? session.resetAt : null, session, week };
 }
-// "34.5", "50": session credits come in tenths; whole amounts show without the decimal.
-export const creditText = (n) => (Number.isInteger(n) ? String(n) : (Math.floor(n * 10) / 10).toFixed(1));
-// "3:42 PM", or "tomorrow 1:05 AM" when the reset is on another day.
-export function resetTimeText(at, now = Date.now()) {
-  const d = new Date(at), t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return d.toDateString() === new Date(now).toDateString() ? t : `tomorrow ${t}`;
+// When a limit resets, in Claude's words: "Resets in 3 hr 12 min" for the 5-hour limit, "Resets Tue
+// 9:00 AM" for the weekly one (and "Resets 9:00 AM" when that's today).
+export function resetsText(at, now = Date.now(), weekly = false) {
+  if (!at) return "";
+  if (!weekly) {
+    const mins = Math.max(1, Math.ceil((at - now) / 60000)), h = Math.floor(mins / 60), m = mins % 60;
+    return `Resets in ${h ? `${h} hr${m ? ` ${m} min` : ""}` : `${m} min`}`;
+  }
+  const d = new Date(at), time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `Resets ${d.toDateString() === new Date(now).toDateString() ? "" : d.toLocaleDateString(undefined, { weekday: "short" }) + " "}${time}`;
 }
 
 // "6 days 4 hours", "3 hours 12 minutes", "12 minutes".

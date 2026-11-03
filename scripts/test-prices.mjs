@@ -48,15 +48,18 @@ for (const id of ["pro", "team"]) {
   const t = PLAN_TOTALS[id];
   const desc = (checkout.match(new RegExp(`${id}: \\{[\\s\\S]*?description: "([^"]+)"`)) || [])[1] || "";
   assert(desc.includes(`${t.ai} Nebulux AI`) && desc.includes(`${t.aiCode} Code`) && desc.includes(`${t.galaxy5} Galaxy`) && desc.includes(`${t.space5} Space`), `checkout's ${id} description matches its monthly credits`);
+  // Every AI shares the usage limits now (owner, 2026-11-03); the paid plans' limits are for the owner to
+  // set, so their cards say "higher usage limits" instead of per-AI credits.
   const pub = PUBLIC_PLANS.find((x) => x.id === id).features.join(" | ");
-  assert(pub.includes(`${t.ai} Nebulux AI credits`) && pub.includes(`${t.aiCode} Galaxy, ${t.galaxy5} Space and ${t.space5} Nebula credits`), `public pricing lists ${id}'s credits`);
+  assert(/Higher usage limits than (Free|Pro), shared by every AI/.test(pub) && !/Nebulux AI credits|Nebula credits/.test(pub), `public pricing describes ${id}'s usage limits, not per-AI credits`);
 }
 const pro = card("Plan2Card");
 const team = card("TeamCard");
-const has = (src, t) => src.includes(`${t.ai} Nebulux AI credits`) && src.includes(`${t.aiCode} Galaxy credits`) && src.includes(`${t.galaxy5} Space credits`) && src.includes(`${t.space5} Nebula credits`);
-assert(has(pro, PLAN_TOTALS.pro), "the Shop's Pro card lists the credits Pro gives");
-assert(has(team, PLAN_TOTALS.team), "the Shop's Team card lists the credits Team gives");
-assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWith(`${PLAN_TOTALS.free.ai} Nebulux AI, ${PLAN_TOTALS.free.aiCode} Galaxy`)), "public pricing lists Free's credits");
+assert(/Higher usage limits than Free/.test(pro) && !/Nebulux AI credits/.test(pro), "the Shop's Pro card describes its usage limits");
+assert(/Higher usage limits than Pro/.test(team) && !/Nebulux AI credits/.test(team), "the Shop's Team card describes its usage limits");
+const { POOL_LIMITS } = await load("cloudflare-lib/creditSession.js");
+const n = (x) => x.toLocaleString("en-US");
+assert(PUBLIC_PLANS.find((x) => x.id === "free").features.some((f) => f.startsWith(`${n(POOL_LIMITS.free.session)} tokens every 5 hours and ${n(POOL_LIMITS.free.week)} a week`)), "public pricing lists Free's usage limits as the server enforces them");
 
 // Credit packs: checkout's price table matches the app's.
 const { PACK_PRICES } = await load("cloudflare-lib/creditPacks.js");

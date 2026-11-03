@@ -14,7 +14,7 @@ const open = /export const SALES_OPEN = true/.test(read("lib/salesOpen.js"));
 const cards = read("components/landing/PricingCards.jsx"), pricing = read("pages/Pricing.jsx"), landing = read("pages/Landing.jsx");
 assert(/import \{ SALES_OPEN \} from "@\/lib\/salesOpen"/.test(cards) && /!SALES_OPEN && \(p\.id === "pro" \|\| p\.id === "team"\)[\s\S]{0,300}Coming soon/.test(cards), "the Pro and Team cards say Coming soon while sales are closed");
 assert(/SALES_OPEN\s*\?\s*"Start free\. Pro is[^"]*"\s*:\s*"Start free\. Paid plans are coming soon/.test(pricing), "the pricing page's first line says paid plans are coming soon while sales are closed");
-assert(/SALES_OPEN \? ", and you can buy one-time packs any time\." : "\. One-time packs are coming soon\."/.test(pricing), "the credits answer says packs are coming soon while sales are closed");
+assert(/SALES_OPEN \? ", and paid plans get higher limits\." : "\. Paid plans with higher limits are coming soon\."/.test(pricing), "the usage limits answer says paid plans are coming soon while sales are closed");
 assert(/SALES_OPEN \? "Just need a few more credits\?[^"]*" : "[^"]*coming soon too\."/.test(landing), "the home page says packs are coming soon too while sales are closed");
 // Links to a section of another page only where that section exists.
 const all = cards + pricing + landing;

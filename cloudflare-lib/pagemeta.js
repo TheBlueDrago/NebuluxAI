@@ -63,9 +63,9 @@ export const PAGES = {
   arcade: { title: "Free games made with AI", description: "Play free games in your browser on any phone or computer. No download, no account. Every one was made by describing it to Nebulux AI.", path: "/arcade" },
   templates: { title: "Free website templates", description: "Pick a free template and change anything by telling the AI what you want. Publish it free at yourname.nebuluxai.com.", path: "/templates" },
   // Search results say what the page says: while plans can't be bought, they're coming soon.
-  pricing: { title: "Pricing", description: SALES_OPEN ? "Free to start. Pro is $15 a month, Team is $20 a month for up to 3 people, credit packs start at $0.99, and Enterprise is priced per seat." : "Free to start, with free credits every month. Paid plans are coming soon: Pro at $15 a month and Team at $20 a month for up to 3 people.", path: "/pricing" },
+  pricing: { title: "Pricing", description: SALES_OPEN ? "Free to start. Pro is $15 a month, Team is $20 a month for up to 3 people, credit packs start at $0.99, and Enterprise is priced per seat." : "Free to start: 100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI. Paid plans are coming soon: Pro at $15 a month and Team at $20 a month.", path: "/pricing" },
   business: { title: "Websites for your business", description: "Describe your business and get a website in minutes. Sell from your site, work as a team and keep your code.", path: "/business" },
-  enterprise: { title: "Enterprise", description: "Nebulux AI for your whole organization: a seat for everyone and one shared pool of credits. For registered businesses.", path: "/enterprise" },
+  enterprise: { title: "Enterprise", description: "Nebulux AI for your whole organization: a seat for everyone, with usage limits for every seat. For registered businesses.", path: "/enterprise" },
   about: { title: "About us", description: "We help people make websites and games just by describing them, on any phone or computer.", path: "/about" },
   contact: { title: "Contact us", description: "Questions, ideas, business or partnerships: email us, call us or send a message.", path: "/contact" },
   safety: { title: "Trust & safety", description: "How Nebulux AI keeps your account, your payments and the sites you publish safe, in plain words.", path: "/safety" },

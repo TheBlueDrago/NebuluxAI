@@ -7,6 +7,13 @@ import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 // would notice goes live; keep safety changes in Trust & safety's list too.
 const UPDATES = [
   {
+    date: "November 2026",
+    items: [
+      { icon: Zap, text: "Usage limits like Claude: every AI now shares one pool instead of separate credits for each. Free gives you 100,000 tokens every 5 hours and 1,000,000 a week. Only your message, the reply and the AI's thinking count (not your earlier chat), and thinking counts lightly, so a reply on Medium uses far less than before. Stronger AIs use more: Galaxy 1.5 times as much, Space twice and Nebula three times. See how much you've used, and when it resets, in Settings, Usage." },
+      { icon: Zap, text: "Send a message while the AI is still writing and it goes out right away: the AI stops, reads it and does what it says." },
+    ],
+  },
+  {
     date: "October 2026",
     items: [
       { icon: Gamepad2, text: "Five new 3D games on Nebulux Games, all playable on phones and computers: Fruit Seas (sail between islands, find fruits with powers, quests and bosses), Sky Obby (50 hard stages and a glass bridge), Bed Brawl (protect your bed, build bridges, break the others'), Brawl Blitz (3 vs 3 gem grab with five fighters) and Storm Royale (drop in, loot, and be the last one standing)." },

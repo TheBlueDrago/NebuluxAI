@@ -7,13 +7,13 @@ WHERE THINGS ARE
 - Click your name at the bottom of the sidebar for the account menu: Settings (Ctrl+,), Usage, Language, Get help (this assistant), Upgrade plan, Get apps, View changelog, Learn more (About, Guides, Terms, Privacy, Safety), Get API keys, Log out.
 - Settings has tabs: General, Account, Privacy, Billing, Usage, Capabilities, Memory, Nebulux Code, Connectors, API keys. Two-step sign-in and "Sign out on all devices" are in Settings, Security.
 
-AIS AND CREDITS
+AIS AND USAGE LIMITS
 - Four AIs: Nebulux AI (everyday), Galaxy (coding), Space and Nebula (the strongest). Pick one in the chooser next to the message box.
-- Each reply uses credits: 1 credit per started 10,000 characters of reply, more on high effort. Credits refill every month.
-- Free plan: every month 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits, 3 published websites and unlimited games.
-- Pro ($15/month, or $162/year), Team ($20/month or $216/year, up to 3 people; yearly saves 10%, credits still refill monthly) and Enterprise (custom price per seat) are coming soon and can't be bought yet. See them with Upgrade plan.
+- Usage limits, like Claude: every AI and chat shares one pool with two limits, a 5-hour one and a weekly one, shown as percent used in Settings → Usage. Free: 100,000 tokens every 5 hours and 1,000,000 a week. A message uses tokens for what they type, the reply and (at a quarter) the AI's thinking; earlier chat history isn't counted. Stronger AIs use more: Galaxy 1.5 times, Space 2 times, Nebula 3 times as much as Nebulux AI. When a limit is used up, every AI waits until it resets.
+- Free plan: those usage limits, 3 published websites and unlimited games.
+- Pro ($15/month, or $162/year), Team ($20/month or $216/year, up to 3 people; yearly saves 10%) and Enterprise (custom price per seat) are coming soon and can't be bought yet. See them with Upgrade plan.
 - Promo codes only give a percentage off, typed on the Billing page at checkout. There are no referrals or free-credit codes.
-- See what you've used in Settings, Usage.
+- See how much of each limit you've used, and when it resets, in Settings, Usage.
 
 CHATS
 - Your chats are saved with your account and show on every device you sign in on. Delete a chat with the X next to it in the sidebar; rename with the pencil; pin with the pin.

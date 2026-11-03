@@ -11,7 +11,7 @@ import { savedDiscount, promoPctFor } from "@/lib/promoDiscount";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
 
 function FreeCard({ onFree }) {
-  const features = ["100 Nebulux AI credits", "75 Galaxy, 50 Space and 25 Nebula credits", "3 websites and unlimited games", "ZIP, two-way GitHub sync and custom domains"];
+  const features = ["100,000 tokens every 5 hours", "1,000,000 tokens a week, shared by every AI", "3 websites and unlimited games", "ZIP, two-way GitHub sync and custom domains"];
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-indigo-500/60 rounded-3xl p-6 shadow-2xl shadow-indigo-500/10 flex flex-col">
       <div className="flex items-center justify-between">
@@ -58,7 +58,7 @@ function PriceTag({ amount, pct }) {
 }
 
 function Plan2Card({ onPro, pct }) {
-  const features = ["4 AI's (incl. Space and Nebula in Website Designer)", "150 Galaxy credits", "300 Nebulux AI credits", "100 Space credits", "75 Nebula credits", "Two-way GitHub sync allowed", "Download a ZIP of your website or game in the designers"];
+  const features = ["4 AI's (incl. Space and Nebula in Website Designer)", "Higher usage limits than Free, shared by every AI", "Two-way GitHub sync allowed", "Download a ZIP of your website or game in the designers"];
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-emerald-500/60 rounded-3xl p-6 shadow-2xl shadow-emerald-500/10 flex flex-col">
       <div className="flex items-center justify-between">
@@ -95,10 +95,7 @@ function Plan2Card({ onPro, pct }) {
 function TeamCard({ onTeam, pct }) {
   const features = [
     "4 AI's (incl. Space and Nebula in Website Designer)",
-    "250 Galaxy credits",
-    "500 Nebulux AI credits",
-    "150 Space credits",
-    "100 Nebula credits",
+    "Higher usage limits than Pro, shared by every AI",
     "Add up to 2 people — everyone shares the credits",
     "Two-way GitHub sync allowed",
     "Download a ZIP of your website or game in the designers",
@@ -141,7 +138,7 @@ function EnterpriseCard({ onEnterprise }) {
   const features = [
     "For registered organizations (LLC, corporation, nonprofit…)",
     "As many seats as you need",
-    "Everyone shares one pool of credits: each seat adds 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula a month",
+    "Usage limits for every seat, shared by every AI",
     "All 4 AI's, ZIP download and two-way GitHub sync",
     "10 published websites and unlimited games",
   ];

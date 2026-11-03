@@ -89,12 +89,12 @@ export function useAiActivity() {
   return v;
 }
 
-// Credits this answer has cost so far: whole credits per started 10,000 characters, times the
-// effort level, as the server counts them.
+// About how many tokens this answer has used so far (about 4 characters each, times the AI's
+// multiplier: stronger AIs use more). The server counts the real amount, thinking included, once it's
+// done (cloudflare-lib/creditSession.js).
 export function liveCost(e) {
-  if (!e || !e.meta) return null;
-  const m = e.meta;
-  return Math.max(1, Math.ceil((e.chars || 0) / (m.perChars || 10000))) * (m.mult || 1);
+  if (!e || !e.meta || !e.meta.tokens) return null;
+  return Math.ceil(((e.chars || 0) / 4) * (e.meta.aiMult || 1));
 }
 
 // 1,234 -> "1.2K", 1,500,000 -> "1.5M".

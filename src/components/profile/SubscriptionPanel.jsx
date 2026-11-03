@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CreditCard, Sparkles, Users, Clock, ArrowRight } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
 import PurchaseHistory from "@/components/profile/PurchaseHistory";
-import { sessionState, resetTimeText, creditText } from "@/lib/creditRefresh";
+import UsageLimits from "@/components/chat/UsageLimits";
 
 const PLAN = {
   free: { name: "Free", price: "$0" },
@@ -13,16 +13,6 @@ const PLAN = {
   enterprise: { name: "Enterprise", price: "Per seat" },
   admin: { name: "Admin", price: "Free" },
 };
-const TIER_NAMES = [
-  ["ai", "Nebulux AI"],
-  ["aiCode", "Nebulux Code"],
-  ["galaxy5", "Space"],
-  ["space5", "Nebula"],
-];
-
-// Accounts with a practically endless bonus (e.g. the owner's) show "Unlimited", not 1e+91.
-const HUGE = 1e6;
-
 const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric" });
 function timeLeft(iso) {
   const ms = new Date(iso).getTime() - Date.now();
@@ -34,12 +24,12 @@ function timeLeft(iso) {
 }
 
 // Profile → Settings → Subscriptions: the plan you're on, where it comes from, when it ends,
-// this month's credits, and the new-member offer when you have it.
+// its usage limits, and the new-member offer when you have it.
 export default function SubscriptionPanel({ onBack, onManagePeople }) {
   const { credits } = useAppShell();
   const navigate = useNavigate();
   const plan = PLAN[credits.plan] || PLAN.free;
-  const { planSource: source, planEndsAt: endsAt, offer, tiers, shared, seats } = credits;
+  const { planSource: source, planEndsAt: endsAt, offer, seats } = credits;
 
   let status;
   if (source === "trial") status = `Free trial of Pro until ${fmtDate(endsAt)} (${timeLeft(endsAt)}). After that you're back on Free unless you choose a plan.`;
@@ -47,7 +37,7 @@ export default function SubscriptionPanel({ onBack, onManagePeople }) {
   else if (source === "grant") status = endsAt ? `Given to you by Nebulux AI until ${fmtDate(endsAt)}.` : "Given to you by Nebulux AI, with no end date.";
   else if (source === "member") status = credits.plan === "enterprise" ? "Through your organization's Enterprise plan." : "Through your team's plan.";
   else if (source === "admin") status = "Admin account: every feature, free.";
-  else status = "You're on the Free plan: 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits every month.";
+  else status = "You're on the Free plan: up to 100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI.";
 
   return (
     <div className="p-6">
@@ -91,47 +81,11 @@ export default function SubscriptionPanel({ onBack, onManagePeople }) {
         </div>
       )}
 
-      {credits.session && (() => {
-        const s = sessionState(credits.session);
-        const pct = Math.round((s.left / credits.session.limit) * 100);
-        return (
-          <div className="mt-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-300 font-medium">This session</span>
-              <span className="text-xs text-slate-400">{creditText(s.left)} of {credits.session.limit} left</span>
-            </div>
-            <div className="mt-1 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-amber-400 to-fuchsia-400" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              {s.running ? `Resets ${resetTimeText(s.resetAt)}. ` : ""}Replies use credits by how much work they take (a quick answer costs a fraction of one), up to {credits.session.limit} per {credits.session.hours}-hour session for all of Nebulux AI. A session starts with your first message.
-            </p>
-          </div>
-        );
-      })()}
-
-      {tiers && (
-        <div className="mt-4">
-          <p className="text-sm text-slate-300 font-medium">Credits this month{shared ? " · shared by your organization" : ""}</p>
-          <div className="mt-2 space-y-2">
-            {TIER_NAMES.filter(([k]) => tiers[k]?.total > 0).map(([k, name]) => {
-              const t = tiers[k];
-              const pct = t.total ? Math.min(100, Math.round((t.remaining / t.total) * 100)) : 0;
-              return (
-                <div key={k}>
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span>{name}</span>
-                    <span>{t.total >= HUGE ? "Unlimited" : `${t.remaining} of ${t.total} left`}</span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-indigo-400 to-fuchsia-400" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Usage limits, like Claude: the 5-hour and weekly limits every AI shares (cloudflare-lib/creditSession.js). */}
+      <div className="mt-4">
+        <p className="text-sm text-slate-300 font-medium">Usage limits</p>
+        <UsageLimits tone="slate" />
+      </div>
 
       <div className="mt-5 space-y-2">
         {source !== "admin" && source !== "member" && (

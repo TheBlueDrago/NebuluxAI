@@ -1,33 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
-import { sessionState, resetTimeText, waitText } from "@/lib/creditRefresh";
+import { limitsState, resetsText, waitText } from "@/lib/creditRefresh";
 
-// Shown above the message box once this session's credits are used (50 per 5-hour session, used by
-// how much work each reply takes, cloudflare-lib/creditSession.js): when the next session starts, with a live countdown. When the time
-// comes, credits are read again and sending opens up.
+// Shown above the message box once a usage limit is used up, like Claude's "You've hit your limit":
+// which one (the 5-hour or the weekly limit, shared by every AI and chat) and when it resets, with a
+// live countdown (cloudflare-lib/creditSession.js). When the time comes, the status is read again and
+// sending opens up.
 export default function SessionLimit() {
   const shell = useAppShell();
   const credits = shell?.credits;
-  const session = credits?.session;
+  const limits = credits?.limits;
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
-  const s = sessionState(session, now);
+  const s = limitsState(limits || null, now);
   useEffect(() => {
-    if (session && !s.out) credits?.refresh();
+    if (limits && !s.out) credits?.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.out]);
-  if (!session || !s.out) return null;
+  if (!limits || !s.out) return null;
+  const weekly = s.out === "week";
   return (
     <div className="mb-2 rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-500/10 to-indigo-500/10 px-4 py-3">
-      <p className="text-sm font-semibold text-slate-100">You've used all {session.limit} credits for this session</p>
+      <p className="text-sm font-semibold text-slate-100">You've hit your {weekly ? "weekly" : `${limits.session.hours}-hour`} limit</p>
       <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
         <Clock className="w-3.5 h-3.5 shrink-0" />
         <span>
-          Your next {session.hours}-hour session starts at {resetTimeText(s.resetAt, now)} — in {waitText(s.resetAt - now)}.
+          {weekly ? `${resetsText(s.resetAt, now, true)}, in ${waitText(s.resetAt - now)}` : resetsText(s.resetAt, now)}. Every AI and chat shares this limit.
         </span>
       </p>
     </div>

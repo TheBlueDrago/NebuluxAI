@@ -57,8 +57,8 @@ import { privateInfoIn } from "@/lib/privateInfo";
 import { isNetworkError, OFFLINE_NOTE } from "@/lib/netError";
 import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import LiveCost from "@/components/chat/LiveCost";
-import { setViewing, clearOut, elapsedText } from "@/lib/aiActivity";
-import { waitText, nextRefresh } from "@/lib/creditRefresh";
+import { setViewing, clearOut, elapsedText, tokenText } from "@/lib/aiActivity";
+import { waitText, nextRefresh, limitsState } from "@/lib/creditRefresh";
 
 // "Continue this answer when my credits come back": { [conversationId]: { ai, resetsAt } }.
 const CONTINUE_KEY = "nx-continue-later";
@@ -244,14 +244,15 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
       }, { signal: abort.signal, activity: { key: `chat:${convId}`, where: "chat", label: conversation?.title || chatTitle(text), question: text, ai: AI_NAMES[ai] } });
       if (reqIdRef.current !== myId) return;
       setLive("");
-      if (res.cut) setOutAt(new Date(nextRefresh()).toISOString());
+      // Stopped by a usage limit: when it resets (the card under the chat says so).
+      if (res.cut) setOutAt(new Date(limitsState(res.credits?.limits || null).resetAt || nextRefresh()).toISOString());
       // The server charged the credits (cutting the reply off if they ran out); show its new status.
       spend?.[ai]?.(res.credits);
       const content = res.content ?? "";
       notifyDone(content);
       recordMessage(shell?.currentUser?.id, ai, text.length + content.length, "chat");
       // what this answer used and how long it took, shown under it
-      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: res.charged } : {}), ...(res.read && res.read.length ? { read: res.read } : {}) };
+      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.used) ? { tokens: res.used } : {}), ...(res.read && res.read.length ? { read: res.read } : {}) };
       addMessage(convId, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) });
       if (sendAfter && content.trim() && !res.cut) {
         sendToWhatsApp(content)
@@ -637,7 +638,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
                       <WhatsAppSend text={m.content} />
                       {m.used && (
                         <span className="text-[11.5px] text-slate-500 px-1" title="What this answer used">
-                          {m.used.read?.length ? `Read ${m.used.read.join(" and ")} · ` : ""}{m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
+                          {m.used.read?.length ? `Read ${m.used.read.join(" and ")} · ` : ""}{m.used.tokens != null ? `Used ${tokenText(m.used.tokens)} tokens · ` : m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
                         </span>
                       )}
                       <ReportReply question={messages[i - 1]?.role === "user" ? messages[i - 1].content : ""} reply={m.content} />
@@ -704,13 +705,13 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
 
           {outAt && !loading && conversation?.id && (
             <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              <p className="font-semibold">You ran out of credits.</p>
+              <p className="font-semibold">You've hit your usage limit.</p>
               <p className="mt-1 text-red-100/90">
-                They come back at {new Date(outAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} (in {waitText(Date.parse(outAt) - Date.now())}).
+                It resets {new Date(outAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} (in {waitText(Date.parse(outAt) - Date.now())}).
               </p>
               <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" className="w-4 h-4 accent-indigo-500" checked={!!pending} onChange={(e) => toggleLater(e.target.checked)} />
-                Continue this answer by itself when my credits come back (while this chat is open)
+                Continue this answer by itself when the limit resets (while this chat is open)
               </label>
               {Object.keys(AI_NAMES).some((k) => k !== selectedAi && (remaining?.[k] ?? 0) > 0) && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">

@@ -16,7 +16,7 @@ const ENTITY_TYPES = [
 
 const POINTS = [
   { icon: Users, title: "A seat for everyone", text: "Add and remove the people in your organization yourself, as many as you need." },
-  { icon: Sparkles, title: "One shared pool of credits", text: "Each seat adds 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula credits a month to a pool everyone in your organization uses." },
+  { icon: Sparkles, title: "Usage limits for everyone", text: "Every seat gets its own usage limits, shared by every AI, so one busy person never uses up the rest of the team." },
   { icon: Download, title: "All features", text: "All 4 AI models, 10 published websites, unlimited games, ZIP download and GitHub push." },
   { icon: ShieldCheck, title: "Verified organizations only", text: "Enterprise is for legally registered businesses. We check every application before approving it." },
 ];

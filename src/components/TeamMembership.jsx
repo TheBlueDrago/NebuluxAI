@@ -353,7 +353,7 @@ export default function TeamMembership({ onBack }) {
           <span className="text-slate-200">{planName}</span>
         </div>
         {isEnterprise ? (
-          <p className="text-xs text-slate-400">Everyone shares one pool of credits: each seat adds 100 Nebulux AI, 75 Galaxy, 50 Space and 25 Nebula a month.</p>
+          <p className="text-xs text-slate-400">Every seat gets usage limits that every AI shares.</p>
         ) : (
           <div className="flex justify-between">
             <span className="text-slate-400">Shared Galaxy credits</span>

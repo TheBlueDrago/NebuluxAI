@@ -14,7 +14,7 @@ import { useEffort, effortFor } from "@/lib/effort";
 import { useLocation } from "react-router-dom";
 import { streamChat } from "@/lib/aiStream";
 import LiveCost from "@/components/chat/LiveCost";
-import { elapsedText, setViewing, startActivity, finishActivity } from "@/lib/aiActivity";
+import { elapsedText, setViewing, startActivity, finishActivity, tokenText } from "@/lib/aiActivity";
 import EffortPicker from "@/components/chat/EffortPicker";
 import BlackholeIcon from "@/components/BlackholeIcon";
 import ThinkingDots from "@/components/ThinkingDots";
@@ -410,7 +410,7 @@ export default function CodePage({ userInitial }) {
     const myId = ++reqIdRef.current;
     // The credits and time keep counting while it works through messages one after another;
     // they reset only once it has stopped and you ask again (owner, 2026-10-12).
-    if (!runRef.current.active) runRef.current = { active: true, start: Date.now(), credits: 0 };
+    if (!runRef.current.active) runRef.current = { active: true, start: Date.now(), tokens: 0 };
     const t0 = runRef.current.start;
     // Only when the person (or the AI, for a preview) has the browser open: use what's on it.
     // It never opens by itself for a question (owner, 2026-10-12).
@@ -452,8 +452,8 @@ export default function CodePage({ userInitial }) {
       const content = res.content ?? "";
       recordMessage(userId, whichAi, text.length + content.length);
       notifyDone(content);
-      if (Number.isFinite(res.charged)) runRef.current.credits += res.charged;
-      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.charged) ? { credits: runRef.current.credits } : {}) };
+      if (Number.isFinite(res.used)) runRef.current.tokens = (runRef.current.tokens || 0) + res.used;
+      const used = { ms: Date.now() - t0, ...(Number.isFinite(res.used) ? { tokens: runRef.current.tokens } : {}) };
       setMessages((m) => [...m, { role: "ai", content: res.cut ? `${content.trimEnd()}…\n\n${cutNote(res)}` : content, used, ...(res.more ? { more: true } : {}) }]);
       // Built a page: run it in the Nebulux Browser right away.
       const page = htmlOf(content);
@@ -467,7 +467,7 @@ export default function CodePage({ userInitial }) {
     } finally {
       if (reqIdRef.current === myId) {
         setLoading(false);
-        if (!q.runNext()) runRef.current = { active: false, start: 0, credits: 0 };
+        if (!q.runNext()) runRef.current = { active: false, start: 0, tokens: 0 };
       }
     }
   };
@@ -490,10 +490,10 @@ export default function CodePage({ userInitial }) {
   const q = useMessageQueue({ run: (t) => runPrompt(t), remaining: { [ai]: remaining[ai] ?? (exhausted ? 0 : Infinity) }, names: AI_NAMES, selectedAi: ai });
   useStickToBottom(scrollRef, [messages, loading, live, q.queue.length], messages.filter((m) => m.role === "user").length);
 
-  const runRef = useRef({ active: false, start: 0, credits: 0 });
+  const runRef = useRef({ active: false, start: 0, tokens: 0 });
   const stop = (steerArg) => {
     const steer = steerArg === true;
-    if (!steer) runRef.current = { active: false, start: 0, credits: 0 };
+    if (!steer) runRef.current = { active: false, start: 0, tokens: 0 };
     reqIdRef.current++;
     abortRef.current?.abort();
     setTimeout(() => spend(), 2500);
@@ -713,7 +713,7 @@ export default function CodePage({ userInitial }) {
                         <CopyButton getText={() => m.content} label="Copy reply" className="p-1 rounded-md text-[var(--cl-faint)] hover:text-[var(--cl-text)]" />
                         {m.used && (
                           <span className="text-[11.5px] text-[var(--cl-faint)] px-1" title="What this answer used">
-                            {m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
+                            {m.used.tokens != null ? `Used ${tokenText(m.used.tokens)} tokens · ` : m.used.credits != null ? `Used ${m.used.credits} credit${m.used.credits === 1 ? "" : "s"} · ` : ""}took {elapsedText(m.used.ms)}
                           </span>
                         )}
                         <ReportReply question={messages[i - 1]?.role === "user" ? messages[i - 1].content : ""} reply={m.content} />
@@ -736,14 +736,14 @@ export default function CodePage({ userInitial }) {
               <div className="w-full min-w-0 text-[var(--cl-text)] text-[15.5px] leading-[1.7] font-serif">
                 <Markdown text={live.replace(/```(ask|switch-repo)[\s\S]*$/i, "")} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-[var(--cl-accent)] animate-pulse" />
-                <LiveCost activityKey="code:live" className="mt-1 font-sans" since={runRef.current.start} extra={runRef.current.credits} />
+                <LiveCost activityKey="code:live" className="mt-1 font-sans" since={runRef.current.start} extra={runRef.current.tokens} />
               </div>
             )}
             {loading && !live && (
               <div className="flex items-center gap-2.5 text-[var(--cl-muted)]">
                 <ThinkingDots />
                 {browsing && <span className="text-sm">Searching the web…</span>}
-                <LiveCost activityKey="code:live" since={runRef.current.start} extra={runRef.current.credits} />
+                <LiveCost activityKey="code:live" since={runRef.current.start} extra={runRef.current.tokens} />
               </div>
             )}
           </div>

@@ -6,9 +6,9 @@ import { startActivity, updateActivity, finishActivity } from "@/lib/aiActivity"
 
 // Calls the chatCompletion function in streaming mode so replies appear as they're
 // written instead of after one long wait. The server sends newline-delimited JSON:
-// {"delta": "..."} pieces, then {"done": true, cut, charged, credits, model, effort}
+// {"delta": "..."} pieces, then {"done": true, cut, used (tokens), credits, model, effort}
 // or {"error": "..."}. onDelta(textSoFar) is called as text arrives. Resolves with
-// { content, cut, charged, credits, model, effort }. Errors mimic axios' shape
+// { content, cut, used, credits, model, effort }. Errors mimic axios' shape
 // (err.response.status / err.response.data) so existing catch blocks keep working.
 // Pass { signal } and abort it when the user presses Stop: the connection closes, the
 // server stops generating and charges only for what was written.
@@ -41,7 +41,7 @@ export async function streamChat(body, onDelta, { signal, waits = BUSY_RETRY_WAI
           if (key) updateActivity(key, { chars: t.length });
           onDelta?.(t);
         }, { signal, onMeta: (meta) => key && updateActivity(key, { meta }) });
-        if (key) finishActivity(key, res.cut ? "out" : "done", { charged: res.charged, resetsAt: res.credits?.pool?.resetsAt || null });
+        if (key) finishActivity(key, res.cut ? "out" : "done", { used: res.used, resetsAt: res.credits?.limits?.session?.resetAt || null });
         return res;
       } catch (e) {
         if (wrote || !e?.response?.data?.busy || attempt >= waits.length || signal?.aborted) throw e;
@@ -117,5 +117,5 @@ async function streamOnce(body, onDelta, { signal, onMeta } = {}) {
 
   if (!final) throw fail(502, { error: "The connection to the AI was interrupted. Please try again." });
   if (final.error) throw fail(final.status || 503, final);
-  return { content, cut: !!final.cut, more: !!final.more, charged: final.charged, credits: final.credits, model: final.model, effort: final.effort, read: Array.isArray(final.read) ? final.read : [] };
+  return { content, cut: !!final.cut, more: !!final.more, used: final.used, credits: final.credits, model: final.model, effort: final.effort, read: Array.isArray(final.read) ? final.read : [] };
 }

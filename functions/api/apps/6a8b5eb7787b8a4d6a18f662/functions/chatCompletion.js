@@ -16,27 +16,27 @@
 //   claude_opus_4_8   (Space)         -> gemini-3.8-flash
 //   claude-sonnet-5   (Nebula)          -> gemini-3.8-flash (best coding)
 // Google retired gemini-3.5-flash (now 3.6) and gemini-3.7-flash (now 3.8) on 2026-10-09,
-// so only two separate models are left; the AIs still differ by effort and credits.
+// so only two separate models are left; the AIs still differ by effort and by how much of the
+// usage limits they use (stronger ones use more).
 // On the free tier any of these can answer 503 "experiencing high demand" (or 429
 // when rate-limited) at any moment; the request then falls back to the next-strongest
 // model so the user still gets a reply instead of an error.
 //
-// Every call must come from a signed-in user and is charged server-side in whole
-// credits (see cloudflare-lib/credits.js): 1 per started 10,000 characters of reply,
-// times the effort level. A reply that costs more than the user has left is cut off
-// at what their credits cover. Each reply's work (thinking included) also counts toward the
-// session limit, 50 credits per 5 hours for all of Nebulux AI (cloudflare-lib/creditSession.js).
+// Every call must come from a signed-in user and is charged server-side against the usage limits
+// every AI shares, like Claude's (cloudflare-lib/creditSession.js): tokens per 5 hours and per week,
+// counting the message, the reply and (at a quarter) its thinking, times the AI's multiplier. A reply
+// that would go past what's left is cut off there.
 import { alertOwner } from "../../../../../cloudflare-lib/ownerAlerts.js";
 import { HELP_RULES } from "../../../../../cloudflare-lib/helpguide.js";
 import { appsAskedAbout, appsNotConnected, readText, nameOf, isReady, GOOGLE_APPS } from "../../../../../cloudflare-lib/apps.js";
 import { readAny } from "../../../../v1/connect/index.js";
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { termsAccepted, TERMS_MESSAGE } from "../../../../../cloudflare-lib/terms.js";
-import { currentUser, entitlement, creditStatus, charge, creditsFor, CHARS_PER_CREDIT, EFFORT_MULT, TIER_OF_MODEL, TIER_NAMES } from "../../../../../cloudflare-lib/credits.js";
+import { currentUser, entitlement, creditStatus, charge, TIER_OF_MODEL } from "../../../../../cloudflare-lib/credits.js";
 import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
 import { ageStatus } from "../../../../../cloudflare-lib/agegate.js";
-import { openSession, chargeSession, workCost, sessionMaxChars, sessionExempt, waitText } from "../../../../../cloudflare-lib/creditSession.js";
+import { openPool, chargePool, tokensUsed, maxCharsFor, limitsFor, limitMessage, sessionExempt, AI_MULT } from "../../../../../cloudflare-lib/creditSession.js";
 
 const MODEL_MAP = {
   automatic: "gemini-3.6-flash",
@@ -250,7 +250,7 @@ async function generate(apiKey, model, prompt, generationConfig, timeoutMs, { on
     if (onDelta) onDelta(tail);
   }
   // Ran into the length limit mid-answer: the app offers "Keep going".
-  const tokens = usage ? { input: usage.promptTokenCount || 0, output: (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0) + (usage.toolUsePromptTokenCount || 0) } : null;
+  const tokens = usage ? { input: usage.promptTokenCount || 0, output: (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0) + (usage.toolUsePromptTokenCount || 0), answer: usage.candidatesTokenCount || 0, thinking: usage.thoughtsTokenCount || 0 } : null;
   return { text: out, cut, stopped, more: finishReason === "MAX_TOKENS" && !cut && !stopped, tokens };
 }
 
@@ -541,49 +541,26 @@ export async function onRequestPost(context) {
     const requested = internal ? DEFAULT_MODEL : MODEL_MAP[body.model] || DEFAULT_MODEL;
     const tier = TIER_OF_MODEL[body.model] || "ai";
     const effort = internal ? "low" : EFFORT[body.effort] ? body.effort : DEFAULT_EFFORT;
-    const mult = EFFORT_MULT[effort];
+    const images = Array.isArray(body.images) ? body.images.length : 0;
 
-    let left = Infinity;
     if (!internal && !apiBill) {
       // Replies started at the same moment all see the same balance and their charges can
-      // overwrite each other (KV has no locks), so a script firing many at once could get
-      // free credits. Nobody types faster than this; it caps what that could ever gain.
+      // overwrite each other, so a script firing many at once could get free use. Nobody types
+      // faster than this; it caps what that could ever gain.
       if (!(await allow(`chat:${user.id}`, 15, 60))) {
         return json({ error: "You're sending messages very fast. Wait a moment and try again." }, 429);
       }
-      const before = await creditStatus(kv, ent, env.DB);
-      left = before.tiers[tier].remaining;
-      if (before.tiers[tier].total <= 0) {
-        return json(
-          { error: `You don't have any ${TIER_NAMES[tier]} credits. Refer friends (Account → Refer friends) or upgrade to get some.`, outOfCredits: true, credits: before },
-          402
-        );
-      }
-      if (left < mult) {
-        return json(
-          {
-            error: left > 0
-              ? `You have ${left} ${TIER_NAMES[tier]} credit${left === 1 ? "" : "s"} left — not enough for ${effort} effort (costs at least ${mult}). Lower the effort level.`
-              : `You've run out of ${TIER_NAMES[tier]} credits. Buy credits or a plan in the Shop, or invite a friend and you both get free credits (Settings → Refer friends).`,
-            outOfCredits: true,
-            credits: before,
-          },
-          402
-        );
-      }
     }
 
-    // The session limit (cloudflare-lib/creditSession.js): 50 credits per 5-hour session, one limit
-    // for every AI and chat, charged by the work each reply takes. The first message starts the
-    // timer; a message goes ahead while the session has credits left, and its reply stops where
-    // they run out. A reply that gets no answer costs nothing.
-    let session = null;
+    // The usage limits, like Claude's (cloudflare-lib/creditSession.js): one pool of tokens for every
+    // AI and chat, with a 5-hour limit and a weekly limit. The first message starts their timers; a
+    // message goes ahead while both have tokens left, and its reply stops where they run out. A reply
+    // that gets no answer costs nothing. (The old per-AI monthly credits no longer limit anything.)
+    let pool = null;
+    const limits = limitsFor(ent.plan);
     if (!internal && !apiBill && env.DB && !sessionExempt(user)) {
-      session = await openSession(env.DB, user.id);
-      if (!session.ok) {
-        const wait = waitText(session.start + 5 * 3600e3 - Date.now());
-        return json({ error: `You've used all 50 credits for this session. Your next session starts in ${wait}.`, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
-      }
+      pool = await openPool(env.DB, user.id, limits);
+      if (!pool.ok) return json({ error: limitMessage(pool.view), limit: pool.out, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
     }
 
     // "Who made you?": the model's own training says Google, so the reminder goes with the question.
@@ -596,30 +573,28 @@ export async function onRequestPost(context) {
     if (input && input.error) return json({ error: input.error }, 400);
 
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
-    // The reply stops at what the user's credits cover: whole credits x effort multiplier, and what
-    // the session has left (sessionCapped: the session is the tighter of the two).
-    let maxChars = internal ? Infinity : apiBill ? Math.max(200, Number(body.apiMaxChars) || 0) : Math.floor(left / mult) * CHARS_PER_CREDIT;
-    const sessionCapped = !!session && sessionMaxChars(session.remaining, effort) < maxChars;
-    if (sessionCapped) maxChars = sessionMaxChars(session.remaining, effort);
+    // The reply stops where the limits run out (what's left after the message itself).
+    const question = String(body.question || "");
+    const forReply = pool ? Math.max(0, pool.left - tokensUsed({ tokens: null, text: "", question, images, effort, tier })) : Infinity;
+    const maxChars = internal ? Infinity : apiBill ? Math.max(200, Number(body.apiMaxChars) || 0) : pool ? maxCharsFor(forReply, effort, tier) : Infinity;
     const maxTokens = internal ? 1024 : 0;
     const search = !internal && body.noWeb !== true && wantsSearch(body.question) && (await searchAllowed());
 
-    // Charge for what was produced. A cut reply takes every remaining credit, which
-    // pauses the chat until the user has more.
+    // Charge what the message used. A reply cut off by the limits takes all that was left, which
+    // pauses the chats until the limit resets.
     const settle = async (text, cut, stopped, tokens) => {
       if (internal) return {};
       if (apiBill) return { apiChars: (text || "").length, ...(cut ? { cut: true } : {}) }; // the API charges its own balance
       // Stopped by the user: what was written so far is charged (nothing if nothing was).
-      if (stopped && !text) return { stopped: true, charged: 0 };
-      const bySession = cut && sessionCapped;
-      const cost = cut && !bySession ? left : creditsFor(text, effort);
-      // `question` is the user's own words (the prompt adds instructions), for Monitor's activity view.
-      await charge(kv, ent, tier, cost, String(body.question || prompt).slice(0, 300));
-      // The session: the reply's work (thinking included), or all it had left when it stopped the reply.
-      const work = session ? (bySession ? session.remaining : workCost({ tokens, text, effort })) : 0;
-      if (session) await chargeSession(env.DB, user.id, session.start, work);
-      // cutBy "session": stopped by the session limit (the app says when it resets), not the month's credits
-      return { cut, ...(bySession ? { cutBy: "session" } : {}), charged: cost, ...(session ? { sessionCharged: work } : {}), credits: await creditStatus(kv, ent, env.DB) };
+      if (stopped && !text) return { stopped: true, used: 0 };
+      const used = tokensUsed({ tokens, text, question, images, effort, tier });
+      // `question` is the user's own words (the prompt adds instructions), for Monitor's activity view
+      // (credits.js charge() with nothing to take: it only notes the activity).
+      await charge(kv, ent, tier, 0, String(body.question || prompt).slice(0, 300));
+      const byLimit = !!cut && !!pool;
+      if (pool) await chargePool(env.DB, user.id, pool.row, byLimit ? Math.max(used, pool.left) : used, limits);
+      // cutBy "session": stopped by a usage limit (the app says which one and when it resets)
+      return { cut, ...(byLimit ? { cutBy: "session" } : {}), used, credits: await creditStatus(kv, ent, env.DB) };
     };
 
     if (!body.stream) {
@@ -653,7 +628,7 @@ export async function onRequestPost(context) {
     context.waitUntil(
       (async () => {
         // What this answer costs as it's written (the app shows it live).
-        if (!internal) await send({ meta: { perChars: CHARS_PER_CREDIT, mult } });
+        if (!internal) await send({ meta: { tokens: true, aiMult: AI_MULT[tier] || 1 } });
         try {
           const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           counted(context, "ok", r.model);

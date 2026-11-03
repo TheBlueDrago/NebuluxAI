@@ -50,7 +50,7 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
       >
         <current.icon className={`w-3.5 h-3.5 ${current.color}`} />
         {current.id === "fable" && (
-          <span title="This AI uses more credits than the others" className="text-amber-400 font-bold cursor-help leading-none">!</span>
+          <span title="Nebula uses 3 times as much of your usage limits as Nebulux AI" className="text-amber-400 font-bold cursor-help leading-none">!</span>
         )}
         {labels[current.id] || current.label}
         <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -89,7 +89,7 @@ export default function AiChooser({ value, onChange, plan, allowFable, labels = 
                 >
                   <span className="flex items-center gap-2">
                     <o.icon className={`w-4 h-4 ${o.color}`} />
-                    {o.id === "fable" && <span title="This AI uses more credits than the others" className="text-amber-400 font-bold cursor-help">!</span>}
+                    {o.id === "fable" && <span title="Nebula uses 3 times as much of your usage limits as Nebulux AI" className="text-amber-400 font-bold cursor-help">!</span>}
                     {labels[o.id] || o.label}
                   </span>
                   {offHere || needsPro ? (

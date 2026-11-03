@@ -1,8 +1,14 @@
 // Offline test: attached images reach Gemini (with limits); free "internal" AI calls (chat titles) are held to the basic model, a
-// short prompt and a per-user rate; normal calls are still charged. Run: node scripts/test-ai-internal.mjs
+// short prompt and a per-user rate; normal calls use the usage limits. Run: node scripts/test-ai-internal.mjs
 const { TERMS_VERSION } = await import(new URL("../cloudflare-lib/terms.js", import.meta.url).href); // the agreement version accepted in these tests
 const F = new URL("../functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/", import.meta.url).pathname;
 const assert = (c, m) => { if (!c) { console.error("FAIL", m); process.exitCode = 1; } else console.log("ok", m); };
+// The usage limits every AI shares (cloudflare-lib/creditSession.js) live in D1: an in-memory SQLite stand-in.
+const { DatabaseSync } = await import("node:sqlite");
+const sq = new DatabaseSync(":memory:");
+const stmt = (q, args = []) => ({ bind: (...a) => stmt(q, a), first: async () => sq.prepare(q).get(...args) ?? null, all: async () => ({ results: sq.prepare(q).all(...args) }), run: async () => ({ meta: { changes: sq.prepare(q).run(...args).changes } }) });
+const DB = { prepare: (q) => stmt(q) };
+const POOL = await import(new URL("../cloudflare-lib/creditSession.js", import.meta.url).href);
 // Rate limits count per clock minute or hour: pin the clock 30 seconds past an hour so a run
 // can't straddle two windows (which made the per-minute check fail now and then).
 const pinnedNow = Math.floor(Date.now() / 3600000) * 3600000 + 30000;
@@ -28,7 +34,7 @@ const store = new Map();
 const kv = { get: async (k, t) => (store.has(k) ? (t === "json" ? JSON.parse(store.get(k)) : store.get(k)) : k.startsWith("terms:") ? { version: TERMS_VERSION } : null), put: async (k, v) => store.set(k, v), delete: async (k) => store.delete(k) };
 const { onRequestPost } = await import(F + "chatCompletion.js");
 const call = async (body) => {
-  const r = await onRequestPost({ request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify(body) }), env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k" }, waitUntil: () => {} });
+  const r = await onRequestPost({ request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify(body) }), env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k", DB }, waitUntil: () => {} });
   return [r.status, await r.json().catch(() => ({}))];
 };
 let [s, b] = await call({ prompt: "Name this chat", internal: true, model: "claude-sonnet-5" });
@@ -58,7 +64,7 @@ const helpUsage = [...store.keys()].filter((k) => k.startsWith("usage:")).length
 assert(s === 400, "an empty help question is refused");
 models.length = 0;
 [s, b] = await call({ prompt: "hello", model: "automatic" });
-assert(s === 200 && b.charged === 1 && [...store.keys()].some((k) => k.startsWith("usage:")), "normal call is charged");
+assert(s === 200 && b.used > 0 && b.credits.limits.session.used === b.used && [...store.keys()].some((k) => k.startsWith("usage:")), "a normal call uses the usage limits (and is noted for Monitor)");
 
 // ---- images ----
 bodies.length = 0;
@@ -92,12 +98,12 @@ globalThis.fetch = async (url, opts = {}) => {
   });
   return new Response(body, { status: 200 });
 };
-const usageBefore = () => { const k = [...store.keys()].find((x) => x.startsWith("usage:")); return k ? JSON.parse(store.get(k)).ai || 0 : 0; };
+const usageBefore = async () => ((await POOL.readPool(DB, "u1")) || { sUsed: 0 }).sUsed;
 const streamCall = async (stopAfterDeltas) => {
   let work;
   const r = await onRequestPost({
     request: new Request("https://x/", { method: "POST", headers: { authorization: "Bearer t" }, body: JSON.stringify({ prompt: "write a lot", model: "automatic", stream: true, effort: "low" }) }),
-    env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k" },
+    env: { PUBLISHED_HTML: kv, GEMINI_API_KEY: "k", DB },
     waitUntil: (p) => { work = p; },
   });
   const reader = r.body.getReader();
@@ -110,15 +116,16 @@ const streamCall = async (stopAfterDeltas) => {
   await work;
 };
 chunksSent = 0;
-let u0 = usageBefore();
+let u0 = await usageBefore();
 await streamCall(Infinity);
-const fullCost = usageBefore() - u0;
-assert(chunksSent === 50 && fullCost === 5, "a full 50,000-character reply costs 5 credits (" + fullCost + ")");
+const fullCost = (await usageBefore()) - u0;
+const expect = POOL.tokensUsed({ tokens: null, text: "x".repeat(50000), question: "", effort: "low", tier: "ai" });
+assert(chunksSent === 50 && fullCost === expect, `a full 50,000-character reply uses its tokens (${fullCost}, estimated from its length without Google's counts)`);
 chunksSent = 0;
-u0 = usageBefore();
+u0 = await usageBefore();
 await streamCall(3);
-const stoppedCost = usageBefore() - u0;
-assert(chunksSent < 20 && stoppedCost >= 1 && stoppedCost < 5, `pressing Stop ends generation early (${chunksSent}/50 chunks) and charges only what was written (${stoppedCost} credit)`);
+const stoppedCost = (await usageBefore()) - u0;
+assert(chunksSent < 20 && stoppedCost >= 1 && stoppedCost < fullCost / 4, `pressing Stop ends generation early (${chunksSent}/50 chunks) and uses only what was written (${stoppedCost} tokens)`);
 
 // Message size cap and the per-minute limit on new replies.
 {

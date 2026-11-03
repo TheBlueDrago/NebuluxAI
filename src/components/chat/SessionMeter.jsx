@@ -1,27 +1,30 @@
 import React from "react";
 import { Clock } from "lucide-react";
 import { useAppShell } from "@/components/AppShellContext";
-import { sessionState, resetTimeText, creditText } from "@/lib/creditRefresh";
+import { limitsState, resetsText } from "@/lib/creditRefresh";
 
-// "34.5 of 50 credits left this session · resets 3:42 PM" above the message box, once a session is
-// running (cloudflare-lib/creditSession.js: 50 credits per 5-hour session, used by how much work each
-// reply takes, shared by every AI and chat). Hidden while it's used up (SessionLimit shows instead) and for accounts
-// without a session limit.
+// Like Claude, a note above the message box only once a usage limit is getting close (75% used):
+// "You've used 82% of your 5-hour limit · Resets in 1 hr 10 min". The weekly limit is mentioned
+// when it's the closer one. Hidden while a limit is used up (SessionLimit shows instead) and for
+// accounts without limits (cloudflare-lib/creditSession.js).
+export const WARN_AT = 75;
+
 export default function SessionMeter() {
   const shell = useAppShell();
-  const session = shell?.credits?.session;
-  const s = sessionState(session);
-  if (!session || !s.running || s.out) return null;
-  const pct = Math.round((s.left / session.limit) * 100);
-  const low = s.left <= Math.ceil(session.limit / 5);
+  const limits = shell?.credits?.limits;
+  const s = limitsState(limits || null);
+  if (!limits || s.out) return null;
+  const weekly = s.week.pct >= s.session.pct;
+  const w = weekly ? s.week : s.session;
+  if (w.pct < WARN_AT) return null;
   return (
-    <div className="mb-2 flex items-center gap-2 px-1 text-xs text-slate-400" title={`Replies use credits by how much work they take: a quick answer costs a fraction of one, a long or hard one costs more. You get ${session.limit} per ${session.hours}-hour session (every AI and chat shares them), starting from your first message.`}>
+    <div className="mb-2 flex items-center gap-2 px-1 text-xs text-amber-300" title="Every AI and chat shares your usage limits. Longer replies, more thinking and stronger AIs use more.">
       <Clock className="w-3.5 h-3.5 shrink-0" />
-      <span className={low ? "text-amber-300" : ""}>
-        {creditText(s.left)} of {session.limit} credits left this session · resets {resetTimeText(s.resetAt)}
+      <span>
+        You've used {w.pct}% of your {weekly ? "weekly" : `${limits.session.hours}-hour`} limit · {resetsText(w.resetAt, Date.now(), weekly)}
       </span>
       <span className="ml-auto h-1 w-16 rounded-full bg-slate-800 overflow-hidden">
-        <span className={`block h-full ${low ? "bg-amber-400" : "bg-gradient-to-r from-indigo-400 to-fuchsia-400"}`} style={{ width: `${pct}%` }} />
+        <span className="block h-full bg-amber-400" style={{ width: `${w.pct}%` }} />
       </span>
     </div>
   );

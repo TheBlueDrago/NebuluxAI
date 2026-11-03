@@ -8,6 +8,7 @@ import { savedToken, forgetToken, connect } from "@/lib/githubClient";
 import { showNotice } from "@/lib/dialogs";
 import ConnectorsPane from "@/components/ConnectorsPane";
 import { LANGUAGES, readLanguage, saveLanguage, readMotion, saveMotion, readNotify, saveNotify } from "@/lib/prefs";
+import UsageLimits from "@/components/chat/UsageLimits";
 
 // The Settings window, laid out like Claude's: a search box and grouped sections on the left,
 // the section on the right. Only things Nebulux really has (and that are free) are listed.
@@ -64,20 +65,6 @@ const Select = ({ value, onChange, options, label }) => (
   </select>
 );
 
-function Bar({ label, used, total }) {
-  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
-  return (
-    <div className="py-3">
-      <div className="flex justify-between text-[14px] mb-1.5">
-        <span className="text-[var(--cl-text)]">{label}</span>
-        <span className="text-[var(--cl-muted)]">{total > 1e12 ? "Unlimited" : total > 0 ? `${pct}% used` : "Not in your plan"}</span>
-      </div>
-      <div className="h-2 rounded-full bg-[var(--cl-hover)] overflow-hidden">
-        <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : "bg-blue-500"}`} style={{ width: `${total > 1e12 ? 0 : pct}%` }} />
-      </div>
-    </div>
-  );
-}
 
 export default function ClaudeSettings({ open, initialTab = "general", onClose }) {
   const shell = useAppShell();
@@ -223,14 +210,11 @@ export default function ClaudeSettings({ open, initialTab = "general", onClose }
     usage: (
       <>
         <H first>Usage</H>
-        <div className="mt-2 mb-4"><Segmented value={usageView} onChange={setUsageView} options={[["plan", "Plan credits"], ["api", "API key credits"]]} /></div>
+        <div className="mt-2 mb-4"><Segmented value={usageView} onChange={setUsageView} options={[["plan", "Plan usage limits"], ["api", "API key credits"]]} /></div>
         {usageView === "plan" ? (
           <>
-            <p className="text-[14px] text-[var(--cl-muted)]">{plan} plan · credits for chatting, refilled every month.</p>
-            <Bar label="Nebulux AI" used={credits.aiUsed || 0} total={credits.aiTotal || 0} />
-            <Bar label="Galaxy" used={credits.aiCodeUsed || 0} total={credits.aiCodeTotal || 0} />
-            <Bar label="Space" used={credits.galaxy5Used || 0} total={credits.galaxy5Total || 0} />
-            <Bar label="Nebula" used={credits.space5Used || 0} total={credits.space5Total || 0} />
+            <p className="text-[14px] text-[var(--cl-muted)]">{plan} plan</p>
+            <UsageLimits />
           </>
         ) : !api ? (
           <p className="text-[14px] text-[var(--cl-muted)]">Loading…</p>
