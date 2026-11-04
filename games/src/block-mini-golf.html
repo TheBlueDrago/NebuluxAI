@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Mini Golf</title>
+<style>
+/*KIT_CSS*/
+  #start,#card{background:linear-gradient(#43a047dd,#0f2e12ee)}
+  #card{display:none}
+  h1{color:#fff59d}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .h{font-size:26px;white-space:nowrap} #top .s{font-size:14px;white-space:nowrap}
+  #power{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:240px;height:18px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #power i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9ccc65,#ffee58,#ff7043)}
+  body.touch #power{bottom:auto;top:164px}
+  #cardT{margin:10px auto;border-collapse:collapse;font-weight:800}
+  #cardT td{padding:4px 9px;border:2px solid rgba(255,255,255,.25);text-align:center}
+  @media (max-width:600px){#top{top:54px} #top .h{font-size:20px} #hud{top:108px} #cardT td{padding:3px 5px;font-size:12px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><div class="h" id="tHole">Hole 1</div><div class="s" id="tPar">Par 2 · Strokes 0</div></div>
+<div id="hud" class="sh"><div class="big1" id="hTotal">Total 0</div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="power"><i></i></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK<br>MINI GOLF</h1>
+  <p style="font-weight:700">Nine holes floating in the sky: doglegs, a slalom, sliding walls, bouncy bumpers, a water run with a speed lane, a zig zag, a teleporter and the gate crash. Turn to aim, hold to swing (let go when the power is right) and sink it in as few strokes as you can. Water costs a stroke.</p>
+  <p class="keys"><kbd>A</kbd><kbd>D</kbd> or <kbd>Right mouse</kbd> drag to aim · hold <kbd>Click</kbd> or <kbd>Space</kbd> to swing · <kbd>Wheel</kbd> zoom</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">TEE OFF</button>
+</div></div>
+<div id="card" class="ov"><div class="c"><h1 id="cT" style="font-size:44px">SCORECARD</h1><table id="cardT"></table><p id="cInfo" style="font-weight:800"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block Mini Golf =================
+setSky("#64b5f6", "#e8f5e9", 0xe8f5e9, 70, 260);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+cam.dist = 11; cam.pitch = 0.55; cam.min = 5; cam.max = 22;
+const R = 0.35, SPACING = 44;
+// x, z, w, d (centre and size); move: { amp, speed } slides along x
+const HOLES = [
+  { name: "Warm Up", par: 2, tee: [0, -11], cup: [0, 11], floors: [[0, 0, 8, 28]] },
+  { name: "Dogleg", par: 3, tee: [-7, -8], cup: [7, 8], floors: [[0, 0, 22, 22]], obs: [[5, -4, 12, 14]] },
+  { name: "Slalom", par: 3, tee: [0, -15], cup: [0, 15], floors: [[0, 0, 10, 34]], obs: [[-2.5, -8, 5, 1], [2.5, -1, 5, 1], [-2.5, 6, 5, 1]] },
+  { name: "Sliding Wall", par: 2, tee: [0, -13], cup: [0, 13], floors: [[0, 0, 10, 30]], obs: [[0, 0, 4, 1.2, { amp: 3, speed: 1.6 }]] },
+  { name: "Bumper Box", par: 3, tee: [0, -7], cup: [0, 6.5], floors: [[0, 0, 18, 18]], obs: [[0, 2.5, 6, 1.2]], bump: [[-5, -1], [5, -1], [-3.5, 5], [3.5, 5], [0, -2.5]] },
+  { name: "Water Run", par: 3, tee: [0, -16], cup: [0, 16], floors: [[0, 0, 12, 36]], water: [[-1.5, 2, 9, 6]], boost: [[4.5, -6, 3, 5]] },
+  { name: "Zig Zag", par: 3, tee: [-9, -10], cup: [9, 10], floors: [[0, 0, 24, 26]], obs: [[-3, -4, 18, 1], [3, 4, 18, 1]] },
+  { name: "Teleporter", par: 2, tee: [0, -12], cup: [0, 13], floors: [[0, -8, 10, 14], [0, 10, 10, 12]], tele: [[0, -3.5], [0, 6]] },
+  { name: "Gate Crash", par: 3, tee: [0, -14], cup: [0, 14], floors: [[0, 0, 12, 32]], obs: [[-3, -6, 6, 1, { amp: 3, speed: 2.2 }], [3, 2, 6, 1, { amp: 3, speed: -1.8 }], [0, 9, 4, 1, { amp: 4, speed: 2.8 }]] },
+];
+const PAR = HOLES.reduce((a, h) => a + h.par, 0);
+// ---------- build the course ----------
+const course = HOLES.map((h, i) => {
+  const ox = i * SPACING, hole = { ...h, ox, walls: [], movers: [], bumpers: [], waters: [], boosts: [], teles: [] };
+  for (const [x, z, w, d] of h.floors) {
+    const f = boxMesh(w, 0.5, d, 0x43a047); f.position.set(ox + x, -0.25, z); scene.add(f);
+    const dirt = boxMesh(w + 1.2, 3, d + 1.2, 0x6d4c41); dirt.position.set(ox + x, -2.2, z); scene.add(dirt);
+    for (const [wx, wz, ww, wd] of [[x, z - d / 2 - 0.3, w + 1.2, 0.6], [x, z + d / 2 + 0.3, w + 1.2, 0.6], [x - w / 2 - 0.3, z, 0.6, d], [x + w / 2 + 0.3, z, 0.6, d]]) {
+      const m = boxMesh(ww, 0.7, wd, 0x8d6e63); m.position.set(ox + wx, 0.35, wz); scene.add(m); hole.walls.push({ x: ox + wx, z: wz, w: ww, d: wd });
+    }
+  }
+  for (const [x, z, w, d, move] of h.obs || []) {
+    const m = boxMesh(w, move ? 1 : 0.9, d, move ? 0xff7043 : 0xa1887f); m.position.set(ox + x, move ? 0.5 : 0.45, z); scene.add(m);
+    const o = { x: ox + x, z, w, d, bx: ox + x, move, m, vx: 0 }; (move ? hole.movers : hole.walls).push(o);
+  }
+  for (const [x, z] of h.bump || []) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.8, 16), mat(0xe91e63, 0x5c0026)); m.position.set(ox + x, 0.4, z); scene.add(m); hole.bumpers.push({ x: ox + x, z, m }); }
+  for (const [x, z, w, d] of h.water || []) { const m = boxMesh(w, 0.1, d, 0x1e88e5, 0x0d47a1); m.position.set(ox + x, 0.02, z); scene.add(m); hole.waters.push({ x: ox + x, z, w, d }); }
+  for (const [x, z, w, d] of h.boost || []) { const c = document.createElement("canvas"); c.width = 64; c.height = 128; const g = c.getContext("2d"); g.fillStyle = "#ffd600"; g.fillRect(0, 0, 64, 128); g.fillStyle = "#ff6d00"; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(8, 110 - k * 40); g.lineTo(32, 80 - k * 40); g.lineTo(56, 110 - k * 40); g.lineTo(56, 96 - k * 40); g.lineTo(32, 66 - k * 40); g.lineTo(8, 96 - k * 40); g.fill(); } const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), polygonOffset: true, polygonOffsetFactor: -2 })); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI; m.position.set(ox + x, 0.03, z); scene.add(m); hole.boosts.push({ x: ox + x, z, w, d }); }
+  for (const [x, z] of h.tele || []) { const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.08, 24), mat(0x7c4dff, 0x4527a0)); m.position.set(ox + x, 0.04, z); scene.add(m); hole.teles.push({ x: ox + x, z, m }); }
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 20), mat(0x111111)); cup.position.set(ox + h.cup[0], 0.02, h.cup[1]); scene.add(cup);
+  const pole = boxMesh(0.08, 3.2, 0.08, 0xffffff); pole.position.set(ox + h.cup[0], 1.6, h.cup[1]); scene.add(pole);
+  const flag = makeLabel(String(i + 1), "#fff", 128, 90); flag.scale.set(1.2, 1.2, 1); flag.position.set(ox + h.cup[0] + 0.6, 2.8, h.cup[1]); scene.add(flag);
+  const teeM = boxMesh(1.4, 0.06, 1.4, 0x2e7d32); teeM.position.set(ox + h.tee[0], 0.02, h.tee[1]); scene.add(teeM);
+  const sign = makeLabel(`${i + 1}. ${h.name}`, "#fff", 768, 54); sign.scale.set(6, 1, 1); sign.position.set(ox + h.cup[0], 4.6, h.cup[1] + (h.cup[1] > h.tee[1] ? 2.5 : -2.5)); scene.add(sign);
+  return hole;
+});
+for (let i = 0; i < 26; i++) { const m = boxMesh(rr(4, 10), rr(2, 4), rr(4, 10), pick([0x8d6e63, 0x6d4c41])); m.position.set(rr(-30, SPACING * 9), rr(-30, -8), rr(-50, 50)); scene.add(m); const g = boxMesh(m.geometry.parameters.width, 0.6, m.geometry.parameters.depth, 0x66bb6a); g.position.copy(m.position).setY(m.position.y + m.geometry.parameters.height / 2 + 0.3); scene.add(g); }
+
+// ---------- the ball ----------
+const ballM = new THREE.Mesh(new THREE.SphereGeometry(R, 16, 12), mat(0xffffff)); ballM.castShadow = true; scene.add(ballM);
+const ball = { x: 0, z: 0, vx: 0, vz: 0, y: R, sinking: 0, teleT: 0 };
+const aimLine = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(aimLine);
+const club = boxMesh(0.12, 2.2, 0.12, 0xcfd8dc); club.position.set(0, -1.8, 0.3); P.body.arms[1].add(club);
+const SAVE = "block-mini-golf";
+let S = loadSave(SAVE, { rounds: 0, best: 0, aces: 0 });
+let hi = 0, strokes = 0, card = [], phase = "menu", charging = false, power = 0, pT = 0, last = { x: 0, z: 0 }, waitT = 0, holdMouse = false, holdTouch = false;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+touchControls([{ label: "SWING", color: "rgba(255,238,88,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }]);
+const holding = () => holdMouse || holdTouch || keys.Space;
+const H = () => course[Math.min(hi, course.length - 1)];
+function toTee() {
+  const h = H(); ball.x = h.ox + h.tee[0]; ball.z = h.tee[1]; ball.vx = ball.vz = 0; ball.sinking = 0; ball.gone = false; strokes = 0; last = { x: ball.x, z: ball.z };
+  const dx = h.cup[0] - h.tee[0], dz = h.cup[1] - h.tee[1]; cam.yaw = Math.atan2(-dx, -dz); phase = "aim";
+}
+function newRound() { hi = 0; card = []; toTee(); $("card").style.display = "none"; show("Hole 1: Warm Up", 2); }
+function shoot() {
+  const sp = 2.5 + power * 21.5, f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+  ball.vx = f.x * sp; ball.vz = f.z * sp; strokes++; last = { x: ball.x, z: ball.z }; phase = "roll";
+  P.body.arms[1].rotation.x = 0.9; P.body.arms[0].rotation.x = 0.9; tone(500 + power * 400, 0.06, "square", 0.05);
+}
+const speed = () => Math.hypot(ball.vx, ball.vz);
+function collide(o, bouncy) {
+  const hx = o.w / 2 + R, hz = o.d / 2 + R, dx = ball.x - o.x, dz = ball.z - o.z;
+  if (Math.abs(dx) >= hx || Math.abs(dz) >= hz) return;
+  const px = hx - Math.abs(dx), pz = hz - Math.abs(dz), e = bouncy ? 1.3 : 0.7, ovx = o.vx || 0;
+  if (px < pz) { const s = Math.sign(dx) || 1; ball.x = o.x + s * hx; const rv = ball.vx - ovx; if (rv * s < 0) ball.vx = ovx - rv * e; else ball.vx += ovx * 0.2; }
+  else { const s = Math.sign(dz) || 1; ball.z = o.z + s * hz; const rv = ball.vz; if (rv * s < 0) ball.vz = -rv * e; }
+  if (speed() > 2) tone(260, 0.04, "sine", 0.03);
+}
+function stepBall(dt, T) {
+  const h = H();
+  for (const m of h.movers) { const nx = m.bx + Math.sin(T * m.move.speed) * m.move.amp; m.vx = (nx - m.x) / Math.max(dt, 1e-4); m.x = nx; m.m.position.x = nx; }
+  if (ball.sinking) { ball.sinking += dt; ball.y = R - ball.sinking * 1.6; if (ball.sinking > 0.4) holed(); return; }
+  for (let k = 0; k < 4; k++) {
+    const sdt = dt / 4;
+    ball.x += ball.vx * sdt; ball.z += ball.vz * sdt;
+    for (const w of h.walls) collide(w, false);
+    for (const m of h.movers) collide(m, false);
+    for (const b of h.bumpers) { const dx = ball.x - b.x, dz = ball.z - b.z, d = Math.hypot(dx, dz); if (d < 0.7 + R) { const nx = dx / (d || 1), nz = dz / (d || 1); ball.x = b.x + nx * (0.7 + R); ball.z = b.z + nz * (0.7 + R); const vn = ball.vx * nx + ball.vz * nz; if (vn < 0) { ball.vx -= nx * vn * 2.4; ball.vz -= nz * vn * 2.4; } b.m.scale.setScalar(1.25); tone(880, 0.06, "square", 0.04); } }
+  }
+  for (const b of h.bumpers) b.m.scale.lerp(V(1, 1, 1), Math.min(1, dt * 8));
+  // rolling friction
+  const sp = speed(); if (sp > 0) { const ns = Math.max(0, sp - (0.9 + sp * 0.55) * dt); ball.vx *= ns / sp; ball.vz *= ns / sp; }
+  for (const b of h.boosts) if (Math.abs(ball.x - b.x) < b.w / 2 && Math.abs(ball.z - b.z) < b.d / 2) { ball.vz = Math.min(26, ball.vz + 55 * dt); }
+  for (const w of h.waters) if (Math.abs(ball.x - w.x) < w.w / 2 && Math.abs(ball.z - w.z) < w.d / 2) { strokes++; ball.x = last.x; ball.z = last.z; ball.vx = ball.vz = 0; tone(200, 0.4, "sine", 0.05, -150); show("Splash! +1 stroke", 1.4); phase = "aim"; if (strokes >= h.par + 5) holed(true); return; }
+  ball.teleT -= dt;
+  if (h.teles.length === 2 && ball.teleT <= 0) { const [a, b] = h.teles; if (Math.hypot(ball.x - a.x, ball.z - a.z) < 1.1) { const s2 = Math.max(speed(), 3), f = V(ball.vx, 0, ball.vz).normalize(); ball.x = b.x + f.x * 1.6; ball.z = b.z + f.z * 1.6; ball.vx = f.x * s2; ball.vz = f.z * s2; ball.teleT = 0.6; SFX.zap(); } }
+  // the cup
+  const cx = h.ox + h.cup[0], cz = h.cup[1], dc = Math.hypot(ball.x - cx, ball.z - cz);
+  if (dc < 0.5 && speed() < 9.5) { ball.sinking = 0.001; ball.x = cx; ball.z = cz; ball.vx = ball.vz = 0; SFX.coin(); }
+  else if (dc < 0.3) { ball.vx *= 0.8; ball.vz *= 0.8; }
+  if (speed() < 0.12 && !ball.sinking) { ball.vx = ball.vz = 0; if (strokes >= h.par + 5) { holed(true); return; } phase = "aim"; }
+}
+function holed(gaveUp) {
+  const h = H(), sc = gaveUp ? h.par + 5 : strokes, diff = sc - h.par; card.push(sc); ball.sinking = 0; ball.gone = true; ball.vx = ball.vz = 0;
+  const word = sc === 1 ? "HOLE IN ONE!" : diff <= -2 ? "Eagle!" : diff === -1 ? "Birdie!" : diff === 0 ? "Par" : diff === 1 ? "Bogey" : gaveUp ? "Picked up" : `${diff} over par`;
+  if (sc === 1) { S.aces++; storeSave(SAVE, S); SFX.win(); } else if (diff < 0) SFX.win(); else if (diff === 0) SFX.buy(); else SFX.tick();
+  show(`${word}\n${sc} stroke${sc === 1 ? "" : "s"} on hole ${hi + 1}`, 2.2);
+  phase = "between"; waitT = TEST ? 0.6 : 2.4;
+}
+function finishRound() {
+  phase = "card"; const total = card.reduce((a, s) => a + s, 0), best = !S.best || total < S.best;
+  S.rounds++; if (best) S.best = total; storeSave(SAVE, S); sendScore("strokes", total);
+  const rel = total - PAR, relT = rel === 0 ? "even par" : rel > 0 ? `${rel} over par` : `${-rel} under par`;
+  $("cardT").innerHTML = `<tr><td>Hole</td>${HOLES.map((h, i) => `<td>${i + 1}</td>`).join("")}<td>Total</td></tr><tr><td>Par</td>${HOLES.map((h) => `<td>${h.par}</td>`).join("")}<td>${PAR}</td></tr><tr><td>You</td>${card.map((s, i) => `<td style="color:${s < HOLES[i].par ? "#b9f6ca" : s > HOLES[i].par ? "#ffab91" : "#fff"}">${s}</td>`).join("")}<td>${total}</td></tr>`;
+  $("cT").textContent = rel < 0 ? "UNDER PAR!" : "SCORECARD";
+  $("cInfo").textContent = `${total} strokes, ${relT}.${best ? " New best round!" : ` Best round: ${S.best}.`}`;
+  $("card").style.display = "grid"; document.exitPointerLock?.(); SFX.win();
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.rounds ? `Rounds ${S.rounds} · Best ${S.best} strokes (par ${PAR}) · Holes in one ${S.aces}` : ""; }
+showStats(); toTee(); phase = "menu";
+onFrame((dt, T) => {
+  if (started && phase !== "menu" && phase !== "card") {
+    if (keys.KeyA || keys.ArrowLeft) cam.yaw += dt * 1.5; if (keys.KeyD || keys.ArrowRight) cam.yaw -= dt * 1.5; cam.yaw -= joy.x * dt * 1.8;
+    if (phase === "aim") {
+      if (holding()) { charging = true; pT += dt; power = 1 - Math.abs(((pT * 0.9) % 2) - 1); }
+      else if (charging) { charging = false; shoot(); pT = 0; }
+    }
+    if (phase === "roll" || ball.sinking) stepBall(dt, T); else for (const m of H().movers) { const nx = m.bx + Math.sin(T * m.move.speed) * m.move.amp; m.vx = 0; m.x = nx; m.m.position.x = nx; }
+    if (phase === "between") { waitT -= dt; if (waitT <= 0) { hi++; if (hi >= course.length) finishRound(); else { toTee(); show(`Hole ${hi + 1}: ${H().name}`, 1.8); } } }
+  }
+  ballM.position.set(ball.x, ball.y = ball.sinking ? ball.y : R, ball.z); ballM.visible = !ball.gone;
+  ballM.rotation.x += ball.vz * dt / R; ballM.rotation.z -= ball.vx * dt / R;
+  // you stand next to the ball, club ready
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), side = V(f.z, 0, -f.x);
+  if (phase === "aim" || phase === "menu") { P.pos.set(ball.x - f.x * 0.3 + side.x * 1.1, 0, ball.z - f.z * 0.3 + side.z * 1.1); P.body.g.rotation.y = Math.atan2(-side.x, -side.z); P.body.pose = true; P.body.arms[1].rotation.x = P.body.arms[0].rotation.x = charging ? -0.4 - power * 1.6 : -0.3; P.body.legs.forEach((l) => { l.rotation.x = 0; }); }
+  P.body.g.position.copy(P.pos);
+  aimLine.visible = phase === "aim"; const L = 1.5 + (charging ? power : 0.25) * 9; aimLine.scale.z = L; aimLine.position.set(ball.x + f.x * (L / 2 + 0.5), 0.08, ball.z + f.z * (L / 2 + 0.5)); aimLine.rotation.y = Math.atan2(f.x, f.z);
+  updateCamera(dt, V(ball.x, -1.6, ball.z));
+  const h = H();
+  $("tHole").textContent = `Hole ${Math.min(hi, course.length - 1) + 1}: ${h.name}`; $("tPar").textContent = `Par ${h.par} · Strokes ${strokes}`;
+  const tot = card.reduce((a, s) => a + s, 0), parSoFar = HOLES.slice(0, card.length).reduce((a, x) => a + x.par, 0), rel = tot - parSoFar;
+  $("hTotal").textContent = `Total ${tot}${card.length ? ` (${rel === 0 ? "E" : rel > 0 ? "+" + rel : rel})` : ""}`;
+  $("hInfo").textContent = phase === "aim" ? (touch ? "Drag to aim, hold SWING" : "Aim with A/D or the mouse, hold to swing") : "";
+  $("power").firstChild.style.width = `${(charging ? power : 0) * 100}%`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "card") newRound(); };
+$("again").onclick = () => newRound();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, hole: hi + 1, strokes, card: card.join(","), ball: [+ball.x.toFixed(1), +ball.z.toFixed(1)], speed: +speed().toFixed(1) }),
+  aimAt: (x, z) => { const dx = x - ball.x, dz = z - ball.z; cam.yaw = Math.atan2(-dx, -dz); }, hit: (p) => { power = p; shoot(); }, cup: () => [H().ox + H().cup[0], H().cup[1]], course,
+};
+loop();
+})();
+</script>
+</body>
+</html>

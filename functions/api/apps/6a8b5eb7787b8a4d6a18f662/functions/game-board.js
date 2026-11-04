@@ -4,7 +4,8 @@
 // { action: "top", name, board }            -> { top: [{ name, score }] }   (anyone)
 // { action: "score", name, board, score }   -> { top }                      (signed in)
 // { action: "mine" }                        -> { boards: [{ game, board, place, name, score }] }
-// Boards whose name ends in "time" rank the lowest score first (fastest finish).
+// Boards whose name ends in "time" rank the lowest score first (fastest finish), and so do the
+// boards in LOW_BOARDS (fewest strokes, and so on).
 // KV (PUBLISHED_HTML): board:<game>:<board>. Only written when the board changes, to keep
 // within the free KV write limit.
 import { json } from "../../../../../cloudflare-lib/published.js";
@@ -33,7 +34,10 @@ export const BOARDS = {
   "block-league-soccer": ["wins", "goals"],
   "burger-rush-diner": ["coins"],
   "block-school-escape": ["time"],
+  "block-mini-golf": ["strokes"],
 };
+export const LOW_BOARDS = new Set(["block-mini-golf:strokes"]);
+export const lowFirst = (game, board) => board.endsWith("time") || LOW_BOARDS.has(`${game}:${board}`);
 const MAX_SCORE = 1e9;
 
 export function addScore(list, entry, low) {
@@ -83,7 +87,7 @@ export async function onRequestPost({ request, env }) {
     const board = String(body.board || "score").toLowerCase();
     if (!(BOARDS[game] || []).includes(board)) return json({ error: "Which leaderboard?", top: [] }, 404);
     const key = `board:${game}:${board}`;
-    const low = board.endsWith("time");
+    const low = lowFirst(game, board);
     const list = (await kv.get(key, "json")) || [];
     const show = (l) => l.map((x) => ({ name: x.name, score: x.score }));
 

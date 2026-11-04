@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Mini Golf</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#card{background:linear-gradient(#43a047dd,#0f2e12ee)}
+  #card{display:none}
+  h1{color:#fff59d}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .h{font-size:26px;white-space:nowrap} #top .s{font-size:14px;white-space:nowrap}
+  #power{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:240px;height:18px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #power i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9ccc65,#ffee58,#ff7043)}
+  body.touch #power{bottom:auto;top:164px}
+  #cardT{margin:10px auto;border-collapse:collapse;font-weight:800}
+  #cardT td{padding:4px 9px;border:2px solid rgba(255,255,255,.25);text-align:center}
+  @media (max-width:600px){#top{top:54px} #top .h{font-size:20px} #hud{top:108px} #cardT td{padding:3px 5px;font-size:12px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><div class="h" id="tHole">Hole 1</div><div class="s" id="tPar">Par 2 · Strokes 0</div></div>
+<div id="hud" class="sh"><div class="big1" id="hTotal">Total 0</div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="power"><i></i></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK<br>MINI GOLF</h1>
+  <p style="font-weight:700">Nine holes floating in the sky: doglegs, a slalom, sliding walls, bouncy bumpers, a water run with a speed lane, a zig zag, a teleporter and the gate crash. Turn to aim, hold to swing (let go when the power is right) and sink it in as few strokes as you can. Water costs a stroke.</p>
+  <p class="keys"><kbd>A</kbd><kbd>D</kbd> or <kbd>Right mouse</kbd> drag to aim · hold <kbd>Click</kbd> or <kbd>Space</kbd> to swing · <kbd>Wheel</kbd> zoom</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">TEE OFF</button>
+</div></div>
+<div id="card" class="ov"><div class="c"><h1 id="cT" style="font-size:44px">SCORECARD</h1><table id="cardT"></table><p id="cInfo" style="font-weight:800"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Block Mini Golf =================
+setSky("#64b5f6", "#e8f5e9", 0xe8f5e9, 70, 260);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+cam.dist = 11; cam.pitch = 0.55; cam.min = 5; cam.max = 22;
+const R = 0.35, SPACING = 44;
+// x, z, w, d (centre and size); move: { amp, speed } slides along x
+const HOLES = [
+  { name: "Warm Up", par: 2, tee: [0, -11], cup: [0, 11], floors: [[0, 0, 8, 28]] },
+  { name: "Dogleg", par: 3, tee: [-7, -8], cup: [7, 8], floors: [[0, 0, 22, 22]], obs: [[5, -4, 12, 14]] },
+  { name: "Slalom", par: 3, tee: [0, -15], cup: [0, 15], floors: [[0, 0, 10, 34]], obs: [[-2.5, -8, 5, 1], [2.5, -1, 5, 1], [-2.5, 6, 5, 1]] },
+  { name: "Sliding Wall", par: 2, tee: [0, -13], cup: [0, 13], floors: [[0, 0, 10, 30]], obs: [[0, 0, 4, 1.2, { amp: 3, speed: 1.6 }]] },
+  { name: "Bumper Box", par: 3, tee: [0, -7], cup: [0, 6.5], floors: [[0, 0, 18, 18]], obs: [[0, 2.5, 6, 1.2]], bump: [[-5, -1], [5, -1], [-3.5, 5], [3.5, 5], [0, -2.5]] },
+  { name: "Water Run", par: 3, tee: [0, -16], cup: [0, 16], floors: [[0, 0, 12, 36]], water: [[-1.5, 2, 9, 6]], boost: [[4.5, -6, 3, 5]] },
+  { name: "Zig Zag", par: 3, tee: [-9, -10], cup: [9, 10], floors: [[0, 0, 24, 26]], obs: [[-3, -4, 18, 1], [3, 4, 18, 1]] },
+  { name: "Teleporter", par: 2, tee: [0, -12], cup: [0, 13], floors: [[0, -8, 10, 14], [0, 10, 10, 12]], tele: [[0, -3.5], [0, 6]] },
+  { name: "Gate Crash", par: 3, tee: [0, -14], cup: [0, 14], floors: [[0, 0, 12, 32]], obs: [[-3, -6, 6, 1, { amp: 3, speed: 2.2 }], [3, 2, 6, 1, { amp: 3, speed: -1.8 }], [0, 9, 4, 1, { amp: 4, speed: 2.8 }]] },
+];
+const PAR = HOLES.reduce((a, h) => a + h.par, 0);
+// ---------- build the course ----------
+const course = HOLES.map((h, i) => {
+  const ox = i * SPACING, hole = { ...h, ox, walls: [], movers: [], bumpers: [], waters: [], boosts: [], teles: [] };
+  for (const [x, z, w, d] of h.floors) {
+    const f = boxMesh(w, 0.5, d, 0x43a047); f.position.set(ox + x, -0.25, z); scene.add(f);
+    const dirt = boxMesh(w + 1.2, 3, d + 1.2, 0x6d4c41); dirt.position.set(ox + x, -2.2, z); scene.add(dirt);
+    for (const [wx, wz, ww, wd] of [[x, z - d / 2 - 0.3, w + 1.2, 0.6], [x, z + d / 2 + 0.3, w + 1.2, 0.6], [x - w / 2 - 0.3, z, 0.6, d], [x + w / 2 + 0.3, z, 0.6, d]]) {
+      const m = boxMesh(ww, 0.7, wd, 0x8d6e63); m.position.set(ox + wx, 0.35, wz); scene.add(m); hole.walls.push({ x: ox + wx, z: wz, w: ww, d: wd });
+    }
+  }
+  for (const [x, z, w, d, move] of h.obs || []) {
+    const m = boxMesh(w, move ? 1 : 0.9, d, move ? 0xff7043 : 0xa1887f); m.position.set(ox + x, move ? 0.5 : 0.45, z); scene.add(m);
+    const o = { x: ox + x, z, w, d, bx: ox + x, move, m, vx: 0 }; (move ? hole.movers : hole.walls).push(o);
+  }
+  for (const [x, z] of h.bump || []) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.8, 16), mat(0xe91e63, 0x5c0026)); m.position.set(ox + x, 0.4, z); scene.add(m); hole.bumpers.push({ x: ox + x, z, m }); }
+  for (const [x, z, w, d] of h.water || []) { const m = boxMesh(w, 0.1, d, 0x1e88e5, 0x0d47a1); m.position.set(ox + x, 0.02, z); scene.add(m); hole.waters.push({ x: ox + x, z, w, d }); }
+  for (const [x, z, w, d] of h.boost || []) { const c = document.createElement("canvas"); c.width = 64; c.height = 128; const g = c.getContext("2d"); g.fillStyle = "#ffd600"; g.fillRect(0, 0, 64, 128); g.fillStyle = "#ff6d00"; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(8, 110 - k * 40); g.lineTo(32, 80 - k * 40); g.lineTo(56, 110 - k * 40); g.lineTo(56, 96 - k * 40); g.lineTo(32, 66 - k * 40); g.lineTo(8, 96 - k * 40); g.fill(); } const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), polygonOffset: true, polygonOffsetFactor: -2 })); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI; m.position.set(ox + x, 0.03, z); scene.add(m); hole.boosts.push({ x: ox + x, z, w, d }); }
+  for (const [x, z] of h.tele || []) { const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.08, 24), mat(0x7c4dff, 0x4527a0)); m.position.set(ox + x, 0.04, z); scene.add(m); hole.teles.push({ x: ox + x, z, m }); }
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 20), mat(0x111111)); cup.position.set(ox + h.cup[0], 0.02, h.cup[1]); scene.add(cup);
+  const pole = boxMesh(0.08, 3.2, 0.08, 0xffffff); pole.position.set(ox + h.cup[0], 1.6, h.cup[1]); scene.add(pole);
+  const flag = makeLabel(String(i + 1), "#fff", 128, 90); flag.scale.set(1.2, 1.2, 1); flag.position.set(ox + h.cup[0] + 0.6, 2.8, h.cup[1]); scene.add(flag);
+  const teeM = boxMesh(1.4, 0.06, 1.4, 0x2e7d32); teeM.position.set(ox + h.tee[0], 0.02, h.tee[1]); scene.add(teeM);
+  const sign = makeLabel(`${i + 1}. ${h.name}`, "#fff", 768, 54); sign.scale.set(6, 1, 1); sign.position.set(ox + h.cup[0], 4.6, h.cup[1] + (h.cup[1] > h.tee[1] ? 2.5 : -2.5)); scene.add(sign);
+  return hole;
+});
+for (let i = 0; i < 26; i++) { const m = boxMesh(rr(4, 10), rr(2, 4), rr(4, 10), pick([0x8d6e63, 0x6d4c41])); m.position.set(rr(-30, SPACING * 9), rr(-30, -8), rr(-50, 50)); scene.add(m); const g = boxMesh(m.geometry.parameters.width, 0.6, m.geometry.parameters.depth, 0x66bb6a); g.position.copy(m.position).setY(m.position.y + m.geometry.parameters.height / 2 + 0.3); scene.add(g); }
+
+// ---------- the ball ----------
+const ballM = new THREE.Mesh(new THREE.SphereGeometry(R, 16, 12), mat(0xffffff)); ballM.castShadow = true; scene.add(ballM);
+const ball = { x: 0, z: 0, vx: 0, vz: 0, y: R, sinking: 0, teleT: 0 };
+const aimLine = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(aimLine);
+const club = boxMesh(0.12, 2.2, 0.12, 0xcfd8dc); club.position.set(0, -1.8, 0.3); P.body.arms[1].add(club);
+const SAVE = "block-mini-golf";
+let S = loadSave(SAVE, { rounds: 0, best: 0, aces: 0 });
+let hi = 0, strokes = 0, card = [], phase = "menu", charging = false, power = 0, pT = 0, last = { x: 0, z: 0 }, waitT = 0, holdMouse = false, holdTouch = false;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+touchControls([{ label: "SWING", color: "rgba(255,238,88,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }]);
+const holding = () => holdMouse || holdTouch || keys.Space;
+const H = () => course[Math.min(hi, course.length - 1)];
+function toTee() {
+  const h = H(); ball.x = h.ox + h.tee[0]; ball.z = h.tee[1]; ball.vx = ball.vz = 0; ball.sinking = 0; ball.gone = false; strokes = 0; last = { x: ball.x, z: ball.z };
+  const dx = h.cup[0] - h.tee[0], dz = h.cup[1] - h.tee[1]; cam.yaw = Math.atan2(-dx, -dz); phase = "aim";
+}
+function newRound() { hi = 0; card = []; toTee(); $("card").style.display = "none"; show("Hole 1: Warm Up", 2); }
+function shoot() {
+  const sp = 2.5 + power * 21.5, f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+  ball.vx = f.x * sp; ball.vz = f.z * sp; strokes++; last = { x: ball.x, z: ball.z }; phase = "roll";
+  P.body.arms[1].rotation.x = 0.9; P.body.arms[0].rotation.x = 0.9; tone(500 + power * 400, 0.06, "square", 0.05);
+}
+const speed = () => Math.hypot(ball.vx, ball.vz);
+function collide(o, bouncy) {
+  const hx = o.w / 2 + R, hz = o.d / 2 + R, dx = ball.x - o.x, dz = ball.z - o.z;
+  if (Math.abs(dx) >= hx || Math.abs(dz) >= hz) return;
+  const px = hx - Math.abs(dx), pz = hz - Math.abs(dz), e = bouncy ? 1.3 : 0.7, ovx = o.vx || 0;
+  if (px < pz) { const s = Math.sign(dx) || 1; ball.x = o.x + s * hx; const rv = ball.vx - ovx; if (rv * s < 0) ball.vx = ovx - rv * e; else ball.vx += ovx * 0.2; }
+  else { const s = Math.sign(dz) || 1; ball.z = o.z + s * hz; const rv = ball.vz; if (rv * s < 0) ball.vz = -rv * e; }
+  if (speed() > 2) tone(260, 0.04, "sine", 0.03);
+}
+function stepBall(dt, T) {
+  const h = H();
+  for (const m of h.movers) { const nx = m.bx + Math.sin(T * m.move.speed) * m.move.amp; m.vx = (nx - m.x) / Math.max(dt, 1e-4); m.x = nx; m.m.position.x = nx; }
+  if (ball.sinking) { ball.sinking += dt; ball.y = R - ball.sinking * 1.6; if (ball.sinking > 0.4) holed(); return; }
+  for (let k = 0; k < 4; k++) {
+    const sdt = dt / 4;
+    ball.x += ball.vx * sdt; ball.z += ball.vz * sdt;
+    for (const w of h.walls) collide(w, false);
+    for (const m of h.movers) collide(m, false);
+    for (const b of h.bumpers) { const dx = ball.x - b.x, dz = ball.z - b.z, d = Math.hypot(dx, dz); if (d < 0.7 + R) { const nx = dx / (d || 1), nz = dz / (d || 1); ball.x = b.x + nx * (0.7 + R); ball.z = b.z + nz * (0.7 + R); const vn = ball.vx * nx + ball.vz * nz; if (vn < 0) { ball.vx -= nx * vn * 2.4; ball.vz -= nz * vn * 2.4; } b.m.scale.setScalar(1.25); tone(880, 0.06, "square", 0.04); } }
+  }
+  for (const b of h.bumpers) b.m.scale.lerp(V(1, 1, 1), Math.min(1, dt * 8));
+  // rolling friction
+  const sp = speed(); if (sp > 0) { const ns = Math.max(0, sp - (0.9 + sp * 0.55) * dt); ball.vx *= ns / sp; ball.vz *= ns / sp; }
+  for (const b of h.boosts) if (Math.abs(ball.x - b.x) < b.w / 2 && Math.abs(ball.z - b.z) < b.d / 2) { ball.vz = Math.min(26, ball.vz + 55 * dt); }
+  for (const w of h.waters) if (Math.abs(ball.x - w.x) < w.w / 2 && Math.abs(ball.z - w.z) < w.d / 2) { strokes++; ball.x = last.x; ball.z = last.z; ball.vx = ball.vz = 0; tone(200, 0.4, "sine", 0.05, -150); show("Splash! +1 stroke", 1.4); phase = "aim"; if (strokes >= h.par + 5) holed(true); return; }
+  ball.teleT -= dt;
+  if (h.teles.length === 2 && ball.teleT <= 0) { const [a, b] = h.teles; if (Math.hypot(ball.x - a.x, ball.z - a.z) < 1.1) { const s2 = Math.max(speed(), 3), f = V(ball.vx, 0, ball.vz).normalize(); ball.x = b.x + f.x * 1.6; ball.z = b.z + f.z * 1.6; ball.vx = f.x * s2; ball.vz = f.z * s2; ball.teleT = 0.6; SFX.zap(); } }
+  // the cup
+  const cx = h.ox + h.cup[0], cz = h.cup[1], dc = Math.hypot(ball.x - cx, ball.z - cz);
+  if (dc < 0.5 && speed() < 9.5) { ball.sinking = 0.001; ball.x = cx; ball.z = cz; ball.vx = ball.vz = 0; SFX.coin(); }
+  else if (dc < 0.3) { ball.vx *= 0.8; ball.vz *= 0.8; }
+  if (speed() < 0.12 && !ball.sinking) { ball.vx = ball.vz = 0; if (strokes >= h.par + 5) { holed(true); return; } phase = "aim"; }
+}
+function holed(gaveUp) {
+  const h = H(), sc = gaveUp ? h.par + 5 : strokes, diff = sc - h.par; card.push(sc); ball.sinking = 0; ball.gone = true; ball.vx = ball.vz = 0;
+  const word = sc === 1 ? "HOLE IN ONE!" : diff <= -2 ? "Eagle!" : diff === -1 ? "Birdie!" : diff === 0 ? "Par" : diff === 1 ? "Bogey" : gaveUp ? "Picked up" : `${diff} over par`;
+  if (sc === 1) { S.aces++; storeSave(SAVE, S); SFX.win(); } else if (diff < 0) SFX.win(); else if (diff === 0) SFX.buy(); else SFX.tick();
+  show(`${word}\n${sc} stroke${sc === 1 ? "" : "s"} on hole ${hi + 1}`, 2.2);
+  phase = "between"; waitT = TEST ? 0.6 : 2.4;
+}
+function finishRound() {
+  phase = "card"; const total = card.reduce((a, s) => a + s, 0), best = !S.best || total < S.best;
+  S.rounds++; if (best) S.best = total; storeSave(SAVE, S); sendScore("strokes", total);
+  const rel = total - PAR, relT = rel === 0 ? "even par" : rel > 0 ? `${rel} over par` : `${-rel} under par`;
+  $("cardT").innerHTML = `<tr><td>Hole</td>${HOLES.map((h, i) => `<td>${i + 1}</td>`).join("")}<td>Total</td></tr><tr><td>Par</td>${HOLES.map((h) => `<td>${h.par}</td>`).join("")}<td>${PAR}</td></tr><tr><td>You</td>${card.map((s, i) => `<td style="color:${s < HOLES[i].par ? "#b9f6ca" : s > HOLES[i].par ? "#ffab91" : "#fff"}">${s}</td>`).join("")}<td>${total}</td></tr>`;
+  $("cT").textContent = rel < 0 ? "UNDER PAR!" : "SCORECARD";
+  $("cInfo").textContent = `${total} strokes, ${relT}.${best ? " New best round!" : ` Best round: ${S.best}.`}`;
+  $("card").style.display = "grid"; document.exitPointerLock?.(); SFX.win();
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.rounds ? `Rounds ${S.rounds} · Best ${S.best} strokes (par ${PAR}) · Holes in one ${S.aces}` : ""; }
+showStats(); toTee(); phase = "menu";
+onFrame((dt, T) => {
+  if (started && phase !== "menu" && phase !== "card") {
+    if (keys.KeyA || keys.ArrowLeft) cam.yaw += dt * 1.5; if (keys.KeyD || keys.ArrowRight) cam.yaw -= dt * 1.5; cam.yaw -= joy.x * dt * 1.8;
+    if (phase === "aim") {
+      if (holding()) { charging = true; pT += dt; power = 1 - Math.abs(((pT * 0.9) % 2) - 1); }
+      else if (charging) { charging = false; shoot(); pT = 0; }
+    }
+    if (phase === "roll" || ball.sinking) stepBall(dt, T); else for (const m of H().movers) { const nx = m.bx + Math.sin(T * m.move.speed) * m.move.amp; m.vx = 0; m.x = nx; m.m.position.x = nx; }
+    if (phase === "between") { waitT -= dt; if (waitT <= 0) { hi++; if (hi >= course.length) finishRound(); else { toTee(); show(`Hole ${hi + 1}: ${H().name}`, 1.8); } } }
+  }
+  ballM.position.set(ball.x, ball.y = ball.sinking ? ball.y : R, ball.z); ballM.visible = !ball.gone;
+  ballM.rotation.x += ball.vz * dt / R; ballM.rotation.z -= ball.vx * dt / R;
+  // you stand next to the ball, club ready
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), side = V(f.z, 0, -f.x);
+  if (phase === "aim" || phase === "menu") { P.pos.set(ball.x - f.x * 0.3 + side.x * 1.1, 0, ball.z - f.z * 0.3 + side.z * 1.1); P.body.g.rotation.y = Math.atan2(-side.x, -side.z); P.body.pose = true; P.body.arms[1].rotation.x = P.body.arms[0].rotation.x = charging ? -0.4 - power * 1.6 : -0.3; P.body.legs.forEach((l) => { l.rotation.x = 0; }); }
+  P.body.g.position.copy(P.pos);
+  aimLine.visible = phase === "aim"; const L = 1.5 + (charging ? power : 0.25) * 9; aimLine.scale.z = L; aimLine.position.set(ball.x + f.x * (L / 2 + 0.5), 0.08, ball.z + f.z * (L / 2 + 0.5)); aimLine.rotation.y = Math.atan2(f.x, f.z);
+  updateCamera(dt, V(ball.x, -1.6, ball.z));
+  const h = H();
+  $("tHole").textContent = `Hole ${Math.min(hi, course.length - 1) + 1}: ${h.name}`; $("tPar").textContent = `Par ${h.par} · Strokes ${strokes}`;
+  const tot = card.reduce((a, s) => a + s, 0), parSoFar = HOLES.slice(0, card.length).reduce((a, x) => a + x.par, 0), rel = tot - parSoFar;
+  $("hTotal").textContent = `Total ${tot}${card.length ? ` (${rel === 0 ? "E" : rel > 0 ? "+" + rel : rel})` : ""}`;
+  $("hInfo").textContent = phase === "aim" ? (touch ? "Drag to aim, hold SWING" : "Aim with A/D or the mouse, hold to swing") : "";
+  $("power").firstChild.style.width = `${(charging ? power : 0) * 100}%`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "card") newRound(); };
+$("again").onclick = () => newRound();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, hole: hi + 1, strokes, card: card.join(","), ball: [+ball.x.toFixed(1), +ball.z.toFixed(1)], speed: +speed().toFixed(1) }),
+  aimAt: (x, z) => { const dx = x - ball.x, dz = z - ball.z; cam.yaw = Math.atan2(-dx, -dz); }, hit: (p) => { power = p; shoot(); }, cup: () => [H().ox + H().cup[0], H().cup[1]], course,
+};
+loop();
+})();
+</script>
+</body>
+</html>
