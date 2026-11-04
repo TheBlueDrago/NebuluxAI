@@ -23,7 +23,8 @@ export default function SessionLimit() {
     if (limits && !s.out) credits?.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.out]);
-  if (!limits || !s.out) return null;
+  // (with the 5-hour limit used up but usage credits paying, sending goes on: SessionMeter says so)
+  if (!limits || !s.out || credits?.onUsageCredits) return null;
   const weekly = s.out === "week";
   const btn = "rounded-lg px-3 py-1.5 text-[13px] font-medium whitespace-nowrap";
   return (

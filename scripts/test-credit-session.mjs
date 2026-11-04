@@ -194,3 +194,34 @@ const ua = await import(R + "src/lib/usageCredits.js");
 assert(ua.USAGE_MIN === 5 && ua.USAGE_MAX === 500 && ua.USAGE_RECOMMENDED === 100 && ua.USAGE_PRESETS.includes(100), "buying usage credits: $5 to $500, $100 recommended");
 assert(ua.usageAmount("5") === 5 && ua.usageAmount("$500") === 500 && ua.usageAmount("4") === null && ua.usageAmount("501") === null && ua.usageAmount("7.5") === null, "an amount typed in has to be whole dollars from $5 to $500");
 assert(ua.USAGE_CREDITS_ON_SALE === false, "usage credits stay coming soon until there's a checkout for them");
+
+// ---- spending usage credits past the 5-hour limit ($1 for every 10,000 tokens) ----
+assert(U.TOKENS_PER_DOLLAR === 10000 && U.costOf(10000) === 1 && U.costOf(2300) === 0.23, "usage credits: $1 for every 10,000 tokens (an everyday reply is about $0.23)");
+me = { id: "u7", role: "user", email: "kid7@example.com" };
+reply = "Hello!";
+gwork = { candidatesTokenCount: 60, thoughtsTokenCount: 140 };
+await send({}); // starts u7's limits
+sq.prepare("UPDATE token_pool SET s_used = 100000 WHERE user_id = 'u7'").run();
+[st, b] = await send({});
+assert(st === 429 && b.limit === "session", "with the 5-hour limit used up and no usage credits, it waits");
+await U.addUsageCredits(db, "u7", 5);
+[st, b] = await send({});
+let u7 = await U.usageCreditsView(db, "u7"), p7 = await S.readPool(db, "u7");
+assert(st === 200 && b.usageCreditsSpent === 0.0096 && u7.balance === 4.9904 && u7.spentToday === 0.0096 && p7.sUsed === 100000 && p7.wUsed === 192, `with usage credits it goes on past the 5-hour limit, paid at $1 per 10,000 tokens (${b.used} tokens = $${b.usageCreditsSpent}), and the week still counts it (${p7.wUsed})`);
+assert(b.credits.usageCredits.spendable === 4.9904, "the status says what can still be spent today");
+await U.setDailyLimit(db, "u7", 1);
+sq.prepare("UPDATE usage_credits SET spent_today = 100000 WHERE user_id = 'u7'").run();
+[st, b] = await send({});
+assert(st === 429 && b.limit === "session" && (await U.usageCreditsView(db, "u7")).spendable === 0, "the daily spending limit stops it once today's $1 is spent");
+await U.setDailyLimit(db, "u7", null);
+sq.prepare("UPDATE token_pool SET w_used = 1000000 WHERE user_id = 'u7'").run();
+[st, b] = await send({});
+assert(st === 429 && b.limit === "week" && /weekly limit/.test(b.error), "usage credits never extend the weekly limit");
+sq.prepare("UPDATE token_pool SET w_used = 0 WHERE user_id = 'u7'").run();
+sq.prepare("UPDATE usage_credits SET balance = 2000, spent_today = 0 WHERE user_id = 'u7'").run(); // 2 cents = 200 tokens
+reply = "word ".repeat(2000);
+gwork = { candidatesTokenCount: 2500, thoughtsTokenCount: 2000 };
+[st, b] = await send({});
+u7 = await U.usageCreditsView(db, "u7");
+assert(st === 200 && b.cut === true && b.cutBy === "session" && u7.balance === 0 && b.content.length <= S.maxCharsFor(199, "medium", "ai") + 5, `a reply bigger than what the usage credits can pay for stops there and uses them up (${b.content.length} chars, ${u7.balance} left)`);
+reply = "Hello!";

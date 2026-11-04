@@ -76,9 +76,12 @@ export function useCredits() {
   }, []);
 
   const tier = (k) => status?.tiers?.[k] || NONE;
-  // Every AI can be used until a shared limit is used up (and until the first load finishes, nothing
-  // is blocked: the server checks anyway).
-  const remainingOf = () => (lim.out ? 0 : Infinity);
+  // Every AI can be used until a shared limit is used up, or, with the 5-hour one used up, while usage
+  // credits can still pay (they never extend the week). Until the first load finishes nothing is
+  // blocked: the server checks anyway.
+  const onCredits = lim.out === "session" && (status?.usageCredits?.spendable || 0) > 0;
+  const limitBlocked = !!lim.out && !onCredits;
+  const remainingOf = () => (limitBlocked ? 0 : Infinity);
 
   const aiRemaining = remainingOf("ai");
   const aiCodeRemaining = remainingOf("aiCode");
@@ -98,10 +101,10 @@ export function useCredits() {
     aiCodeRemaining,
     galaxy5Remaining,
     space5Remaining,
-    aiExhausted: !!lim.out,
-    aiCodeExhausted: !!lim.out,
-    galaxy5Exhausted: !!lim.out,
-    space5Exhausted: !!lim.out,
+    aiExhausted: limitBlocked,
+    aiCodeExhausted: limitBlocked,
+    galaxy5Exhausted: limitBlocked,
+    space5Exhausted: limitBlocked,
     plan: status?.plan || "free",
     // Where the plan comes from ("free", "paid", "trial", "grant", "member", "admin"), when it
     // ends, the new-account offer, and (Enterprise) the seats in the shared pool.
@@ -114,11 +117,13 @@ export function useCredits() {
     // { session, week, out } (null for the owner's accounts: no limits; undefined until loaded), and
     // which one is used up ("session", "week" or null)
     limits,
-    limitOut: lim.out,
+    limitOut: limitBlocked ? lim.out : null,
+    // the 5-hour limit is used up and usage credits are paying for messages now
+    onUsageCredits: onCredits,
     // { balance, dailyLimit, spentToday } in dollars (cloudflare-lib/usageCredits.js), or null
     usageCredits: status?.usageCredits || null,
     saveDailyLimit,
-    sessionOut: !!lim.out,
+    sessionOut: limitBlocked,
     // Banned or blocked by an admin, as the server sees it (the ban screen uses this too).
     blocked: status?.blocked === true,
     blockedUntil: status?.blockedUntil || null,

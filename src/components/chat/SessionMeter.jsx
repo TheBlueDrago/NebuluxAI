@@ -13,6 +13,18 @@ export default function SessionMeter() {
   const shell = useAppShell();
   const limits = shell?.credits?.limits;
   const s = limitsState(limits || null);
+  // 5-hour limit used up, usage credits paying for messages until it resets (they never extend the week)
+  if (limits && shell?.credits?.onUsageCredits) {
+    const left = shell.credits.usageCredits?.spendable || 0;
+    return (
+      <div className="mb-2 flex items-center gap-2 px-1 text-xs text-sky-300">
+        <Clock className="w-3.5 h-3.5 shrink-0" />
+        <span>
+          Using usage credits until your {limits.session.hours}-hour limit resets · ${left.toFixed(2)} left today · {resetsText(s.session.resetAt, Date.now())}
+        </span>
+      </div>
+    );
+  }
   if (!limits || s.out) return null;
   const weekly = s.week.pct >= s.session.pct;
   const w = weekly ? s.week : s.session;

@@ -4,13 +4,16 @@
 // dollar amount ($5 to $500, $100 recommended; src/lib/usageCredits.js), and each person can set how
 // much of them may be spent per day.
 //
-// Not on sale yet (src/lib/salesOpen.js): balances are $0 until the payment provider is connected, and
-// spending them (the rate, and letting a message through past the 5-hour limit) comes with it. The daily
-// limit is stored now so it's ready.
+// The rate: $1 for every 10,000 tokens past the 5-hour limit (the same tokens the limits count). The app
+// shows money, not tokens. Not on sale yet (src/lib/usageCredits.js USAGE_CREDITS_ON_SALE): balances are
+// $0 until the payment provider is connected and its checkout adds to them (addUsageCredits).
 //
 // D1 (usage_credits), in millicents (1/100,000 of a dollar) like the API balance (apibilling.js).
 export const DAILY_LIMIT_MIN = 1;
 export const DAILY_LIMIT_MAX = 500;
+export const TOKENS_PER_DOLLAR = 10000;
+const MC = 100000; // millicents in a dollar
+const MC_PER_TOKEN = MC / TOKENS_PER_DOLLAR; // 10
 
 let ready = null;
 const ensure = (db) =>
@@ -23,15 +26,23 @@ const ensure = (db) =>
     }));
 
 const today = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
-const dollars = (mc) => Math.round(Number(mc) || 0) / 100000;
+const dollars = (mc) => Math.round(Number(mc) || 0) / MC;
 
-// -> { balance, dailyLimit (whole dollars, or null for no limit), spentToday } in dollars.
+// -> { balance, dailyLimit (whole dollars, or null for no limit), spentToday, spendable (what can still be
+// spent today: the balance, held to the daily limit) } in dollars.
 export async function usageCreditsView(db, userId, now = Date.now()) {
   await ensure(db);
   const r = await db.prepare("SELECT balance, daily_limit, day, spent_today FROM usage_credits WHERE user_id = ?").bind(userId).first();
-  if (!r) return { balance: 0, dailyLimit: null, spentToday: 0 };
-  return { balance: dollars(r.balance), dailyLimit: r.daily_limit == null ? null : Number(r.daily_limit), spentToday: r.day === today(now) ? dollars(r.spent_today) : 0 };
+  if (!r) return { balance: 0, dailyLimit: null, spentToday: 0, spendable: 0 };
+  const balance = Math.max(0, Number(r.balance) || 0), spent = r.day === today(now) ? Number(r.spent_today) || 0 : 0;
+  const cap = r.daily_limit == null ? Infinity : Math.max(0, Number(r.daily_limit) * MC - spent);
+  return { balance: dollars(balance), dailyLimit: r.daily_limit == null ? null : Number(r.daily_limit), spentToday: dollars(spent), spendable: dollars(Math.min(balance, cap)) };
 }
+
+// How many tokens past the 5-hour limit `view` (usageCreditsView) can still pay for.
+export const tokensFor = (view) => Math.floor(((view && view.spendable) || 0) * TOKENS_PER_DOLLAR);
+// What `tokens` past the 5-hour limit cost, in dollars.
+export const costOf = (tokens) => dollars(Math.ceil(Math.max(0, tokens) * MC_PER_TOKEN));
 
 // A typed daily limit -> whole dollars ($1 to $500), null for "no limit", or undefined when it isn't valid.
 export function parseDailyLimit(v) {
@@ -48,5 +59,30 @@ export async function setDailyLimit(db, userId, limit) {
     .prepare("INSERT INTO usage_credits (user_id, daily_limit) VALUES (?1, ?2) ON CONFLICT(user_id) DO UPDATE SET daily_limit = ?2")
     .bind(userId, limit)
     .run();
+  return usageCreditsView(db, userId);
+}
+
+// Pays for `tokens` used past the 5-hour limit: taken from the balance (never below $0) and added to
+// today's spending. -> the dollars actually taken.
+export async function spendUsageCredits(db, userId, tokens, now = Date.now()) {
+  const mc = Math.ceil(Math.max(0, tokens) * MC_PER_TOKEN);
+  if (!mc) return 0;
+  await ensure(db);
+  const day = today(now);
+  const before = await db.prepare("SELECT balance FROM usage_credits WHERE user_id = ?").bind(userId).first();
+  const take = Math.min(mc, Math.max(0, Number(before && before.balance) || 0));
+  if (!take) return 0;
+  await db
+    .prepare("UPDATE usage_credits SET balance = MAX(0, balance - ?2), spent_today = CASE WHEN day = ?3 THEN spent_today + ?2 ELSE ?2 END, day = ?3 WHERE user_id = ?1")
+    .bind(userId, take, day)
+    .run();
+  return dollars(take);
+}
+
+// Adds bought usage credits (for the checkout, once there is one; amounts in dollars).
+export async function addUsageCredits(db, userId, amount) {
+  const mc = Math.round(Math.max(0, Number(amount) || 0) * MC);
+  await ensure(db);
+  await db.prepare("INSERT INTO usage_credits (user_id, balance) VALUES (?1, ?2) ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?2").bind(userId, mc).run();
   return usageCreditsView(db, userId);
 }

@@ -37,6 +37,7 @@ import { allow } from "../../../../../cloudflare-lib/ratelimit.js";
 import { countAi } from "../../../../../cloudflare-lib/aihealth.js";
 import { ageStatus } from "../../../../../cloudflare-lib/agegate.js";
 import { openPool, chargePool, tokensUsed, maxCharsFor, limitsFor, limitMessage, sessionExempt, AI_MULT } from "../../../../../cloudflare-lib/creditSession.js";
+import { usageCreditsView, tokensFor, spendUsageCredits } from "../../../../../cloudflare-lib/usageCredits.js";
 
 const MODEL_MAP = {
   automatic: "gemini-3.6-flash",
@@ -556,11 +557,16 @@ export async function onRequestPost(context) {
     // AI and chat, with a 5-hour limit and a weekly limit. The first message starts their timers; a
     // message goes ahead while both have tokens left, and its reply stops where they run out. A reply
     // that gets no answer costs nothing. (The old per-AI monthly credits no longer limit anything.)
-    let pool = null;
+    // Usage credits (cloudflare-lib/usageCredits.js) extend only the 5-hour limit: with it used up, a
+    // message still goes ahead while they can pay for it ($1 for every 10,000 tokens, within the daily
+    // spending limit). They never extend the week, and what they pay for still counts toward it.
+    let pool = null, extra = 0, room = Infinity;
     const limits = limitsFor(ent.plan);
     if (!internal && !apiBill && env.DB && !sessionExempt(user)) {
       pool = await openPool(env.DB, user.id, limits, Date.now(), ent.plan);
-      if (!pool.ok) return json({ error: limitMessage(pool.view), limit: pool.out, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
+      if (pool.out !== "week") extra = tokensFor(await usageCreditsView(env.DB, user.id).catch(() => null));
+      if (pool.out === "week" || (pool.out === "session" && extra <= 0)) return json({ error: limitMessage(pool.view), limit: pool.out, sessionLimit: true, credits: await creditStatus(kv, ent, env.DB) }, 429);
+      room = Math.min(pool.view.week.left, pool.view.session.left + extra);
     }
 
     // "Who made you?": the model's own training says Google, so the reminder goes with the question.
@@ -575,7 +581,7 @@ export async function onRequestPost(context) {
     const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
     // The reply stops where the limits run out (what's left after the message itself).
     const question = String(body.question || "");
-    const forReply = pool ? Math.max(0, pool.left - tokensUsed({ tokens: null, text: "", question, images, effort, tier })) : Infinity;
+    const forReply = pool ? Math.max(0, room - tokensUsed({ tokens: null, text: "", question, images, effort, tier })) : Infinity;
     const maxChars = internal ? Infinity : apiBill ? Math.max(200, Number(body.apiMaxChars) || 0) : pool ? maxCharsFor(forReply, effort, tier) : Infinity;
     const maxTokens = internal ? 1024 : 0;
     const search = !internal && body.noWeb !== true && wantsSearch(body.question) && (await searchAllowed());
@@ -592,9 +598,17 @@ export async function onRequestPost(context) {
       // (credits.js charge() with nothing to take: it only notes the activity).
       await charge(kv, ent, tier, 0, String(body.question || prompt).slice(0, 300));
       const byLimit = !!cut && !!pool;
-      if (pool) await chargePool(env.DB, user.id, pool.row, byLimit ? Math.max(used, pool.left) : used, limits);
+      const spent = byLimit ? Math.max(used, room) : used;
+      let paid = 0;
+      if (pool) {
+        // the 5-hour limit takes what it has left (it never goes past its limit) and the week counts all of it
+        await chargePool(env.DB, user.id, pool.row, spent, limits);
+        // what went past the 5-hour limit is paid with usage credits
+        const past = Math.min(extra, Math.max(0, spent - pool.view.session.left));
+        if (past > 0) paid = await spendUsageCredits(env.DB, user.id, past).catch(() => 0);
+      }
       // cutBy "session": stopped by a usage limit (the app says which one and when it resets)
-      return { cut, ...(byLimit ? { cutBy: "session" } : {}), used, credits: await creditStatus(kv, ent, env.DB) };
+      return { cut, ...(byLimit ? { cutBy: "session" } : {}), used, ...(paid ? { usageCreditsSpent: paid } : {}), credits: await creditStatus(kv, ent, env.DB) };
     };
 
     if (!body.stream) {
