@@ -28,6 +28,7 @@ export const BOARDS = {
   "block-kart-racers": ["wins", "laptime"],
   "hide-and-seek-town": ["wins"],
   "color-drop-party": ["wins"],
+  "reel-rush-fishing": ["caught"],
 };
 const MAX_SCORE = 1e9;
 

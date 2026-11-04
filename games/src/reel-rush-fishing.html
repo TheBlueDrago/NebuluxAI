@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reel Rush Fishing</title>
+<style>
+/*KIT_CSS*/
+  #start{background:linear-gradient(#0288d1dd,#01273aee)}
+  h1{color:#ffe57f}
+  #coins{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:30px;font-weight:900;color:#ffd54f;pointer-events:none;text-align:center}
+  #coins .s{font-size:13px;color:#fff;font-weight:800}
+  #hint{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);font-size:20px;font-weight:900;pointer-events:none;text-align:center}
+  #reel{position:fixed;right:9%;top:50%;transform:translateY(-50%);display:none;gap:10px;pointer-events:none}
+  #track{position:relative;width:46px;height:300px;border:4px solid #000;border-radius:12px;background:linear-gradient(#4fc3f7,#01579b);overflow:hidden}
+  #zone{position:absolute;left:0;right:0;background:rgba(118,255,3,.55);border-top:3px solid #b2ff59;border-bottom:3px solid #b2ff59}
+  #fishI{position:absolute;left:5px;width:30px;height:20px;border:3px solid #000;border-radius:50% 40% 40% 50%;background:#ffab40}
+  #prog{position:relative;width:16px;height:300px;border:4px solid #000;border-radius:8px;background:#263238;overflow:hidden}
+  #prog i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#ffee58,#ff9800)}
+  #catch{position:fixed;inset:0;display:none;place-items:center;z-index:7;background:rgba(0,0,0,.5)}
+  #catch .c,#index .c{background:#012b40;border:4px solid #000;border-radius:18px}
+  #catch h2{font-size:40px;margin:4px 0;-webkit-text-stroke:2px #000}
+  #index{display:none}
+  #idxList{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:left;font-weight:800;font-size:13px;max-width:560px}
+  #idxList div{background:rgba(255,255,255,.08);border-radius:8px;padding:6px 8px}
+</style>
+</head>
+<body>
+<div id="coins" class="sh">0 coins<div class="s" id="bucketT"></div></div>
+<div id="hud" class="sh"><div class="big1" id="hZone">The Pier</div><div class="sub" id="hRod"></div><div class="sub" id="hIdx"></div></div>
+<div id="btns"><button class="b" id="idxB">Fish Index</button><button class="b" id="menuB">Menu</button></div>
+<div id="hint" class="sh"></div>
+<div id="reel"><div id="track"><div id="zone"></div><div id="fishI"></div></div><div id="prog"><i></i></div></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="catch"><div class="c"><p style="margin:0;font-weight:800">You caught...</p><h2 id="cName"></h2><p id="cInfo" style="font-weight:800"></p><button class="big" id="cOk">KEEP FISHING</button></div></div>
+<div id="index" class="ov"><div class="c"><h1 style="font-size:40px">FISH INDEX</h1><p id="idxT" style="font-weight:800"></p><div id="idxList"></div><button class="big" id="idxOk">CLOSE</button></div></div>
+<div id="start" class="ov"><div class="c">
+  <h1>REEL RUSH<br>FISHING</h1>
+  <p style="font-weight:700">Walk to the end of a dock (or an ice hole) and <b>cast</b>. When the bobber dips and you see <b style="color:#ff5252">!</b>, hook it fast, then <b>hold</b> to raise the green bar and keep the fish inside it until the meter fills. Sell your bucket at the <b style="color:#ffd54f">Fish Market</b>, buy better rods, and open Coral Bay, the Frozen Lake and the Volcano Lagoon for rarer fish.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>E</kbd> or <kbd>Click</kbd> cast and hook · hold <kbd>Click</kbd> or <kbd>Space</kbd> to reel · <kbd>Right mouse</kbd> drag to look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Reel Rush Fishing =================
+setSky("#29b6f6", "#e1f5fe", 0xe1f5fe, 120, 320);
+hemi.intensity = 0.8; sun.intensity = 0.85;
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60 }); sun.shadow.camera.updateProjectionMatrix();
+cam.dist = 13; cam.pitch = 0.45;
+
+// ---------- the island ----------
+const flatMat = (c, e = 0) => new THREE.MeshStandardMaterial({ color: c, emissive: e, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const plane = (x, z, w, d, y, m) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); p.rotation.x = -Math.PI / 2; p.position.set(x, y, z); p.receiveShadow = true; scene.add(p); return p; };
+const sea = plane(0, 0, 900, 900, -0.45, new THREE.MeshStandardMaterial({ color: 0x0277bd, roughness: 0.65 }));
+plane(110, 10, 100, 120, -0.42, flatMat(0x26c6da));
+plane(-110, -10, 100, 110, -0.42, flatMat(0xff7043, 0x8d2a00));
+addBox(0, -1, 0, 120, 2, 120, 0x558b2f);
+const sand = boxMesh(126, 1.5, 126, 0xffe082); sand.position.set(0, -1.3, 0); scene.add(sand);
+// edges: you can walk out on the docks but not into the sea
+const edge = (x, z, w, d) => { addBox(x, 6, z, w, 14, d, 0).m.visible = false; };
+// south, with a gap for the pier at x = 0
+edge(-31.5, -60.5, 57, 1); edge(31.5, -60.5, 57, 1); edge(0, 60.5, 122, 1);
+edge(60.5, -26, 1, 68); edge(60.5, 37, 1, 46); edge(-60.5, -36.5, 1, 47); edge(-60.5, 26.5, 1, 67);
+// a dock: from the island out over the water
+function dock(x0, z0, x1, z1, col = 0x8d6e63) {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = Math.abs(x1 - x0) || 4.5, d = Math.abs(z1 - z0) || 4.5;
+  addBox(cx, 0.15, cz, w, 0.3, d, col);
+  const alongX = Math.abs(x1 - x0) > 1;
+  for (let t = 0; t <= 1.001; t += 0.25) { const px = x0 + (x1 - x0) * t, pz = z0 + (z1 - z0) * t; for (const s of [-1.9, 1.9]) { const post = boxMesh(0.4, 2.2, 0.4, 0x5d4037); post.position.set(px + (alongX ? 0 : s), -0.6, pz + (alongX ? s : 0)); scene.add(post); } }
+  // side rails, so you don't walk off
+  if (alongX) { addBox(cx, 0.9, cz - 2.45, w, 1.2, 0.3, 0x6d4c41); addBox(cx, 0.9, cz + 2.45, w, 1.2, 0.3, 0x6d4c41); }
+  else { addBox(cx - 2.45, 0.9, cz, 0.3, 1.2, d, 0x6d4c41); addBox(cx + 2.45, 0.9, cz, 0.3, 1.2, d, 0x6d4c41); }
+}
+dock(0, -58, 0, -80); addBox(0, 0.9, -80.3, 4.6, 1.2, 0.3, 0x6d4c41);
+dock(58, 10, 80, 10, 0xbcaaa4); addBox(80.3, 0.9, 10, 0.3, 1.2, 4.6, 0x6d4c41);
+dock(-58, -10, -80, -10, 0x4e342e); addBox(-80.3, 0.9, -10, 0.3, 1.2, 4.6, 0x3e2723);
+// the frozen lake up north: snow, ice, and holes to fish through
+plane(0, 38, 64, 36, 0.03, flatMat(0xf5f5f5));
+const ice = new THREE.Mesh(new THREE.CircleGeometry(14, 40), flatMat(0xb3e5fc)); ice.rotation.x = -Math.PI / 2; ice.position.set(0, 0.05, 38); scene.add(ice);
+const HOLES = [[-6, 34], [6, 34], [-6, 43], [6, 43]];
+for (const [x, z] of HOLES) { const h = new THREE.Mesh(new THREE.CircleGeometry(1.4, 24), flatMat(0x01355a)); h.rotation.x = -Math.PI / 2; h.position.set(x, 0.07, z); scene.add(h); }
+for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2; if (Math.abs(angDiff(a, Math.PI)) < 0.3) continue; addBox(Math.sin(a) * 20, 0.6, 38 + Math.cos(a) * 15, 3.2, 1.2, 1.2, 0xe0e0e0); }
+// a volcano behind the lagoon
+for (let k = 0; k < 7; k++) { const s = 30 - k * 4; const m = boxMesh(s, 3, s, k > 4 ? 0x3e2723 : 0x5d4037); m.position.set(-44, 1.5 + k * 3, -36); scene.add(m); }
+const lavaTop = boxMesh(5, 0.4, 5, 0xff6d00, 0xff3d00); lavaTop.position.set(-44, 21.2, -36); scene.add(lavaTop);
+addBox(-44, 6, -36, 30, 12, 30, 0).m.visible = false;
+// trees, a lighthouse and the market
+for (const [x, z] of [[-20, -30], [22, -28], [-40, 10], [40, 30], [30, -48], [-30, 50], [48, -10], [-20, 12], [20, 12], [44, 50]]) { addBox(x, 2.2, z, 1.2, 4.4, 1.2, 0x6d4c41); const l = boxMesh(4.4, 3.6, 4.4, 0x2e7d32); l.position.set(x, 5.6, z); scene.add(l); }
+for (let k = 0; k < 6; k++) { const m = boxMesh(5 - k * 0.4, 3, 5 - k * 0.4, k % 2 ? 0xe53935 : 0xffffff); m.position.set(52, 1.5 + k * 3, -52); scene.add(m); }
+const lamp = boxMesh(2.4, 2, 2.4, 0xfff59d, 0xffee58); lamp.position.set(52, 19, -52); scene.add(lamp); addBox(52, 9, -52, 5, 18, 5, 0).m.visible = false;
+function stall(x, z, col, text) {
+  const pad = addBox(x, 0.1, z, 6, 0.3, 6, col, { glow: 0x222222 });
+  for (const [dx, dz] of [[-2.8, -2.8], [2.8, -2.8], [-2.8, 2.8], [2.8, 2.8]]) { const p = boxMesh(0.35, 5, 0.35, 0x6d4c41); p.position.set(x + dx, 2.5, z + dz); scene.add(p); }
+  const roofM = boxMesh(7, 0.5, 7, col); roofM.position.set(x, 5.1, z); scene.add(roofM);
+  const l = liveLabel(768, 54); l.scale.set(9, 1.5, 1); l.position.set(x, 6.6, z); l.set(text, "#fff"); scene.add(l);
+  return { pad, l };
+}
+const market = stall(-12, -44, 0xffb300, "FISH MARKET");
+const rodShop = stall(12, -44, 0x42a5f5, "ROD SHOP");
+
+// ---------- fish, rods and zones ----------
+const RAR = ["Common", "Uncommon", "Rare", "Epic", "Legendary"], RCOL = ["#cfd8dc", "#a5d6a7", "#90caf9", "#ce93d8", "#ffd54f"];
+const ZONES = [
+  { key: "pier", name: "The Pier", price: 0, fish: [["Sardine", 0, 6, 0.6], ["Mackerel", 0, 10, 0.8], ["Sea Bass", 1, 22, 1], ["Pufferfish", 2, 55, 1.3], ["Swordfish", 3, 150, 1.7], ["Sunscale Koi", 4, 500, 2.1]] },
+  { key: "coral", name: "Coral Bay", price: 1500, fish: [["Clownfish", 0, 30, 0.8], ["Angelfish", 0, 45, 0.9], ["Parrotfish", 1, 90, 1.1], ["Lionfish", 2, 220, 1.4], ["Manta Ray", 3, 600, 1.8], ["Coral Ghost", 4, 2200, 2.3]] },
+  { key: "ice", name: "Frozen Lake", price: 12000, fish: [["Ice Perch", 0, 160, 0.9], ["Arctic Char", 0, 240, 1], ["Frost Trout", 1, 480, 1.2], ["Glacier Pike", 2, 1200, 1.5], ["Snow Sturgeon", 3, 3200, 1.9], ["Aurora Whale", 4, 12000, 2.4]] },
+  { key: "lava", name: "Volcano Lagoon", price: 90000, fish: [["Ember Minnow", 0, 900, 1], ["Cinder Crab", 0, 1300, 1.1], ["Ash Snapper", 1, 2600, 1.3], ["Magma Eel", 2, 6500, 1.6], ["Obsidian Shark", 3, 18000, 2], ["Phoenix Fin", 4, 70000, 2.6]] },
+];
+const ALL = ZONES.flatMap((z) => z.fish.map((f) => f[0]));
+const RODS = [["Twig Rod", 0.24, 1, 0, 0], ["Bamboo Rod", 0.27, 1.12, 0.15, 120], ["Fiberglass Rod", 0.3, 1.25, 0.3, 900], ["Carbon Rod", 0.33, 1.4, 0.5, 5000], ["Coral Rod", 0.36, 1.55, 0.75, 22000], ["Frost Rod", 0.39, 1.7, 1, 90000], ["Magma Rod", 0.42, 1.9, 1.4, 350000], ["Star Rod", 0.46, 2.15, 2, 1500000]];
+// where you can fish from: the end of each dock and the ice holes
+const SPOTS = [
+  { zone: 0, x: 0, z: -78, yaw: Math.PI, cast: [0, -90] }, { zone: 0, x: -1.5, z: -70, yaw: -Math.PI / 2, cast: [-9, -70] }, { zone: 0, x: 1.5, z: -70, yaw: Math.PI / 2, cast: [9, -70] },
+  { zone: 1, x: 78, z: 10, yaw: Math.PI / 2, cast: [90, 10] }, { zone: 1, x: 70, z: 8.5, yaw: Math.PI, cast: [70, 0] }, { zone: 1, x: 70, z: 11.5, yaw: 0, cast: [70, 20] },
+  ...HOLES.map(([x, z]) => ({ zone: 2, x: x + (x < 0 ? -2.2 : 2.2), z, yaw: x < 0 ? Math.PI / 2 : -Math.PI / 2, cast: [x, z], hole: true })),
+  { zone: 3, x: -78, z: -10, yaw: -Math.PI / 2, cast: [-90, -10] }, { zone: 3, x: -70, z: -8.5, yaw: 0, cast: [-70, 0] }, { zone: 3, x: -70, z: -11.5, yaw: Math.PI, cast: [-70, -20] },
+];
+
+// ---------- saving ----------
+const SAVE = "reel-rush-fishing";
+const DEF = { coins: 0, earned: 0, rod: 0, zones: 1, caught: 0, bucket: [], seen: {}, best: {} };
+let S = loadSave(SAVE, DEF);
+const save = () => storeSave(SAVE, S);
+setInterval(() => started && save(), 5000); addEventListener("beforeunload", save);
+const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e4 ? (n / 1e3).toFixed(1) + "K" : String(Math.floor(n));
+const bucketCap = () => 12 + S.rod * 4;
+
+// ---------- gates to the other zones ----------
+const gates = [];
+function gate(zone, blocks, padAt, labelAt) {
+  const solids2 = blocks.map(([x, z, w, d]) => addBox(x, 2, z, w, 4, d, 0x26c6da, { glow: 0x004d55 }));
+  for (const s of solids2) s.m.material = new THREE.MeshStandardMaterial({ color: 0x26c6da, emissive: 0x004d55, transparent: true, opacity: 0.55 });
+  const pad = addBox(padAt[0], 0.1, padAt[1], 4, 0.3, 4, 0x43a047, { glow: 0x0a3a10 });
+  const l = makeLabel(`${ZONES[zone].name}: ${fmt(ZONES[zone].price)}`, "#fff", 768, 54); l.scale.set(9, 1.5, 1); l.position.set(labelAt[0], 4.8, labelAt[1]); scene.add(l);
+  const g = { zone, solids2, pad, l, open: false }; gates.push(g);
+  if (S.zones > zone) openGate(g, true);
+}
+function openGate(g, quiet) { if (g.open) return; g.open = true; for (const s of g.solids2) removeSolid(s); removeSolid(g.pad); dropSprite(g.l); if (!quiet) { SFX.win(); show(`${ZONES[g.zone].name} is open!`, 2); } }
+gate(1, [[59, 10, 1, 4.6]], [54, 10], [54, 10]);
+gate(2, [[0, 20.5, 6, 1]], [0, 17], [0, 17]);
+gate(3, [[-59, -10, 1, 4.6]], [-54, -10], [-54, -10]);
+// the snow field has a low wall all round except the gate
+addBox(-17.25, 1.7, 20.5, 28.5, 3.4, 1, 0xe0e0e0); addBox(17.25, 1.7, 20.5, 28.5, 3.4, 1, 0xe0e0e0);
+addBox(-31.5, 1.7, 40.25, 1, 3.4, 39.5, 0xe0e0e0); addBox(31.5, 1.7, 40.25, 1, 3.4, 39.5, 0xe0e0e0);
+for (const s of [-1, 1]) addBox(s * 3.4, 2, 20.5, 0.8, 4, 1.2, 0xbdbdbd);
+
+// ---------- your rod, the line and the bobber ----------
+const rodM = boxMesh(0.14, 0.14, 3.4, 0x6d4c41); rodM.position.set(0, -1.3, 1.5); P.body.arms[1].add(rodM);
+const tip = new THREE.Object3D(); tip.position.set(0, 0, 1.7); rodM.add(tip);
+const bob = new THREE.Group(); const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), mat(0xffffff)); const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.31, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xe53935)); bob.add(b1, b2); bob.visible = false; scene.add(bob);
+const lineGeo = new THREE.BufferGeometry().setFromPoints([V(), V()]); const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xffffff })); line.visible = false; line.frustumCulled = false; scene.add(line);
+const bang = makeLabel("!", "#ff5252", 128, 110); bang.scale.set(2.4, 2.4, 1); bang.visible = false; scene.add(bang);
+
+// ---------- fishing ----------
+let fishing = null; // { spot, state, t, fish, ... }
+let holdMouse = false, holdTouch = false;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) { holdMouse = true; if (started) press(); } });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+actions.KeyE = () => press();
+const holding = () => holdMouse || holdTouch || keys.Space || keys.KeyE;
+function nearSpot() { let best = null, bd = 3.2; for (const s of SPOTS) { if (S.zones <= s.zone) continue; const d = Math.hypot(P.pos.x - s.x, P.pos.z - s.z); if (d < bd) { bd = d; best = s; } } return best; }
+function rollFish(zone) {
+  const luck = RODS[S.rod][3], fish = ZONES[zone].fish, base = [60, 26, 10, 3.5, 0.8];
+  const w = fish.map((f) => base[f[1]] * (1 + luck * f[1] * 0.6));
+  let r = Math.random() * w.reduce((a, x) => a + x, 0); for (let i = 0; i < fish.length; i++) { r -= w[i]; if (r <= 0) return fish[i]; } return fish[0];
+}
+function press() {
+  if (!started || $("catch").style.display === "grid" || $("index").style.display === "grid") return;
+  if (!fishing) {
+    const s = nearSpot(); if (!s) return;
+    if (S.bucket.length >= bucketCap()) { SFX.no(); show("Your bucket is full! Sell at the Fish Market.", 1.8); return; }
+    fishing = { spot: s, state: "cast", t: 0.55 }; P.canMove = false; P.yaw = s.yaw; cam.yaw = s.yaw + Math.PI;
+    const to = V(s.cast[0] + (s.hole ? 0 : rr(-2.5, 2.5)), s.hole ? 0.1 : -0.35, s.cast[1] + (s.hole ? 0 : rr(-2.5, 2.5)));
+    fishing.to = to; bob.position.copy(P.pos).setY(2); bob.visible = true; line.visible = true; tone(500, 0.2, "sine", 0.05, -300);
+    return;
+  }
+  if (fishing.state === "wait") { stopFishing("Reeled in. Nothing yet."); return; }
+  if (fishing.state === "bite") {
+    const f = rollFish(fishing.spot.zone); fishing.fish = f; fishing.state = "reel";
+    fishing.bar = 0.2; fishing.v = 0; fishing.fy = 0.45; fishing.ft = 0.5; fishing.fv = 0; fishing.prog = 0.3; fishing.retarget = 0;
+    $("reel").style.display = "flex"; bang.visible = false; SFX.pop(); show("Hold to reel!", 1);
+  }
+}
+function stopFishing(text) {
+  fishing = null; P.canMove = true; bob.visible = false; line.visible = false; bang.visible = false; $("reel").style.display = "none"; if (text) show(text, 1.2);
+}
+function landFish(f) {
+  const kg = +(rr(0.6, 1.5) * (1 + f[1]) * (f[2] / 20 + 0.5)).toFixed(1);
+  const value = Math.round(f[2] * rr(0.85, 1.25));
+  S.bucket.push([f[0], value]); S.caught++; const first = !S.seen[f[0]]; S.seen[f[0]] = (S.seen[f[0]] || 0) + 1;
+  if (!S.best[f[0]] || kg > S.best[f[0]]) S.best[f[0]] = kg;
+  save(); SFX.win();
+  $("cName").textContent = f[0]; $("cName").style.color = RCOL[f[1]];
+  $("cInfo").textContent = `${RAR[f[1]]} · ${kg} kg · worth ${fmt(value)} coins${first ? " · NEW in your Fish Index!" : ""}`;
+  $("catch").style.display = "grid"; document.exitPointerLock?.();
+}
+$("cOk").onclick = () => { $("catch").style.display = "none"; };
+function sell() {
+  if (!S.bucket.length) return;
+  const v = S.bucket.reduce((a, f) => a + f[1], 0), n = S.bucket.length;
+  S.coins += v; S.earned += v; S.bucket = []; save(); SFX.buy(); show(`Sold ${n} fish for ${fmt(v)} coins!`, 2);
+}
+function buyRod() {
+  const next = RODS[S.rod + 1]; if (!next) { show("You have the best rod!", 1.2); return; }
+  if (S.coins < next[4]) { SFX.no(); show(`${next[0]} costs ${fmt(next[4])} coins`, 1.4); return; }
+  S.coins -= next[4]; S.rod++; save(); SFX.buy(); show(`Got the ${next[0]}!`, 1.8);
+}
+function buyGate(g) {
+  const z = ZONES[g.zone];
+  if (S.zones < g.zone) { SFX.no(); show(`Open ${ZONES[g.zone - 1].name} first`, 1.4); return; }
+  if (S.coins < z.price) { SFX.no(); show(`${z.name} costs ${fmt(z.price)} coins`, 1.4); return; }
+  S.coins -= z.price; S.zones = g.zone + 1; save(); openGate(g);
+}
+touchControls([{ label: "FISH", color: "rgba(255,213,79,.95)", down: () => { holdTouch = true; press(); }, up: () => { holdTouch = false; } }, JUMP_BUTTON]);
+
+// a few other people fishing, for company
+const npcs = [[1.5, -62, Math.PI / 2], [-1.5, -66, -Math.PI / 2], [-8.4, 43, Math.PI / 2]].map(([x, z, yaw], i) => {
+  const b = makeAvatar({ shirt: BOT_COLORS[i * 3], skin: pick(SKINS), hat: pick(BOT_COLORS) }); b.g.position.set(x, z > 20 ? 0.05 : 0.3, z); b.g.rotation.y = yaw; scene.add(b.g);
+  const r = boxMesh(0.14, 0.14, 3.4, 0x795548); r.position.set(0, -1.3, 1.5); b.arms[1].add(r); b.arms[1].rotation.x = -1.1; b.pose = true;
+  b.g.add(nameTag(BOT_NAMES[i * 5])); return { b, t: rr(0, 6) };
+});
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.caught ? `Coins ${fmt(S.coins)} · ${S.caught} fish caught · Index ${Object.keys(S.seen).length}/${ALL.length} · ${RODS[S.rod][0]}` : ""; }
+showStats();
+P.pos.set(0, 0.3, -40); cam.yaw = 0;
+let lastPad = null;
+const zoneAt = (p) => p.x > 56 ? 1 : p.x < -56 ? 3 : p.z > 21 && Math.abs(p.x) < 32 ? 2 : 0;
+const tipW = V();
+onFrame((dt, T) => {
+  for (const n of npcs) { n.t += dt; n.b.arms[1].rotation.x = -1.1 + Math.sin(n.t * 0.8) * 0.15; }
+  lamp.material = mat(0xfff59d, Math.sin(T * 2) > 0 ? 0xffee58 : 0x8d7b00);
+  if (started) {
+    const landed = stepPlayer(dt, T);
+    if (landed === market.pad) sell();
+    if (landed && landed !== lastPad) {
+      if (landed === rodShop.pad) buyRod();
+      for (const g of gates) if (!g.open && landed === g.pad) buyGate(g);
+    }
+    if (P.onGround) lastPad = landed;
+    if (P.pos.y < -5) P.pos.set(0, 1, -40);
+    if (fishing) {
+      P.body.pose = true; P.body.arms[1].rotation.x = fishing.state === "reel" ? -1.5 + Math.sin(T * 20) * 0.08 : -1.1;
+      P.body.g.rotation.y = P.yaw;
+      tip.getWorldPosition(tipW);
+      if (fishing.state === "cast") {
+        fishing.t -= dt; const k = 1 - fishing.t / 0.55;
+        bob.position.lerpVectors(tipW, fishing.to, Math.min(1, k)); bob.position.y += Math.sin(Math.min(1, k) * Math.PI) * 4;
+        if (fishing.t <= 0) { fishing.state = "wait"; fishing.t = rr(1.6, 5.5) / (1 + RODS[S.rod][3] * 0.25); bob.position.copy(fishing.to); tone(220, 0.15, "sine", 0.05, -100); }
+      } else if (fishing.state === "wait") {
+        fishing.t -= dt; bob.position.y = fishing.to.y + Math.sin(T * 2.4) * 0.06;
+        if (fishing.t <= 0) { fishing.state = "bite"; fishing.t = 0.95; bang.visible = true; SFX.tick(); SFX.tick(); }
+      } else if (fishing.state === "bite") {
+        fishing.t -= dt; bob.position.y = fishing.to.y - 0.25 + Math.sin(T * 30) * 0.12; bang.position.copy(bob.position).setY(fishing.to.y + 2.4);
+        if (fishing.t <= 0) stopFishing("Too slow, it got away!");
+      } else if (fishing.state === "reel") {
+        const f = fishing.fish, diff = f[3], rod = RODS[S.rod];
+        // your green bar: hold to lift it, let go and it sinks
+        fishing.v += (holding() ? 2.7 : -2.4) * dt; fishing.v = clamp(fishing.v, -1.4, 1.4);
+        fishing.bar += fishing.v * dt; if (fishing.bar < 0) { fishing.bar = 0; fishing.v = Math.max(0, fishing.v) * 0.3; } if (fishing.bar > 1 - rod[1]) { fishing.bar = 1 - rod[1]; fishing.v = Math.min(0, fishing.v) * 0.3; }
+        // the fish darts about; harder fish move more often and faster
+        fishing.retarget -= dt; if (fishing.retarget <= 0) { fishing.retarget = rr(0.4, 1.6) / diff; fishing.ft = clamp(fishing.fy + rr(-0.5, 0.5) * Math.min(1.3, diff * 0.7), 0.04, 0.96); }
+        fishing.fv += (fishing.ft - fishing.fy) * 9 * diff * dt; fishing.fv *= Math.pow(0.04, dt); fishing.fy = clamp(fishing.fy + fishing.fv * dt, 0.02, 0.98);
+        const inside = fishing.fy >= fishing.bar && fishing.fy <= fishing.bar + rod[1];
+        fishing.prog += (inside ? 0.3 * rod[2] : -0.2 * (0.7 + diff * 0.3)) * dt;
+        $("zone").style.height = `${rod[1] * 100}%`; $("zone").style.bottom = `${fishing.bar * 100}%`; $("zone").style.background = inside ? "rgba(118,255,3,.6)" : "rgba(118,255,3,.3)";
+        $("fishI").style.bottom = `calc(${fishing.fy * 100}% - 10px)`; $("prog").firstChild.style.height = `${clamp(fishing.prog, 0, 1) * 100}%`;
+        bob.position.set(fishing.to.x + Math.sin(T * 9) * 0.4, fishing.to.y - 0.1, fishing.to.z + Math.cos(T * 7) * 0.4);
+        if (fishing.prog >= 1) { const fish = f; stopFishing(); landFish(fish); }
+        else if (fishing.prog <= 0) stopFishing(`The ${diff > 1.6 ? "big one" : "fish"} got away!`);
+      }
+      if (fishing) { const pos = lineGeo.attributes.position; pos.setXYZ(0, tipW.x, tipW.y, tipW.z); pos.setXYZ(1, bob.position.x, bob.position.y + 0.2, bob.position.z); pos.needsUpdate = true; }
+    } else P.body.pose = false;
+  }
+  updateCamera(dt);
+  // HUD
+  const s = !fishing && nearSpot();
+  $("hint").textContent = fishing ? (fishing.state === "wait" ? "Waiting for a bite..." : fishing.state === "bite" ? "BITE! Click or press E!" : fishing.state === "reel" ? "Hold to keep the fish in the green bar" : "") : s ? (touch ? "Tap FISH to cast" : "Press E or click to cast") : "";
+  $("hint").style.color = fishing && fishing.state === "bite" ? "#ff5252" : "#fff";
+  $("coins").firstChild.textContent = `${fmt(S.coins)} coins`;
+  $("bucketT").textContent = `Bucket ${S.bucket.length}/${bucketCap()}${S.bucket.length ? " · worth " + fmt(S.bucket.reduce((a, f) => a + f[1], 0)) : ""}`;
+  $("hZone").textContent = ZONES[zoneAt(P.pos)].name;
+  const next = RODS[S.rod + 1];
+  $("hRod").textContent = `${RODS[S.rod][0]}${next ? ` · next: ${next[0]} ${fmt(next[4])}` : ""}`;
+  $("hIdx").textContent = `Fish Index ${Object.keys(S.seen).length}/${ALL.length}`;
+  rodShop.l.set(next ? `${next[0]}: ${fmt(next[4])}` : "ROD SHOP: MAX", next && S.coins >= next[4] ? "#9cff6b" : "#ffffff");
+  market.l.set(S.bucket.length ? `SELL ${S.bucket.length} FISH` : "FISH MARKET", "#fff");
+});
+setInterval(() => { if (started && S.caught) sendScore("caught", S.caught); }, 60000);
+function drawIndex() {
+  $("idxT").textContent = `${Object.keys(S.seen).length} of ${ALL.length} kinds found · ${S.caught} fish caught`;
+  $("idxList").innerHTML = ZONES.map((z, zi) => z.fish.map((f) => S.seen[f[0]] ? `<div style="color:${RCOL[f[1]]}">${f[0]}<br><span style="color:#fff;opacity:.8">${RAR[f[1]]} · x${S.seen[f[0]]} · best ${S.best[f[0]]} kg</span></div>` : `<div style="opacity:.55">???<br>${S.zones > zi ? z.name : "Locked"}</div>`).join("")).join("");
+}
+$("idxB").onclick = () => { drawIndex(); $("index").style.display = "grid"; started = false; document.exitPointerLock?.(); };
+$("idxOk").onclick = () => { $("index").style.display = "none"; if ($("start").style.display === "none") started = true; };
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); show(S.caught ? "Welcome back!" : "Walk to the end of the pier and cast!", 3); };
+$("menuB").onclick = () => { started = false; if (fishing) stopFishing(); save(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ coins: Math.floor(S.coins), rod: S.rod, zones: S.zones, caught: S.caught, bucket: S.bucket.length, seen: Object.keys(S.seen).length, fishing: fishing && fishing.state, prog: fishing && fishing.prog !== undefined ? +fishing.prog.toFixed(2) : null, near: !!nearSpot() }),
+  give: (n) => { S.coins += n; }, press, gates, reset: () => { S = JSON.parse(JSON.stringify(DEF)); save(); }, wait0: () => { if (fishing && fishing.state === "wait") fishing.t = 0.01; },
+  cheatHold: (on) => { holdTouch = on; }, fishY: () => fishing && fishing.fy, barY: () => fishing && fishing.bar,
+};
+loop();
+})();
+</script>
+</body>
+</html>
