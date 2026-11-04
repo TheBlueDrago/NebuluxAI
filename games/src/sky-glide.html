@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sky Glide</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#29b6f6dd,#01304aee)}
+  #over{display:none}
+  h1{color:#fff59d}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:16px;font-weight:900;font-size:22px;pointer-events:none;white-space:nowrap}
+  #levels{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+  #levels button{font:inherit;font-weight:800;font-size:14px;border:3px solid #000;border-radius:10px;padding:8px 12px;background:#e1f5fe;color:#000;cursor:pointer}
+  #levels button.on{background:#fff176} #levels button[disabled]{opacity:.45;cursor:default}
+  #fade{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+  @media (max-width:600px){#top{top:54px;font-size:17px;gap:10px} #hud{top:88px}}
+</style>
+</head>
+<body>
+<div id="fade"></div>
+<div id="top" class="sh"><span id="tRings" style="color:#ffd54f">Rings 0/0</span><span id="tScore">0</span><span id="tTime">0:00</span></div>
+<div id="hud" class="sh"><div class="big1" id="hSpeed">0 mph</div><div class="sub" id="hAlt"></div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>SKY<br>GLIDE</h1>
+  <p style="font-weight:700">Jump off the tower and glide. Dive to pick up speed, pull up to climb (but you'll slow down), and bank to turn. Fly through the <b style="color:#ffd54f">rings</b> in order, ride the <b style="color:#b9f6ca">updrafts</b> to gain height, grab <b style="color:#69f0ae">green boost rings</b>, and land on the target at the end. Don't hit the ground before you're done!</p>
+  <p class="keys"><kbd>W</kbd> dive · <kbd>S</kbd> pull up · <kbd>A</kbd><kbd>D</kbd> turn · on a phone, the stick does both</p>
+  <div id="levels"></div>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">JUMP!</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">LANDED!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">FLY AGAIN</button><p><button class="b" id="toMenu">Pick a course</button></p></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Sky Glide =================
+setSky("#4fc3f7", "#fff8e1", 0xfff8e1, 160, 650);
+hemi.intensity = 0.85; sun.intensity = 0.9;
+camera.far = 1200; camera.updateProjectionMatrix();
+Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80, far: 400 }); sun.shadow.camera.updateProjectionMatrix();
+scene.remove(P.body.g);
+// ---------- the three courses: control points the rings follow, and where the land is ----------
+const COURSES = [
+  { name: "Meadow Run", pts: [[0, 70, 30], [0, 60, 90], [30, 52, 150], [70, 48, 200], [100, 42, 260], [80, 36, 330], [30, 30, 380], [-20, 26, 430], [-40, 20, 490]], land: [-45, 540], ground: 0x7cb342, hills: 1 },
+  { name: "Canyon Twist", pts: [[0, 72, 30], [10, 55, 100], [50, 40, 160], [60, 30, 230], [20, 26, 290], [-30, 24, 340], [-60, 28, 410], [-40, 20, 480], [10, 18, 540], [50, 14, 590]], land: [70, 640], ground: 0xd84315, hills: 2 },
+  { name: "Sky Islands", pts: [[0, 74, 30], [-20, 66, 100], [-60, 62, 160], [-60, 70, 230], [-20, 60, 290], [30, 54, 340], [70, 58, 410], [60, 48, 480], [10, 42, 540], [-30, 34, 600], [-40, 28, 660]], land: [-40, 720], ground: 0x26a69a, hills: 3 },
+];
+let course = 0;
+let terrain = null, decor = [];
+const rings = [], drafts = [];
+function heightAt(x, z) {
+  const c = COURSES[course];
+  if (c.hills === 2) { // a canyon: high walls either side of the ring path
+    const near = nearestPathDist(x, z); return Math.min(60, Math.max(0, (near - 32) * 1.3)) + Math.sin(x * 0.05) * 3 + Math.cos(z * 0.04) * 3;
+  }
+  if (c.hills === 3) return -30; // the islands float over the sea
+  return Math.max(0, Math.sin(x * 0.02) * 5 + Math.cos(z * 0.017 + x * 0.01) * 6 + 1);
+}
+let pathPts = [];
+function nearestPathDist(x, z) { let b = Infinity; for (const p of pathPts) b = Math.min(b, (p.x - x) ** 2 + (p.z - z) ** 2); return Math.sqrt(b); }
+const islands = [];
+function build() {
+  for (const m of decor) scene.remove(m); decor = []; for (const r of rings) scene.remove(r.m); rings.length = 0; for (const d of drafts) scene.remove(d.m); drafts.length = 0; islands.length = 0;
+  const c = COURSES[course];
+  // the rings come down gently (about 1 in 15) so a good glide reaches every one
+  let acc = 0; const curve = new THREE.CatmullRomCurve3(c.pts.map(([x, , z], i, a) => { if (i) acc += Math.hypot(x - a[i - 1][0], z - a[i - 1][2]); return V(x, 64 - acc / 15, z); }));
+  pathPts = curve.getSpacedPoints(200);
+  // ground
+  const size = 1400, g = new THREE.PlaneGeometry(size, size, 140, 140); g.rotateX(-Math.PI / 2);
+  const pos = g.attributes.position; for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(pos.getX(i), pos.getZ(i) + 300)); g.translate(0, 0, 300); g.computeVertexNormals();
+  if (terrain) scene.remove(terrain);
+  terrain = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: c.ground, roughness: 1, flatShading: true })); terrain.receiveShadow = true; scene.add(terrain);
+  if (c.hills === 3) { const sea = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshStandardMaterial({ color: 0x0288d1 })); sea.rotation.x = -Math.PI / 2; sea.position.set(0, -29.5, 300); scene.add(sea); decor.push(sea); }
+  // floating islands for the last course
+  if (c.hills === 3) for (let i = 0; i < 26; i++) { const p = pathPts[Math.floor(rr(5, 195))], s = rr(10, 22), x = p.x + rr(-70, 70), z = p.z + rr(-40, 40), y = p.y - rr(20, 40); if (Math.hypot(x - p.x, z - p.z) < 18) continue; const top = boxMesh(s, 3, s, 0x7cb342); top.position.set(x, y, z); scene.add(top); const rock = boxMesh(s * 0.8, s * 0.7, s * 0.8, 0x6d4c41); rock.position.set(x, y - s * 0.35 - 1.5, z); scene.add(rock); decor.push(top, rock); islands.push({ x, y: y + 1.5, z, h: s * 0.7 + 3, s }); }
+  // trees and rocks below
+  for (let i = 0; i < 160; i++) { const x = rr(-300, 300), z = rr(-50, 760), h = heightAt(x, z); if (c.hills === 3) break; if (nearestPathDist(x, z) < 10 && h < 20) continue; const tr = boxMesh(1.4, 6, 1.4, 0x6d4c41); tr.position.set(x, h + 3, z); scene.add(tr); const l = boxMesh(6, 5, 6, c.hills === 2 ? 0x8d6e63 : 0x2e7d32); l.position.set(x, h + 7, z); scene.add(l); decor.push(tr, l); }
+  // the tower you jump from
+  const tower = boxMesh(10, 100, 10, 0x90a4ae); tower.position.set(0, 20, 0); scene.add(tower); decor.push(tower);
+  const deck = boxMesh(12, 1, 12, 0xffb300); deck.position.set(0, 70.5, 0); scene.add(deck); decor.push(deck);
+  // rings along the path, some green boost rings, and updrafts
+  const n = c.pts.length * 2;
+  for (let i = 1; i <= n; i++) {
+    const t = i / (n + 1), p = curve.getPointAt(t), tan = curve.getTangentAt(t);
+    const boost = i % 5 === 0;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(boost ? 4 : 5, 0.45, 8, 32), new THREE.MeshStandardMaterial({ color: boost ? 0x69f0ae : 0xffd54f, emissive: boost ? 0x00c853 : 0xffa000, emissiveIntensity: 0.5 }));
+    m.position.copy(p); m.lookAt(p.clone().add(tan)); scene.add(m);
+    rings.push({ m, c: p, n: tan.clone().normalize(), r: boost ? 4 : 5, boost, done: false, side: null });
+  }
+  for (let i = 0; i < 4 + c.hills; i++) { const p = curve.getPointAt(rr(0.15, 0.9)), x = p.x + rr(-25, 25), z = p.z + rr(-10, 10); const base = c.hills === 3 ? p.y - 60 : heightAt(x, z); const col = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 90, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xb9f6ca, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false })); col.position.set(x, base + 45, z); scene.add(col); drafts.push({ m: col, x, z, y0: base, y1: base + 90 }); }
+  // the landing target
+  const [lx, lz] = c.land, ly = c.hills === 3 ? pathPts[pathPts.length - 1].y - 14 : heightAt(lx, lz);
+  const padM = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 1.2, 32), mat(0xffffff)); padM.position.set(lx, ly + 0.6, lz); scene.add(padM); decor.push(padM);
+  for (const [r, col] of [[10, 0xe53935], [6, 0xffffff], [2.5, 0xe53935]]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1.25, 32), mat(col)); d.position.set(lx, ly + 0.62, lz); scene.add(d); decor.push(d); }
+  if (c.hills === 3) { const rock = boxMesh(28, 20, 28, 0x6d4c41); rock.position.set(lx, ly - 10, lz); scene.add(rock); decor.push(rock); islands.push({ x: lx, y: ly + 1.2, z: lz, h: 21, s: 28 }); }
+  landing = { x: lx, y: ly + 1.2, z: lz };
+}
+let landing = null;
+
+// ---------- the glider ----------
+const glider = new THREE.Group();
+const body = makeAvatar({ shirt: 0x1e88e5 }); body.g.rotation.x = Math.PI / 2; body.g.position.set(0, 0, -1.2); glider.add(body.g);
+body.arms.forEach((a, i) => { a.rotation.z = (i ? -1 : 1) * 1.5; }); body.pose = true;
+const wingMat = mat(0xff7043);
+const wing = boxMesh(9, 0.15, 2.6, 0xff7043); wing.position.set(0, 0.5, 0); glider.add(wing);
+const tail = boxMesh(3, 0.15, 1.2, 0xff7043); tail.position.set(0, 0.5, -2.4); glider.add(tail);
+const fin = boxMesh(0.15, 1, 1, 0xffffff); fin.position.set(0, 1, -2.4); glider.add(fin);
+scene.add(glider);
+const G = { pos: V(), yaw: 0, pitch: 0, roll: 0, v: 0, rings: 0, boosts: 0, t: 0, alive: false, landed: false };
+
+// ---------- saving ----------
+const SAVE = "sky-glide";
+let S = loadSave(SAVE, { best: [0, 0, 0], unlocked: 1, flights: 0 });
+function drawLevels() { $("levels").innerHTML = COURSES.map((c, i) => `<button data-i="${i}" class="${i === course ? "on" : ""}" ${i >= S.unlocked ? "disabled" : ""}>${c.name}${i >= S.unlocked ? " (finish the one before)" : S.best[i] ? ` · best ${S.best[i]}` : ""}</button>`).join(""); for (const b of $("levels").querySelectorAll("button")) b.onclick = () => { if (+b.dataset.i < S.unlocked) { course = +b.dataset.i; build(); reset(); drawLevels(); } }; }
+function showStats() { $("stats").textContent = S.flights ? `${S.flights} flights · ${COURSES.filter((c, i) => S.best[i]).length}/3 courses finished` : ""; }
+function reset() { G.pos.set(0, 72, 0); G.yaw = 0; G.pitch = -0.25; G.roll = 0; G.v = 18; G.rings = 0; G.boosts = 0; G.t = 0; G.alive = false; G.landed = false; G.next = 0; for (const r of rings) { r.done = false; r.side = null; r.m.material.opacity = 1; r.m.visible = true; } }
+let phase = "menu", score = 0;
+function launch() { reset(); G.alive = true; phase = "fly"; score = 0; $("over").style.display = "none"; show("Dive for speed, pull up to climb!", 2.4); S.flights++; storeSave(SAVE, S); }
+function finish(onTarget, crashed) {
+  G.alive = false; phase = "over";
+  const total = rings.length, landBonus = onTarget ? Math.max(200, Math.round(1000 - G.v * 12)) : 0;
+  score = G.rings * 100 + G.boosts * 50 + landBonus + Math.max(0, Math.round((120 - G.t) * 5));
+  if (crashed) score = Math.round(score * 0.5);
+  const best = score > (S.best[course] || 0); if (best) S.best[course] = score;
+  if (!crashed && course + 1 >= S.unlocked && course < 2) S.unlocked = course + 2;
+  storeSave(SAVE, S); sendScore("score", score);
+  if (crashed) SFX.lose(); else SFX.win();
+  $("fade").style.opacity = crashed ? 0.9 : 0; setTimeout(() => { $("fade").style.opacity = 0; }, 300);
+  setTimeout(() => {
+    $("oT").textContent = crashed ? "CRASH!" : onTarget ? "BULLSEYE LANDING!" : "LANDED";
+    $("oInfo").textContent = `${G.rings}/${total} rings · ${G.boosts} boosts · ${fmtT(G.t)}${landBonus ? ` · landing +${landBonus}` : ""}${crashed ? " · score halved for the crash" : ""}\nScore ${score}${best ? " (new best!)" : ` · best ${S.best[course]}`}${!crashed && course < 2 && S.unlocked === course + 2 ? `\n${COURSES[course + 1].name} unlocked!` : ""}`;
+    $("oInfo").style.whiteSpace = "pre-line"; $("over").style.display = "grid"; document.exitPointerLock?.();
+  }, 800);
+}
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+
+// ---------- the loop ----------
+touchControls([]);
+const camPos = V(), camLook = V();
+course = 0; build(); reset(); drawLevels(); showStats();
+onFrame((dt, T) => {
+  const nextR = rings.find((r) => !r.done);
+  for (const r of rings) { if (!r.done) r.m.rotation.z += dt * (r.boost ? 2 : 0.6); if (!r.missed) r.m.material.emissiveIntensity = r === nextR ? 0.9 + Math.sin(T * 8) * 0.3 : 0.35; }
+  if (started && phase === "fly" && G.alive) {
+    G.t += dt;
+    const pitchIn = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y;
+    const turnIn = (keys.KeyA || keys.ArrowLeft ? 1 : 0) - (keys.KeyD || keys.ArrowRight ? 1 : 0) - joy.x;
+    G.pitch = clamp(G.pitch + pitchIn * dt * 1.4, -1.1, 0.55); if (!pitchIn) G.pitch += (-0.12 - G.pitch) * Math.min(1, dt * 0.8);
+    G.roll += (clamp(turnIn, -1, 1) * 0.7 - G.roll) * Math.min(1, dt * 4);
+    G.yaw += G.roll * dt * (0.6 + G.v * 0.02);
+    // speed: diving speeds you up, climbing slows you down, drag keeps it sane
+    G.v += (-Math.sin(G.pitch) * 22 - G.v * G.v * 0.0007 - 0.2) * dt; G.v = clamp(G.v, 6, 70);
+    if (G.v < 11) G.pitch = Math.max(-1.1, G.pitch - dt * 1.2); // a stall drops the nose
+    const dir = V(Math.sin(G.yaw) * Math.cos(G.pitch), Math.sin(G.pitch), Math.cos(G.yaw) * Math.cos(G.pitch));
+    const before = G.pos.clone();
+    G.pos.addScaledVector(dir, G.v * dt); G.pos.y -= 0.4 * dt;
+    for (const d of drafts) if (Math.hypot(G.pos.x - d.x, G.pos.z - d.z) < 5.5 && G.pos.y < d.y1) { G.pos.y += 16 * dt; if (Math.random() < dt * 4) tone(rr(300, 500), 0.08, "sine", 0.02, 200); }
+    // rings: count one when you cross its face inside the hoop
+    for (const r of rings) {
+      if (r.done) continue;
+      const a = before.clone().sub(r.c).dot(r.n), b = G.pos.clone().sub(r.c).dot(r.n);
+      if (a < 0 && b >= 0 && G.pos.distanceTo(r.c) < 40) { const hit = G.pos.clone().sub(r.c), inPlane = hit.sub(r.n.clone().multiplyScalar(hit.dot(r.n))).length(); if (inPlane >= r.r) { r.done = true; r.missed = true; r.m.material.transparent = true; r.m.material.opacity = 0.25; r.m.material.emissiveIntensity = 0; tone(200, 0.12, "sine", 0.03); } else { r.done = true; r.m.visible = false; if (r.boost) { G.boosts++; G.v = Math.min(70, G.v + 14); SFX.zap(); show("BOOST!", 0.7); } else { G.rings++; SFX.coin(); } } }
+    }
+    // landing or crashing
+    const ground = heightAt(G.pos.x, G.pos.z);
+    let hitIsland = null; for (const is of islands) if (Math.abs(G.pos.x - is.x) < is.s / 2 && Math.abs(G.pos.z - is.z) < is.s / 2 && G.pos.y < is.y + 0.8 && G.pos.y > is.y - is.h) hitIsland = is;
+    const onPad = landing && Math.hypot(G.pos.x - landing.x, G.pos.z - landing.z) < 14 && G.pos.y < landing.y + 1.2 && G.pos.y > landing.y - 3;
+    if (onPad) finish(true, false);
+    else if (G.pos.y < ground + 0.8 || hitIsland) { G.why = hitIsland ? "island" : "ground " + Math.round(ground); const lastRing = rings.every((r) => r.done || rings.indexOf(r) < rings.length - 2); finish(false, !(lastRing && G.pos.y > ground - 1 && G.v < 34 && G.pitch > -0.6)); }
+    if (G.alive && (G.pos.z > 900 || Math.abs(G.pos.x) > 600)) { G.why = "out"; finish(false, true); }
+  }
+  // the glider's look
+  glider.position.copy(G.pos); glider.rotation.set(0, 0, 0); glider.rotateY(G.yaw); glider.rotateX(-G.pitch); glider.rotateZ(-G.roll);
+  body.legs[0].rotation.x = Math.sin(T * 3) * 0.1; body.legs[1].rotation.x = -Math.sin(T * 3) * 0.1;
+  // the camera chases from behind
+  const back = V(Math.sin(G.yaw), 0, Math.cos(G.yaw));
+  camPos.copy(G.pos).addScaledVector(back, -13 - G.v * 0.05).add(V(0, 4.5, 0));
+  camera.position.lerp(camPos, 1 - Math.exp(-(phase === "fly" ? 5 : 2) * dt)); camLook.lerp(G.pos.clone().addScaledVector(back, 8), 1 - Math.exp(-8 * dt)); camera.lookAt(camLook);
+  sun.position.copy(G.pos).add(V(40, 80, 30)); sun.target.position.copy(G.pos);
+  // HUD
+  const next = rings.find((r) => !r.done);
+  $("tRings").textContent = `Rings ${G.rings}/${rings.filter((r) => !r.boost).length}`; $("tTime").textContent = fmtT(G.t); $("tScore").textContent = phase === "over" ? `Score ${score}` : COURSES[course].name;
+  $("hSpeed").textContent = `${Math.round(G.v * 2.4)} mph`;
+  $("hAlt").textContent = `Height ${Math.max(0, Math.round(G.pos.y - Math.max(heightAt(G.pos.x, G.pos.z), -30)))} m`;
+  $("hInfo").textContent = G.v < 12 && phase === "fly" ? "Too slow! Dive to pick up speed" : next ? "" : "Land on the target!";
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); launch(); };
+$("again").onclick = () => launch();
+$("toMenu").onclick = () => { $("over").style.display = "none"; drawLevels(); showStats(); $("start").style.display = "grid"; };
+$("menuB").onclick = () => { started = false; phase = "menu"; drawLevels(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ why: G.why, missed: rings.filter((r) => r.missed).length, phase, course, alive: G.alive, rings: G.rings, boosts: G.boosts, total: rings.length, v: Math.round(G.v), y: Math.round(G.pos.y), pos: G.pos.toArray().map(Math.round), t: Math.round(G.t), score, unlocked: S.unlocked }),
+  // fly the glider along the course by steering at the next ring
+  autopilot: (dt) => { const r = rings.find((x) => !x.done); const goal = r ? r.c : V(landing.x, landing.y + 1, landing.z); const to = goal.clone().sub(G.pos); G.yaw += clamp(angDiff(Math.atan2(to.x, to.z), G.yaw), -1, 1) * dt * 3; const want = Math.atan2(to.y, Math.hypot(to.x, to.z)); G.pitch += clamp(want - G.pitch, -1, 1) * dt * 3; if (G.v < 16) G.pitch = Math.min(G.pitch, -0.3); },
+  setCourse: (i) => { course = i; S.unlocked = Math.max(S.unlocked, i + 1); build(); reset(); },
+};
+loop();
+})();
+</script>
+</body>
+</html>
