@@ -25,7 +25,7 @@
   #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
   #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
   .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
-  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud .big1{font-size:22px}}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
 
   #start,#over{background:linear-gradient(#26a69acc,#0b3d3aee)}
   #over{display:none}
@@ -35,6 +35,7 @@
   #build .b{font-size:14px;padding:10px 12px}
   #build .b.off{opacity:.45}
   body.touch #build{bottom:150px}
+  @media (max-width:600px){#top{top:54px;font-size:16px;gap:12px} #hud{top:84px}}
 </style>
 </head>
 <body>
@@ -507,7 +508,7 @@ onFrame((dt0, T) => {
   for (let i = beams.length - 1; i >= 0; i--) { const b = beams[i]; if (!b.m) { const len = b.from.distanceTo(b.to); b.m = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, len), new THREE.MeshBasicMaterial({ color: b.color })); b.m.position.copy(b.from).lerp(b.to, 0.5); b.m.lookAt(b.to); scene.add(b.m); } b.t -= dt0; if (b.t <= 0) { scene.remove(b.m); b.m.geometry.dispose(); beams.splice(i, 1); } }
   updateCamera(dt0);
   $("tWave").textContent = `Wave ${wave}/30`; $("tLives").textContent = `${lives} lives`; $("tCoins").textContent = `$${coins}`;
-  $("hInfo").textContent = playing ? (breakT > 0 ? `Next wave in ${Math.ceil(breakT)}s · press N to start it now` : `${foes.length + toSpawn.length} invaders coming`) : "";
+  $("hInfo").textContent = playing ? (breakT > 0 ? `Next wave in ${Math.ceil(breakT)}s · ${touch ? "tap NEXT WAVE" : "press N"} to start it now` : `${foes.length + toSpawn.length} invaders coming`) : "";
   $("waveB").style.display = playing && breakT > 0 ? "inline-block" : "none";
 });
 
