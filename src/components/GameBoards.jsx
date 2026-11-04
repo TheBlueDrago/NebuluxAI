@@ -26,6 +26,7 @@ export const BOARDS = {
   "burger-rush-diner": [["coins", "Best shift", (v) => `${Number(v).toLocaleString()} coins`]],
   "block-school-escape": [["time", "Fastest escape", (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")}`]],
   "block-mini-golf": [["strokes", "Fewest strokes", (v) => `${v} strokes`]],
+  "taxi-rush-city": [["fares", "Best shift", (v) => "$" + Number(v).toLocaleString()]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Taxi Rush City</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#over{background:linear-gradient(#f9a825dd,#2a2000ee)}
+  #over{display:none}
+  h1{color:#fff176}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:16px;font-weight:900;font-size:22px;pointer-events:none;white-space:nowrap}
+  #fare{position:fixed;left:50%;top:44px;transform:translateX(-50%);font-weight:900;font-size:16px;pointer-events:none;text-align:center}
+  #map{position:fixed;right:14px;top:58px;width:150px;height:150px;pointer-events:none;opacity:.92}
+  #shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}
+  #shop button{font:inherit;font-weight:800;font-size:13px;border:3px solid #000;border-radius:10px;padding:8px;background:#fff8e1;color:#000;cursor:pointer}
+  #shop button.own{background:#c8e6c9} #shop button.cur{outline:3px solid #fff}
+  @media (max-width:600px){#top{top:54px;font-size:17px;gap:10px} #fare{top:84px;font-size:14px} #hud{top:108px} #map{width:110px;height:110px;top:150px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><span id="tTime">4:00</span><span id="tCash" style="color:#9cff6b">$0</span><span id="tFares">0 fares</span></div>
+<div id="fare" class="sh"></div>
+<div id="hud" class="sh"><div class="big1" id="hSpeed">0 mph</div><div class="sub" id="hCar"></div></div>
+<canvas id="map" width="300" height="300"></canvas>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>TAXI RUSH<br>CITY</h1>
+  <p style="font-weight:700">Drive your taxi around the city. Pull up next to someone under a <b style="color:#69f0ae">green light</b> and stop to pick them up, then race them to the <b style="color:#ffd54f">yellow light</b>. The faster you get there, the bigger the tip. Buy faster cars at the garage below.</p>
+  <p class="keys"><kbd>W</kbd> drive · <kbd>S</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Space</kbd> handbrake</p>
+  <div id="shop"></div>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">START SHIFT</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1>SHIFT OVER</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">TO THE GARAGE</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Taxi Rush City =================
+setSky("#4fc3f7", "#fff8e1", 0xfff8e1, 140, 420);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+camera.far = 900; camera.updateProjectionMatrix();
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70 }); sun.shadow.camera.updateProjectionMatrix();
+scene.remove(P.body.g);
+// ---------- the city: 6x6 blocks with roads between ----------
+const GRID = 6, CELL = 48, ROAD = 14, BLOCK = CELL - ROAD, HALF = (GRID * CELL) / 2;
+const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(GRID * CELL + ROAD + 40, GRID * CELL + ROAD + 40), new THREE.MeshStandardMaterial({ color: 0x424242, roughness: 0.95 }));
+asphalt.rotation.x = -Math.PI / 2; asphalt.receiveShadow = true; scene.add(asphalt);
+const grass = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.MeshStandardMaterial({ color: 0x558b2f })); grass.rotation.x = -Math.PI / 2; grass.position.y = -0.05; scene.add(grass);
+const dash = new THREE.MeshBasicMaterial({ color: 0xfff59d, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const roadLine = (k) => -HALF + k * CELL; // road centre lines
+for (let k = 0; k <= GRID; k++) for (let t = -HALF; t < HALF; t += 8) {
+  for (const [x, z, w, d] of [[roadLine(k), t + 2, 0.4, 3], [t + 2, roadLine(k), 3, 0.4]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), dash); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z); scene.add(m); }
+}
+function windowTex(base) { const c = document.createElement("canvas"); c.width = 64; c.height = 128; const x = c.getContext("2d"); x.fillStyle = base; x.fillRect(0, 0, 64, 128); for (let i = 0; i < 4; i++) for (let j = 0; j < 8; j++) { x.fillStyle = Math.random() < 0.3 ? "#fff59d" : "#90caf9"; x.fillRect(6 + i * 15, 6 + j * 15, 9, 9); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; }
+const facades = ["#8d6e63", "#78909c", "#a1887f", "#5c6bc0", "#26a69a", "#ef9a9a", "#bcaaa4"].map(windowTex);
+const buildings = [];
+const blockCentre = (i) => -HALF + CELL / 2 + i * CELL;
+for (let i = 0; i < GRID; i++) for (let j = 0; j < GRID; j++) {
+  const cx = blockCentre(i), cz = blockCentre(j);
+  const side = new THREE.Mesh(new THREE.BoxGeometry(BLOCK, 0.3, BLOCK), mat(0xbdbdbd)); side.position.set(cx, 0.15, cz); side.receiveShadow = true; scene.add(side);
+  if ((i === 2 || i === 3) && (j === 2 || j === 3)) { // a park in the middle
+    const g = new THREE.Mesh(new THREE.BoxGeometry(BLOCK - 3, 0.35, BLOCK - 3), mat(0x66bb6a)); g.position.set(cx, 0.18, cz); scene.add(g);
+    for (let t = 0; t < 4; t++) { const x = cx + rr(-11, 11), z = cz + rr(-11, 11); const tr = boxMesh(1.2, 4, 1.2, 0x6d4c41); tr.position.set(x, 2, z); scene.add(tr); const l = boxMesh(4.5, 3.5, 4.5, 0x2e7d32); l.position.set(x, 5.5, z); scene.add(l); buildings.push({ x, z, w: 1.6, d: 1.6 }); }
+    continue;
+  }
+  const n = ri(1, 4), parts = n === 1 ? [[0, 0, BLOCK - 6, BLOCK - 6]] : n === 2 ? [[-7, 0, 13, BLOCK - 6], [7, 0, 13, BLOCK - 6]] : [[-7, -7, 13, 13], [7, -7, 13, 13], [-7, 7, 13, 13], [7, 7, 13, 13]].slice(0, n === 3 ? 3 : 4);
+  for (const [dx, dz, w, d] of parts) {
+    const h = rr(8, 42), tex = pick(facades).clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(1, Math.round(w / 6)), Math.max(1, Math.round(h / 8)));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 })); m.position.set(cx + dx, h / 2, cz + dz); m.castShadow = m.receiveShadow = true; scene.add(m);
+    const roofM = boxMesh(w + 0.4, 0.6, d + 0.4, 0x37474f); roofM.position.set(cx + dx, h + 0.3, cz + dz); scene.add(roofM);
+    buildings.push({ x: cx + dx, z: cz + dz, w, d });
+  }
+}
+// spots on the sidewalk next to the roads where people wait and get out
+const CURBS = [];
+for (let i = 0; i < GRID; i++) for (let j = 0; j < GRID; j++) { const cx = blockCentre(i), cz = blockCentre(j), e = BLOCK / 2 + 1.2; for (const [x, z] of [[cx, cz - e], [cx, cz + e], [cx - e, cz], [cx + e, cz]]) CURBS.push(V(x, 0, z)); }
+CURBS.forEach((p) => { p.x = clamp(p.x, -HALF - 5, HALF + 5); p.z = clamp(p.z, -HALF - 5, HALF + 5); });
+
+// ---------- cars ----------
+const CARS = [["Compact", 34, 0, 0xfdd835], ["Sedan", 40, 800, 0xffca28], ["Muscle", 46, 3000, 0xff7043], ["Sports", 53, 9000, 0xe53935], ["Super", 60, 25000, 0x7c4dff]];
+const wheelGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.5, 12);
+function makeCar(color, taxi) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const base = boxMesh(2.6, 1, 5, color); base.position.y = 0.9; body.add(base);
+  const cab = boxMesh(2.3, 0.9, 2.6, color); cab.position.set(0, 1.85, -0.2); body.add(cab);
+  const glass = boxMesh(2.32, 0.6, 2.2, 0x263238); glass.position.set(0, 1.9, -0.2); body.add(glass);
+  if (taxi) { const sign = boxMesh(1, 0.35, 0.5, 0xffffff, 0x666600); sign.position.set(0, 2.45, -0.2); body.add(sign); const chk = boxMesh(2.62, 0.25, 5.02, 0x212121); chk.position.y = 0.95; body.add(chk); }
+  for (const [x, z] of [[-1.3, 1.6], [1.3, 1.6], [-1.3, -1.6], [1.3, -1.6]]) { const w = new THREE.Mesh(wheelGeo, mat(0x111111)); w.rotation.z = Math.PI / 2; w.position.set(x, 0.65, z); body.add(w); }
+  scene.add(g); return { g, body };
+}
+const SAVE = "taxi-rush-city";
+let S = loadSave(SAVE, { cash: 0, earned: 0, car: 0, owned: [0], fares: 0, best: 0 });
+const me = { pos: V(roadLine(3), 0, roadLine(3) - 10), h: 0, v: 0, slide: 0, ...makeCar(CARS[S.car][3], true) };
+function setCar(i) { scene.remove(me.g); Object.assign(me, makeCar(CARS[i][3], true)); }
+// traffic drives straight along the roads and wraps around the city
+const traffic = [];
+for (let n = 0; n < 16; n++) {
+  const alongX = n % 2 === 0, k = ri(0, GRID), lane = Math.random() < 0.5 ? 1 : -1, c = makeCar(pick([0x90a4ae, 0x1e88e5, 0x43a047, 0xffffff, 0x8d6e63, 0xe53935]), false);
+  const t = { ...c, alongX, line: roadLine(k) + lane * 3.4, dir: lane, s: rr(-HALF, HALF), v: rr(12, 20), bump: 0 };
+  traffic.push(t);
+}
+function carPos(t) { return t.alongX ? V(t.s, 0, t.line) : V(t.line, 0, t.s); }
+
+// ---------- fares ----------
+const beamGeo = new THREE.CylinderGeometry(2.4, 2.4, 40, 20, 1, true);
+const greenBeam = new THREE.MeshBasicMaterial({ color: 0x69f0ae, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
+const goldBeam = new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+const waiting = [];
+function spawnRider() {
+  const p = pick(CURBS.filter((c) => c.distanceTo(me.pos) > 40 && !waiting.some((w) => w.p.distanceTo(c) < 20)));
+  const body = makeAvatar({ shirt: pick(BOT_COLORS), pants: pick([0x37474f, 0x263238, 0x4e342e]), skin: pick(SKINS), hat: Math.random() < 0.4 ? pick(BOT_COLORS) : null });
+  body.g.position.copy(p).setY(0.3); scene.add(body.g);
+  const beam = new THREE.Mesh(beamGeo, greenBeam); beam.position.copy(p).setY(20); scene.add(beam);
+  waiting.push({ p, body, beam, name: pick(BOT_NAMES) });
+}
+let ride = null; // { to, beam, rider, time, total, dist }
+function pickUp(w) {
+  waiting.splice(waiting.indexOf(w), 1); scene.remove(w.body.g); scene.remove(w.beam);
+  const to = pick(CURBS.filter((c) => c.distanceTo(w.p) > 90));
+  const dist = Math.abs(to.x - w.p.x) + Math.abs(to.z - w.p.z);
+  const beam = new THREE.Mesh(beamGeo, goldBeam); beam.position.copy(to).setY(20); scene.add(beam);
+  ride = { to, beam, name: w.name, dist, total: Math.round(dist / 15 + 12), time: Math.round(dist / 15 + 12) };
+  SFX.pop(); show(`${w.name} hopped in! Get them to the yellow light.`, 2);
+  spawnRider();
+}
+function dropOff() {
+  const base = Math.round(15 + ride.dist * 0.22), tip = Math.max(0, Math.round(ride.time * 2.2));
+  cash += base + tip; fares++; scene.remove(ride.beam);
+  SFX.coin(); show(`+$${base} fare and a $${tip} tip from ${ride.name}!`, 2);
+  ride = null;
+}
+function lateDrop() { scene.remove(ride.beam); show(`${ride.name} got out. Too slow!`, 1.8); SFX.lose(); ride = null; }
+
+// ---------- driving ----------
+function solidHit(p, r) { // push a car out of buildings; -> true if it hit one
+  let hit = false;
+  for (const b of buildings) { const hx = b.w / 2 + r, hz = b.d / 2 + r, dx = p.x - b.x, dz = p.z - b.z; if (Math.abs(dx) < hx && Math.abs(dz) < hz) { const px = hx - Math.abs(dx), pz = hz - Math.abs(dz); if (px < pz) p.x = b.x + Math.sign(dx) * hx; else p.z = b.z + Math.sign(dz) * hz; hit = true; } }
+  const lim = HALF + ROAD / 2 + 4; if (Math.abs(p.x) > lim) { p.x = Math.sign(p.x) * lim; hit = true; } if (Math.abs(p.z) > lim) { p.z = Math.sign(p.z) * lim; hit = true; }
+  return hit;
+}
+let tBrake = false, tHand = false;
+function drive(dt) {
+  const top = CARS[S.car][1];
+  let thr = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0), steer = clamp((keys.KeyA || keys.ArrowLeft ? 1 : 0) - (keys.KeyD || keys.ArrowRight ? 1 : 0) - joy.x, -1, 1);
+  if (touch) thr = tBrake ? -1 : joy.y > 0.6 ? -1 : 1;
+  const hand = keys.Space || tHand;
+  if (phase !== "drive") { thr = 0; steer = 0; }
+  if (thr > 0) me.v += (me.v < top ? 24 + top * 0.2 : 0) * dt; else if (thr < 0) me.v -= (me.v > 0 ? 45 : 14) * dt; else me.v -= Math.sign(me.v) * Math.min(Math.abs(me.v), 8 * dt);
+  if (hand) me.v -= Math.sign(me.v) * Math.min(Math.abs(me.v), 18 * dt);
+  me.v = clamp(me.v, -12, top);
+  const grip = clamp(Math.abs(me.v) / 10, 0, 1), turn = steer * (hand ? 2.9 : 2.1) * grip * (me.v < 0 ? -1 : 1);
+  me.h += turn * dt; me.slide += ((hand ? steer * 0.5 : 0) - me.slide) * Math.min(1, dt * 6);
+  me.pos.x += Math.sin(me.h) * me.v * dt; me.pos.z += Math.cos(me.h) * me.v * dt;
+  if (solidHit(me.pos, 1.8)) { if (Math.abs(me.v) > 14) { tone(110, 0.15, "square", 0.05); } me.v *= Math.pow(0.02, dt); }
+}
+
+// ---------- the shift ----------
+let phase = "menu", shiftT = 0, cash = 0, fares = 0;
+const SHIFT = TEST ? 60 : 240;
+function newShift() {
+  for (const w of waiting) { scene.remove(w.body.g); scene.remove(w.beam); } waiting.length = 0; if (ride) scene.remove(ride.beam); ride = null;
+  me.pos.set(roadLine(3) + 3.4, 0, roadLine(3) - 10); me.h = 0; me.v = 0;
+  for (let i = 0; i < 3; i++) spawnRider();
+  cash = 0; fares = 0; shiftT = SHIFT; phase = "drive"; $("over").style.display = "none"; show("Find someone under a green light!", 2.5);
+}
+function endShift() {
+  phase = "over"; S.cash += cash; S.earned += cash; S.fares += fares; const best = cash > S.best; S.best = Math.max(S.best, cash); storeSave(SAVE, S);
+  sendScore("fares", cash); SFX.win();
+  $("oInfo").textContent = `You made $${cash} from ${fares} fare${fares === 1 ? "" : "s"}.${best ? " New best shift!" : ` Best shift: $${S.best}.`} Bank: $${S.cash}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+function drawShop() {
+  $("shop").innerHTML = CARS.map(([n, top, price], i) => { const own = S.owned.includes(i); return `<button data-i="${i}" class="${own ? "own" : ""} ${S.car === i ? "cur" : ""}">${n}<br>${Math.round(top * 2.4)} mph top<br>${S.car === i ? "Driving" : own ? "Drive this" : "$" + price.toLocaleString()}</button>`; }).join("");
+  for (const b of $("shop").querySelectorAll("button")) b.onclick = () => { const i = +b.dataset.i; if (!S.owned.includes(i)) { if (S.cash < CARS[i][2]) { SFX.no(); b.textContent = `Need $${(CARS[i][2] - S.cash).toLocaleString()} more`; return; } S.cash -= CARS[i][2]; S.owned.push(i); SFX.buy(); } S.car = i; storeSave(SAVE, S); setCar(i); drawShop(); showStats(); };
+}
+function showStats() { $("stats").textContent = `Bank $${S.cash.toLocaleString()} · ${S.fares} fares · best shift $${S.best}`; }
+drawShop(); showStats();
+touchControls([{ label: "BRAKE", color: "rgba(239,83,80,.9)", down: () => { tBrake = true; }, up: () => { tBrake = false; } }, { label: "DRIFT", color: "rgba(64,196,255,.9)", down: () => { tHand = true; }, up: () => { tHand = false; } }]);
+// minimap
+const mx = $("map").getContext("2d"), MS = 280 / (HALF * 2 + ROAD + 10), mp = (p) => [150 + p.x * MS, 150 + p.z * MS];
+function drawMap() {
+  mx.clearRect(0, 0, 300, 300); mx.fillStyle = "rgba(0,0,0,.55)"; mx.fillRect(0, 0, 300, 300); mx.fillStyle = "#9e9e9e";
+  for (let k = 0; k <= GRID; k++) { const [a] = mp(V(roadLine(k), 0, 0)); mx.fillRect(a - ROAD * MS / 2, 10, ROAD * MS, 280); const [, b] = mp(V(0, 0, roadLine(k))); mx.fillRect(10, b - ROAD * MS / 2, 280, ROAD * MS); }
+  for (const w of waiting) { const [x, y] = mp(w.p); mx.fillStyle = "#69f0ae"; mx.beginPath(); mx.arc(x, y, 7, 0, 7); mx.fill(); }
+  if (ride) { const [x, y] = mp(ride.to); mx.fillStyle = "#ffd54f"; mx.beginPath(); mx.arc(x, y, 9, 0, 7); mx.fill(); }
+  const [x, y] = mp(me.pos); mx.save(); mx.translate(x, y); mx.rotate(-me.h); mx.fillStyle = "#fff"; mx.beginPath(); mx.moveTo(0, 10); mx.lineTo(-6, -6); mx.lineTo(6, -6); mx.fill(); mx.restore();
+}
+// an arrow over the car pointing at where to go
+const arrow = new THREE.Group(); { const a = boxMesh(0.6, 0.3, 2.4, 0xffd54f, 0x6d5400); a.position.z = 0.6; arrow.add(a); const tip2 = boxMesh(1.6, 0.3, 0.8, 0xffd54f, 0x6d5400); tip2.position.z = 1.9; arrow.add(tip2); } scene.add(arrow);
+const camLook = V();
+onFrame((dt, T) => {
+  if (started && phase === "drive") {
+    shiftT -= dt; if (shiftT <= 0) { shiftT = 0; endShift(); }
+    drive(dt);
+    // pick up and drop off: pull up close and slow down
+    if (!ride) for (const w of waiting) if (w.p.distanceTo(me.pos) < 6.5 && Math.abs(me.v) < 7) { pickUp(w); break; }
+    if (ride) { ride.time -= dt; if (ride.to.distanceTo(me.pos) < 7 && Math.abs(me.v) < 8) dropOff(); else if (ride.time < -15) lateDrop(); }
+  }
+  // traffic
+  for (const t of traffic) {
+    const p = carPos(t), d = p.distanceTo(me.pos);
+    const slow = d < 9 && V(me.pos.x - p.x, 0, me.pos.z - p.z).dot(t.alongX ? V(t.dir, 0, 0) : V(0, 0, t.dir)) > 0; // somebody in front
+    t.s += t.dir * (slow ? t.v * 0.2 : t.v) * dt; if (t.s > HALF + 10) t.s = -HALF - 10; if (t.s < -HALF - 10) t.s = HALF + 10;
+    const q = carPos(t); t.g.position.copy(q); t.g.rotation.y = t.alongX ? (t.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : t.dir > 0 ? 0 : Math.PI;
+    if (q.distanceTo(me.pos) < 3.6) { const n = me.pos.clone().sub(q).setY(0).normalize(); me.pos.addScaledVector(n, 3.6 - q.distanceTo(me.pos)); if (T - t.bump > 0.5) { t.bump = T; me.v *= 0.45; tone(140, 0.2, "square", 0.05); } }
+  }
+  for (const w of waiting) { w.body.g.rotation.y = Math.atan2(me.pos.x - w.p.x, me.pos.z - w.p.z); w.body.arms[1].rotation.x = -2.4 + Math.sin(T * 6) * 0.4; w.body.pose = true; }
+  me.g.position.copy(me.pos); me.g.rotation.y = me.h; me.body.rotation.y = me.slide;
+  // camera behind the car
+  const f = V(Math.sin(me.h), 0, Math.cos(me.h));
+  camera.position.lerp(me.pos.clone().addScaledVector(f, -12).add(V(0, 5.5, 0)), 1 - Math.exp(-6 * dt));
+  camLook.lerp(me.pos.clone().addScaledVector(f, 6).setY(1.5), 1 - Math.exp(-10 * dt)); camera.lookAt(camLook);
+  sun.position.copy(me.pos).add(V(30, 60, 20)); sun.target.position.copy(me.pos);
+  const goal = ride ? ride.to : waiting.slice().sort((a, b) => a.p.distanceTo(me.pos) - b.p.distanceTo(me.pos))[0]?.p;
+  arrow.visible = !!goal && phase === "drive"; if (goal) { arrow.position.copy(me.pos).setY(4.4); arrow.rotation.y = Math.atan2(goal.x - me.pos.x, goal.z - me.pos.z); }
+  $("tTime").textContent = `${Math.floor(shiftT / 60)}:${String(Math.floor(shiftT % 60)).padStart(2, "0")}`;
+  $("tCash").textContent = `$${cash}`; $("tFares").textContent = `${fares} fare${fares === 1 ? "" : "s"}`;
+  $("fare").textContent = ride ? `${ride.name} · ${Math.round(ride.to.distanceTo(me.pos))} m · ${ride.time > 0 ? `tip time ${Math.ceil(ride.time)}s` : "no tip now"}` : phase === "drive" ? "Find someone under a green light" : "";
+  $("hSpeed").textContent = `${Math.round(Math.abs(me.v) * 2.4)} mph`; $("hCar").textContent = CARS[S.car][0];
+  if (phase === "drive") drawMap();
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "drive") newShift(); };
+$("again").onclick = () => { $("over").style.display = "none"; drawShop(); showStats(); $("start").style.display = "grid"; };
+$("menuB").onclick = () => { started = false; drawShop(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, cash, fares, ride: ride && { name: ride.name, time: Math.round(ride.time), dist: Math.round(ride.to.distanceTo(me.pos)) }, waiting: waiting.length, v: Math.round(me.v), car: S.car }),
+  goRider: () => { const w = waiting[0]; me.pos.set(w.p.x + 2, 0, w.p.z + 2); me.v = 0; }, goDest: () => { if (ride) { me.pos.set(ride.to.x + 2, 0, ride.to.z); me.v = 0; } }, me, S: () => S, give: (n) => { S.cash += n; storeSave(SAVE, S); drawShop(); },
+};
+loop();
+})();
+</script>
+</body>
+</html>

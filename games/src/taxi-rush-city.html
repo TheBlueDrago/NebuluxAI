@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Taxi Rush City</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#f9a825dd,#2a2000ee)}
+  #over{display:none}
+  h1{color:#fff176}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:16px;font-weight:900;font-size:22px;pointer-events:none;white-space:nowrap}
+  #fare{position:fixed;left:50%;top:44px;transform:translateX(-50%);font-weight:900;font-size:16px;pointer-events:none;text-align:center}
+  #map{position:fixed;right:14px;top:58px;width:150px;height:150px;pointer-events:none;opacity:.92}
+  #shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}
+  #shop button{font:inherit;font-weight:800;font-size:13px;border:3px solid #000;border-radius:10px;padding:8px;background:#fff8e1;color:#000;cursor:pointer}
+  #shop button.own{background:#c8e6c9} #shop button.cur{outline:3px solid #fff}
+  @media (max-width:600px){#top{top:54px;font-size:17px;gap:10px} #fare{top:84px;font-size:14px} #hud{top:108px} #map{width:110px;height:110px;top:150px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><span id="tTime">4:00</span><span id="tCash" style="color:#9cff6b">$0</span><span id="tFares">0 fares</span></div>
+<div id="fare" class="sh"></div>
+<div id="hud" class="sh"><div class="big1" id="hSpeed">0 mph</div><div class="sub" id="hCar"></div></div>
+<canvas id="map" width="300" height="300"></canvas>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>TAXI RUSH<br>CITY</h1>
+  <p style="font-weight:700">Drive your taxi around the city. Pull up next to someone under a <b style="color:#69f0ae">green light</b> and stop to pick them up, then race them to the <b style="color:#ffd54f">yellow light</b>. The faster you get there, the bigger the tip. Buy faster cars at the garage below.</p>
+  <p class="keys"><kbd>W</kbd> drive · <kbd>S</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Space</kbd> handbrake</p>
+  <div id="shop"></div>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">START SHIFT</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1>SHIFT OVER</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">TO THE GARAGE</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Taxi Rush City =================
+setSky("#4fc3f7", "#fff8e1", 0xfff8e1, 140, 420);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+camera.far = 900; camera.updateProjectionMatrix();
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70 }); sun.shadow.camera.updateProjectionMatrix();
+scene.remove(P.body.g);
+// ---------- the city: 6x6 blocks with roads between ----------
+const GRID = 6, CELL = 48, ROAD = 14, BLOCK = CELL - ROAD, HALF = (GRID * CELL) / 2;
+const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(GRID * CELL + ROAD + 40, GRID * CELL + ROAD + 40), new THREE.MeshStandardMaterial({ color: 0x424242, roughness: 0.95 }));
+asphalt.rotation.x = -Math.PI / 2; asphalt.receiveShadow = true; scene.add(asphalt);
+const grass = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.MeshStandardMaterial({ color: 0x558b2f })); grass.rotation.x = -Math.PI / 2; grass.position.y = -0.05; scene.add(grass);
+const dash = new THREE.MeshBasicMaterial({ color: 0xfff59d, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const roadLine = (k) => -HALF + k * CELL; // road centre lines
+for (let k = 0; k <= GRID; k++) for (let t = -HALF; t < HALF; t += 8) {
+  for (const [x, z, w, d] of [[roadLine(k), t + 2, 0.4, 3], [t + 2, roadLine(k), 3, 0.4]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), dash); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z); scene.add(m); }
+}
+function windowTex(base) { const c = document.createElement("canvas"); c.width = 64; c.height = 128; const x = c.getContext("2d"); x.fillStyle = base; x.fillRect(0, 0, 64, 128); for (let i = 0; i < 4; i++) for (let j = 0; j < 8; j++) { x.fillStyle = Math.random() < 0.3 ? "#fff59d" : "#90caf9"; x.fillRect(6 + i * 15, 6 + j * 15, 9, 9); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; }
+const facades = ["#8d6e63", "#78909c", "#a1887f", "#5c6bc0", "#26a69a", "#ef9a9a", "#bcaaa4"].map(windowTex);
+const buildings = [];
+const blockCentre = (i) => -HALF + CELL / 2 + i * CELL;
+for (let i = 0; i < GRID; i++) for (let j = 0; j < GRID; j++) {
+  const cx = blockCentre(i), cz = blockCentre(j);
+  const side = new THREE.Mesh(new THREE.BoxGeometry(BLOCK, 0.3, BLOCK), mat(0xbdbdbd)); side.position.set(cx, 0.15, cz); side.receiveShadow = true; scene.add(side);
+  if ((i === 2 || i === 3) && (j === 2 || j === 3)) { // a park in the middle
+    const g = new THREE.Mesh(new THREE.BoxGeometry(BLOCK - 3, 0.35, BLOCK - 3), mat(0x66bb6a)); g.position.set(cx, 0.18, cz); scene.add(g);
+    for (let t = 0; t < 4; t++) { const x = cx + rr(-11, 11), z = cz + rr(-11, 11); const tr = boxMesh(1.2, 4, 1.2, 0x6d4c41); tr.position.set(x, 2, z); scene.add(tr); const l = boxMesh(4.5, 3.5, 4.5, 0x2e7d32); l.position.set(x, 5.5, z); scene.add(l); buildings.push({ x, z, w: 1.6, d: 1.6 }); }
+    continue;
+  }
+  const n = ri(1, 4), parts = n === 1 ? [[0, 0, BLOCK - 6, BLOCK - 6]] : n === 2 ? [[-7, 0, 13, BLOCK - 6], [7, 0, 13, BLOCK - 6]] : [[-7, -7, 13, 13], [7, -7, 13, 13], [-7, 7, 13, 13], [7, 7, 13, 13]].slice(0, n === 3 ? 3 : 4);
+  for (const [dx, dz, w, d] of parts) {
+    const h = rr(8, 42), tex = pick(facades).clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(1, Math.round(w / 6)), Math.max(1, Math.round(h / 8)));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 })); m.position.set(cx + dx, h / 2, cz + dz); m.castShadow = m.receiveShadow = true; scene.add(m);
+    const roofM = boxMesh(w + 0.4, 0.6, d + 0.4, 0x37474f); roofM.position.set(cx + dx, h + 0.3, cz + dz); scene.add(roofM);
+    buildings.push({ x: cx + dx, z: cz + dz, w, d });
+  }
+}
+// spots on the sidewalk next to the roads where people wait and get out
+const CURBS = [];
+for (let i = 0; i < GRID; i++) for (let j = 0; j < GRID; j++) { const cx = blockCentre(i), cz = blockCentre(j), e = BLOCK / 2 + 1.2; for (const [x, z] of [[cx, cz - e], [cx, cz + e], [cx - e, cz], [cx + e, cz]]) CURBS.push(V(x, 0, z)); }
+CURBS.forEach((p) => { p.x = clamp(p.x, -HALF - 5, HALF + 5); p.z = clamp(p.z, -HALF - 5, HALF + 5); });
+
+// ---------- cars ----------
+const CARS = [["Compact", 34, 0, 0xfdd835], ["Sedan", 40, 800, 0xffca28], ["Muscle", 46, 3000, 0xff7043], ["Sports", 53, 9000, 0xe53935], ["Super", 60, 25000, 0x7c4dff]];
+const wheelGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.5, 12);
+function makeCar(color, taxi) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const base = boxMesh(2.6, 1, 5, color); base.position.y = 0.9; body.add(base);
+  const cab = boxMesh(2.3, 0.9, 2.6, color); cab.position.set(0, 1.85, -0.2); body.add(cab);
+  const glass = boxMesh(2.32, 0.6, 2.2, 0x263238); glass.position.set(0, 1.9, -0.2); body.add(glass);
+  if (taxi) { const sign = boxMesh(1, 0.35, 0.5, 0xffffff, 0x666600); sign.position.set(0, 2.45, -0.2); body.add(sign); const chk = boxMesh(2.62, 0.25, 5.02, 0x212121); chk.position.y = 0.95; body.add(chk); }
+  for (const [x, z] of [[-1.3, 1.6], [1.3, 1.6], [-1.3, -1.6], [1.3, -1.6]]) { const w = new THREE.Mesh(wheelGeo, mat(0x111111)); w.rotation.z = Math.PI / 2; w.position.set(x, 0.65, z); body.add(w); }
+  scene.add(g); return { g, body };
+}
+const SAVE = "taxi-rush-city";
+let S = loadSave(SAVE, { cash: 0, earned: 0, car: 0, owned: [0], fares: 0, best: 0 });
+const me = { pos: V(roadLine(3), 0, roadLine(3) - 10), h: 0, v: 0, slide: 0, ...makeCar(CARS[S.car][3], true) };
+function setCar(i) { scene.remove(me.g); Object.assign(me, makeCar(CARS[i][3], true)); }
+// traffic drives straight along the roads and wraps around the city
+const traffic = [];
+for (let n = 0; n < 16; n++) {
+  const alongX = n % 2 === 0, k = ri(0, GRID), lane = Math.random() < 0.5 ? 1 : -1, c = makeCar(pick([0x90a4ae, 0x1e88e5, 0x43a047, 0xffffff, 0x8d6e63, 0xe53935]), false);
+  const t = { ...c, alongX, line: roadLine(k) + lane * 3.4, dir: lane, s: rr(-HALF, HALF), v: rr(12, 20), bump: 0 };
+  traffic.push(t);
+}
+function carPos(t) { return t.alongX ? V(t.s, 0, t.line) : V(t.line, 0, t.s); }
+
+// ---------- fares ----------
+const beamGeo = new THREE.CylinderGeometry(2.4, 2.4, 40, 20, 1, true);
+const greenBeam = new THREE.MeshBasicMaterial({ color: 0x69f0ae, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
+const goldBeam = new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+const waiting = [];
+function spawnRider() {
+  const p = pick(CURBS.filter((c) => c.distanceTo(me.pos) > 40 && !waiting.some((w) => w.p.distanceTo(c) < 20)));
+  const body = makeAvatar({ shirt: pick(BOT_COLORS), pants: pick([0x37474f, 0x263238, 0x4e342e]), skin: pick(SKINS), hat: Math.random() < 0.4 ? pick(BOT_COLORS) : null });
+  body.g.position.copy(p).setY(0.3); scene.add(body.g);
+  const beam = new THREE.Mesh(beamGeo, greenBeam); beam.position.copy(p).setY(20); scene.add(beam);
+  waiting.push({ p, body, beam, name: pick(BOT_NAMES) });
+}
+let ride = null; // { to, beam, rider, time, total, dist }
+function pickUp(w) {
+  waiting.splice(waiting.indexOf(w), 1); scene.remove(w.body.g); scene.remove(w.beam);
+  const to = pick(CURBS.filter((c) => c.distanceTo(w.p) > 90));
+  const dist = Math.abs(to.x - w.p.x) + Math.abs(to.z - w.p.z);
+  const beam = new THREE.Mesh(beamGeo, goldBeam); beam.position.copy(to).setY(20); scene.add(beam);
+  ride = { to, beam, name: w.name, dist, total: Math.round(dist / 15 + 12), time: Math.round(dist / 15 + 12) };
+  SFX.pop(); show(`${w.name} hopped in! Get them to the yellow light.`, 2);
+  spawnRider();
+}
+function dropOff() {
+  const base = Math.round(15 + ride.dist * 0.22), tip = Math.max(0, Math.round(ride.time * 2.2));
+  cash += base + tip; fares++; scene.remove(ride.beam);
+  SFX.coin(); show(`+$${base} fare and a $${tip} tip from ${ride.name}!`, 2);
+  ride = null;
+}
+function lateDrop() { scene.remove(ride.beam); show(`${ride.name} got out. Too slow!`, 1.8); SFX.lose(); ride = null; }
+
+// ---------- driving ----------
+function solidHit(p, r) { // push a car out of buildings; -> true if it hit one
+  let hit = false;
+  for (const b of buildings) { const hx = b.w / 2 + r, hz = b.d / 2 + r, dx = p.x - b.x, dz = p.z - b.z; if (Math.abs(dx) < hx && Math.abs(dz) < hz) { const px = hx - Math.abs(dx), pz = hz - Math.abs(dz); if (px < pz) p.x = b.x + Math.sign(dx) * hx; else p.z = b.z + Math.sign(dz) * hz; hit = true; } }
+  const lim = HALF + ROAD / 2 + 4; if (Math.abs(p.x) > lim) { p.x = Math.sign(p.x) * lim; hit = true; } if (Math.abs(p.z) > lim) { p.z = Math.sign(p.z) * lim; hit = true; }
+  return hit;
+}
+let tBrake = false, tHand = false;
+function drive(dt) {
+  const top = CARS[S.car][1];
+  let thr = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0), steer = clamp((keys.KeyA || keys.ArrowLeft ? 1 : 0) - (keys.KeyD || keys.ArrowRight ? 1 : 0) - joy.x, -1, 1);
+  if (touch) thr = tBrake ? -1 : joy.y > 0.6 ? -1 : 1;
+  const hand = keys.Space || tHand;
+  if (phase !== "drive") { thr = 0; steer = 0; }
+  if (thr > 0) me.v += (me.v < top ? 24 + top * 0.2 : 0) * dt; else if (thr < 0) me.v -= (me.v > 0 ? 45 : 14) * dt; else me.v -= Math.sign(me.v) * Math.min(Math.abs(me.v), 8 * dt);
+  if (hand) me.v -= Math.sign(me.v) * Math.min(Math.abs(me.v), 18 * dt);
+  me.v = clamp(me.v, -12, top);
+  const grip = clamp(Math.abs(me.v) / 10, 0, 1), turn = steer * (hand ? 2.9 : 2.1) * grip * (me.v < 0 ? -1 : 1);
+  me.h += turn * dt; me.slide += ((hand ? steer * 0.5 : 0) - me.slide) * Math.min(1, dt * 6);
+  me.pos.x += Math.sin(me.h) * me.v * dt; me.pos.z += Math.cos(me.h) * me.v * dt;
+  if (solidHit(me.pos, 1.8)) { if (Math.abs(me.v) > 14) { tone(110, 0.15, "square", 0.05); } me.v *= Math.pow(0.02, dt); }
+}
+
+// ---------- the shift ----------
+let phase = "menu", shiftT = 0, cash = 0, fares = 0;
+const SHIFT = TEST ? 60 : 240;
+function newShift() {
+  for (const w of waiting) { scene.remove(w.body.g); scene.remove(w.beam); } waiting.length = 0; if (ride) scene.remove(ride.beam); ride = null;
+  me.pos.set(roadLine(3) + 3.4, 0, roadLine(3) - 10); me.h = 0; me.v = 0;
+  for (let i = 0; i < 3; i++) spawnRider();
+  cash = 0; fares = 0; shiftT = SHIFT; phase = "drive"; $("over").style.display = "none"; show("Find someone under a green light!", 2.5);
+}
+function endShift() {
+  phase = "over"; S.cash += cash; S.earned += cash; S.fares += fares; const best = cash > S.best; S.best = Math.max(S.best, cash); storeSave(SAVE, S);
+  sendScore("fares", cash); SFX.win();
+  $("oInfo").textContent = `You made $${cash} from ${fares} fare${fares === 1 ? "" : "s"}.${best ? " New best shift!" : ` Best shift: $${S.best}.`} Bank: $${S.cash}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+function drawShop() {
+  $("shop").innerHTML = CARS.map(([n, top, price], i) => { const own = S.owned.includes(i); return `<button data-i="${i}" class="${own ? "own" : ""} ${S.car === i ? "cur" : ""}">${n}<br>${Math.round(top * 2.4)} mph top<br>${S.car === i ? "Driving" : own ? "Drive this" : "$" + price.toLocaleString()}</button>`; }).join("");
+  for (const b of $("shop").querySelectorAll("button")) b.onclick = () => { const i = +b.dataset.i; if (!S.owned.includes(i)) { if (S.cash < CARS[i][2]) { SFX.no(); b.textContent = `Need $${(CARS[i][2] - S.cash).toLocaleString()} more`; return; } S.cash -= CARS[i][2]; S.owned.push(i); SFX.buy(); } S.car = i; storeSave(SAVE, S); setCar(i); drawShop(); showStats(); };
+}
+function showStats() { $("stats").textContent = `Bank $${S.cash.toLocaleString()} · ${S.fares} fares · best shift $${S.best}`; }
+drawShop(); showStats();
+touchControls([{ label: "BRAKE", color: "rgba(239,83,80,.9)", down: () => { tBrake = true; }, up: () => { tBrake = false; } }, { label: "DRIFT", color: "rgba(64,196,255,.9)", down: () => { tHand = true; }, up: () => { tHand = false; } }]);
+// minimap
+const mx = $("map").getContext("2d"), MS = 280 / (HALF * 2 + ROAD + 10), mp = (p) => [150 + p.x * MS, 150 + p.z * MS];
+function drawMap() {
+  mx.clearRect(0, 0, 300, 300); mx.fillStyle = "rgba(0,0,0,.55)"; mx.fillRect(0, 0, 300, 300); mx.fillStyle = "#9e9e9e";
+  for (let k = 0; k <= GRID; k++) { const [a] = mp(V(roadLine(k), 0, 0)); mx.fillRect(a - ROAD * MS / 2, 10, ROAD * MS, 280); const [, b] = mp(V(0, 0, roadLine(k))); mx.fillRect(10, b - ROAD * MS / 2, 280, ROAD * MS); }
+  for (const w of waiting) { const [x, y] = mp(w.p); mx.fillStyle = "#69f0ae"; mx.beginPath(); mx.arc(x, y, 7, 0, 7); mx.fill(); }
+  if (ride) { const [x, y] = mp(ride.to); mx.fillStyle = "#ffd54f"; mx.beginPath(); mx.arc(x, y, 9, 0, 7); mx.fill(); }
+  const [x, y] = mp(me.pos); mx.save(); mx.translate(x, y); mx.rotate(-me.h); mx.fillStyle = "#fff"; mx.beginPath(); mx.moveTo(0, 10); mx.lineTo(-6, -6); mx.lineTo(6, -6); mx.fill(); mx.restore();
+}
+// an arrow over the car pointing at where to go
+const arrow = new THREE.Group(); { const a = boxMesh(0.6, 0.3, 2.4, 0xffd54f, 0x6d5400); a.position.z = 0.6; arrow.add(a); const tip2 = boxMesh(1.6, 0.3, 0.8, 0xffd54f, 0x6d5400); tip2.position.z = 1.9; arrow.add(tip2); } scene.add(arrow);
+const camLook = V();
+onFrame((dt, T) => {
+  if (started && phase === "drive") {
+    shiftT -= dt; if (shiftT <= 0) { shiftT = 0; endShift(); }
+    drive(dt);
+    // pick up and drop off: pull up close and slow down
+    if (!ride) for (const w of waiting) if (w.p.distanceTo(me.pos) < 6.5 && Math.abs(me.v) < 7) { pickUp(w); break; }
+    if (ride) { ride.time -= dt; if (ride.to.distanceTo(me.pos) < 7 && Math.abs(me.v) < 8) dropOff(); else if (ride.time < -15) lateDrop(); }
+  }
+  // traffic
+  for (const t of traffic) {
+    const p = carPos(t), d = p.distanceTo(me.pos);
+    const slow = d < 9 && V(me.pos.x - p.x, 0, me.pos.z - p.z).dot(t.alongX ? V(t.dir, 0, 0) : V(0, 0, t.dir)) > 0; // somebody in front
+    t.s += t.dir * (slow ? t.v * 0.2 : t.v) * dt; if (t.s > HALF + 10) t.s = -HALF - 10; if (t.s < -HALF - 10) t.s = HALF + 10;
+    const q = carPos(t); t.g.position.copy(q); t.g.rotation.y = t.alongX ? (t.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : t.dir > 0 ? 0 : Math.PI;
+    if (q.distanceTo(me.pos) < 3.6) { const n = me.pos.clone().sub(q).setY(0).normalize(); me.pos.addScaledVector(n, 3.6 - q.distanceTo(me.pos)); if (T - t.bump > 0.5) { t.bump = T; me.v *= 0.45; tone(140, 0.2, "square", 0.05); } }
+  }
+  for (const w of waiting) { w.body.g.rotation.y = Math.atan2(me.pos.x - w.p.x, me.pos.z - w.p.z); w.body.arms[1].rotation.x = -2.4 + Math.sin(T * 6) * 0.4; w.body.pose = true; }
+  me.g.position.copy(me.pos); me.g.rotation.y = me.h; me.body.rotation.y = me.slide;
+  // camera behind the car
+  const f = V(Math.sin(me.h), 0, Math.cos(me.h));
+  camera.position.lerp(me.pos.clone().addScaledVector(f, -12).add(V(0, 5.5, 0)), 1 - Math.exp(-6 * dt));
+  camLook.lerp(me.pos.clone().addScaledVector(f, 6).setY(1.5), 1 - Math.exp(-10 * dt)); camera.lookAt(camLook);
+  sun.position.copy(me.pos).add(V(30, 60, 20)); sun.target.position.copy(me.pos);
+  const goal = ride ? ride.to : waiting.slice().sort((a, b) => a.p.distanceTo(me.pos) - b.p.distanceTo(me.pos))[0]?.p;
+  arrow.visible = !!goal && phase === "drive"; if (goal) { arrow.position.copy(me.pos).setY(4.4); arrow.rotation.y = Math.atan2(goal.x - me.pos.x, goal.z - me.pos.z); }
+  $("tTime").textContent = `${Math.floor(shiftT / 60)}:${String(Math.floor(shiftT % 60)).padStart(2, "0")}`;
+  $("tCash").textContent = `$${cash}`; $("tFares").textContent = `${fares} fare${fares === 1 ? "" : "s"}`;
+  $("fare").textContent = ride ? `${ride.name} · ${Math.round(ride.to.distanceTo(me.pos))} m · ${ride.time > 0 ? `tip time ${Math.ceil(ride.time)}s` : "no tip now"}` : phase === "drive" ? "Find someone under a green light" : "";
+  $("hSpeed").textContent = `${Math.round(Math.abs(me.v) * 2.4)} mph`; $("hCar").textContent = CARS[S.car][0];
+  if (phase === "drive") drawMap();
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "drive") newShift(); };
+$("again").onclick = () => { $("over").style.display = "none"; drawShop(); showStats(); $("start").style.display = "grid"; };
+$("menuB").onclick = () => { started = false; drawShop(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, cash, fares, ride: ride && { name: ride.name, time: Math.round(ride.time), dist: Math.round(ride.to.distanceTo(me.pos)) }, waiting: waiting.length, v: Math.round(me.v), car: S.car }),
+  goRider: () => { const w = waiting[0]; me.pos.set(w.p.x + 2, 0, w.p.z + 2); me.v = 0; }, goDest: () => { if (ride) { me.pos.set(ride.to.x + 2, 0, ride.to.z); me.v = 0; } }, me, S: () => S, give: (n) => { S.cash += n; storeSave(SAVE, S); drawShop(); },
+};
+loop();
+})();
+</script>
+</body>
+</html>
