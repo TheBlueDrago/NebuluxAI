@@ -12,6 +12,7 @@ export const BOARDS = {
   "brawl-blitz": [["wins", "Most wins", String]],
   "storm-royale": [["wins", "Most wins", String]],
   "villain-battlegrounds": [["kills", "Most K.O.s", String]],
+  "midnight-manor": [["wins", "Most wins", String]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

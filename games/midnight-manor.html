@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Midnight Manor</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud .big1{font-size:22px}}
+
+  #start,#result{background:radial-gradient(ellipse at 50% 30%,#3a2a6acc,#07051aee)}
+  #result{display:none}
+  h1{color:#c9b8ff}
+  .role{display:inline-block;padding:4px 14px;border-radius:999px;border:3px solid #000;font-weight:900;font-size:15px;margin:2px}
+  #roleCard{position:fixed;inset:0;display:none;place-items:center;z-index:5;background:rgba(5,3,20,.72)}
+  #roleCard .c h2{font-size:54px;margin:0;-webkit-text-stroke:2px #000}
+  #roleIcon{font-size:18px;font-weight:900;margin-top:6px}
+  #vign{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 160px 40px rgba(0,0,0,.75)}
+  #frost{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(150,220,255,.55));opacity:0;transition:opacity .6s}
+</style>
+</head>
+<body>
+<div id="vign"></div><div id="frost"></div>
+<div id="hud" class="sh"><div class="big1" id="hRole">Midnight Manor</div><div class="sub" id="hInfo"></div><div class="sub" id="hClues"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="roleCard"><div class="c"><h2 id="roleName"></h2><div id="roleIcon"></div><p id="roleText" style="font-weight:700;font-size:18px"></p></div></div>
+<div id="start" class="ov"><div class="c">
+  <h1>MIDNIGHT<br>MANOR</h1>
+  <p style="font-weight:700">Eight guests. One of them is secretly the <b style="color:#b388ff">Shadow</b>, sneaking up to freeze everyone into ice. The <b style="color:#ffd54f">Detective</b> carries a lantern: shine it on the Shadow to catch them. Every other <b style="color:#81d4fa">Guest</b> collects glowing clues, and every 3 clues earns a lantern flash too.</p>
+  <div style="display:grid;gap:6px;justify-items:center;margin:10px 0">
+    <div><span class="role" style="background:#81d4fa;color:#000">Guest</span> stay together, collect clues, survive</div>
+    <div><span class="role" style="background:#ffd54f;color:#000">Detective</span> catch the Shadow</div>
+    <div><span class="role" style="background:#b388ff;color:#000">Shadow</span> freeze everyone, don't get seen</div>
+  </div>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to look · <kbd>Shift</kbd> lock the camera<br><kbd>F</kbd> or <kbd>Click</kbd> shine the lantern · <kbd>E</kbd> or <kbd>Click</kbd> freeze (as the Shadow)</p>
+  <p id="stats" style="font-weight:700;opacity:.9"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="result" class="ov"><div class="c">
+  <h1 id="resTitle"></h1>
+  <p id="resText" style="font-weight:700;font-size:18px"></p>
+  <p id="resNext" style="opacity:.85"></p>
+  <button class="big" id="again">NEXT ROUND</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") { if (e.vel.y <= 0) { e.pos.y = s.y + s.h / 2; landed = s; } else e.pos.y = s.y - s.h / 2 - HH; e.vel.y = 0; }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Midnight Manor =================
+setSky("#0b0a2a", "#241a4d", 0x150f30, 40, 140);
+hemi.color.set(0x9fa8ff); hemi.groundColor.set(0x2a2140); hemi.intensity = 0.75;
+sun.color.set(0xb8c6ff); sun.intensity = 0.55;
+cam.dist = 11; cam.pitch = 0.5; cam.max = 18;
+
+// ---------- the manor: 3 x 3 rooms with doors between them ----------
+const ROOM = 22, WALL_H = 7, WT = 0.6, DOOR = 5;
+const ROOMS = [
+  ["Library", 0x5d4037], ["Ballroom", 0x7b1fa2], ["Gallery", 0x37474f],
+  ["Kitchen", 0x8d6e63], ["Grand Hall", 0x4e342e], ["Study", 0x33691e],
+  ["Conservatory", 0x2e7d32], ["Dining Hall", 0x6a1b9a], ["Music Room", 0x283593],
+];
+const center = (i) => V(((i % 3) - 1) * ROOM, 0, (Math.floor(i / 3) - 1) * ROOM);
+const roomAt = (p) => { const cx = clamp(Math.round(p.x / ROOM) + 1, 0, 2), cz = clamp(Math.round(p.z / ROOM) + 1, 0, 2); return cz * 3 + cx; };
+const wallColor = 0x3b3355, trim = 0x1d1830;
+ROOMS.forEach(([, c], i) => {
+  const p = center(i);
+  addBox(p.x, -0.5, p.z, ROOM, 1, ROOM, c);
+  // a rug in the middle (just for looks) and furniture in the corners, so the walkways stay clear
+  const rug = boxMesh(9, 0.05, 6, 0x8e1b3a); rug.position.set(p.x, 0.03, p.z); rug.castShadow = false; scene.add(rug);
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const kind = (i + sx + sz * 2 + 8) % 4;
+    const fx = p.x + sx * 7.6, fz = p.z + sz * 7.6;
+    if (kind === 0) addBox(fx, 1.6, fz, 3.2, 3.2, 1.6, 0x4e2c1a, { wall: true }); // bookshelf
+    else if (kind === 1) { addBox(fx, 0.6, fz, 3, 1.2, 3, 0x6d4c41); const vase = boxMesh(0.8, 1.2, 0.8, 0x80cbc4); vase.position.set(fx, 1.8, fz); scene.add(vase); } // table + vase
+    else if (kind === 2) { addBox(fx, 0.5, fz, 2.6, 1, 2.6, 0x880e4f); addBox(fx + sx * 0.9, 1.5, fz, 0.8, 1.4, 2.6, 0x880e4f); } // armchair
+    else { const lamp = addBox(fx, 1.5, fz, 0.7, 3, 0.7, 0x212121); const shade = boxMesh(1.6, 0.9, 1.6, 0xffe082, 0x806000); shade.position.set(fx, 3.4, fz); scene.add(shade); lamp.lamp = shade; }
+  }
+  const l = new THREE.PointLight(0xffd8a0, 0.7, 30, 2); l.position.set(p.x, 6, p.z); scene.add(l);
+  const chand = boxMesh(1.8, 0.5, 1.8, 0xffe9a8, 0x998040); chand.position.set(p.x, 6.4, p.z); chand.castShadow = false; scene.add(chand);
+  const sign = makeLabel(ROOMS[i][0], "#ffe9a8", 768, 60); sign.scale.set(6, 1, 1); sign.position.set(p.x, WALL_H + 1.2, p.z - ROOM / 2 + 1); scene.add(sign);
+});
+const half = ROOM * 1.5;
+// outer walls
+addBox(0, WALL_H / 2, -half, ROOM * 3 + WT, WALL_H, WT, wallColor, { wall: true });
+addBox(0, WALL_H / 2, half, ROOM * 3 + WT, WALL_H, WT, wallColor, { wall: true });
+addBox(-half, WALL_H / 2, 0, WT, WALL_H, ROOM * 3, wallColor, { wall: true });
+addBox(half, WALL_H / 2, 0, WT, WALL_H, ROOM * 3, wallColor, { wall: true });
+// inner walls with a door in the middle of each
+const seg = (ROOM - DOOR) / 2;
+const doors = [];
+for (let k = 0; k < 2; k++) {
+  const line = (k - 0.5) * ROOM;
+  for (let r = 0; r < 3; r++) {
+    const mid = (r - 1) * ROOM;
+    // between columns (a wall along z at x = line)
+    addBox(line, WALL_H / 2, mid - DOOR / 2 - seg / 2, WT, WALL_H, seg, wallColor, { wall: true });
+    addBox(line, WALL_H / 2, mid + DOOR / 2 + seg / 2, WT, WALL_H, seg, wallColor, { wall: true });
+    addBox(line, WALL_H - 0.6, mid, WT, 1.2, DOOR, trim, { wall: true, ghost: true });
+    doors.push({ p: V(line, 0, mid), a: r * 3 + k, b: r * 3 + k + 1 });
+    // between rows (a wall along x at z = line)
+    addBox(mid - DOOR / 2 - seg / 2, WALL_H / 2, line, seg, WALL_H, WT, wallColor, { wall: true });
+    addBox(mid + DOOR / 2 + seg / 2, WALL_H / 2, line, seg, WALL_H, WT, wallColor, { wall: true });
+    addBox(mid, WALL_H - 0.6, line, DOOR, 1.2, WT, trim, { wall: true, ghost: true });
+    doors.push({ p: V(mid, 0, line), a: k * 3 + r, b: (k + 1) * 3 + r });
+  }
+}
+// waypoints: the 9 room centres and the 12 doors
+const navNodes = ROOMS.map((_, i) => center(i)).concat(doors.map((d) => d.p));
+const navLinks = []; doors.forEach((d, j) => { navLinks.push([d.a, 9 + j], [d.b, 9 + j]); });
+const nav = makeNav(navNodes, navLinks);
+const spotIn = (room) => { const c = center(room); return V(c.x + rr(-5, 5), 0.05, c.z + rr(-5, 5)); };
+
+// ---------- clues ----------
+const clues = [];
+function addClue() {
+  const room = ri(0, 8); const p = spotIn(room);
+  const m = boxMesh(0.7, 0.08, 0.95, 0xfff59d, 0xc9a800); m.castShadow = false; m.position.set(p.x, 1, p.z); scene.add(m);
+  clues.push({ m, p, ph: rr(0, 6) });
+}
+function clearClues() { for (const c of clues) scene.remove(c.m); clues.length = 0; }
+
+// ---------- everyone ----------
+const ice = new THREE.MeshStandardMaterial({ color: 0x9fe4ff, roughness: 0.15, metalness: 0.1, emissive: 0x1f4a66, transparent: true, opacity: 0.92 });
+const shadowGlow = new THREE.MeshStandardMaterial({ color: 0x4a148c, emissive: 0x7c4dff, roughness: 0.4 });
+function setLook(c, how) {
+  c.body.g.traverse((o) => { if (o.isMesh) { if (!o.userData.mat) o.userData.mat = o.material; o.material = how === "ice" ? ice : how === "shadow" ? shadowGlow : o.userData.mat; } });
+}
+const chars = [];
+function makeChar(i) {
+  const isMe = i === 0;
+  const look = { shirt: BOT_COLORS[(i * 5) % BOT_COLORS.length], pants: [0x263238, 0x3e2723, 0x1a237e, 0x004d40][i % 4], skin: SKINS[i % SKINS.length], hat: i % 3 === 0 ? [0x212121, 0x6a1b9a, 0x5d4037][i % 3] : null };
+  let c;
+  if (isMe) { scene.remove(P.body.g); P.body = makeAvatar({ shirt: 0x1e88e5, pants: 0x263238, skin: 0xffcc80, hat: 0x212121 }); scene.add(P.body.g); c = P; c.isMe = true; c.name = ME_NAME; }
+  else { c = { body: makeAvatar(look), pos: V(), vel: V(), onGround: false, yaw: 0, name: BOT_NAMES[(i * 7 + 3) % BOT_NAMES.length] }; scene.add(c.body.g); }
+  c.tag = nameTag(c.name, isMe ? "#ffe082" : "#ffffff"); c.tag.visible = !isMe; c.body.g.add(c.tag);
+  chars.push(c); return c;
+}
+for (let i = 0; i < 8; i++) makeChar(i);
+
+// ---------- saving ----------
+const SAVE = "midnight-manor";
+const S = loadSave(SAVE, { coins: 0, wins: 0, rounds: 0, caught: 0, freezes: 0 });
+const save = () => storeSave(SAVE, S);
+function showStats() { $("stats").textContent = S.rounds ? `Rounds ${S.rounds} · Wins ${S.wins} · Coins ${S.coins} · Shadows caught ${S.caught} · Freezes ${S.freezes}` : ""; }
+showStats();
+
+// ---------- the round ----------
+const ROUND_TIME = 150, GRACE = 12;
+let phase = "menu", timeLeft = 0, shadow = null, detective = null, roundT = 0, ending = 0, outcome = null;
+const ROLE = { guest: ["GUEST", "#81d4fa"], detective: ["DETECTIVE", "#ffd54f"], shadow: ["SHADOW", "#b388ff"] };
+function startRound() {
+  phase = "roles"; roundT = 0; outcome = null; ending = 0;
+  $("result").style.display = "none"; $("frost").style.opacity = 0;
+  clearClues(); for (let i = 0; i < 16; i++) addClue();
+  const order = shuffle(chars.slice());
+  shadow = order[0]; detective = order[1];
+  // (the automated checks can pick your role: ?test&role=shadow or ?test&role=detective)
+  const forced = TEST && (location.search.match(/role=(\w+)/) || [])[1];
+  if (forced === "shadow" || forced === "detective") { const others = order.filter((c) => c !== P); if (forced === "shadow") { shadow = P; detective = others[0]; } else { detective = P; shadow = others[0]; } }
+  const rooms = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  chars.forEach((c, i) => {
+    c.role = c === shadow ? "shadow" : c === detective ? "detective" : "guest";
+    c.frozen = false; c.clues = 0; c.charges = c.role === "detective" ? 3 : 0; c.cool = c.role === "shadow" ? GRACE : 0; c.knows = null; c.path = null; c.wait = rr(0, 2); c.think = rr(0, 0.3); c.flee = false;
+    setLook(c, "normal"); c.body.pose = false;
+    const p = spotIn(rooms[i % 9]); c.pos.copy(p); c.vel.set(0, 0, 0); c.body.g.position.copy(c.pos);
+    c.tag.material.color.set(0xffffff);
+  });
+  P.canMove = true; started = true;
+  timeLeft = ROUND_TIME;
+  const [name, color] = ROLE[P.role];
+  $("roleName").textContent = name; $("roleName").style.color = color;
+  $("roleText").textContent = P.role === "shadow" ? "Freeze every guest without the Detective catching you. Get close and press E (or tap FREEZE). Don't let anyone see you do it!" : P.role === "detective" ? "Find the Shadow and shine your lantern on them (F, click, or tap LANTERN). You have 3 flashes, and 3 clues earn another. Watch who's around when someone gets frozen." : "Stay close to others, collect glowing clues, and survive until the clock runs out. Every 3 clues gives you a lantern flash to catch the Shadow yourself.";
+  $("roleIcon").textContent = P.role === "shadow" ? "Only you know who you are." : `The Shadow is one of the other 7.`;
+  $("roleCard").style.display = "grid";
+  setTimeout(() => { $("roleCard").style.display = "none"; phase = "play"; show(P.role === "shadow" ? "Wait for the lights to dim..." : "Find the Shadow!", 2); }, 3600);
+  updateTouch();
+  SFX.pop();
+}
+function endRound(winner, why) {
+  if (phase !== "play") return;
+  phase = "over"; outcome = winner; ending = 2.2;
+  const meWon = (winner === "shadow") === (P.role === "shadow");
+  S.rounds++; if (meWon) { S.wins++; sendScore("wins", S.wins); }
+  let coins = (P.clues || 0) * 5 + (meWon ? 50 : 10) + (P.role === "shadow" ? frozenCount() * 15 : 0) + (why === "caught" && catcher === P ? 60 : 0);
+  S.coins += coins; save();
+  setLook(shadow, "shadow");
+  $("resTitle").textContent = meWon ? "YOU WIN!" : "YOU LOSE";
+  $("resTitle").style.color = meWon ? "#9cff6b" : "#ff8a80";
+  const who = shadow === P ? "You were" : `${shadow.name} was`;
+  $("resText").innerHTML = (why === "caught" ? `${catcher === P ? "You" : catcher.name} caught the Shadow with the lantern!` : why === "time" ? "The guests made it through the night!" : "The Shadow froze everyone!") + `<br>${who} the Shadow.<br>+${coins} coins (you have ${S.coins})`;
+  $("resNext").textContent = "";
+  (meWon ? SFX.win : SFX.lose)();
+  setTimeout(() => { if (phase === "over") { $("result").style.display = "grid"; document.exitPointerLock?.(); } }, 1600);
+}
+const frozenCount = () => chars.filter((c) => c.frozen).length;
+const aliveGuests = () => chars.filter((c) => c !== shadow && !c.frozen);
+let catcher = null;
+
+// ---------- freezing and the lantern ----------
+const headOf = (c) => c.pos.clone().setY(c.pos.y + 2.6);
+function freeze(by, c) {
+  c.frozen = true; c.vel.set(0, 0, 0); setLook(c, "ice"); c.body.pose = true; c.body.arms[0].rotation.x = -1.2; c.body.arms[1].rotation.x = -0.4;
+  tone(1200, 0.4, "triangle", 0.05, -900);
+  by.cool = by === P ? 3.5 : rr(3.5, 6);
+  // who saw it happen? they now know who the Shadow is
+  for (const w of chars) if (w !== by && w !== c && !w.frozen && w.pos.distanceTo(by.pos) < 16 && canSee(headOf(w), headOf(by))) { w.knows = by; if (w === P) show(`You saw ${by.name} freeze ${c.name}!`, 2.6); }
+  if (c === P) { P.canMove = false; $("frost").style.opacity = 1; show(`You were frozen by ${by.name}!\nWatch the rest of the round.`, 3.5); }
+  else if (by !== P && P.role !== "shadow" && !P.frozen) show(`Someone was frozen in the ${ROOMS[roomAt(c.pos)][0]}!`, 2);
+  else if (by === P) { S.freezes++; show(`Frozen: ${c.name}`, 1.2); }
+  if (!aliveGuests().length) endRound("shadow", "all");
+}
+const beams = [];
+function lantern(by, dir) {
+  if (by.charges <= 0 || by.frozen || by.role === "shadow") return false;
+  by.charges--;
+  const m = new THREE.Mesh(new THREE.ConeGeometry(4.2, 12, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
+  m.geometry.translate(0, -6, 0); m.geometry.rotateX(-Math.PI / 2);
+  const from = headOf(by).setY(by.pos.y + 2.4); m.position.copy(from); m.lookAt(from.clone().add(dir)); scene.add(m);
+  beams.push({ m, t: 0.6 });
+  SFX.zap();
+  if (!shadow.frozen && phase === "play") {
+    const to = headOf(shadow).sub(from), d = to.length();
+    if (d < 12.5 && to.normalize().dot(dir) > Math.cos(0.36) && canSee(from, headOf(shadow))) { catcher = by; S.caught += by === P ? 1 : 0; show(`${by === P ? "You" : by.name} caught the Shadow: ${shadow === P ? "you" : shadow.name}!`, 3); endRound("guests", "caught"); return true; }
+  }
+  if (by === P) show(by.charges ? `Missed! ${by.charges} flash${by.charges === 1 ? "" : "es"} left` : "Missed! No flashes left", 1.4);
+  return true;
+}
+const camForward = () => V(-Math.sin(cam.yaw), -Math.sin(cam.pitch) * 0.25, -Math.cos(cam.yaw)).normalize();
+function playerAction() {
+  if (phase !== "play" || P.frozen) return;
+  if (P.role === "shadow") {
+    if (P.cool > 0) { show(P.cool > 6 ? "Wait for the lights to dim..." : `Freeze ready in ${Math.ceil(P.cool)}s`, 1); return; }
+    let best = null, bd = 3.3;
+    for (const c of chars) if (c !== P && !c.frozen) { const d = c.pos.distanceTo(P.pos); if (d < bd) { bd = d; best = c; } }
+    if (best) { P.yaw = Math.atan2(best.pos.x - P.pos.x, best.pos.z - P.pos.z); freeze(P, best); } else { show("Get closer to someone", 1); SFX.no(); }
+  } else {
+    if (P.charges <= 0) { show(P.role === "detective" ? "No flashes left: collect 3 clues for another" : "Collect 3 clues for a lantern flash", 1.4); SFX.no(); return; }
+    const dir = camForward(); P.yaw = Math.atan2(dir.x, dir.z); lantern(P, dir);
+  }
+}
+actions.KeyE = playerAction; actions.KeyF = playerAction; actions.click = () => { if (!rmb) playerAction(); };
+let tbs = null;
+// made once (making them again would stack up touch handlers); each round just relabels the action button
+function updateTouch() {
+  if (!touch) return;
+  if (!tbs) tbs = touchControls([JUMP_BUTTON, { label: "LANTERN", down: playerAction }]);
+  const b = tbs && tbs[1] && tbs[1].el; if (!b) return;
+  b.textContent = P.role === "shadow" ? "FREEZE" : "LANTERN";
+  b.style.background = P.role === "shadow" ? "rgba(179,136,255,.9)" : "rgba(255,213,79,.9)";
+}
+
+// ---------- computer players ----------
+function botThink(c) {
+  const shadowKnown = c.knows && !c.knows.frozen ? c.knows : null;
+  if (c.role === "shadow") {
+    // hunt: someone near but away from the others; stay innocent when someone with a lantern watches
+    // (it only holds back for someone with a lantern who's close and looking its way)
+    const watcher = chars.find((w) => w !== c && !w.frozen && w.charges > 0 && w.pos.distanceTo(c.pos) < 10 && canSee(headOf(w), headOf(c)));
+    if (c.cool > 0 || watcher) { c.target = null; if (!c.path || !c.path.length) { c.path = nav.route(c.pos, ri(0, 8)); } return; }
+    if (!c.target || c.target.frozen) {
+      const options = aliveGuests().map((g) => ({ g, alone: chars.filter((o) => o !== c && o !== g && !o.frozen && o.pos.distanceTo(g.pos) < 11).length, d: g.pos.distanceTo(c.pos) }));
+      options.sort((a, b) => a.alone - b.alone || a.d - b.d); c.target = options[0] ? options[0].g : null;
+    }
+    if (c.target) c.path = canSee(headOf(c), headOf(c.target)) && c.pos.distanceTo(c.target.pos) < 12 ? [c.target.pos.clone()] : nav.route(c.pos, roomAt(c.target.pos));
+    return;
+  }
+  // anyone with a lantern flash who knows who the Shadow is goes after them
+  if (shadowKnown && c.charges > 0) { c.hunting = shadowKnown; c.path = canSee(headOf(c), headOf(shadowKnown)) ? [shadowKnown.pos.clone()] : nav.route(c.pos, roomAt(shadowKnown.pos)); return; }
+  c.hunting = null;
+  // ...and the others run from them
+  if (shadowKnown && shadowKnown.pos.distanceTo(c.pos) < 14) {
+    let far = 0, fd = -1; for (let r = 0; r < 9; r++) { const d = center(r).distanceTo(shadowKnown.pos); if (d > fd) { fd = d; far = r; } }
+    c.path = nav.route(c.pos, far); return;
+  }
+  // a clue nearby?
+  const clue = clues.find((k) => k.p.distanceTo(c.pos) < 7 && canSee(headOf(c), k.p.clone().setY(1.2)));
+  if (clue) { c.path = [clue.p.clone()]; return; }
+  // otherwise wander from room to room
+  if ((!c.path || !c.path.length) && c.wait <= 0) { c.path = nav.route(c.pos, ri(0, 8)); c.wait = rr(1, 4); }
+}
+function stepBot(c, dt) {
+  if (c.frozen) { c.vel.set(0, 0, 0); c.body.g.position.copy(c.pos); return; }
+  c.cool -= dt; c.think -= dt;
+  if (c.think <= 0) { c.think = 0.3; botThink(c); }
+  const speed = c.role === "shadow" ? (c.target ? 12.5 : 10) : c.hunting ? 12 : 10;
+  const arrived = followPath(c, dt, speed);
+  if (arrived) c.wait -= dt;
+  // the Shadow freezes its target when it's close
+  if (c.role === "shadow" && c.target && !c.target.frozen && c.cool <= 0 && c.pos.distanceTo(c.target.pos) < 2.6 && phase === "play") freeze(c, c.target);
+  // a hunter shines the lantern once the Shadow is close and in sight (and usually aims well)
+  if (c.hunting && c.charges > 0 && phase === "play" && !c.lanternCool) {
+    const d = c.hunting.pos.distanceTo(c.pos);
+    if (d < 10 && canSee(headOf(c), headOf(c.hunting))) {
+      c.lanternCool = 1.2;
+      const aim = headOf(c.hunting).sub(headOf(c)).normalize();
+      if (Math.random() > 0.3) lantern(c, aim); else { aim.applyAxisAngle(V(0, 1, 0), rr(0.6, 1) * (Math.random() < 0.5 ? -1 : 1)); lantern(c, aim); }
+    }
+  }
+  if (c.lanternCool) c.lanternCool = Math.max(0, c.lanternCool - dt) || 0;
+  const sp = faceMove(c, dt); animate(c.body, sp, c.onGround, T);
+}
+
+// ---------- each frame ----------
+onFrame((dt, T) => {
+  for (const b of beams) { b.t -= dt; b.m.material.opacity = Math.max(0, b.t) * 0.6; if (b.t <= 0) scene.remove(b.m); }
+  for (let i = beams.length - 1; i >= 0; i--) if (beams[i].t <= 0) beams.splice(i, 1);
+  for (const k of clues) { k.m.position.y = 1 + Math.sin(T * 3 + k.ph) * 0.2; k.m.rotation.y = T * 1.5 + k.ph; }
+  if (phase === "play" || phase === "over") {
+    if (phase === "play") {
+      timeLeft -= dt; roundT += dt;
+      if (timeLeft <= 0) { timeLeft = 0; endRound("guests", "time"); }
+    }
+    if (!P.frozen) { P.cool = (P.cool || 0) - dt; stepPlayer(dt, T); }
+    else { P.vel.set(0, 0, 0); P.body.g.position.copy(P.pos); }
+    for (const c of chars) if (!c.isMe) stepBot(c, dt);
+    // picking up clues
+    for (const c of chars) {
+      if (c.frozen || c.role === "shadow") continue;
+      for (let i = clues.length - 1; i >= 0; i--) {
+        const k = clues[i];
+        if (Math.hypot(k.p.x - c.pos.x, k.p.z - c.pos.z) < 1.6 && Math.abs(c.pos.y - k.p.y) < 3) {
+          scene.remove(k.m); clues.splice(i, 1); c.clues++;
+          if (c.clues % 3 === 0) { c.charges++; if (c.isMe) { SFX.buy(); show("3 clues: you earned a lantern flash!", 1.8); } }
+          else if (c.isMe) SFX.coin();
+          setTimeout(() => phase === "play" && addClue(), 6000);
+        }
+      }
+    }
+    if (ending > 0) ending -= dt;
+  } else {
+    // the menu: slowly look around the Grand Hall
+    cam.yaw += dt * 0.12;
+    for (const c of chars) if (!c.isMe) { if (!c.path || !c.path.length) c.path = nav.route(c.pos, ri(0, 8)); followPath(c, dt, 6); const sp = faceMove(c, dt); animate(c.body, sp, c.onGround, T); }
+  }
+  updateCamera(dt, P.pos);
+  // HUD
+  const [name, color] = phase === "menu" ? ["Midnight Manor", "#fff"] : ROLE[P.role] || ["", "#fff"];
+  $("hRole").textContent = phase === "menu" ? "Midnight Manor" : P.frozen ? `${name} · FROZEN` : name; $("hRole").style.color = color;
+  if (phase === "play" || phase === "over") {
+    const m = Math.floor(timeLeft / 60), s = String(Math.floor(timeLeft % 60)).padStart(2, "0");
+    $("hInfo").textContent = `${m}:${s} left · Guests left ${aliveGuests().length}/7 · ${ROOMS[roomAt(P.pos)][0]}`;
+    $("hClues").textContent = P.role === "shadow" ? (P.cool > 0 ? `Freeze ready in ${Math.ceil(P.cool)}s` : "Freeze ready (E)") : `Clues ${P.clues || 0} · Lantern flashes ${P.charges || 0}`;
+  } else { $("hInfo").textContent = ""; $("hClues").textContent = ""; }
+  if (tbs && tbs[1] && tbs[1].el) tbs[1].el.style.opacity = phase === "play" && !P.frozen && (P.role === "shadow" ? P.cool <= 0 : P.charges > 0) ? 1 : 0.45;
+});
+
+// ---------- buttons ----------
+$("play").onclick = () => { $("start").style.display = "none"; audio(); startRound(); };
+$("again").onclick = () => { startRound(); };
+$("menuB").onclick = () => { phase = "menu"; started = false; $("result").style.display = "none"; $("roleCard").style.display = "none"; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = { chars, state: () => ({ phase, timeLeft: Math.round(timeLeft), frozen: frozenCount(), shadow: shadow && shadow.name, role: P.role, outcome, clues: clues.length, charges: P.charges, cool: Math.round(P.cool || 0) }) };
+// before playing: everyone wanders the hall
+chars.forEach((c) => { c.role = "guest"; const p = spotIn(4); c.pos.copy(p); c.body.g.position.copy(p); });
+loop();
+})();
+</script>
+</body>
+</html>
