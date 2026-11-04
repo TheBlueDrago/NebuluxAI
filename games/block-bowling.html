@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Bowling</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#over{background:linear-gradient(#7b1fa2dd,#1a0526ee)}
+  #over{display:none}
+  h1{color:#ffd54f}
+  #card{position:fixed;left:50%;top:10px;transform:translateX(-50%);border-collapse:collapse;font-weight:900;font-size:12px;pointer-events:none;background:rgba(0,0,0,.45)}
+  #card td{border:2px solid #000;padding:2px 5px;text-align:center;min-width:18px}
+  #card td.nm{min-width:60px;text-align:left} #card tr.me td{color:#ffd54f}
+  #power{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:240px;height:18px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #power i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9ccc65,#ffee58,#ff7043)}
+  #prompt{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);font-size:16px;font-weight:900;pointer-events:none;text-align:center}
+  body.touch #power{bottom:auto;top:172px} body.touch #prompt{bottom:auto;top:198px}
+  @media (max-width:600px){#card{top:54px;font-size:9px} #card td{padding:1px 2px;min-width:12px} #card td.nm{min-width:34px} #hud{top:118px}}
+</style>
+</head>
+<body>
+<table id="card" class="sh"></table>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Frame 1</div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="power"><i></i></div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK<br>BOWLING</h1>
+  <p style="font-weight:700">Ten frames against a computer bowler. Step left or right to line up, add some <b>hook</b> to curve the ball into the pins, then hold to wind up and let go at the right power. Strikes and spares score bonus points the real way. Stay out of the gutters!</p>
+  <p class="keys"><kbd>A</kbd><kbd>D</kbd> step · <kbd>Q</kbd><kbd>E</kbd> hook · hold <kbd>Space</kbd> or <kbd>Click</kbd> to bowl</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">BOWL</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">YOU WIN!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Block Bowling =================
+scene.background = new THREE.Color(0x1a0d26); scene.fog = new THREE.Fog(0x1a0d26, 40, 120);
+hemi.intensity = 0.7; sun.intensity = 0.7;
+cam.dist = touch ? 10 : 7; cam.pitch = touch ? 0.34 : 0.28;
+const LW = 2.1, LANE_END = 38, BR = 0.42, PR = 0.24, HEAD = 33;
+// the alley: your lane in the middle, two more either side for looks
+const woodTex = (() => { const c = document.createElement("canvas"); c.width = 64; c.height = 256; const x = c.getContext("2d"); for (let i = 0; i < 16; i++) { x.fillStyle = i % 2 ? "#d7a86e" : "#c99a5f"; x.fillRect(i * 4, 0, 4, 256); } x.fillStyle = "#7b4a1e"; for (let k = 0; k < 7; k++) { x.beginPath(); x.moveTo(8 + k * 8, 60); x.lineTo(12 + k * 8, 48); x.lineTo(16 + k * 8, 60); x.fill(); } const t = new THREE.CanvasTexture(c); return t; })();
+for (const off of [-7, 0, 7]) {
+  const lane = new THREE.Mesh(new THREE.BoxGeometry(LW * 2, 0.2, LANE_END + 6), new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.35 })); lane.position.set(off, -0.1, LANE_END / 2 - 1); lane.receiveShadow = true; scene.add(lane);
+  for (const s of [-1, 1]) { const g = boxMesh(0.7, 0.1, LANE_END + 6, 0x37474f); g.position.set(off + s * (LW + 0.35), -0.25, LANE_END / 2 - 1); scene.add(g); const rail = boxMesh(0.3, 0.5, LANE_END + 6, 0x5d4037); rail.position.set(off + s * (LW + 0.85), 0, LANE_END / 2 - 1); scene.add(rail); }
+  const back = boxMesh(LW * 2 + 2, 4, 1, 0x212121); back.position.set(off, 1.5, LANE_END + 2.5); scene.add(back);
+  const hood = boxMesh(LW * 2 + 2, 1.2, 4, 0x6a1b9a, 0x2a0040); hood.position.set(off, 3.6, LANE_END); scene.add(hood);
+}
+addBox(0, -1.5, 0, 40, 2, 100, 0x3e2723).m.visible = false;
+const foul = boxMesh(LW * 2, 0.02, 0.1, 0xe53935); foul.position.set(0, 0.01, 0); scene.add(foul);
+for (let i = 0; i < 8; i++) { const l = new THREE.PointLight(i % 2 ? 0xe040fb : 0x40c4ff, 0.6, 18); l.position.set(i % 2 ? -10 : 10, 5, i * 6); scene.add(l); }
+const neon = makeLabel("BLOCK BOWL", "#e040fb", 768, 90); neon.scale.set(14, 2.4, 1); neon.position.set(0, 6.5, LANE_END + 2); scene.add(neon);
+
+// ---------- pins and the ball ----------
+const pinGeo = new THREE.CylinderGeometry(0.13, 0.24, 1.1, 10), pinMat = mat(0xffffff), stripeMat = mat(0xe53935);
+const SPOTS = [[0, 0], [-0.5, 0.86], [0.5, 0.86], [-1, 1.72], [0, 1.72], [1, 1.72], [-1.5, 2.58], [-0.5, 2.58], [0.5, 2.58], [1.5, 2.58]];
+const pins = SPOTS.map(() => { const g = new THREE.Group(); const b = new THREE.Mesh(pinGeo, pinMat); b.position.y = 0.55; b.castShadow = true; g.add(b); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.1, 10), stripeMat); s.position.y = 0.85; g.add(s); scene.add(g); return { g, x: 0, z: 0, vx: 0, vz: 0, down: false, gone: false, tilt: 0, tx: 0, tz: 0 }; });
+const ball = { m: new THREE.Mesh(new THREE.SphereGeometry(BR, 18, 12), new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.2, metalness: 0.3 })), x: 0, z: 0, vx: 0, vz: 0, spin: 0, rolling: false, gutter: false };
+ball.m.castShadow = true; scene.add(ball.m);
+function setPins(all) { pins.forEach((p, i) => { if (all) { p.down = false; p.gone = false; } p.x = SPOTS[i][0] * 0.62; p.z = HEAD + SPOTS[i][1] * 0.62; p.vx = p.vz = 0; p.tilt = 0; p.g.visible = !p.gone; p.g.rotation.set(0, 0, 0); p.g.position.set(p.x, 0, p.z); }); }
+function sweep() { for (const p of pins) if (p.down) p.gone = true; for (const p of pins) if (!p.gone) { const i = pins.indexOf(p); p.x = SPOTS[i][0] * 0.62; p.z = HEAD + SPOTS[i][1] * 0.62; p.vx = p.vz = 0; p.tilt = 0; p.g.rotation.set(0, 0, 0); } setPins(false); }
+
+// ---------- scoring (the real rules) ----------
+function scoreOf(rolls) {
+  const frames = []; let i = 0, total = 0;
+  for (let f = 0; f < 10; f++) {
+    if (rolls[i] === undefined) break;
+    if (f < 9 && rolls[i] === 10) { if (rolls[i + 2] === undefined) { frames.push(null); break; } total += 10 + rolls[i + 1] + rolls[i + 2]; frames.push(total); i += 1; continue; }
+    if (rolls[i + 1] === undefined) { frames.push(null); break; }
+    if (f < 9 && rolls[i] + rolls[i + 1] === 10) { if (rolls[i + 2] === undefined) { frames.push(null); break; } total += 10 + rolls[i + 2]; frames.push(total); i += 2; continue; }
+    if (f === 9) { const third = rolls[i] === 10 || rolls[i] + rolls[i + 1] === 10; if (third && rolls[i + 2] === undefined) { frames.push(null); break; } total += rolls[i] + rolls[i + 1] + (third ? rolls[i + 2] : 0); frames.push(total); break; }
+    total += rolls[i] + rolls[i + 1]; frames.push(total); i += 2;
+  }
+  return { frames, total };
+}
+// marks per frame, for the card
+function marks(rolls) {
+  const out = []; let i = 0;
+  for (let f = 0; f < 10 && rolls[i] !== undefined; f++) {
+    if (f < 9) { if (rolls[i] === 10) { out.push(["X", ""]); i++; } else { const a = rolls[i], b = rolls[i + 1]; out.push([a === 0 ? "-" : String(a), b === undefined ? "" : a + b === 10 ? "/" : b === 0 ? "-" : String(b)]); i += 2; } }
+    else { const r = rolls.slice(i), m = []; for (let k = 0; k < r.length; k++) { const v = r[k], prev = r[k - 1]; m.push(v === 10 && (k === 0 || prev === 10 || (k === 2 && r[0] + r[1] === 10)) ? "X" : k > 0 && prev !== 10 && prev + v === 10 && !(k === 2 && r[0] + r[1] === 10) ? "/" : v === 0 ? "-" : String(v)); } out.push(m); }
+  }
+  return out;
+}
+// is this player's game over, and is it a fresh frame (rack all ten) or the second ball?
+function frameState(rolls) {
+  let i = 0;
+  for (let f = 0; f < 10; f++) {
+    if (f < 9) { if (rolls[i] === undefined) return { f, ball: 1, fresh: true }; if (rolls[i] === 10) { i++; continue; } if (rolls[i + 1] === undefined) return { f, ball: 2, fresh: false }; i += 2; continue; }
+    const r = rolls.slice(i);
+    if (r.length === 0) return { f, ball: 1, fresh: true };
+    if (r.length === 1) return { f, ball: 2, fresh: r[0] === 10 };
+    if (r.length === 2) { if (r[0] === 10 || r[0] + r[1] === 10) return { f, ball: 3, fresh: r[1] === 10 || r[0] + r[1] === 10 }; return { done: true }; }
+    return { done: true };
+  }
+  return { done: true };
+}
+
+// ---------- the game ----------
+const SAVE = "block-bowling";
+let S = loadSave(SAVE, { games: 0, wins: 0, best: 0, strikes: 0 });
+const players = [{ name: "You", rolls: [], me: true }, { name: "Bot", rolls: [], me: false }];
+let turn = 0, phase = "menu", aimX = 0, hook = 0, power = 0, pT = 0, charging = false, settleT = 0, before = 0, holdMouse = false, holdTouch = false;
+const botName = pick(BOT_NAMES);
+const bowler = makeAvatar({ shirt: 0x8e24aa, skin: pick(SKINS), hat: 0x212121 }); bowler.g.add(nameTag(botName)); scene.add(bowler.g); bowler.g.visible = false;
+players[1].name = botName;
+function standing() { return pins.filter((p) => !p.gone && !p.down).length; }
+function startTurn() {
+  const pl = players[turn], fs = frameState(pl.rolls);
+  if (fs.done) { if (players.every((p) => frameState(p.rolls).done)) return endGame(); turn = 1 - turn; return startTurn(); }
+  if (fs.fresh) setPins(true);
+  ball.x = pl.me ? aimX : rr(-0.4, 0.6); ball.z = -0.6; ball.vx = ball.vz = 0; ball.rolling = false; ball.gutter = false; ball.m.visible = true; before = standing();
+  phase = pl.me ? "aim" : "bot"; settleT = 0; P.body.g.visible = pl.me; bowler.g.visible = !pl.me;
+  if (!pl.me) { pl.botT = rr(0.8, 1.4); pl.botAim = rr(-0.25, 0.45); pl.botHook = rr(-0.6, -0.1); pl.botPow = rr(0.62, 0.95); }
+  show(`${pl.me ? "Your" : pl.name + "'s"} turn · frame ${fs.f + 1}${fs.ball > 1 ? `, ball ${fs.ball}` : ""}`, 1.4);
+}
+function roll(pow, hk) { ball.vz = 9 + pow * 13; ball.vx = 0; ball.spin = hk; ball.rolling = true; phase = "roll"; tone(120, 0.6, "triangle", 0.04); }
+function finishRoll() {
+  const pl = players[turn], down = before - standing(), frameBefore = frameState(pl.rolls).f;
+  pl.rolls.push(down);
+  const fs = frameState(pl.rolls), wasStrike = down === 10 && before === 10, spare = !wasStrike && standing() === 0;
+  if (wasStrike) { show(pl.me ? "STRIKE!" : `${pl.name}: strike!`, 1.6); if (pl.me) { S.strikes++; SFX.win(); } }
+  else if (spare) { show(pl.me ? "SPARE!" : `${pl.name}: spare!`, 1.4); if (pl.me) SFX.buy(); }
+  else show(`${down} pin${down === 1 ? "" : "s"}${ball.gutter ? " (gutter ball)" : ""}`, 1.1);
+  // the same player bowls again while their frame goes on (in the 10th, with a fresh rack after a strike
+  // or spare); otherwise it's the other player's turn
+  const sameFrame = !fs.done && fs.f === frameBefore;
+  if (sameFrame && !fs.fresh) sweep();
+  if (!sameFrame) turn = 1 - turn;
+  setTimeout(() => { if (phase !== "over") startTurn(); }, TEST ? 300 : 1300);
+  phase = "wait";
+}
+function endGame() {
+  phase = "over"; const me = scoreOf(players[0].rolls).total, bot = scoreOf(players[1].rolls).total;
+  S.games++; const won = me > bot; if (won) S.wins++; const best = me > S.best; S.best = Math.max(S.best, me); storeSave(SAVE, S); sendScore("score", me);
+  if (won) SFX.win(); else SFX.lose();
+  $("oT").textContent = won ? "YOU WIN!" : me === bot ? "TIE GAME" : `${botName.toUpperCase()} WINS`;
+  $("oInfo").textContent = `You ${me} · ${botName} ${bot}${best ? " · new best game!" : ` · best ${S.best}`}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+function newGame() { players.forEach((p) => { p.rolls = []; }); turn = 0; aimX = 0; hook = 0; $("over").style.display = "none"; startTurn(); }
+function drawCard() {
+  const rows = players.map((p) => { const mk = marks(p.rolls), sc = scoreOf(p.rolls).frames; let cells = ""; for (let f = 0; f < 10; f++) { const m = mk[f] || []; cells += `<td>${m.join(" ")}<br>${sc[f] ?? ""}</td>`; } return `<tr class="${p.me ? "me" : ""}"><td class="nm">${p.me ? "You" : p.name}</td>${cells}<td>${scoreOf(p.rolls).total}</td></tr>`; });
+  $("card").innerHTML = rows.join("");
+}
+
+// ---------- physics ----------
+function stepPhysics(dt) {
+  if (ball.rolling) {
+    if (!ball.gutter) { ball.vx += ball.spin * 2.4 * dt * (ball.z > 10 ? 1 : 0.25); ball.x += ball.vx * dt; if (Math.abs(ball.x) > LW - BR * 0.3) { if (ball.z < HEAD - 1) { ball.gutter = true; ball.x = Math.sign(ball.x) * (LW + 0.35); ball.vx = 0; } else { ball.x = Math.sign(ball.x) * (LW - BR * 0.3); ball.vx = 0; } } }
+    ball.z += ball.vz * dt;
+    if (!ball.gutter) for (const p of pins) { if (p.gone) continue; const dx = p.x - ball.x, dz = p.z - ball.z, d = Math.hypot(dx, dz); if (d < BR + PR && d > 0.001) { const nx = dx / d, nz = dz / d, rel = (ball.vx - p.vx) * nx + (ball.vz - p.vz) * nz; if (rel > 0) { p.vx += nx * rel * 1.7; p.vz += nz * rel * 1.7; ball.vx -= nx * rel * 0.25; ball.vz -= nz * rel * 0.25; p.down = true; tone(600 + Math.random() * 300, 0.06, "square", 0.03); } p.x = ball.x + nx * (BR + PR); p.z = ball.z + nz * (BR + PR); } }
+    if (ball.z > LANE_END + 1) { ball.rolling = false; ball.m.visible = false; }
+  }
+  for (const p of pins) {
+    if (p.gone) continue;
+    p.x += p.vx * dt; p.z += p.vz * dt; const f = Math.pow(0.15, dt); p.vx *= f; p.vz *= f;
+    for (const q of pins) { if (q === p || q.gone) continue; const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); if (d < PR * 2 && d > 0.001) { const nx = dx / d, nz = dz / d, rel = (p.vx - q.vx) * nx + (p.vz - q.vz) * nz; if (rel > 0.05) { q.vx += nx * rel * 0.9; q.vz += nz * rel * 0.9; p.vx -= nx * rel * 0.5; p.vz -= nz * rel * 0.5; if (rel > 0.4) q.down = true; } const push = (PR * 2 - d) / 2; p.x -= nx * push; p.z -= nz * push; q.x += nx * push; q.z += nz * push; } }
+    if (Math.abs(p.x) > LW + 0.2 || p.z > LANE_END + 0.5) p.down = true;
+    if (p.down) { p.tilt = Math.min(Math.PI / 2, p.tilt + dt * 7); const sp = Math.hypot(p.vx, p.vz); if (sp > 0.1) { p.tx = p.vx / sp; p.tz = p.vz / sp; } }
+    p.g.position.set(p.x, 0, p.z); p.g.rotation.set(p.tz * p.tilt || (p.down ? p.tilt : 0), 0, -(p.tx || 0) * p.tilt);
+  }
+}
+const moving = () => ball.rolling || pins.some((p) => !p.gone && Math.hypot(p.vx, p.vz) > 0.05);
+
+// ---------- controls ----------
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+actions.KeyQ = () => { hook = clamp(hook - 0.25, -1, 1); }; actions.KeyE = () => { hook = clamp(hook + 0.25, -1, 1); };
+touchControls([{ label: "BOWL", color: "rgba(255,213,79,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }, { label: "HOOK", color: "rgba(206,147,216,.95)", down: () => { hook = hook >= 1 ? -1 : clamp(hook + 0.5, -1, 1); } }]);
+const aimLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 1), new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.7 })); scene.add(aimLine);
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.games ? `Games ${S.games} · Wins ${S.wins} · Best ${S.best} · Strikes ${S.strikes}` : ""; }
+showStats(); setPins(true); drawCard();
+onFrame((dt, T) => {
+  if (started && phase !== "menu" && phase !== "over") {
+    if (phase === "aim") {
+      aimX = clamp(aimX + ((keys.KeyD || keys.ArrowRight ? -1 : 0) + (keys.KeyA || keys.ArrowLeft ? 1 : 0) - joy.x) * dt * 1.6, -LW + 0.5, LW - 0.5);
+      ball.x = aimX;
+      if (keys.Space || holdMouse || holdTouch) { charging = true; pT += dt; power = 1 - Math.abs(((pT * 0.8) % 2) - 1); }
+      else if (charging) { charging = false; pT = 0; roll(power, hook); }
+    }
+    if (phase === "bot") { const pl = players[turn]; pl.botT -= dt; ball.x += (pl.botAim - ball.x) * Math.min(1, dt * 3); if (pl.botT <= 0) roll(pl.botPow, pl.botHook); }
+    stepPhysics(dt);
+    if (phase === "roll" && !ball.rolling) { settleT += dt; if (!moving() || settleT > 2.5) finishRoll(); }
+  }
+  ball.m.position.set(ball.x, BR - (ball.gutter ? 0.25 : 0), ball.z); ball.m.rotation.x += ball.vz * dt / BR;
+  // the bowler stands behind the ball
+  const who = turn === 0 ? P.body : bowler;
+  who.g.position.set(ball.rolling ? who.g.position.x : ball.x - 0.7, 0, ball.rolling ? who.g.position.z : -1.6); who.g.rotation.y = 0;
+  who.pose = true; who.arms[1].rotation.x = phase === "roll" ? -1.2 : charging ? 0.6 + power * 1.4 : 0.2;
+  P.pos.copy(P.body.g.position);
+  aimLine.visible = phase === "aim"; aimLine.scale.z = 6; aimLine.position.set(ball.x + hook * 0.6, 0.02, 3.5); aimLine.rotation.y = hook * 0.2;
+  // camera: behind the ball while aiming, then down the lane with it
+  const follow = ball.rolling ? V(ball.x * 0.5, 0, Math.min(ball.z, HEAD - 4)) : V(ball.x * 0.6, 0, -1);
+  updateCamera(dt, follow);
+  if (!ball.rolling && phase !== "roll") cam.yaw += angDiff(Math.PI, cam.yaw) * Math.min(1, dt * 3);
+  $("power").firstChild.style.width = `${(charging ? power : 0) * 100}%`;
+  const pl = players[turn], fs = frameState(pl.rolls);
+  $("hTitle").textContent = phase === "over" ? "Game over" : `Frame ${Math.min(10, (fs.f ?? 9) + 1)}`;
+  $("hInfo").textContent = pl.me ? `Your ball${fs.ball ? " " + fs.ball : ""} · hook ${hook === 0 ? "none" : hook < 0 ? "left " + Math.round(-hook * 4) : "right " + Math.round(hook * 4)}` : `${pl.name} is bowling`;
+  $("prompt").textContent = phase === "aim" ? (touch ? "Stick to step, HOOK to curve, hold BOWL" : "A/D to step, Q/E to hook, hold Space to bowl") : "";
+  drawCard();
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "over") newGame(); };
+$("again").onclick = () => newGame();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, turn, me: players[0].rolls.join(","), bot: players[1].rolls.join(","), myScore: scoreOf(players[0].rolls).total, botScore: scoreOf(players[1].rolls).total, standing: standing() }),
+  bowl: (pow, hk, x) => { if (phase !== "aim") return false; if (x !== undefined) aimX = ball.x = x; hook = hk; roll(pow, hk); return true; }, scoreOf, marks, frameState,
+};
+loop();
+})();
+</script>
+</body>
+</html>

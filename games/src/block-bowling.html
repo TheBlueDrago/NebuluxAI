@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Bowling</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#7b1fa2dd,#1a0526ee)}
+  #over{display:none}
+  h1{color:#ffd54f}
+  #card{position:fixed;left:50%;top:10px;transform:translateX(-50%);border-collapse:collapse;font-weight:900;font-size:12px;pointer-events:none;background:rgba(0,0,0,.45)}
+  #card td{border:2px solid #000;padding:2px 5px;text-align:center;min-width:18px}
+  #card td.nm{min-width:60px;text-align:left} #card tr.me td{color:#ffd54f}
+  #power{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:240px;height:18px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #power i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9ccc65,#ffee58,#ff7043)}
+  #prompt{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);font-size:16px;font-weight:900;pointer-events:none;text-align:center}
+  body.touch #power{bottom:auto;top:172px} body.touch #prompt{bottom:auto;top:198px}
+  @media (max-width:600px){#card{top:54px;font-size:9px} #card td{padding:1px 2px;min-width:12px} #card td.nm{min-width:34px} #hud{top:118px}}
+</style>
+</head>
+<body>
+<table id="card" class="sh"></table>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Frame 1</div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="power"><i></i></div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK<br>BOWLING</h1>
+  <p style="font-weight:700">Ten frames against a computer bowler. Step left or right to line up, add some <b>hook</b> to curve the ball into the pins, then hold to wind up and let go at the right power. Strikes and spares score bonus points the real way. Stay out of the gutters!</p>
+  <p class="keys"><kbd>A</kbd><kbd>D</kbd> step · <kbd>Q</kbd><kbd>E</kbd> hook · hold <kbd>Space</kbd> or <kbd>Click</kbd> to bowl</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">BOWL</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">YOU WIN!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block Bowling =================
+scene.background = new THREE.Color(0x1a0d26); scene.fog = new THREE.Fog(0x1a0d26, 40, 120);
+hemi.intensity = 0.7; sun.intensity = 0.7;
+cam.dist = touch ? 10 : 7; cam.pitch = touch ? 0.34 : 0.28;
+const LW = 2.1, LANE_END = 38, BR = 0.42, PR = 0.24, HEAD = 33;
+// the alley: your lane in the middle, two more either side for looks
+const woodTex = (() => { const c = document.createElement("canvas"); c.width = 64; c.height = 256; const x = c.getContext("2d"); for (let i = 0; i < 16; i++) { x.fillStyle = i % 2 ? "#d7a86e" : "#c99a5f"; x.fillRect(i * 4, 0, 4, 256); } x.fillStyle = "#7b4a1e"; for (let k = 0; k < 7; k++) { x.beginPath(); x.moveTo(8 + k * 8, 60); x.lineTo(12 + k * 8, 48); x.lineTo(16 + k * 8, 60); x.fill(); } const t = new THREE.CanvasTexture(c); return t; })();
+for (const off of [-7, 0, 7]) {
+  const lane = new THREE.Mesh(new THREE.BoxGeometry(LW * 2, 0.2, LANE_END + 6), new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.35 })); lane.position.set(off, -0.1, LANE_END / 2 - 1); lane.receiveShadow = true; scene.add(lane);
+  for (const s of [-1, 1]) { const g = boxMesh(0.7, 0.1, LANE_END + 6, 0x37474f); g.position.set(off + s * (LW + 0.35), -0.25, LANE_END / 2 - 1); scene.add(g); const rail = boxMesh(0.3, 0.5, LANE_END + 6, 0x5d4037); rail.position.set(off + s * (LW + 0.85), 0, LANE_END / 2 - 1); scene.add(rail); }
+  const back = boxMesh(LW * 2 + 2, 4, 1, 0x212121); back.position.set(off, 1.5, LANE_END + 2.5); scene.add(back);
+  const hood = boxMesh(LW * 2 + 2, 1.2, 4, 0x6a1b9a, 0x2a0040); hood.position.set(off, 3.6, LANE_END); scene.add(hood);
+}
+addBox(0, -1.5, 0, 40, 2, 100, 0x3e2723).m.visible = false;
+const foul = boxMesh(LW * 2, 0.02, 0.1, 0xe53935); foul.position.set(0, 0.01, 0); scene.add(foul);
+for (let i = 0; i < 8; i++) { const l = new THREE.PointLight(i % 2 ? 0xe040fb : 0x40c4ff, 0.6, 18); l.position.set(i % 2 ? -10 : 10, 5, i * 6); scene.add(l); }
+const neon = makeLabel("BLOCK BOWL", "#e040fb", 768, 90); neon.scale.set(14, 2.4, 1); neon.position.set(0, 6.5, LANE_END + 2); scene.add(neon);
+
+// ---------- pins and the ball ----------
+const pinGeo = new THREE.CylinderGeometry(0.13, 0.24, 1.1, 10), pinMat = mat(0xffffff), stripeMat = mat(0xe53935);
+const SPOTS = [[0, 0], [-0.5, 0.86], [0.5, 0.86], [-1, 1.72], [0, 1.72], [1, 1.72], [-1.5, 2.58], [-0.5, 2.58], [0.5, 2.58], [1.5, 2.58]];
+const pins = SPOTS.map(() => { const g = new THREE.Group(); const b = new THREE.Mesh(pinGeo, pinMat); b.position.y = 0.55; b.castShadow = true; g.add(b); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.1, 10), stripeMat); s.position.y = 0.85; g.add(s); scene.add(g); return { g, x: 0, z: 0, vx: 0, vz: 0, down: false, gone: false, tilt: 0, tx: 0, tz: 0 }; });
+const ball = { m: new THREE.Mesh(new THREE.SphereGeometry(BR, 18, 12), new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.2, metalness: 0.3 })), x: 0, z: 0, vx: 0, vz: 0, spin: 0, rolling: false, gutter: false };
+ball.m.castShadow = true; scene.add(ball.m);
+function setPins(all) { pins.forEach((p, i) => { if (all) { p.down = false; p.gone = false; } p.x = SPOTS[i][0] * 0.62; p.z = HEAD + SPOTS[i][1] * 0.62; p.vx = p.vz = 0; p.tilt = 0; p.g.visible = !p.gone; p.g.rotation.set(0, 0, 0); p.g.position.set(p.x, 0, p.z); }); }
+function sweep() { for (const p of pins) if (p.down) p.gone = true; for (const p of pins) if (!p.gone) { const i = pins.indexOf(p); p.x = SPOTS[i][0] * 0.62; p.z = HEAD + SPOTS[i][1] * 0.62; p.vx = p.vz = 0; p.tilt = 0; p.g.rotation.set(0, 0, 0); } setPins(false); }
+
+// ---------- scoring (the real rules) ----------
+function scoreOf(rolls) {
+  const frames = []; let i = 0, total = 0;
+  for (let f = 0; f < 10; f++) {
+    if (rolls[i] === undefined) break;
+    if (f < 9 && rolls[i] === 10) { if (rolls[i + 2] === undefined) { frames.push(null); break; } total += 10 + rolls[i + 1] + rolls[i + 2]; frames.push(total); i += 1; continue; }
+    if (rolls[i + 1] === undefined) { frames.push(null); break; }
+    if (f < 9 && rolls[i] + rolls[i + 1] === 10) { if (rolls[i + 2] === undefined) { frames.push(null); break; } total += 10 + rolls[i + 2]; frames.push(total); i += 2; continue; }
+    if (f === 9) { const third = rolls[i] === 10 || rolls[i] + rolls[i + 1] === 10; if (third && rolls[i + 2] === undefined) { frames.push(null); break; } total += rolls[i] + rolls[i + 1] + (third ? rolls[i + 2] : 0); frames.push(total); break; }
+    total += rolls[i] + rolls[i + 1]; frames.push(total); i += 2;
+  }
+  return { frames, total };
+}
+// marks per frame, for the card
+function marks(rolls) {
+  const out = []; let i = 0;
+  for (let f = 0; f < 10 && rolls[i] !== undefined; f++) {
+    if (f < 9) { if (rolls[i] === 10) { out.push(["X", ""]); i++; } else { const a = rolls[i], b = rolls[i + 1]; out.push([a === 0 ? "-" : String(a), b === undefined ? "" : a + b === 10 ? "/" : b === 0 ? "-" : String(b)]); i += 2; } }
+    else { const r = rolls.slice(i), m = []; for (let k = 0; k < r.length; k++) { const v = r[k], prev = r[k - 1]; m.push(v === 10 && (k === 0 || prev === 10 || (k === 2 && r[0] + r[1] === 10)) ? "X" : k > 0 && prev !== 10 && prev + v === 10 && !(k === 2 && r[0] + r[1] === 10) ? "/" : v === 0 ? "-" : String(v)); } out.push(m); }
+  }
+  return out;
+}
+// is this player's game over, and is it a fresh frame (rack all ten) or the second ball?
+function frameState(rolls) {
+  let i = 0;
+  for (let f = 0; f < 10; f++) {
+    if (f < 9) { if (rolls[i] === undefined) return { f, ball: 1, fresh: true }; if (rolls[i] === 10) { i++; continue; } if (rolls[i + 1] === undefined) return { f, ball: 2, fresh: false }; i += 2; continue; }
+    const r = rolls.slice(i);
+    if (r.length === 0) return { f, ball: 1, fresh: true };
+    if (r.length === 1) return { f, ball: 2, fresh: r[0] === 10 };
+    if (r.length === 2) { if (r[0] === 10 || r[0] + r[1] === 10) return { f, ball: 3, fresh: r[1] === 10 || r[0] + r[1] === 10 }; return { done: true }; }
+    return { done: true };
+  }
+  return { done: true };
+}
+
+// ---------- the game ----------
+const SAVE = "block-bowling";
+let S = loadSave(SAVE, { games: 0, wins: 0, best: 0, strikes: 0 });
+const players = [{ name: "You", rolls: [], me: true }, { name: "Bot", rolls: [], me: false }];
+let turn = 0, phase = "menu", aimX = 0, hook = 0, power = 0, pT = 0, charging = false, settleT = 0, before = 0, holdMouse = false, holdTouch = false;
+const botName = pick(BOT_NAMES);
+const bowler = makeAvatar({ shirt: 0x8e24aa, skin: pick(SKINS), hat: 0x212121 }); bowler.g.add(nameTag(botName)); scene.add(bowler.g); bowler.g.visible = false;
+players[1].name = botName;
+function standing() { return pins.filter((p) => !p.gone && !p.down).length; }
+function startTurn() {
+  const pl = players[turn], fs = frameState(pl.rolls);
+  if (fs.done) { if (players.every((p) => frameState(p.rolls).done)) return endGame(); turn = 1 - turn; return startTurn(); }
+  if (fs.fresh) setPins(true);
+  ball.x = pl.me ? aimX : rr(-0.4, 0.6); ball.z = -0.6; ball.vx = ball.vz = 0; ball.rolling = false; ball.gutter = false; ball.m.visible = true; before = standing();
+  phase = pl.me ? "aim" : "bot"; settleT = 0; P.body.g.visible = pl.me; bowler.g.visible = !pl.me;
+  if (!pl.me) { pl.botT = rr(0.8, 1.4); pl.botAim = rr(-0.25, 0.45); pl.botHook = rr(-0.6, -0.1); pl.botPow = rr(0.62, 0.95); }
+  show(`${pl.me ? "Your" : pl.name + "'s"} turn · frame ${fs.f + 1}${fs.ball > 1 ? `, ball ${fs.ball}` : ""}`, 1.4);
+}
+function roll(pow, hk) { ball.vz = 9 + pow * 13; ball.vx = 0; ball.spin = hk; ball.rolling = true; phase = "roll"; tone(120, 0.6, "triangle", 0.04); }
+function finishRoll() {
+  const pl = players[turn], down = before - standing(), frameBefore = frameState(pl.rolls).f;
+  pl.rolls.push(down);
+  const fs = frameState(pl.rolls), wasStrike = down === 10 && before === 10, spare = !wasStrike && standing() === 0;
+  if (wasStrike) { show(pl.me ? "STRIKE!" : `${pl.name}: strike!`, 1.6); if (pl.me) { S.strikes++; SFX.win(); } }
+  else if (spare) { show(pl.me ? "SPARE!" : `${pl.name}: spare!`, 1.4); if (pl.me) SFX.buy(); }
+  else show(`${down} pin${down === 1 ? "" : "s"}${ball.gutter ? " (gutter ball)" : ""}`, 1.1);
+  // the same player bowls again while their frame goes on (in the 10th, with a fresh rack after a strike
+  // or spare); otherwise it's the other player's turn
+  const sameFrame = !fs.done && fs.f === frameBefore;
+  if (sameFrame && !fs.fresh) sweep();
+  if (!sameFrame) turn = 1 - turn;
+  setTimeout(() => { if (phase !== "over") startTurn(); }, TEST ? 300 : 1300);
+  phase = "wait";
+}
+function endGame() {
+  phase = "over"; const me = scoreOf(players[0].rolls).total, bot = scoreOf(players[1].rolls).total;
+  S.games++; const won = me > bot; if (won) S.wins++; const best = me > S.best; S.best = Math.max(S.best, me); storeSave(SAVE, S); sendScore("score", me);
+  if (won) SFX.win(); else SFX.lose();
+  $("oT").textContent = won ? "YOU WIN!" : me === bot ? "TIE GAME" : `${botName.toUpperCase()} WINS`;
+  $("oInfo").textContent = `You ${me} · ${botName} ${bot}${best ? " · new best game!" : ` · best ${S.best}`}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+function newGame() { players.forEach((p) => { p.rolls = []; }); turn = 0; aimX = 0; hook = 0; $("over").style.display = "none"; startTurn(); }
+function drawCard() {
+  const rows = players.map((p) => { const mk = marks(p.rolls), sc = scoreOf(p.rolls).frames; let cells = ""; for (let f = 0; f < 10; f++) { const m = mk[f] || []; cells += `<td>${m.join(" ")}<br>${sc[f] ?? ""}</td>`; } return `<tr class="${p.me ? "me" : ""}"><td class="nm">${p.me ? "You" : p.name}</td>${cells}<td>${scoreOf(p.rolls).total}</td></tr>`; });
+  $("card").innerHTML = rows.join("");
+}
+
+// ---------- physics ----------
+function stepPhysics(dt) {
+  if (ball.rolling) {
+    if (!ball.gutter) { ball.vx += ball.spin * 2.4 * dt * (ball.z > 10 ? 1 : 0.25); ball.x += ball.vx * dt; if (Math.abs(ball.x) > LW - BR * 0.3) { if (ball.z < HEAD - 1) { ball.gutter = true; ball.x = Math.sign(ball.x) * (LW + 0.35); ball.vx = 0; } else { ball.x = Math.sign(ball.x) * (LW - BR * 0.3); ball.vx = 0; } } }
+    ball.z += ball.vz * dt;
+    if (!ball.gutter) for (const p of pins) { if (p.gone) continue; const dx = p.x - ball.x, dz = p.z - ball.z, d = Math.hypot(dx, dz); if (d < BR + PR && d > 0.001) { const nx = dx / d, nz = dz / d, rel = (ball.vx - p.vx) * nx + (ball.vz - p.vz) * nz; if (rel > 0) { p.vx += nx * rel * 1.7; p.vz += nz * rel * 1.7; ball.vx -= nx * rel * 0.25; ball.vz -= nz * rel * 0.25; p.down = true; tone(600 + Math.random() * 300, 0.06, "square", 0.03); } p.x = ball.x + nx * (BR + PR); p.z = ball.z + nz * (BR + PR); } }
+    if (ball.z > LANE_END + 1) { ball.rolling = false; ball.m.visible = false; }
+  }
+  for (const p of pins) {
+    if (p.gone) continue;
+    p.x += p.vx * dt; p.z += p.vz * dt; const f = Math.pow(0.15, dt); p.vx *= f; p.vz *= f;
+    for (const q of pins) { if (q === p || q.gone) continue; const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); if (d < PR * 2 && d > 0.001) { const nx = dx / d, nz = dz / d, rel = (p.vx - q.vx) * nx + (p.vz - q.vz) * nz; if (rel > 0.05) { q.vx += nx * rel * 0.9; q.vz += nz * rel * 0.9; p.vx -= nx * rel * 0.5; p.vz -= nz * rel * 0.5; if (rel > 0.4) q.down = true; } const push = (PR * 2 - d) / 2; p.x -= nx * push; p.z -= nz * push; q.x += nx * push; q.z += nz * push; } }
+    if (Math.abs(p.x) > LW + 0.2 || p.z > LANE_END + 0.5) p.down = true;
+    if (p.down) { p.tilt = Math.min(Math.PI / 2, p.tilt + dt * 7); const sp = Math.hypot(p.vx, p.vz); if (sp > 0.1) { p.tx = p.vx / sp; p.tz = p.vz / sp; } }
+    p.g.position.set(p.x, 0, p.z); p.g.rotation.set(p.tz * p.tilt || (p.down ? p.tilt : 0), 0, -(p.tx || 0) * p.tilt);
+  }
+}
+const moving = () => ball.rolling || pins.some((p) => !p.gone && Math.hypot(p.vx, p.vz) > 0.05);
+
+// ---------- controls ----------
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+actions.KeyQ = () => { hook = clamp(hook - 0.25, -1, 1); }; actions.KeyE = () => { hook = clamp(hook + 0.25, -1, 1); };
+touchControls([{ label: "BOWL", color: "rgba(255,213,79,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }, { label: "HOOK", color: "rgba(206,147,216,.95)", down: () => { hook = hook >= 1 ? -1 : clamp(hook + 0.5, -1, 1); } }]);
+const aimLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 1), new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.7 })); scene.add(aimLine);
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.games ? `Games ${S.games} · Wins ${S.wins} · Best ${S.best} · Strikes ${S.strikes}` : ""; }
+showStats(); setPins(true); drawCard();
+onFrame((dt, T) => {
+  if (started && phase !== "menu" && phase !== "over") {
+    if (phase === "aim") {
+      aimX = clamp(aimX + ((keys.KeyD || keys.ArrowRight ? -1 : 0) + (keys.KeyA || keys.ArrowLeft ? 1 : 0) - joy.x) * dt * 1.6, -LW + 0.5, LW - 0.5);
+      ball.x = aimX;
+      if (keys.Space || holdMouse || holdTouch) { charging = true; pT += dt; power = 1 - Math.abs(((pT * 0.8) % 2) - 1); }
+      else if (charging) { charging = false; pT = 0; roll(power, hook); }
+    }
+    if (phase === "bot") { const pl = players[turn]; pl.botT -= dt; ball.x += (pl.botAim - ball.x) * Math.min(1, dt * 3); if (pl.botT <= 0) roll(pl.botPow, pl.botHook); }
+    stepPhysics(dt);
+    if (phase === "roll" && !ball.rolling) { settleT += dt; if (!moving() || settleT > 2.5) finishRoll(); }
+  }
+  ball.m.position.set(ball.x, BR - (ball.gutter ? 0.25 : 0), ball.z); ball.m.rotation.x += ball.vz * dt / BR;
+  // the bowler stands behind the ball
+  const who = turn === 0 ? P.body : bowler;
+  who.g.position.set(ball.rolling ? who.g.position.x : ball.x - 0.7, 0, ball.rolling ? who.g.position.z : -1.6); who.g.rotation.y = 0;
+  who.pose = true; who.arms[1].rotation.x = phase === "roll" ? -1.2 : charging ? 0.6 + power * 1.4 : 0.2;
+  P.pos.copy(P.body.g.position);
+  aimLine.visible = phase === "aim"; aimLine.scale.z = 6; aimLine.position.set(ball.x + hook * 0.6, 0.02, 3.5); aimLine.rotation.y = hook * 0.2;
+  // camera: behind the ball while aiming, then down the lane with it
+  const follow = ball.rolling ? V(ball.x * 0.5, 0, Math.min(ball.z, HEAD - 4)) : V(ball.x * 0.6, 0, -1);
+  updateCamera(dt, follow);
+  if (!ball.rolling && phase !== "roll") cam.yaw += angDiff(Math.PI, cam.yaw) * Math.min(1, dt * 3);
+  $("power").firstChild.style.width = `${(charging ? power : 0) * 100}%`;
+  const pl = players[turn], fs = frameState(pl.rolls);
+  $("hTitle").textContent = phase === "over" ? "Game over" : `Frame ${Math.min(10, (fs.f ?? 9) + 1)}`;
+  $("hInfo").textContent = pl.me ? `Your ball${fs.ball ? " " + fs.ball : ""} · hook ${hook === 0 ? "none" : hook < 0 ? "left " + Math.round(-hook * 4) : "right " + Math.round(hook * 4)}` : `${pl.name} is bowling`;
+  $("prompt").textContent = phase === "aim" ? (touch ? "Stick to step, HOOK to curve, hold BOWL" : "A/D to step, Q/E to hook, hold Space to bowl") : "";
+  drawCard();
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "over") newGame(); };
+$("again").onclick = () => newGame();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, turn, me: players[0].rolls.join(","), bot: players[1].rolls.join(","), myScore: scoreOf(players[0].rolls).total, botScore: scoreOf(players[1].rolls).total, standing: standing() }),
+  bowl: (pow, hk, x) => { if (phase !== "aim") return false; if (x !== undefined) aimX = ball.x = x; hook = hk; roll(pow, hk); return true; }, scoreOf, marks, frameState,
+};
+loop();
+})();
+</script>
+</body>
+</html>
