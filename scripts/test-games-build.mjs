@@ -13,6 +13,13 @@ const assert = (c, m) => {
 const src = new URL("../games/src/", import.meta.url), dir = new URL("../games/", import.meta.url);
 const kit = readFileSync(new URL("kit.js", src), "utf8"), css = readFileSync(new URL("kit.css", src), "utf8");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
+// boards rank lowest-first when they're times, or listed in LOW_BOARDS (golf strokes); the rest highest-first
+{
+  const { lowFirst, addScore } = await import("../functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/game-board.js");
+  assert(lowFirst("block-mini-golf", "strokes") && lowFirst("titan-raid", "time") && lowFirst("block-kart-racers", "laptime") && !lowFirst("parry-arena", "wins") && !lowFirst("block-rush-runner", "distance"), "leaderboards: fewest strokes and fastest times rank first, everything else highest first");
+  const golf = addScore([{ uid: "a", name: "A", score: 30 }], { uid: "b", name: "B", score: 27 }, true);
+  assert(golf && golf[0].score === 27, "leaderboards: a lower golf round goes to the top");
+}
 const boardJs = read("../functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/game-board.js"), boardsJsx = read("../src/components/GameBoards.jsx");
 const thumbsApp = read("../src/lib/gameThumbs.js"), thumbsMeta = read("../cloudflare-lib/playmeta.js");
 const names = readdirSync(src).filter((f) => f.endsWith(".html")).map((f) => f.slice(0, -5));
