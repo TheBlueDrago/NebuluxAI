@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parry Arena</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start{background:linear-gradient(#e53935dd,#1a0606ee)}
+  h1{color:#ffca28}
+  #speed{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:24px;font-weight:900;pointer-events:none;text-align:center}
+  #speed .s{font-size:13px;font-weight:800}
+  #edge{position:fixed;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 90px 30px rgba(255,23,68,.75);transition:opacity .15s}
+  #cool{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:10px;pointer-events:none}
+  #cool div{width:110px;height:14px;border:3px solid #000;border-radius:8px;background:#263238;overflow:hidden;position:relative}
+  #cool i{display:block;height:100%;background:#ffca28}
+  #cool span{position:absolute;inset:0;font-size:10px;font-weight:900;text-align:center;line-height:14px;color:#000}
+  body.touch #cool{bottom:auto;top:96px}
+</style>
+</head>
+<body>
+<div id="speed" class="sh">Ball 0<div class="s" id="sSub"></div></div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Parry Arena</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="edge"></div>
+<div id="cool"><div><i id="cP"></i><span>PARRY</span></div><div><i id="cD"></i><span>DASH</span></div></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>PARRY<br>ARENA</h1>
+  <p style="font-weight:700">A glowing ball picks one player at a time and flies straight at them. When it comes for you, <b>parry</b> just before it hits to send it flying at whoever you're facing. Every parry makes it faster. Miss and you're out. Last one standing wins the round.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>F</kbd> or <kbd>Click</kbd> parry · <kbd>Q</kbd> dash · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to aim the camera</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Parry Arena =================
+setSky("#1a237e", "#5c6bc0", 0x3949ab, 70, 200);
+hemi.intensity = 0.8; sun.intensity = 0.75;
+cam.dist = 13; cam.pitch = 0.42;
+const R = 30;
+addBox(0, -1, 0, R * 2 + 4, 2, R * 2 + 4, 0x263238).m.visible = false;
+const floor = new THREE.Mesh(new THREE.CylinderGeometry(R + 1, R + 1.5, 1, 64), new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.7 })); floor.position.y = -0.5; floor.receiveShadow = true; scene.add(floor);
+for (let k = 1; k <= 3; k++) { const ring = new THREE.Mesh(new THREE.RingGeometry(k * 9 - 0.25, k * 9 + 0.25, 64), new THREE.MeshBasicMaterial({ color: 0xffca28, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; scene.add(ring); }
+const wallGlow = new THREE.Mesh(new THREE.CylinderGeometry(R + 1, R + 1, 3, 64, 1, true), new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false })); wallGlow.position.y = 1.5; scene.add(wallGlow);
+for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2, p = boxMesh(1.4, 8, 1.4, 0x455a64); p.position.set(Math.sin(a) * (R + 4), 4, Math.cos(a) * (R + 4)); scene.add(p); const t = boxMesh(1.8, 0.8, 1.8, 0xff1744, 0xb71c1c); t.position.set(p.position.x, 8.4, p.position.z); scene.add(t); }
+// stands with a crowd
+for (let k = 0; k < 60; k++) { const a = rr(0, 6.3), r = rr(R + 8, R + 16), m = boxMesh(0.9, 1.4, 0.7, pick(BOT_COLORS)); m.position.set(Math.sin(a) * r, (r - R - 7) * 0.7 + 0.7, Math.cos(a) * r); m.userData.j = rr(0, 6); m.userData.y = m.position.y; scene.add(m); (scene.userData.crowd = scene.userData.crowd || []).push(m); }
+for (let k = 0; k < 4; k++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(R + 9 + k * 2.2, R + 9 + k * 2.2, 0.8, 48, 1, true), mat(0x546e7a)); st.position.y = k * 1.5; scene.add(st); }
+
+// ---------- the ball ----------
+const ballMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6 });
+const ball = new THREE.Mesh(new THREE.SphereGeometry(0.75, 20, 14), ballMat); ball.castShadow = true; scene.add(ball);
+const glow = new THREE.PointLight(0xffffff, 1.2, 14); ball.add(glow);
+const trail = []; for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.6 - i * 0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff8a80, transparent: true, opacity: 0.5 - i * 0.045, depthWrite: false })); scene.add(m); trail.push(m); }
+const hist = [];
+const B = { pos: V(0, 6, 0), dir: V(0, 0, 1), speed: 0, target: null, wait: 0, by: null };
+
+// ---------- players ----------
+const SAVE = "parry-arena";
+let S = loadSave(SAVE, { rounds: 0, wins: 0, parries: 0, bestRound: 0 });
+const everyone = [P];
+Object.assign(P, { name: ME_NAME, out: false, parryT: 0, cool: 0, dashCool: 0, dashT: 0, color: 0x1e88e5 });
+const names = shuffle(BOT_NAMES.slice());
+for (let i = 0; i < 9; i++) {
+  const color = BOT_COLORS[i], body = makeAvatar({ shirt: color, pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.45 ? pick(BOT_COLORS) : null });
+  const tag = nameTag(names[i]); body.g.add(tag); scene.add(body.g);
+  everyone.push({ name: names[i], body, tag, color, pos: V(), vel: V(), onGround: false, yaw: 0, out: false, parryT: 0, cool: 0, dashCool: 0, dashT: 0, skill: rr(0.35, 1), goal: V(), goalT: 0, plan: null });
+}
+const bots = everyone.slice(1);
+const alive = () => everyone.filter((e) => !e.out);
+const sword = boxMesh(0.25, 0.25, 2.6, 0xeceff1, 0x546e7a); sword.position.set(0, -1.4, 0.9); P.body.arms[1].add(sword);
+for (const b of bots) { const s = boxMesh(0.25, 0.25, 2.6, 0xeceff1, 0x546e7a); s.position.set(0, -1.4, 0.9); b.body.arms[1].add(s); }
+const bits = [];
+function knockOut(e) {
+  e.out = true; e.body.g.visible = false;
+  for (let i = 0; i < 10; i++) { const m = boxMesh(0.5, 0.5, 0.5, i % 3 ? e.color : 0xffcc80); m.position.copy(e.pos).add(V(0, 1.5, 0)); scene.add(m); bits.push({ m, v: V(rr(-7, 7), rr(6, 14), rr(-7, 7)), t: 2 }); }
+  tone(120, 0.4, "sawtooth", 0.06, -60);
+  if (e === P) { SFX.lose(); show(`You're out! ${roundParries} parries this round.`, 2.5); P.canMove = false; }
+  else show(`${e.name} is out!`, 1.2);
+}
+
+// ---------- parrying ----------
+const range = () => 5 + B.speed * 0.12;
+function parry(e) {
+  if (e.out || e.cool > 0 || phase !== "play") return;
+  e.parryT = 0.24; e.cool = 0.9;
+  e.body.arms[1].rotation.x = -2.6; e.body.pose = true; setTimeout(() => { e.body.pose = false; }, 180);
+  if (e === P) tone(900, 0.06, "square", 0.03);
+}
+function deflect(e) {
+  // send it at whoever they're facing (the computer players pick someone)
+  const others = alive().filter((o) => o !== e);
+  if (!others.length) return;
+  let next;
+  if (e === P) {
+    const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)); let best = -2;
+    for (const o of others) { const d = V(o.pos.x - P.pos.x, 0, o.pos.z - P.pos.z).normalize().dot(f); if (d > best) { best = d; next = o; } }
+    S.parries++; roundParries++;
+  } else next = Math.random() < 0.22 && others.includes(P) ? P : pick(others);
+  B.by = e; B.target = next; B.speed = Math.min(150, B.speed * 1.08 + 2.5);
+  B.dir = V(next.pos.x - B.pos.x, 0.3, next.pos.z - B.pos.z).normalize();
+  e.parryT = 0; e.cool = 0.06;
+  tone(500 + Math.min(900, B.speed * 6), 0.12, "square", 0.06, 300);
+  if (next === P) SFX.zap();
+  for (const b of bots) b.plan = null;
+}
+
+// ---------- rounds ----------
+let phase = "menu", phaseT = 0, roundParries = 0, winner = null;
+function newRound() {
+  phase = "ready"; phaseT = TEST ? 1 : 3; winner = null; roundParries = 0;
+  everyone.forEach((e, i) => { const a = (i / everyone.length) * Math.PI * 2; e.pos.set(Math.sin(a) * 16, 0.3, Math.cos(a) * 16); e.vel.set(0, 0, 0); e.out = false; e.body.g.visible = true; e.cool = 0; e.parryT = 0; e.dashCool = 0; });
+  P.canMove = true; cam.yaw = Math.atan2(P.pos.x, P.pos.z);
+  B.pos.set(0, 6, 0); B.speed = 0; B.target = null; B.by = null;
+  show("Get ready...", 2);
+}
+function launch() {
+  phase = "play"; const l = alive(); B.target = pick(l); B.speed = 22; B.dir = V(B.target.pos.x, -0.3, B.target.pos.z).normalize();
+  for (const b of bots) b.plan = null;
+  SFX.zap();
+}
+function endRound(w) {
+  phase = "end"; phaseT = TEST ? 2 : 5; winner = w; S.rounds++; S.bestRound = Math.max(S.bestRound, roundParries);
+  if (w === P) { S.wins++; SFX.win(); sendScore("wins", S.wins); show(`YOU WIN!\nLast one standing with ${roundParries} parries`, 4); }
+  else show(w ? `${w.name} wins the round!` : "Round over", 3);
+  storeSave(SAVE, S);
+}
+
+// ---------- computer players ----------
+function botStep(b, dt, T) {
+  if (b.cool > 0) b.cool -= dt; if (b.parryT > 0) b.parryT -= dt;
+  b.goalT -= dt;
+  if (b.goalT <= 0) { b.goalT = rr(1, 2.6); const a = rr(0, 6.3), r = rr(6, R - 4); b.goal.set(Math.sin(a) * r, 0, Math.cos(a) * r); }
+  let want = V(b.goal.x - b.pos.x, 0, b.goal.z - b.pos.z); if (want.lengthSq() > 1) want.normalize().multiplyScalar(10); else want.set(0, 0, 0);
+  if (B.target === b && phase === "play") {
+    // decide once each time it comes for them whether they'll get the timing right
+    if (!b.plan) { const p = clamp(0.985 - Math.max(0, B.speed - 22) * 0.0055 * (1.35 - b.skill), 0.12, 0.985); b.plan = Math.random() < p ? "good" : Math.random() < 0.5 ? "early" : "late"; }
+    const d = b.pos.clone().setY(b.pos.y + 1.6).distanceTo(B.pos), r = range();
+    if (b.plan === "good" && d < r * rr(0.55, 0.9)) parry(b);
+    if (b.plan === "early" && d < r * 2.6 && d > r * 1.3) parry(b);
+    // step sideways a little, facing the ball
+    want.multiplyScalar(0.4);
+  }
+  physics(b, want, dt);
+  if (B.target === b) b.yaw = Math.atan2(B.pos.x - b.pos.x, B.pos.z - b.pos.z), b.body.g.rotation.y = b.yaw, b.body.g.position.copy(b.pos);
+  else faceMove(b, dt);
+  animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T);
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.rounds ? `Rounds ${S.rounds} · Wins ${S.wins} · Parries ${S.parries} · Most in one round ${S.bestRound}` : ""; }
+showStats(); newRound(); phase = "menu";
+actions.KeyF = () => parry(P); actions.click = () => parry(P);
+actions.KeyQ = () => { if (P.dashCool <= 0 && !P.out && phase !== "menu") { P.dashT = 0.18; P.dashCool = 3.5; tone(300, 0.15, "sine", 0.05, 400); } };
+touchControls([{ label: "PARRY", color: "rgba(255,202,40,.95)", down: () => parry(P) }, JUMP_BUTTON, { label: "DASH", color: "rgba(64,196,255,.9)", down: () => actions.KeyQ() }]);
+const ballSpeedShown = () => Math.round(B.speed);
+
+onFrame((dt, T) => {
+  for (const m of scene.userData.crowd || []) m.position.y = m.userData.y + Math.abs(Math.sin(T * 5 + m.userData.j)) * 0.35;
+  if (started && phase !== "menu") {
+    phaseT -= dt;
+    if (phase === "ready" && phaseT <= 0) launch();
+    if (phase === "end" && phaseT <= 0) newRound();
+    // you
+    if (P.cool > 0) P.cool -= dt; if (P.parryT > 0) P.parryT -= dt; if (P.dashCool > 0) P.dashCool -= dt;
+    if (!P.out) {
+      if (P.dashT > 0) { P.dashT -= dt; const f = moveDir(); if (f.lengthSq() < 0.1) f.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)); P.vel.x = f.x * 48; P.vel.z = f.z * 48; }
+      stepPlayer(dt, T);
+    }
+    for (const b of bots) if (!b.out) botStep(b, dt, T);
+    // keep everyone inside the ring
+    for (const e of everyone) { const r = Math.hypot(e.pos.x, e.pos.z); if (r > R - 0.6) { e.pos.x *= (R - 0.6) / r; e.pos.z *= (R - 0.6) / r; } }
+    // the ball
+    if (phase === "play" && B.target) {
+      if (B.target.out) { const l = alive(); B.target = l.length ? pick(l) : null; }
+      const t = B.target;
+      if (t) {
+        const aim = V(t.pos.x - B.pos.x, t.pos.y + 1.6 - B.pos.y, t.pos.z - B.pos.z), dist = aim.length();
+        aim.normalize(); B.dir.lerp(aim, Math.min(1, dt * (3 + B.speed * 0.05))).normalize();
+        const step = Math.min(dist, B.speed * dt); B.pos.addScaledVector(B.dir, step);
+        if (t.parryT > 0 && dist < range()) deflect(t);
+        else if (dist < 1.7) {
+          knockOut(t);
+          const l = alive();
+          if (l.length <= 1) endRound(l[0] || null);
+          else { B.target = pick(l); B.speed = Math.max(22, B.speed * 0.55); B.dir = V(B.target.pos.x - B.pos.x, 0, B.target.pos.z - B.pos.z).normalize(); for (const b of bots) b.plan = null; }
+        }
+      }
+    } else if (phase !== "play") { B.pos.lerp(V(0, 6 + Math.sin(T * 2) * 0.5, 0), Math.min(1, dt * 3)); }
+  } else { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  // the ball's look: red when it's after you
+  const forMe = B.target === P && phase === "play";
+  ballMat.color.setHex(forMe ? 0xff1744 : 0xffffff); ballMat.emissive.setHex(forMe ? 0xff1744 : B.target ? 0xffab40 : 0xffffff); glow.color.setHex(forMe ? 0xff1744 : 0xffd180);
+  ball.position.copy(B.pos);
+  hist.unshift(B.pos.clone()); if (hist.length > 30) hist.pop();
+  trail.forEach((m, i) => { const h = hist[Math.min(hist.length - 1, (i + 1) * 2)]; if (h) m.position.copy(h); m.visible = B.speed > 30; m.material.color.setHex(forMe ? 0xff1744 : 0xffab40); });
+  for (const b of bots) b.tag.material.color.setHex(B.target === b && phase === "play" ? 0xff5252 : 0xffffff);
+  for (let i = bits.length - 1; i >= 0; i--) { const b = bits[i]; b.t -= dt; b.v.y -= 30 * dt; b.m.position.addScaledVector(b.v, dt); if (b.m.position.y < 0.25) { b.m.position.y = 0.25; b.v.multiplyScalar(0.5); b.v.y = 0; } if (b.t <= 0) { scene.remove(b.m); bits.splice(i, 1); } }
+  let follow = P.pos; if (P.out) { const l = alive()[0]; follow = l ? l.pos : V(); }
+  updateCamera(dt, follow);
+  // HUD
+  $("edge").style.opacity = forMe ? 0.6 + Math.sin(T * 18) * 0.3 : 0;
+  $("speed").firstChild.textContent = phase === "play" ? `Ball speed ${ballSpeedShown()}` : phase === "ready" ? "Get ready" : phase === "end" ? (winner === P ? "You win!" : "Round over") : "";
+  $("sSub").textContent = phase === "play" && B.target ? (forMe ? "IT'S COMING FOR YOU! PARRY!" : `after ${B.target.name}`) : "";
+  $("sSub").style.color = forMe ? "#ff5252" : "#fff";
+  $("hTitle").textContent = P.out ? "Watching" : "Parry Arena";
+  $("hInfo").textContent = `Alive ${alive().length}/${everyone.length} · Parries ${roundParries}`;
+  $("hInfo2").textContent = `Wins ${S.wins}`;
+  $("cP").style.width = `${(1 - clamp(P.cool / 0.9, 0, 1)) * 100}%`; $("cD").style.width = `${(1 - clamp(P.dashCool / 3.5, 0, 1)) * 100}%`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu") newRound(); };
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, speed: Math.round(B.speed), target: B.target && B.target.name, forMe: B.target === P, alive: alive().length, meOut: P.out, winner: winner && winner.name, parries: roundParries, dist: B.target ? +B.pos.distanceTo(B.target.pos.clone().setY(B.target.pos.y + 1.6)).toFixed(1) : null, range: +range().toFixed(1) }),
+  parry: () => parry(P), target: () => { B.target = P; },
+};
+loop();
+})();
+</script>
+</body>
+</html>

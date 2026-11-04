@@ -29,6 +29,7 @@ export const BOARDS = {
   "hide-and-seek-town": ["wins"],
   "color-drop-party": ["wins"],
   "reel-rush-fishing": ["caught"],
+  "parry-arena": ["wins"],
 };
 const MAX_SCORE = 1e9;
 
