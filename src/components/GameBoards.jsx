@@ -30,6 +30,7 @@ export const BOARDS = {
   "block-rush-runner": [["distance", "Farthest run", (v) => `${Number(v).toLocaleString()} m`]],
   "block-farm-valley": [["earned", "Most coins earned", (v) => Number(v).toLocaleString()]],
   "treasure-dive": [["depth", "Deepest dive", (v) => `${v} m`]],
+  "titan-raid": [["time", "Fastest win", (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")}`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

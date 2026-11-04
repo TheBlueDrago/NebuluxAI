@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Titan Raid</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#over{background:linear-gradient(#5d4037dd,#120a06ee)}
+  #over{display:none}
+  h1{color:#ffab40}
+  #boss{position:fixed;left:50%;top:10px;transform:translateX(-50%);width:420px;max-width:70vw;pointer-events:none;text-align:center;font-weight:900}
+  #boss .bar{height:18px;border:3px solid #000;border-radius:9px;background:#3e2723;overflow:hidden;margin-top:3px}
+  #boss i{display:block;height:100%;background:linear-gradient(90deg,#ff7043,#ffca28)}
+  #me{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);width:260px;pointer-events:none}
+  #me .bar{height:14px;border:3px solid #000;border-radius:8px;background:#1b1b1b;overflow:hidden;margin-top:4px}
+  #hpI{display:block;height:100%;background:#66bb6a} #enI{display:block;height:100%;background:#40c4ff}
+  #team{position:fixed;left:14px;top:12px;font-weight:900;font-size:13px;line-height:1.6;pointer-events:none}
+  body.touch #me{bottom:auto;top:96px}
+  @media (max-width:600px){#boss{top:54px} #team{top:100px} body.touch #me{top:auto;bottom:250px;width:200px}}
+</style>
+</head>
+<body>
+<div id="boss" class="sh"><span id="bName">STONE TITAN</span><div class="bar"><i id="bI"></i></div></div>
+<div id="team" class="sh"></div>
+<div id="me" class="sh"><div class="bar"><i id="hpI"></i></div><div class="bar"><i id="enI"></i></div></div>
+<div id="hud" style="display:none"></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>TITAN<br>RAID</h1>
+  <p style="font-weight:700">You and three heroes (a Knight, an Archer and a Healer) against the Stone Titan. Hold fire to blast it, and fill your blue bar to unleash a <b style="color:#40c4ff">Super Blast</b>. Watch the ground: get out of <b style="color:#ff5252">red circles</b>, <b>jump</b> over shockwaves and the sweeping laser, and clear out its minions. It gets angrier as it weakens. If you're knocked down you get back up, unless the whole team is down.</p>
+  <p class="keys">hold <kbd>Click</kbd> or <kbd>F</kbd> fire · <kbd>E</kbd> Super Blast · <kbd>Space</kbd> jump · <kbd>Q</kbd> dash · <kbd>WASD</kbd> move · <kbd>Right mouse</kbd> aim</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">FIGHT</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">VICTORY!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">FIGHT AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Titan Raid =================
+setSky("#4e342e", "#ffab91", 0xffab91, 70, 200);
+hemi.intensity = 0.75; sun.intensity = 0.85;
+cam.dist = 15; cam.pitch = 0.4; cam.max = 24;
+const AR = 34;
+addBox(0, -1, 0, 120, 2, 120, 0x3e2723).m.visible = false;
+const floor = new THREE.Mesh(new THREE.CylinderGeometry(AR + 2, AR + 3, 2, 48), mat(0x795548)); floor.position.y = -1; floor.receiveShadow = true; scene.add(floor);
+for (let k = 0; k < 3; k++) { const ring = new THREE.Mesh(new THREE.RingGeometry(10 + k * 9.5, 10.4 + k * 9.5, 64), new THREE.MeshBasicMaterial({ color: 0x4e342e, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; scene.add(ring); }
+const lava = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0xff5722, emissive: 0xbf360c, emissiveIntensity: 0.8 })); lava.rotation.x = -Math.PI / 2; lava.position.y = -6; scene.add(lava);
+for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, h = rr(8, 16), p = boxMesh(2.4, h, 2.4, 0x5d4037); p.position.set(Math.sin(a) * (AR + 1.5), h / 2 - 1, Math.cos(a) * (AR + 1.5)); scene.add(p); const fire = boxMesh(1.2, 1.2, 1.2, 0xffab40, 0xff6d00); fire.position.set(p.position.x, h - 0.4, p.position.z); scene.add(fire); }
+
+// ---------- the Titan ----------
+const titan = { g: new THREE.Group(), hp: 1, max: 9000, yaw: 0, next: 3, busy: 0, anger: 0, arms: [] };
+{
+  const g = titan.g, stone = 0x6d6d6d, dark = 0x424242;
+  const legs = [-2, 2].map((x) => { const l = boxMesh(2.6, 5, 2.6, dark); l.position.set(x, 2.5, 0); g.add(l); return l; });
+  const body = boxMesh(8, 6, 5, stone); body.position.y = 8; g.add(body);
+  const head = boxMesh(4, 3.4, 3.6, stone); head.position.y = 12.7; g.add(head);
+  const eyes = boxMesh(3, 0.6, 0.2, 0xff6d00, 0xff3d00); eyes.position.set(0, 13, 1.85); g.add(eyes); titan.eyes = eyes;
+  for (const s of [-1, 1]) { const arm = new THREE.Group(); arm.position.set(s * 5.4, 10.4, 0); const a = boxMesh(2.6, 7, 2.6, dark); a.position.y = -3.2; arm.add(a); const fist = boxMesh(3.4, 3, 3.4, stone); fist.position.y = -7.4; arm.add(fist); g.add(arm); titan.arms.push(arm); }
+  for (let k = 0; k < 6; k++) { const c = boxMesh(1.2, 1.2, 0.4, 0xffab40, 0xff6d00); c.position.set(rr(-3, 3), rr(6, 10), 2.55); g.add(c); }
+  scene.add(g);
+}
+const tag = makeLabel("STONE TITAN", "#ffab40", 512, 60); tag.scale.set(6, 1.5, 1); tag.position.y = 16.5; titan.g.add(tag);
+
+// ---------- the team ----------
+const SAVE = "titan-raid";
+let S = loadSave(SAVE, { fights: 0, wins: 0, best: 0 });
+const team = [P];
+Object.assign(P, { name: ME_NAME, role: "You", hp: 100, down: 0, inv: 0, energy: 0, fireT: 0, dashCool: 0, dashT: 0 });
+const blaster = boxMesh(0.4, 0.4, 1.6, 0x37474f, 0x0d47a1); blaster.position.set(0, -1.5, 0.6); P.body.arms[1].add(blaster);
+const ROLES = [["Knight", 0x90a4ae], ["Archer", 0x43a047], ["Healer", 0xf8bbd0]];
+const bnames = shuffle(BOT_NAMES.slice());
+ROLES.forEach(([role, col], i) => {
+  const body = makeAvatar({ shirt: col, pants: 0x37474f, skin: pick(SKINS), hat: role === "Knight" ? 0x607d8b : role === "Healer" ? 0xffffff : 0x2e7d32 });
+  const name = `${bnames[i]} the ${role}`; body.g.add(nameTag(bnames[i], role === "Healer" ? "#f8bbd0" : role === "Archer" ? "#b9f6ca" : "#cfd8dc"));
+  const tool = role === "Knight" ? boxMesh(0.3, 0.3, 2.6, 0xeceff1) : role === "Archer" ? boxMesh(0.2, 2.2, 0.2, 0x8d6e63) : boxMesh(0.25, 0.25, 2, 0xfff59d, 0x5c5c00);
+  tool.position.set(0, -1.6, 0.8); body.arms[1].add(tool); scene.add(body.g);
+  team.push({ name, short: bnames[i], role, body, pos: V(), vel: V(), onGround: false, yaw: 0, hp: 100, down: 0, inv: 0, cool: 0, goal: V(), goalT: 0 });
+});
+const bots = team.slice(1);
+const up = () => team.filter((e) => e.down <= 0);
+
+// ---------- shots, hazards, minions ----------
+const shots = [], hazards = [], minions = [], beams = [];
+const shotGeo = new THREE.SphereGeometry(0.35, 8, 6);
+const shotMats = { You: new THREE.MeshBasicMaterial({ color: 0x40c4ff }), Archer: new THREE.MeshBasicMaterial({ color: 0xb9f6ca }), Healer: new THREE.MeshBasicMaterial({ color: 0xf8bbd0 }) };
+function shoot(from, to, dmg, kind, speed = 60) { const m = new THREE.Mesh(shotGeo, shotMats[kind]); m.position.copy(from); scene.add(m); shots.push({ m, v: to.clone().sub(from).normalize().multiplyScalar(speed), dmg, t: 1.4, kind }); }
+const titanCentre = () => titan.g.position.clone().setY(8);
+function hitTitan(d, by) {
+  if (phase !== "fight") return;
+  titan.hp = Math.max(0, titan.hp - d); titan.flash = 0.08;
+  if (by === P) P.energy = Math.min(100, P.energy + d * 0.08);
+  if (titan.hp <= 0) win();
+}
+const ringFill = new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+const ringEdge = new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+const rockGeo = new THREE.DodecahedronGeometry(1.6, 0);
+function circle(x, z, r, t, dmg, rock) {
+  const disk = new THREE.Mesh(new THREE.CircleGeometry(r, 40), ringFill.clone()); disk.rotation.x = -Math.PI / 2; disk.position.set(x, 0.05, z); scene.add(disk);
+  const fill = new THREE.Mesh(new THREE.CircleGeometry(r, 40), ringEdge.clone()); fill.rotation.x = -Math.PI / 2; fill.position.set(x, 0.06, z); fill.scale.setScalar(0.01); scene.add(fill);
+  const h = { kind: "circle", x, z, r, t, total: t, dmg, disk, fill };
+  if (rock) { h.rock = new THREE.Mesh(rockGeo, mat(0x5d4037)); h.rock.position.set(x, 30, z); h.rock.castShadow = true; scene.add(h.rock); }
+  hazards.push(h);
+}
+function hurt(e, d) {
+  if (e.down > 0 || e.inv > 0 || phase !== "fight") return;
+  e.hp -= d; e.inv = 0.5;
+  if (e === P) { SFX.hit(); flashT = 0.35; }
+  if (e.hp <= 0) { e.hp = 0; e.down = 8; e.body.g.visible = false; if (e === P) { show("You're down! Back up in 8 seconds.", 2); P.canMove = false; } else show(`${e.short} is down!`, 1.2); if (!up().length) lose(); }
+}
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xffab40, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+const waveGeo = new THREE.CylinderGeometry(1, 1, 0.9, 72, 1, true);
+const laserMat = new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.85 });
+function minion() {
+  const g = new THREE.Group(); const b = boxMesh(1.8, 1.8, 1.8, 0x616161); b.position.y = 1; g.add(b); const e = boxMesh(1.2, 0.3, 0.1, 0xff6d00, 0xff3d00); e.position.set(0, 1.3, 0.92); g.add(e);
+  const a = rr(0, 6.3); g.position.set(Math.sin(a) * (AR - 3), 0, Math.cos(a) * (AR - 3)); scene.add(g);
+  minions.push({ g, hp: 70, hitT: 0 });
+}
+
+// ---------- the Titan's moves ----------
+const MOVES = ["slam", "wave", "rocks", "laser", "minions"];
+function titanMove() {
+  const hpF = titan.hp / titan.max; titan.anger = hpF < 0.2 ? 2 : hpF < 0.5 ? 1 : 0;
+  const list = titan.anger ? MOVES : MOVES.filter((m) => m !== "laser" || Math.random() < 0.5);
+  const mv = FORCE && MOVES.includes(FORCE) ? FORCE : pick(list);
+  titan.move = mv; titan.moveT = 0;
+  const fast = 1 - titan.anger * 0.18;
+  if (mv === "slam") { circle(0, 0, 11 + titan.anger * 2, 1.7 * fast, 35); titan.busy = 2; }
+  if (mv === "rocks") { for (const e of up()) circle(e.pos.x + rr(-1, 1), e.pos.z + rr(-1, 1), 3.6, 1.4 * fast, 30, true); if (titan.anger) for (let k = 0; k < 3 + titan.anger * 2; k++) { const a = rr(0, 6.3), r = rr(8, AR - 3); circle(Math.sin(a) * r, Math.cos(a) * r, 3.6, 1.6 * fast, 30, true); } titan.busy = 1.8; }
+  if (mv === "wave") { const n = 1 + titan.anger; for (let k = 0; k < n; k++) setTimeout(() => { if (phase === "fight") { const m = new THREE.Mesh(waveGeo, ringMat); m.position.y = 0.45; scene.add(m); hazards.push({ kind: "wave", r: 5, m, hit: new Set() }); } }, k * 1400 / (TEST ? 1 : 1)); titan.busy = 1.2 + n * 1.2; }
+  if (mv === "laser") { const m = new THREE.Mesh(new THREE.BoxGeometry(AR, 0.5, 0.5), laserMat); m.position.y = 1; scene.add(m); hazards.push({ kind: "laser", a: titan.yaw, t: (Math.PI * 2) / (1.1 + titan.anger * 0.3), spin: 1.1 + titan.anger * 0.3, m, hitT: new Map(), warm: 1.2 }); titan.busy = 7; }
+  if (mv === "minions") { for (let k = 0; k < 3 + titan.anger * 2; k++) minion(); titan.busy = 1.5; }
+  show({ slam: "SLAM! Get away from the Titan!", wave: "SHOCKWAVE! Jump over it!", rocks: "ROCK RAIN! Move!", laser: "LASER SWEEP! Jump over the beam!", minions: "Minions incoming!" }[mv], 1.6);
+  tone(90, 0.5, "sawtooth", 0.07, -30);
+}
+function inDanger(e) { return hazards.some((h) => h.kind === "circle" && Math.hypot(e.pos.x - h.x, e.pos.z - h.z) < h.r + 0.8); }
+
+// ---------- the fight ----------
+let phase = "menu", fightT = 0, flashT = 0;
+const FORCE = new URLSearchParams(location.search).get("move");
+function clearAll() { for (const s of shots) scene.remove(s.m); shots.length = 0; for (const h of hazards) { if (h.disk) { scene.remove(h.disk); scene.remove(h.fill); } if (h.rock) scene.remove(h.rock); if (h.m) scene.remove(h.m); } hazards.length = 0; for (const m of minions) scene.remove(m.g); minions.length = 0; for (const b of beams) scene.remove(b.m); beams.length = 0; }
+function newFight() {
+  clearAll(); titan.hp = titan.max; titan.next = 3; titan.busy = 0; titan.anger = 0; fightT = 0; phase = "fight";
+  team.forEach((e, i) => { const a = Math.PI + (i - 1.5) * 0.35; e.pos.set(Math.sin(a) * 24, 0.3, Math.cos(a) * 24); e.vel.set(0, 0, 0); e.hp = 100; e.down = 0; e.inv = 0; e.body.g.visible = true; });
+  P.energy = 0; P.canMove = true; cam.yaw = Math.atan2(P.pos.x, P.pos.z); $("over").style.display = "none"; if (started) { S.fights++; storeSave(SAVE, S); }
+  show("The Stone Titan awakens!", 2.2);
+}
+function win() { phase = "over"; const t = fightT, best = !S.best || t < S.best; S.wins++; if (best) S.best = +t.toFixed(1); storeSave(SAVE, S); sendScore("time", +t.toFixed(1)); SFX.win(); setTimeout(() => { $("oT").textContent = "VICTORY!"; $("oInfo").textContent = `The Titan crumbles! Beaten in ${fmtT(t)}.${best ? " Fastest yet!" : ` Fastest: ${fmtT(S.best)}`}`; $("over").style.display = "grid"; document.exitPointerLock?.(); }, 1400); }
+function lose() { phase = "over"; SFX.lose(); storeSave(SAVE, S); setTimeout(() => { $("oT").textContent = "DEFEATED"; $("oInfo").textContent = `The whole team went down with the Titan at ${Math.ceil((titan.hp / titan.max) * 100)}%. Try again!`; $("over").style.display = "grid"; document.exitPointerLock?.(); }, 900); }
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+
+// ---------- your controls ----------
+let holdMouse = false, holdTouch = false;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+function superBlast() {
+  if (P.energy < 100 || P.down > 0 || phase !== "fight") return;
+  P.energy = 0; hitTitan(320, null);
+  const from = P.pos.clone().setY(2), to = titanCentre(), len = from.distanceTo(to);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, len, 12), new THREE.MeshBasicMaterial({ color: 0x80d8ff, transparent: true, opacity: 0.9 }));
+  m.position.copy(from).lerp(to, 0.5); m.lookAt(to); m.rotateX(Math.PI / 2); scene.add(m); beams.push({ m, t: 0.4 });
+  for (const mn of minions) if (mn.g.position.distanceTo(P.pos) < 30) mn.hp -= 100;
+  SFX.zap(); show("SUPER BLAST!", 1);
+}
+actions.KeyE = superBlast;
+actions.KeyQ = () => { if (P.dashCool <= 0 && P.down <= 0 && phase === "fight") { P.dashT = 0.2; P.dashCool = 2.2; P.inv = 0.35; tone(300, 0.15, "sine", 0.05, 400); } };
+touchControls([{ label: "FIRE", color: "rgba(64,196,255,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }, JUMP_BUTTON, { label: "SUPER", color: "rgba(255,171,64,.95)", down: superBlast }, { label: "DASH", color: "rgba(255,255,255,.85)", down: () => actions.KeyQ() }]);
+
+// ---------- computer heroes ----------
+function botStep(b, dt, T) {
+  b.cool -= dt; b.goalT -= dt; b.inv -= dt;
+  const tc = titan.g.position, toT = V(tc.x - b.pos.x, 0, tc.z - b.pos.z), dT = toT.length();
+  let want = V();
+  // where they like to stand
+  const ideal = b.role === "Knight" ? 6.5 : b.role === "Archer" ? 20 : 16;
+  if (b.goalT <= 0) { b.goalT = rr(1.5, 3); const a = Math.atan2(b.pos.x, b.pos.z) + rr(-0.6, 0.6); b.goal.set(Math.sin(a) * ideal, 0, Math.cos(a) * ideal); }
+  let target = b.goal.clone();
+  // minions near you come first for the Knight
+  const mn = minions.filter((m) => m.hp > 0).sort((a, c) => a.g.position.distanceTo(b.pos) - c.g.position.distanceTo(b.pos))[0];
+  if (b.role === "Knight" && mn && mn.g.position.distanceTo(b.pos) < 12) target = mn.g.position.clone();
+  // get out of red circles
+  for (const h of hazards) if (h.kind === "circle" && Math.hypot(b.pos.x - h.x, b.pos.z - h.z) < h.r + 1) { const away = V(b.pos.x - h.x, 0, b.pos.z - h.z); if (away.lengthSq() < 0.01) away.set(1, 0, 0); target = V(h.x, 0, h.z).addScaledVector(away.normalize(), h.r + 3); }
+  const d = V(target.x - b.pos.x, 0, target.z - b.pos.z); if (d.length() > 0.5) want = d.normalize().multiplyScalar(b.role === "Knight" ? 11 : 10);
+  // jump waves and the laser
+  for (const h of hazards) {
+    if (h.kind === "wave") { const r = Math.hypot(b.pos.x, b.pos.z); if (Math.abs(r - h.r) < 2.6 && h.r < r && b.onGround) b.wantJump = true; }
+    if (h.kind === "laser" && h.warm <= 0) { const a = Math.atan2(b.pos.z, b.pos.x), diff = angDiff(-h.a, a); if (diff > 0 && diff < 0.45 && b.onGround) b.wantJump = true; }
+  }
+  physics(b, want, dt);
+  const r = Math.hypot(b.pos.x, b.pos.z); if (r > AR - 0.8) { b.pos.x *= (AR - 0.8) / r; b.pos.z *= (AR - 0.8) / r; }
+  // attack / heal
+  if (phase === "fight" && b.cool <= 0) {
+    if (b.role === "Knight") { if (mn && mn.g.position.distanceTo(b.pos) < 3) { mn.hp -= 25; b.cool = 0.5; } else if (dT < 8) { hitTitan(18, b); b.cool = 0.5; } if (b.cool > 0) { b.body.pose = true; b.body.arms[1].rotation.x = -2.4; setTimeout(() => { b.body.pose = false; }, 150); } }
+    else if (b.role === "Archer") { const tgt = mn && mn.g.position.distanceTo(b.pos) < 14 ? mn.g.position.clone().setY(1) : titanCentre(); shoot(b.pos.clone().setY(2.2), tgt, 14, "Archer", 50); b.cool = 0.55; }
+    else { const low = up().filter((e) => e.hp < 85).sort((a, c) => a.hp - c.hp)[0]; if (low && low.pos.distanceTo(b.pos) < 28) { low.hp = Math.min(100, low.hp + 14); b.cool = 1.1; const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, low.pos.distanceTo(b.pos), 6), new THREE.MeshBasicMaterial({ color: 0x69f0ae, transparent: true, opacity: 0.8 })); m.position.copy(b.pos).lerp(low.pos, 0.5).setY(2); m.lookAt(low.pos.clone().setY(2)); m.rotateX(Math.PI / 2); scene.add(m); beams.push({ m, t: 0.25 }); if (low === P) tone(900, 0.1, "sine", 0.03, 300); } else { shoot(b.pos.clone().setY(2.2), titanCentre(), 7, "Healer", 45); b.cool = 0.8; } }
+  }
+  const sp = faceMove(b, dt); if (sp < 0.5) { b.yaw = Math.atan2(toT.x, toT.z); b.body.g.rotation.y = b.yaw; }
+  if (!b.body.pose) animate(b.body, sp, b.onGround, T); else animate(b.body, sp, b.onGround, T);
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.fights ? `Fights ${S.fights} · Wins ${S.wins}${S.best ? " · fastest " + fmtT(S.best) : ""}` : ""; }
+showStats(); newFight(); phase = "menu";
+onFrame((dt, T) => {
+  const fighting = started && phase === "fight";
+  if (fighting) {
+    fightT += dt;
+    // the Titan turns to face someone and picks moves
+    const tgt = up().sort((a, b) => a.pos.distanceTo(titan.g.position) - b.pos.distanceTo(titan.g.position))[0];
+    if (tgt) titan.yaw += angDiff(Math.atan2(tgt.pos.x, tgt.pos.z), titan.yaw) * Math.min(1, dt * 1.5);
+    titan.busy -= dt; if (titan.busy <= 0) { titan.next -= dt; if (titan.next <= 0) { titanMove(); titan.next = rr(1.4, 2.6) * (1 - titan.anger * 0.2); } }
+    // you
+    for (const e of team) { if (e.down > 0) { e.down -= dt; if (e.down <= 0) { e.hp = 60; e.inv = 2; e.body.g.visible = true; const a = rr(0, 6.3); e.pos.set(Math.sin(a) * 28, 0.3, Math.cos(a) * 28); if (e === P) { P.canMove = true; show("You're back up!", 1.2); } } } e.inv -= dt; }
+    P.dashCool -= dt; P.fireT -= dt;
+    if (P.down <= 0) {
+      if (P.dashT > 0) { P.dashT -= dt; const f = moveDir(); if (f.lengthSq() < 0.1) f.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)); P.vel.x = f.x * 44; P.vel.z = f.z * 44; }
+      stepPlayer(dt, T);
+      const r = Math.hypot(P.pos.x, P.pos.z); if (r > AR - 0.8) { P.pos.x *= (AR - 0.8) / r; P.pos.z *= (AR - 0.8) / r; }
+      if ((holdMouse || holdTouch || keys.KeyF) && P.fireT <= 0) {
+        P.fireT = 0.17;
+        // aim: the camera's direction, snapping to a minion or the Titan close to it
+        const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)); let to = P.pos.clone().addScaledVector(f, 40).setY(3);
+        const cands = minions.filter((m) => m.hp > 0).map((m) => m.g.position.clone().setY(1)).concat([titanCentre()]);
+        let best = 0.82; for (const c of cands) { const d = c.clone().sub(P.pos).setY(0).normalize().dot(f); if (d > best) { best = d; to = c; } }
+        shoot(P.pos.clone().setY(2.2).addScaledVector(f, 0.8), to, 12, "You");
+        P.body.pose = true; P.body.arms[1].rotation.x = -1.5; P.yaw = Math.atan2(f.x, f.z);
+        tone(700, 0.04, "square", 0.02);
+      } else if (!(holdMouse || holdTouch || keys.KeyF)) P.body.pose = false;
+    }
+    for (const b of bots) if (b.down <= 0) botStep(b, dt, T);
+    // nobody walks through the Titan
+    for (const e of team) { const dx = e.pos.x - titan.g.position.x, dz = e.pos.z - titan.g.position.z, d = Math.hypot(dx, dz); if (d < 4.4 && e.pos.y < 14) { e.pos.x = titan.g.position.x + (dx / (d || 1)) * 4.4; e.pos.z = titan.g.position.z + (dz / (d || 1)) * 4.4; } }
+    // shots
+    for (let i = shots.length - 1; i >= 0; i--) {
+      const s = shots[i]; s.t -= dt; s.m.position.addScaledVector(s.v, dt);
+      let hit = s.t <= 0;
+      const tp = s.m.position, tc = titan.g.position;
+      if (!hit && Math.hypot(tp.x - tc.x, tp.z - tc.z) < 4.2 && tp.y < 15) { hitTitan(s.dmg, s.kind === "You" ? P : null); hit = true; }
+      if (!hit) for (const m of minions) if (m.hp > 0 && m.g.position.clone().setY(1).distanceTo(tp) < 1.5) { m.hp -= s.dmg * 1.4; hit = true; if (s.kind === "You") P.energy = Math.min(100, P.energy + 3); break; }
+      if (hit) { scene.remove(s.m); shots.splice(i, 1); }
+    }
+    // hazards
+    for (let i = hazards.length - 1; i >= 0; i--) {
+      const h = hazards[i];
+      if (h.kind === "circle") { h.t -= dt; h.fill.scale.setScalar(Math.max(0.01, 1 - h.t / h.total)); if (h.rock) { h.rock.position.y = 1 + Math.max(0, h.t / h.total) * 30; h.rock.rotation.x += dt * 4; } if (h.t <= 0) { if (h.rock) scene.remove(h.rock); for (const e of up()) if (Math.hypot(e.pos.x - h.x, e.pos.z - h.z) < h.r && e.pos.y < 2) hurt(e, h.dmg); scene.remove(h.disk); scene.remove(h.fill); hazards.splice(i, 1); tone(70, 0.3, "sawtooth", 0.06, -20); } }
+      else if (h.kind === "wave") { h.r += 13 * dt; h.m.scale.set(h.r, 1, h.r); for (const e of up()) { const r = Math.hypot(e.pos.x, e.pos.z); if (!h.hit.has(e) && Math.abs(r - h.r) < 0.9 && e.pos.y < 1.1) { h.hit.add(e); hurt(e, 25); } } if (h.r > AR + 2) { scene.remove(h.m); hazards.splice(i, 1); } }
+      else if (h.kind === "laser") {
+        if (h.warm > 0) { h.warm -= dt; h.m.material = h.warm > 0 ? ringFill : laserMat; }
+        else { h.a += h.spin * dt; h.t -= dt; }
+        h.m.position.set(Math.cos(h.a) * (AR / 2), 1, -Math.sin(h.a) * (AR / 2)); h.m.rotation.y = h.a;
+        if (h.warm <= 0) for (const e of up()) { const a = Math.atan2(-e.pos.z, e.pos.x), r = Math.hypot(e.pos.x, e.pos.z); if (Math.abs(angDiff(a, h.a)) < 0.06 + 0.6 / Math.max(r, 1) && e.pos.y < 1.3 && (h.hitT.get(e) || 0) < fightT) { h.hitT.set(e, fightT + 0.6); hurt(e, 20); } }
+        if (h.t <= 0) { scene.remove(h.m); hazards.splice(i, 1); }
+      }
+    }
+    // minions walk at the nearest hero and punch
+    for (let i = minions.length - 1; i >= 0; i--) {
+      const m = minions[i];
+      if (m.hp <= 0) { scene.remove(m.g); minions.splice(i, 1); SFX.pop(); continue; }
+      const t = up().sort((a, b) => a.pos.distanceTo(m.g.position) - b.pos.distanceTo(m.g.position))[0]; if (!t) continue;
+      const d = V(t.pos.x - m.g.position.x, 0, t.pos.z - m.g.position.z), l = d.length();
+      if (l > 1.8) m.g.position.addScaledVector(d.normalize(), dt * 6.5); else { m.hitT -= dt; if (m.hitT <= 0) { m.hitT = 1; hurt(t, 9); } }
+      m.g.rotation.y = Math.atan2(d.x, d.z); m.g.position.y = Math.abs(Math.sin(T * 9 + i)) * 0.3;
+    }
+  } else if (!started || phase === "menu") { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  for (let i = beams.length - 1; i >= 0; i--) { beams[i].t -= dt; if (beams[i].t <= 0) { scene.remove(beams[i].m); beams.splice(i, 1); } }
+  // the Titan's look
+  titan.g.rotation.y = titan.yaw; titan.flash = (titan.flash || 0) - dt;
+  const mv = titan.move, busy = titan.busy > 0;
+  titan.arms.forEach((a, k) => { a.rotation.x = busy && mv === "slam" ? -2.6 + Math.min(1, (2 - titan.busy) * 1.5) * 2.6 : busy && mv === "rocks" ? -Math.abs(Math.sin(T * 6 + k)) * 2 : Math.sin(T * 1.5 + k * 3) * 0.15; });
+  titan.eyes.material = mat(titan.anger === 2 ? 0xff1744 : 0xff6d00, titan.flash > 0 ? 0xffffff : titan.anger === 2 ? 0xd50000 : 0xff3d00);
+  titan.g.position.y = phase === "over" && titan.hp <= 0 ? Math.max(-14, titan.g.position.y - dt * 6) : 0;
+  let follow = P.pos; if (P.down > 0) { const u = up()[0]; if (u) follow = u.pos; }
+  updateCamera(dt, follow);
+  // HUD
+  $("bI").style.width = `${(titan.hp / titan.max) * 100}%`; $("bName").textContent = titan.anger === 2 ? "STONE TITAN (ENRAGED)" : titan.anger ? "STONE TITAN (ANGRY)" : "STONE TITAN";
+  $("hpI").style.width = `${P.hp}%`; $("hpI").style.background = P.hp < 30 ? "#ef5350" : "#66bb6a";
+  $("enI").style.width = `${P.energy}%`; $("enI").style.background = P.energy >= 100 ? `hsl(${(T * 300) % 360},90%,60%)` : "#40c4ff";
+  $("team").innerHTML = team.map((e) => `<span style="color:${e.down > 0 ? "#9e9e9e" : e.hp < 35 ? "#ff8a80" : "#fff"}">${e === P ? "You" : e.short + " (" + e.role + ")"}: ${e.down > 0 ? "down " + Math.ceil(e.down) + "s" : Math.ceil(e.hp)}</span>`).join("<br>");
+  if (flashT > 0) { flashT -= dt; }
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "fight") newFight(); };
+$("again").onclick = () => newFight();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, hp: Math.round(titan.hp), anger: titan.anger, move: titan.move, t: Math.round(fightT), me: Math.round(P.hp), meDown: P.down > 0, energy: Math.round(P.energy), up: up().length, hazards: hazards.map((h) => h.kind).join(","), minions: minions.length }),
+  hurtTitan: (n) => hitTitan(n, P), superBlast, team, titan, fire: (on) => { holdTouch = on; },
+};
+loop();
+})();
+</script>
+</body>
+</html>
