@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Rush Runner</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#over{background:linear-gradient(#00acc1dd,#002a33ee)}
+  #over{display:none}
+  h1{color:#ffee58}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .d{font-size:34px} #top .c{font-size:18px;color:#ffd54f}
+  #pows{position:fixed;left:14px;top:12px;font-weight:900;font-size:15px;pointer-events:none;line-height:1.5}
+  #shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:12px 0}
+  #shop button{font:inherit;font-weight:800;font-size:13px;border:3px solid #000;border-radius:10px;padding:8px;background:#e0f7fa;color:#000;cursor:pointer}
+  @media (max-width:600px){#top{top:54px} #top .d{font-size:26px} #pows{top:58px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><div class="d" id="tDist">0 m</div><div class="c" id="tCoins">0 coins</div></div>
+<div id="pows" class="sh"></div>
+<div id="hud" style="display:none"></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK RUSH<br>RUNNER</h1>
+  <p style="font-weight:700">Run as far as you can. Switch lanes to dodge blocks, <b>jump</b> over low barriers and <b>slide</b> under high bars. Grab coins, and power-ups: <b style="color:#ff8a80">Magnet</b>, <b style="color:#80d8ff">Shield</b> and <b style="color:#ffd54f">Double coins</b>. It keeps getting faster. Spend your coins on longer power-ups.</p>
+  <p class="keys"><kbd>A</kbd><kbd>D</kbd> or arrows: change lane · <kbd>W</kbd>/<kbd>Space</kbd> jump · <kbd>S</kbd> slide · on a phone, swipe</p>
+  <div id="shop"></div>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">RUN</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">CRASH!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">RUN AGAIN</button><p><button class="b" id="toShop">Shop</button></p></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Block Rush Runner =================
+hemi.intensity = 0.9; sun.intensity = 0.85;
+const LANES = [-3.2, 0, 3.2];
+const THEMES = [
+  { name: "Park", sky: ["#4fc3f7", "#e1f5fe"], fog: 0xe1f5fe, ground: 0x689f38, track: 0x8d6e63, side: [0x2e7d32, 0x388e3c] },
+  { name: "Desert", sky: ["#ffb74d", "#fff3e0"], fog: 0xfff3e0, ground: 0xffcc80, track: 0xa1887f, side: [0xff8f00, 0xd84315] },
+  { name: "Snow Peaks", sky: ["#90caf9", "#ffffff"], fog: 0xffffff, ground: 0xeceff1, track: 0x90a4ae, side: [0xb3e5fc, 0x81d4fa] },
+  { name: "Neon City", sky: ["#1a0033", "#4a148c"], fog: 0x2a0a4a, ground: 0x212121, track: 0x37474f, side: [0xe040fb, 0x00e5ff] },
+];
+let theme = 0;
+const groundMat = new THREE.MeshStandardMaterial({ color: THEMES[0].ground, roughness: 1 }), trackMat = new THREE.MeshStandardMaterial({ color: THEMES[0].track, roughness: 0.9 });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 600), groundMat); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true; scene.add(ground);
+const track = new THREE.Mesh(new THREE.PlaneGeometry(10.5, 600), trackMat); track.rotation.x = -Math.PI / 2; track.position.y = 0.01; track.receiveShadow = true; scene.add(track);
+const laneLines = [-1.6, 1.6].map((x) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 600), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, 0); scene.add(m); return m; });
+function setTheme(i) { theme = i % THEMES.length; const t = THEMES[theme]; setSky(t.sky[0], t.sky[1], t.fog, 60, 170); groundMat.color.setHex(t.ground); trackMat.color.setHex(t.track); for (const s of scenery) s.material = mat(pick(t.side)); hemi.intensity = theme === 3 ? 0.6 : 0.9; }
+// scenery along both sides, recycled as you run
+const scenery = [];
+for (let i = 0; i < 40; i++) { const h = rr(2, 9), m = boxMesh(rr(2, 4), h, rr(2, 4), 0x2e7d32); m.position.set((i % 2 ? 1 : -1) * rr(9, 22), h / 2, i * 6); scene.add(m); scenery.push(m); }
+
+// ---------- you ----------
+const runner = P; runner.pos.set(0, 0, 0); P.body.g.position.set(0, 0, 0);
+let lane = 1, x = 0, y = 0, vy = 0, slideT = 0, dist = 0, speed = 16, coins = 0, runCoins = 0, alive = false, phase = "menu";
+const pow = { magnet: 0, shield: 0, double: 0 };
+const shieldM = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 12), new THREE.MeshBasicMaterial({ color: 0x80d8ff, transparent: true, opacity: 0.3, depthWrite: false })); shieldM.position.y = 1.4; P.body.g.add(shieldM);
+shieldM.scale.setScalar(1 / 0.62);
+
+// ---------- the course ----------
+const things = []; // { kind, lane, z, mesh, y0, y1 }
+const coinGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.12, 16), coinMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffa000, emissiveIntensity: 0.5, metalness: 0.5, roughness: 0.3 });
+const POW_COL = { magnet: 0xff5252, shield: 0x40c4ff, double: 0xffd740 };
+function add(kind, ln, z, extra = {}) {
+  let m, y0 = 0, y1 = 0, len = 1.2;
+  const lx = LANES[ln];
+  if (kind === "low") { m = new THREE.Group(); const bar = boxMesh(2.8, 0.5, 0.5, 0xff7043); bar.position.y = 0.85; m.add(bar); for (const s of [-1.2, 1.2]) { const p = boxMesh(0.3, 1.1, 0.3, 0xeeeeee); p.position.set(s, 0.55, 0); m.add(p); } y1 = 1.1; }
+  else if (kind === "high") { m = new THREE.Group(); const bar = boxMesh(3, 1.5, 0.5, 0xffca28); bar.position.y = 2.6; m.add(bar); for (const s of [-1.35, 1.35]) { const p = boxMesh(0.3, 3.4, 0.3, 0x616161); p.position.set(s, 1.7, 0); m.add(p); } y0 = 1.55; y1 = 3.4; }
+  else if (kind === "block") { len = extra.len || 6; m = boxMesh(2.8, 3.6, len, pick([0x5c6bc0, 0x26a69a, 0xef5350, 0x8d6e63])); m.position.y = 1.8; const stripe = boxMesh(2.82, 0.3, len + 0.02, 0xffffff); stripe.position.y = 0.8; m.add(stripe); y1 = 3.6; }
+  else if (kind === "coin") { m = new THREE.Mesh(coinGeo, coinMat); m.rotation.x = Math.PI / 2; m.position.y = extra.h || 1; len = 0.6; }
+  else if (kind === "pow") { m = boxMesh(1.1, 1.1, 1.1, POW_COL[extra.p], POW_COL[extra.p]); m.position.y = 1.2; len = 1; }
+  m.position.x = lx; m.position.z = z; scene.add(m);
+  things.push({ kind, lane: ln, z, mesh: m, y0, y1, len, p: extra.p, hit: false });
+  if (kind !== "coin") rowEnd = Math.max(rowEnd, z + len / 2);
+}
+let nextRow = 30, rowEnd = 0;
+// one row of obstacles; -> where its last obstacle ends, so the next row leaves room to change lanes
+function spawnRow(z) {
+  rowEnd = z;
+  const d = Math.min(1, dist / 3000);
+  const r = Math.random(), lanes = shuffle([0, 1, 2]);
+  if (r < 0.28) { add("low", lanes[0], z); if (Math.random() < 0.4 + d * 0.4) add(Math.random() < 0.5 ? "low" : "high", lanes[1], z); coinsArc(lanes[0], z); }
+  else if (r < 0.5) { add("high", lanes[0], z); if (Math.random() < 0.4 + d * 0.4) add("block", lanes[1], z, { len: rr(5, 9) }); coinLine(lanes[2], z - 4, 5); }
+  else if (r < 0.75) { add("block", lanes[0], z, { len: rr(5, 10) }); if (Math.random() < 0.5 + d * 0.3) add("block", lanes[1], z + rr(-2, 2), { len: rr(5, 10) }); coinLine(lanes[2], z - 6, 6); }
+  else if (r < 0.9) { coinLine(lanes[0], z - 3, 8); if (Math.random() < 0.5) add("low", lanes[1], z); }
+  else { add("pow", lanes[0], z, { p: pick(["magnet", "shield", "double"]) }); add(Math.random() < 0.5 ? "low" : "high", lanes[1], z); }
+  return rowEnd;
+}
+function coinLine(ln, z, n) { for (let i = 0; i < n; i++) add("coin", ln, z + i * 1.8); }
+function coinsArc(ln, z) { for (let i = -3; i <= 3; i++) add("coin", ln, z + i * 1.4, { h: 1 + (9 - i * i) * 0.25 }); }
+function clearCourse() { for (const t of things) scene.remove(t.mesh); things.length = 0; nextRow = 30; }
+
+// ---------- controls ----------
+function left() { if (alive && lane > 0) { lane--; tone(500, 0.05, "square", 0.03); } }
+function right() { if (alive && lane < 2) { lane++; tone(500, 0.05, "square", 0.03); } }
+function jump() { if (alive && y <= 0.01) { vy = 14; slideT = 0; SFX.jump(); } }
+function slide() { if (alive) { slideT = 0.75; if (y > 0) vy = -22; tone(200, 0.15, "sine", 0.04, -80); } }
+actions.KeyA = left; actions.ArrowLeft = left; actions.KeyD = right; actions.ArrowRight = right;
+actions.KeyW = jump; actions.ArrowUp = jump; actions.Space = jump; actions.KeyS = slide; actions.ArrowDown = slide;
+// the camera faces forward, so "left" on screen is +x
+let sw = null;
+cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; sw = { x: t.clientX, y: t.clientY }; }, { passive: true });
+cvs.addEventListener("touchend", (e) => { if (!sw) return; const t = e.changedTouches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y; sw = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; if (Math.abs(dx) > Math.abs(dy)) (dx < 0 ? left : right)(); else (dy < 0 ? jump : slide)(); }, { passive: true });
+
+// ---------- saving and the shop ----------
+const SAVE = "block-rush-runner";
+let S = loadSave(SAVE, { coins: 0, best: 0, runs: 0, lv: { magnet: 0, shield: 0, double: 0 } });
+const UP = { magnet: ["Magnet", 6], shield: ["Shield", 8], double: ["Double coins", 8] };
+const dur = (k) => UP[k][1] + S.lv[k] * 2.5, cost = (k) => 150 * Math.pow(2, S.lv[k]);
+function drawShop() {
+  $("shop").innerHTML = Object.keys(UP).map((k) => `<button data-k="${k}">${UP[k][0]}: ${dur(k)}s<br>${S.lv[k] >= 6 ? "MAX" : `Longer for ${cost(k)} coins`}</button>`).join("");
+  for (const b of $("shop").querySelectorAll("button")) b.onclick = () => { const k = b.dataset.k; if (S.lv[k] >= 6) return; if (S.coins < cost(k)) { SFX.no(); b.textContent = `Need ${cost(k) - S.coins} more coins`; return; } S.coins -= cost(k); S.lv[k]++; storeSave(SAVE, S); SFX.buy(); drawShop(); showStats(); };
+}
+function showStats() { $("stats").textContent = `Coins ${S.coins} · Best ${S.best} m · Runs ${S.runs}`; }
+drawShop(); showStats();
+
+function newRun() {
+  clearCourse(); lane = 1; x = 0; y = 0; vy = 0; slideT = 0; dist = 0; speed = 16; runCoins = 0; alive = true; phase = "run";
+  pow.magnet = pow.shield = pow.double = 0; setTheme(0);
+  nextRow = 30; while (nextRow < 160) nextRow = Math.max(nextRow + 14, spawnRow(nextRow) + 12);
+  $("over").style.display = "none"; show(touch ? "Swipe left or right to switch lanes,\nup to jump, down to slide" : "GO!", touch ? 2.6 : 1);
+}
+function crash() {
+  if (pow.shield > 0) { pow.shield = 0; SFX.hit(); show("Shield saved you!", 1.2); return false; }
+  alive = false; phase = "over"; SFX.lose();
+  const d = Math.floor(dist), best = d > S.best; S.best = Math.max(S.best, d); S.coins += runCoins; S.runs++; storeSave(SAVE, S);
+  sendScore("distance", d);
+  $("oT").textContent = best ? "NEW BEST!" : "CRASH!";
+  $("oInfo").textContent = `You ran ${d} m and grabbed ${runCoins} coins. Best: ${S.best} m. Coins: ${S.coins}`;
+  setTimeout(() => { $("over").style.display = "grid"; document.exitPointerLock?.(); }, 700);
+  return true;
+}
+
+// ---------- the loop: the world moves toward you ----------
+cam.yaw = Math.PI; cam.pitch = 0.32; cam.dist = 9;
+onFrame((dt, T) => {
+  const running = started && phase === "run" && alive;
+  if (running) {
+    speed = Math.min(42, 16 + dist / 60);
+    const step = speed * dt; dist += step;
+    // move everything back
+    for (let i = things.length - 1; i >= 0; i--) { const t = things[i]; t.z -= step; t.mesh.position.z = t.z; if (t.z < -15) { scene.remove(t.mesh); things.splice(i, 1); } }
+    for (const s of scenery) { s.position.z -= step; if (s.position.z < -20) s.position.z += 240; }
+    nextRow -= step; while (nextRow < 170) { const end = spawnRow(nextRow); nextRow = Math.max(nextRow + Math.max(11, 16 - dist / 400) + rr(0, 4), end + 8 + speed * 0.35); }
+    // theme every 800 m
+    const th = Math.floor(dist / 800); if (th !== theme && th < 100) { setTheme(th); show(THEMES[theme].name, 1.4); }
+    // you
+    x += (LANES[lane] - x) * Math.min(1, dt * 14);
+    vy -= 42 * dt; y = Math.max(0, y + vy * dt); if (y === 0) vy = Math.max(vy, 0);
+    slideT -= dt;
+    const h0 = y, h1 = y + (slideT > 0 ? 1.2 : 2.6);
+    for (const t of things) {
+      if (t.hit || Math.abs(t.z) > t.len / 2 + 0.6) continue;
+      const tl = Math.abs(LANES[t.lane] - x) < 1.6;
+      if (t.kind === "coin") { const near = Math.abs(LANES[t.lane] - x) < 1.2 || (pow.magnet > 0 && Math.abs(t.z) < 6); if (near && (pow.magnet > 0 || Math.abs(t.mesh.position.y - (y + 1.2)) < 1.6)) { t.hit = true; t.mesh.visible = false; runCoins += pow.double > 0 ? 2 : 1; tone(1200 + Math.random() * 200, 0.05, "square", 0.02); } continue; }
+      if (!tl) continue;
+      if (t.kind === "pow") { t.hit = true; t.mesh.visible = false; pow[t.p] = t.p === "shield" ? 999 : dur(t.p); SFX.buy(); show(t.p === "shield" ? "SHIELD!" : t.p === "magnet" ? "MAGNET!" : "DOUBLE COINS!", 1.1); continue; }
+      if (h1 > t.y0 + 0.05 && h0 < t.y1 - 0.05) { t.hit = true; if (crash()) break; }
+    }
+    // magnet pulls nearby coins in
+    if (pow.magnet > 0) for (const t of things) if (t.kind === "coin" && !t.hit && t.z < 14 && t.z > 0) { t.mesh.position.x += (x - t.mesh.position.x) * Math.min(1, dt * 8); }
+    for (const k of ["magnet", "double"]) if (pow[k] > 0) pow[k] -= dt;
+  }
+  for (const t of things) if (t.kind === "coin") t.mesh.rotation.z = T * 4; else if (t.kind === "pow") t.mesh.rotation.y = T * 2;
+  // your body
+  P.pos.set(x, y, 0); P.body.g.position.copy(P.pos); P.body.g.rotation.y = 0;
+  P.body.g.scale.set(0.62, slideT > 0 && running ? 0.34 : 0.62, 0.62);
+  animate(P.body, running ? speed : 0, y <= 0.01, T * (running ? speed / 13 : 1));
+  shieldM.visible = pow.shield > 0;
+  updateCamera(dt, V(x * 0.6, 0.2, 0));
+  $("tDist").textContent = `${Math.floor(dist)} m`; $("tCoins").textContent = `${runCoins} coins`;
+  $("pows").innerHTML = [pow.magnet > 0 ? `<span style="color:#ff8a80">Magnet ${Math.ceil(pow.magnet)}s</span>` : "", pow.shield > 0 ? `<span style="color:#80d8ff">Shield on</span>` : "", pow.double > 0 ? `<span style="color:#ffd740">Double coins ${Math.ceil(pow.double)}s</span>` : ""].filter(Boolean).join("<br>");
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); newRun(); };
+$("again").onclick = () => newRun();
+$("toShop").onclick = () => { $("over").style.display = "none"; drawShop(); showStats(); $("start").style.display = "grid"; };
+$("menuB").onclick = () => { started = false; drawShop(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, alive, dist: Math.floor(dist), speed: Math.round(speed), coins: runCoins, lane, y: +y.toFixed(2), slide: slideT > 0, pow: { ...pow }, theme: THEMES[theme].name, things: things.length }),
+  // a careful runner: looks at what's coming in its lane and dodges
+  ahead: () => things.filter((t) => !t.hit && t.kind !== "coin" && t.kind !== "pow" && t.z + t.len / 2 > -1 && t.z - t.len / 2 < 16).map((t) => ({ k: t.kind, lane: t.lane, z: +t.z.toFixed(1), len: t.len })),
+  left, right, jump, slide, S: () => S, give: (n) => { S.coins += n; storeSave(SAVE, S); drawShop(); }, renderer, scene, camera,
+};
+loop();
+})();
+</script>
+</body>
+</html>
