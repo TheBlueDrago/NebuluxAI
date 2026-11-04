@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Burger Rush Diner</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#ef6c00dd,#2a1200ee)}
+  #over{display:none}
+  h1{color:#ffe082}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:16px;font-weight:900;font-size:22px;pointer-events:none;white-space:nowrap}
+  #prompt{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);font-size:18px;font-weight:900;pointer-events:none;text-align:center}
+  #hold{position:fixed;left:14px;bottom:18px;font-size:15px;font-weight:900;pointer-events:none;background:rgba(0,0,0,.45);border:3px solid #000;border-radius:10px;padding:6px 10px}
+  body.touch #hold{bottom:auto;top:150px}
+  @media (max-width:600px){#top{top:54px;font-size:17px;gap:10px} #hud{top:88px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><span id="tTime">3:00</span><span id="tCoins" style="color:#ffd54f">0 coins</span><span id="tStars" style="color:#ff8a80">3 hearts</span></div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Burger Rush</div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="prompt" class="sh"></div>
+<div id="hold" class="sh">Hands: empty</div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BURGER RUSH<br>DINER</h1>
+  <p style="font-weight:700">Customers line up at the counter with an order over their head. Grab ingredients from the bins, cook patties on the <b style="color:#ff8a65">grill</b> (take them off before they burn!), and build each burger on a <b>plate</b> on the prep table: bun, patty, then the toppings they asked for. Fries go in the <b style="color:#ffd54f">fryer</b>. Carry the order to the counter in front of the customer. Three angry customers and the shift is over.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>E</kbd> or <kbd>Click</kbd> pick up, put down, serve · <kbd>Right mouse</kbd> drag to look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">START SHIFT</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">SHIFT OVER</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">NEXT SHIFT</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Burger Rush Diner =================
+setSky("#ffcc80", "#fff3e0", 0xfff3e0, 60, 160);
+hemi.intensity = 0.72; sun.intensity = 0.62;
+cam.dist = 15; cam.pitch = 0.85; cam.min = 6; cam.max = 20;
+// ---------- the diner ----------
+addBox(0, -1, 0, 40, 2, 44, 0x8d6e63);
+const tiles = new THREE.Mesh(new THREE.PlaneGeometry(28, 14), new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d"); for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (i + j) % 2 ? "#cfd8dc" : "#90a4ae"; x.fillRect(i * 32, j * 32, 32, 32); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(14, 7); return t; })(), polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+tiles.rotation.x = -Math.PI / 2; tiles.position.set(0, 0.01, -6); tiles.receiveShadow = true; scene.add(tiles);
+const wall = (x, z, w, d, c = 0xffccbc, h = 5) => addBox(x, h / 2, z, w, h, d, c, { wall: true });
+wall(0, -13.5, 30, 1); wall(-14.5, -3, 1, 22); wall(14.5, -3, 1, 22); wall(-9.5, 18.5, 9, 1, 0xffe0b2); wall(9.5, 18.5, 9, 1, 0xffe0b2);
+wall(-14.5, 13, 1, 12, 0xffe0b2); wall(14.5, 13, 1, 12, 0xffe0b2);
+// the serving counter splits the kitchen (you) from the dining room (customers); a gap at each end is blocked too
+addBox(0, 0.6, 0, 26, 1.2, 1.4, 0xd84315);
+addBox(-13.6, 0.6, 0, 1.8, 1.2, 1.4, 0xd84315); addBox(13.6, 0.6, 0, 1.8, 1.2, 1.4, 0xd84315);
+addBox(0, 5, 0, 30, 6, 0.4, 0).m.visible = false;
+const topM = boxMesh(26.4, 0.2, 1.8, 0xfafafa); topM.position.set(0, 1.25, 0); scene.add(topM);
+// dining tables and a sign
+for (const [x, z] of [[-9, 9], [0, 11], [9, 9], [-9, 14], [9, 14]]) { const t = boxMesh(3, 0.25, 3, 0xffffff); t.position.set(x, 1.3, z); scene.add(t); const l = boxMesh(0.4, 1.3, 0.4, 0x8d6e63); l.position.set(x, 0.65, z); scene.add(l); for (const dx of [-2, 2]) { const s = boxMesh(1.2, 0.8, 1.2, 0xe53935); s.position.set(x + dx, 0.4, z); scene.add(s); } }
+const sign = makeLabel("BURGER RUSH", "#ffd54f", 768, 90); sign.scale.set(14, 2.4, 1); sign.position.set(0, 7.5, -13); scene.add(sign);
+
+// ---------- food ----------
+const FOOD = { bun: ["Bun", 0xffb74d], patty: ["Patty", 0xf48fb1], cheese: ["Cheese", 0xfdd835], lettuce: ["Lettuce", 0x66bb6a], tomato: ["Tomato", 0xe53935], fries: ["Fries", 0xffe082] };
+function foodMesh(kind, state) {
+  const g = new THREE.Group();
+  if (kind === "bun") { const a = boxMesh(1.3, 0.35, 1.3, 0xffb74d); const b = boxMesh(1.3, 0.3, 1.3, 0xffa726); b.position.y = 0.45; g.add(a, b); }
+  else if (kind === "patty") g.add(boxMesh(1.2, 0.3, 1.2, state === "burnt" ? 0x212121 : state === "cooked" ? 0x6d4c41 : 0xf48fb1));
+  else if (kind === "fries") { const box = boxMesh(0.9, 0.8, 0.6, 0xe53935); g.add(box); for (let i = 0; i < 5; i++) { const s = boxMesh(0.14, 0.7, 0.14, state === "burnt" ? 0x4e342e : state === "cooked" ? 0xffca28 : 0xfff9c4); s.position.set(-0.3 + i * 0.15, 0.5, 0); g.add(s); } }
+  else g.add(boxMesh(1.25, 0.14, 1.25, FOOD[kind][1]));
+  return g;
+}
+function plateMesh(items) {
+  const g = new THREE.Group(); const p = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.85, 0.12, 20), mat(0xffffff)); g.add(p);
+  let y = 0.12; const order = ["bun", "patty", "cheese", "lettuce", "tomato"];
+  if (items.includes("bun")) { const b = boxMesh(1.3, 0.3, 1.3, 0xffb74d); b.position.y = y + 0.15; g.add(b); y += 0.3; }
+  for (const k of order.slice(1)) if (items.includes(k)) { const m = k === "patty" ? boxMesh(1.2, 0.3, 1.2, 0x6d4c41) : boxMesh(1.25, 0.12, 1.25, FOOD[k][1]); m.position.y = y + (k === "patty" ? 0.15 : 0.06); g.add(m); y += k === "patty" ? 0.3 : 0.12; }
+  if (items.includes("bun")) { const t = boxMesh(1.3, 0.35, 1.3, 0xffa726); t.position.y = y + 0.18; g.add(t); }
+  return g;
+}
+const describe = (items) => items.includes("fries") && items.length === 1 ? "Fries" : `Burger${items.filter((k) => k !== "bun" && k !== "patty").length ? ": " + items.filter((k) => k !== "bun" && k !== "patty").join(", ") : ""}`;
+
+// ---------- stations ----------
+const spots = []; // { pos, label, act() }
+function station(x, z, w, d, col, text) { addBox(x, 0.6, z, w, 1.2, d, col); const l = makeLabel(text, "#fff", 512, 60); l.scale.set(4, 1, 1); l.position.set(x, 2.6, z); scene.add(l); return l; }
+for (const [i, k] of ["bun", "patty", "cheese", "lettuce", "tomato", "fries"].entries()) {
+  const x = -10 + i * 4; station(x, -12, 3, 1.6, 0x795548, FOOD[k][0].toUpperCase());
+  const show2 = foodMesh(k, "raw"); show2.position.set(x, 1.3, -12); scene.add(show2);
+  spots.push({ pos: V(x, 0, -10.6), kind: "bin", food: k, label: `take ${FOOD[k][0].toLowerCase()}` });
+}
+const grills = [], fryers = [], plates = [];
+addBox(-12.6, 0.6, -5, 2.2, 1.2, 7.4, 0x424242); const gl = makeLabel("GRILL", "#ff8a65", 512, 60); gl.scale.set(4, 1, 1); gl.position.set(-12.6, 2.8, -5); scene.add(gl);
+for (const z of [-7.2, -5, -2.8]) { const plate = boxMesh(1.8, 0.1, 1.8, 0x212121, 0x3e0d00); plate.position.set(-12.6, 1.25, z); scene.add(plate); const g = { pos: V(-12.6, 1.3, z), item: null, t: 0, plate }; grills.push(g); spots.push({ pos: V(-11.2, 0, z), kind: "grill", ref: g }); }
+addBox(12.6, 0.6, -6, 2.2, 1.2, 5, 0x546e7a); const fl = makeLabel("FRYER", "#ffd54f", 512, 60); fl.scale.set(4, 1, 1); fl.position.set(12.6, 2.8, -6); scene.add(fl);
+for (const z of [-7.2, -4.8]) { const oil = boxMesh(1.6, 0.1, 1.6, 0xffb300, 0x4a2800); oil.position.set(12.6, 1.25, z); scene.add(oil); const f = { pos: V(12.6, 1.3, z), item: null, t: 0 }; fryers.push(f); spots.push({ pos: V(11.2, 0, z), kind: "fryer", ref: f }); }
+addBox(0, 0.6, -5.5, 10, 1.2, 2.2, 0x78909c); const pl = makeLabel("PREP", "#fff", 512, 60); pl.scale.set(4, 1, 1); pl.position.set(0, 2.8, -5.5); scene.add(pl);
+for (const x of [-3.3, 0, 3.3]) { const p = { pos: V(x, 1.3, -5.5), items: [], mesh: null }; plates.push(p); spots.push({ pos: V(x, 0, -4), kind: "plate", ref: p }); spots.push({ pos: V(x, 0, -7), kind: "plate", ref: p }); }
+addBox(12.4, 0.7, -1.6, 1.6, 1.4, 1.6, 0x37474f); const tl = makeLabel("TRASH", "#fff", 512, 60); tl.scale.set(3.4, 0.85, 1); tl.position.set(12.4, 2.4, -1.6); scene.add(tl);
+spots.push({ pos: V(11, 0, -1.6), kind: "trash" });
+const WINDOWS = [-8, -4, 0, 4, 8];
+for (const x of WINDOWS) spots.push({ pos: V(x, 0, -1.3), kind: "serve", x });
+function drawPlate(p) { if (p.mesh) scene.remove(p.mesh); p.mesh = plateMesh(p.items); p.mesh.position.copy(p.pos); scene.add(p.mesh); }
+plates.forEach(drawPlate);
+
+// ---------- what you're holding ----------
+let hand = null, handMesh = null; // hand: { kind, state } or { plate: [items] }
+function setHand(h) {
+  hand = h; if (handMesh) P.body.g.remove(handMesh); handMesh = null;
+  if (h) { handMesh = h.plate ? plateMesh(h.plate) : foodMesh(h.kind, h.state); handMesh.scale.setScalar(1 / 0.62); handMesh.position.set(0, 3, 1.7); P.body.g.add(handMesh); }
+  P.body.pose = !!h; if (h) { P.body.arms[0].rotation.x = P.body.arms[1].rotation.x = -1.4; }
+  $("hold").textContent = "Hands: " + (!h ? "empty" : h.plate ? describe(h.plate) + (h.plate.includes("bun") && h.plate.includes("patty") ? "" : " (not finished)") : `${h.state === "cooked" ? "cooked " : h.state === "burnt" ? "burnt " : h.kind === "patty" || h.kind === "fries" ? "raw " : ""}${FOOD[h.kind][0].toLowerCase()}`);
+}
+function sayNo(t) { SFX.no(); show(t, 1.3); }
+function act() {
+  if (phase !== "shift") return;
+  const s = nearest(); if (!s) return;
+  if (s.kind === "bin") { if (hand) return sayNo("Your hands are full"); setHand({ kind: s.food, state: s.food === "patty" || s.food === "fries" ? "raw" : "ok" }); SFX.pop(); return; }
+  if (s.kind === "grill" || s.kind === "fryer") {
+    const g = s.ref, want = s.kind === "grill" ? "patty" : "fries";
+    if (!hand && g.item) { setHand({ kind: g.item.kind, state: g.item.state }); scene.remove(g.item.mesh); g.item = null; SFX.pop(); return; }
+    if (hand && !hand.plate && hand.kind === want && hand.state === "raw" && !g.item) { g.item = { kind: want, state: "raw", mesh: foodMesh(want, "raw") }; g.item.mesh.position.copy(g.pos); scene.add(g.item.mesh); g.t = 0; setHand(null); tone(200, 0.3, "sawtooth", 0.02); return; }
+    return sayNo(s.kind === "grill" ? "The grill is for raw patties" : "The fryer is for raw fries");
+  }
+  if (s.kind === "plate") {
+    const p = s.ref;
+    if (!hand) { if (!p.items.length) return sayNo("The plate is empty"); setHand({ plate: p.items.slice() }); p.items = []; drawPlate(p); SFX.pop(); return; }
+    if (hand.plate) { if (p.items.length) return sayNo("That plate is in use"); p.items = hand.plate; setHand(null); drawPlate(p); return; }
+    if (hand.kind === "fries") return sayNo("Fries go straight to the customer");
+    if (hand.kind === "patty" && hand.state !== "cooked") return sayNo(hand.state === "raw" ? "Cook the patty on the grill first" : "That one's burnt. Throw it away");
+    if (p.items.includes(hand.kind)) return sayNo(`That burger already has ${FOOD[hand.kind][0].toLowerCase()}`);
+    p.items.push(hand.kind); setHand(null); drawPlate(p); SFX.tick(); return;
+  }
+  if (s.kind === "trash") { if (!hand) return; setHand(null); tone(120, 0.15, "square", 0.03); return; }
+  if (s.kind === "serve") {
+    if (!hand) return sayNo("Bring them their order");
+    const items = hand.plate ? hand.plate : hand.kind === "fries" && hand.state === "cooked" ? ["fries"] : null;
+    if (!items) return sayNo(hand.kind === "fries" ? "Fry them first" : "Customers want a finished order");
+    const here = customers.filter((c) => c.state === "wait" && Math.abs(c.pos.x - s.x) < 2.6);
+    const c = here.find((c) => same(c.order, items));
+    if (!c) return sayNo(here.length ? `That's not what ${here[0].name} ordered` : "Nobody's waiting here");
+    serve(c); setHand(null);
+  }
+}
+const same = (a, b) => a.length === b.length && a.every((k) => b.includes(k));
+function nearest() { let best = null, bd = 2.3; for (const s of spots) { const d = Math.hypot(s.pos.x - P.pos.x, s.pos.z - P.pos.z); if (d < bd) { bd = d; best = s; } } return best; }
+actions.KeyE = act; actions.click = act;
+touchControls([{ label: "USE", color: "rgba(255,213,79,.95)", down: act }, JUMP_BUTTON]);
+
+// ---------- customers ----------
+const customers = [];
+const cnames = shuffle(BOT_NAMES.slice());
+let ci = 0;
+function newOrder() {
+  if (level >= 2 && Math.random() < 0.22) return ["fries"];
+  const tops = shuffle(["cheese", "lettuce", "tomato"]).slice(0, Math.min(3, ri(0, Math.min(3, 1 + Math.floor(level / 2)))));
+  return ["bun", "patty", ...tops];
+}
+function spawnCustomer() {
+  const free = WINDOWS.filter((x) => !customers.some((c) => c.state !== "leave" && c.window === x));
+  if (!free.length) return;
+  const body = makeAvatar({ shirt: pick(BOT_COLORS), pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.4 ? pick(BOT_COLORS) : null }); scene.add(body.g);
+  const order = newOrder(), label = liveLabel(768, 46); label.scale.set(6.4, 1.07, 1); scene.add(label);
+  const c = { name: cnames[ci++ % cnames.length], body, pos: V(rr(-4, 4), 0.3, 17), vel: V(), onGround: false, yaw: Math.PI, window: pick(free), order, label, state: "walk", patience: 0, max: Math.max(28, 58 - level * 3) * (order.length > 3 ? 1.2 : 1) };
+  customers.push(c);
+}
+function serve(c) {
+  const pay = 8 + c.order.length * 4, tip = Math.round(10 * (1 - c.patience / c.max));
+  coins += pay + tip; served++; c.state = "leave"; c.label.set(`Thanks! +${pay + tip}`, "#9cff6b");
+  SFX.coin(); show(`Served ${c.name}! +${pay} and a ${tip} coin tip`, 1.4);
+}
+function angry(c) { c.state = "leave"; hearts--; c.label.set("Too slow!", "#ff5252"); SFX.lose(); show(`${c.name} left angry!`, 1.5); if (hearts <= 0) endShift(); }
+
+// ---------- the shift ----------
+const SAVE = "burger-rush-diner";
+let S = loadSave(SAVE, { shifts: 0, best: 0, served: 0 });
+let phase = "menu", shiftT = 0, coins = 0, hearts = 3, served = 0, level = 0, spawnT = 0;
+const SHIFT = TEST ? 60 : 180;
+function newShift() {
+  for (const c of customers) { scene.remove(c.body.g); dropSprite(c.label); } customers.length = 0;
+  for (const g of grills.concat(fryers)) { if (g.item) scene.remove(g.item.mesh); g.item = null; }
+  for (const p of plates) { p.items = []; drawPlate(p); }
+  setHand(null); coins = 0; hearts = 3; served = 0; level = 0; spawnT = 1.5; shiftT = SHIFT; phase = "shift";
+  P.pos.set(0, 0.3, -2.5); cam.yaw = 0; $("over").style.display = "none";
+  show("Doors are open!", 2);
+}
+function endShift() {
+  phase = "over"; S.shifts++; S.served += served; const best = coins > S.best; S.best = Math.max(S.best, coins); storeSave(SAVE, S);
+  sendScore("coins", coins);
+  $("oT").textContent = hearts <= 0 ? "TOO MANY ANGRY CUSTOMERS" : "SHIFT OVER";
+  $("oInfo").textContent = `You earned ${coins} coins serving ${served} customer${served === 1 ? "" : "s"}.${best ? " New best shift!" : ` Best shift: ${S.best} coins.`}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.(); SFX.win();
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.shifts ? `Shifts ${S.shifts} · Best shift ${S.best} coins · ${S.served} customers served` : ""; }
+showStats();
+P.pos.set(0, 0.3, -2.5); cam.yaw = 0;
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+onFrame((dt, T) => {
+  if (started && phase === "shift") {
+    shiftT -= dt; level = Math.floor((SHIFT - shiftT) / (SHIFT / 6));
+    if (shiftT <= 0) { shiftT = 0; endShift(); }
+    spawnT -= dt;
+    const waiting = customers.filter((c) => c.state !== "leave").length;
+    if (spawnT <= 0 && waiting < Math.min(5, 2 + Math.floor(level / 2))) { spawnCustomer(); spawnT = Math.max(5, 14 - level * 1.6) * rr(0.8, 1.2); }
+    // the grill and the fryer
+    for (const g of grills.concat(fryers)) {
+      if (!g.item) continue; g.t += dt;
+      const fry = g.item.kind === "fries", cook = fry ? 5 : 4.5, burn = fry ? 13 : 11;
+      const st = g.t > burn ? "burnt" : g.t > cook ? "cooked" : "raw";
+      if (st !== g.item.state) { g.item.state = st; scene.remove(g.item.mesh); g.item.mesh = foodMesh(g.item.kind, st); g.item.mesh.position.copy(g.pos); scene.add(g.item.mesh); if (st === "cooked") SFX.tick(); if (st === "burnt") tone(90, 0.4, "sawtooth", 0.04); }
+      if (st === "cooked" && Math.random() < dt * 3) tone(rr(1800, 2600), 0.03, "sawtooth", 0.006);
+      g.item.mesh.position.y = g.pos.y + (st === "burnt" ? Math.sin(T * 20) * 0.03 : 0);
+    }
+  }
+  if (started) stepPlayer(dt, T);
+  // customers walk up, wait, and leave
+  for (let i = customers.length - 1; i >= 0; i--) {
+    const c = customers[i];
+    if (c.state === "walk") { const to = V(c.window, 0, 2.2); walkToward(c, to, dt, 7); if (Math.hypot(to.x - c.pos.x, to.z - c.pos.z) < 0.4) { c.state = "wait"; } }
+    else if (c.state === "wait") { physics(c, V(), dt); c.yaw = Math.PI; if (phase === "shift") { c.patience += dt; if (c.patience >= c.max) angry(c); } }
+    else { walkToward(c, V(c.pos.z > 17 ? (c.pos.x > 0 ? 2 : -2) : clamp(c.pos.x, -3, 3), 0, 24), dt, 7); if (c.pos.z > 22) { scene.remove(c.body.g); dropSprite(c.label); customers.splice(i, 1); continue; } }
+    const sp = faceMove(c, dt); if (c.state === "wait") c.body.g.rotation.y = Math.PI; animate(c.body, sp, c.onGround, T);
+    c.label.position.set(c.pos.x, 4.4, c.pos.z);
+    if (c.state !== "leave") { const left = 1 - c.patience / c.max; c.label.set(describe(c.order), left > 0.5 ? "#ffffff" : left > 0.25 ? "#ffd54f" : "#ff5252"); }
+  }
+  updateCamera(dt);
+  const s = phase === "shift" ? nearest() : null;
+  $("prompt").textContent = s ? `${touch ? "USE" : "E"}: ${s.kind === "bin" ? s.label : s.kind === "grill" ? (s.ref.item ? `take ${s.ref.item.state} patty` : "grill a raw patty") : s.kind === "fryer" ? (s.ref.item ? `take ${s.ref.item.state} fries` : "fry raw fries") : s.kind === "plate" ? (hand ? "put it on the plate" : s.ref.items.length ? "pick up the plate" : "empty plate") : s.kind === "trash" ? "throw it away" : "serve"}` : "";
+  $("tTime").textContent = fmtT(shiftT); $("tCoins").textContent = `${coins} coins`; $("tStars").textContent = `${hearts} heart${hearts === 1 ? "" : "s"}`;
+  $("hInfo").textContent = phase === "shift" ? `Served ${served} · Rush level ${level + 1}` : "";
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "shift") newShift(); };
+$("again").onclick = () => newShift();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, t: Math.ceil(shiftT), coins, hearts, served, level, hand: hand ? (hand.plate ? "plate:" + hand.plate.join("+") : hand.kind + "/" + hand.state) : null, customers: customers.filter((c) => c.state !== "leave").map((c) => `${c.state}@${c.window}:${c.order.join("+")}`) }),
+  goto: (kind, i = 0) => { const list = spots.filter((s) => s.kind === kind && (kind !== "bin" || s.food === i)); const s = typeof i === "number" ? list[i] : list[0]; P.pos.set(s.pos.x, 0.3, s.pos.z); }, act, grills, spots,
+};
+loop();
+})();
+</script>
+</body>
+</html>

@@ -23,6 +23,7 @@ export const BOARDS = {
   "reel-rush-fishing": [["caught", "Most fish caught", String]],
   "parry-arena": [["wins", "Most wins", String]],
   "block-league-soccer": [["wins", "Most wins", String], ["goals", "Most goals", String]],
+  "burger-rush-diner": [["coins", "Best shift", (v) => `${Number(v).toLocaleString()} coins`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

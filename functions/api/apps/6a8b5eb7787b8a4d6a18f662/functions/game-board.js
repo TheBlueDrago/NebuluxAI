@@ -31,6 +31,7 @@ export const BOARDS = {
   "reel-rush-fishing": ["caught"],
   "parry-arena": ["wins"],
   "block-league-soccer": ["wins", "goals"],
+  "burger-rush-diner": ["coins"],
 };
 const MAX_SCORE = 1e9;
 
