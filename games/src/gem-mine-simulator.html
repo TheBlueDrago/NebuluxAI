@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gem Mine Simulator</title>
+<style>
+/*KIT_CSS*/
+  #start{background:linear-gradient(#7e57c2cc,#1a0e3aee)}
+  h1{color:#80deea}
+  #coins{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:30px;font-weight:900;color:#ffd54f;pointer-events:none}
+  #bag{position:fixed;left:50%;top:48px;transform:translateX(-50%);width:260px;height:18px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #bag i{display:block;height:100%;background:linear-gradient(90deg,#4dd0e1,#ba68c8)}
+  #bagT{position:fixed;left:50%;top:70px;transform:translateX(-50%);font-size:13px;font-weight:900;pointer-events:none}
+  #hatch{position:fixed;inset:0;display:none;place-items:center;z-index:7;background:rgba(0,0,0,.55)}
+  #hatch .c{background:#1b1035;border:4px solid #000;border-radius:18px}
+  #hatch h2{font-size:40px;margin:6px 0;-webkit-text-stroke:2px #000}
+</style>
+</head>
+<body>
+<div id="coins" class="sh">0 coins</div><div id="bag"><i></i></div><div id="bagT" class="sh"></div>
+<div id="hud" class="sh"><div class="big1" id="hZone">Spawn</div><div class="sub" id="hInfo"></div><div class="sub" id="hPets"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="hatch"><div class="c"><p style="margin:0;font-weight:800">You hatched...</p><h2 id="petName"></h2><p id="petInfo" style="font-weight:700"></p><button class="big" id="petOk">NICE!</button></div></div>
+<div id="start" class="ov"><div class="c">
+  <h1>GEM MINE<br>SIMULATOR</h1>
+  <p style="font-weight:700">Mine glowing gems, fill your backpack, and sell them at the <b style="color:#ffd54f">shop</b> for coins. Buy better pickaxes and bigger backpacks, open the gates to new zones with rarer gems, and hatch eggs for pets that boost your coins.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · hold <kbd>Click</kbd> or <kbd>E</kbd> to mine · <kbd>Right mouse</kbd> drag to look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+  <p><button class="b" id="wipe" style="display:none">Start over</button></p>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Gem Mine Simulator =================
+setSky("#5c6bc0", "#d1c4e9", 0xd1c4e9, 110, 300);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80 }); sun.shadow.camera.updateProjectionMatrix();
+cam.dist = 14; cam.pitch = 0.5;
+
+// ---------- zones, one after another along the path ----------
+const ZONES = [
+  { name: "Meadow", z0: 24, z1: 74, floor: 0x558b2f, gate: 0, gems: [["Stone", 1, 0x9e9e9e, 3], ["Coal", 3, 0x424242, 5], ["Copper", 8, 0xd84315, 8]] },
+  { name: "Cave", z0: 78, z1: 128, floor: 0x5d4037, gate: 2500, gems: [["Iron", 20, 0xb0bec5, 30], ["Gold", 45, 0xffd54f, 50], ["Quartz", 80, 0xf5f5f5, 70]] },
+  { name: "Crystal Caverns", z0: 132, z1: 182, floor: 0x283593, gate: 40000, gems: [["Amethyst", 200, 0xab47bc, 160], ["Sapphire", 420, 0x1e88e5, 260], ["Emerald", 800, 0x2e7d32, 380]] },
+  { name: "Lava Core", z0: 186, z1: 236, floor: 0x3e2723, gate: 600000, gems: [["Ruby", 2500, 0xe53935, 900], ["Obsidian", 5000, 0x212121, 1500], ["Fire Opal", 9000, 0xff6d00, 2400]] },
+  { name: "Star Field", z0: 240, z1: 290, floor: 0x1a237e, gate: 9000000, gems: [["Moonstone", 30000, 0xe8eaf6, 6000], ["Stardust", 60000, 0xfff59d, 10000], ["Galaxy Gem", 140000, 0xe040fb, 18000]] },
+];
+// spawn
+addBox(0, -1, 8.5, 60, 2, 27, 0x90a4ae);
+const shopPad = addBox(-14, 0.1, 10, 7, 0.3, 7, 0xffd54f, { glow: 0x6d5400 });
+const shopSign = makeLabel("SELL GEMS", "#ffd54f", 512, 60); shopSign.scale.set(6, 1.5, 1); shopSign.position.set(-14, 5, 10); scene.add(shopSign);
+const shopHut = boxMesh(8, 0.6, 8, 0xff7043); shopHut.position.set(-14, 7, 10); scene.add(shopHut);
+for (const [dx, dz] of [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5]]) { const p = boxMesh(0.4, 7, 0.4, 0x6d4c41); p.position.set(-14 + dx, 3.5, 10 + dz); scene.add(p); }
+const sellPads = [shopPad];
+ZONES.forEach((zn, i) => {
+  addBox(0, -1, (zn.z0 + zn.z1) / 2, 60, 2, zn.z1 - zn.z0 + 4, zn.floor);
+  addBox(-31, 6, (zn.z0 + zn.z1) / 2, 2, 14, zn.z1 - zn.z0 + 4, 0x455a64); addBox(31, 6, (zn.z0 + zn.z1) / 2, 2, 14, zn.z1 - zn.z0 + 4, 0x455a64);
+  const l = makeLabel(zn.name, "#ffffff", 768, 70); l.scale.set(12, 2, 1); l.position.set(0, 10, zn.z0 + 2); scene.add(l);
+  // a sell spot just inside each zone, so you don't walk all the way back
+  const sp = addBox(-24, 0.1, zn.z0 + 4, 5, 0.3, 5, 0xffd54f, { glow: 0x6d5400 }); sellPads.push(sp);
+  const sl = makeLabel("SELL", "#ffd54f", 256, 60); sl.scale.set(3, 1.5, 1); sl.position.set(-24, 3.2, zn.z0 + 4); scene.add(sl);
+  if (i === 3) { for (let k = 0; k < 12; k++) { const lava = boxMesh(rr(3, 6), 0.1, rr(3, 6), 0xff5722, 0xbf360c); lava.position.set(rr(-26, 26), 0.06, rr(zn.z0 + 4, zn.z1 - 4)); lava.castShadow = false; scene.add(lava); } }
+  if (i === 4) for (let k = 0; k < 40; k++) { const s = boxMesh(0.3, 0.3, 0.3, 0xffffff, 0xffffff); s.position.set(rr(-30, 30), rr(12, 30), rr(zn.z0, zn.z1)); scene.add(s); }
+});
+addBox(-31, 6, 8.5, 2, 14, 27, 0x455a64); addBox(31, 6, 8.5, 2, 14, 27, 0x455a64); addBox(0, 6, -6, 64, 14, 2, 0x455a64); addBox(0, 6, 294, 64, 14, 2, 0x455a64);
+
+// ---------- saving ----------
+const SAVE = "gem-mine-simulator";
+const DEF = { coins: 0, earned: 0, pick: 0, bagLv: 0, boots: 0, zones: 1, pets: [], bag: 0, bagVal: 0 };
+let S = loadSave(SAVE, DEF);
+const save = () => storeSave(SAVE, S);
+setInterval(() => started && save(), 5000);
+addEventListener("beforeunload", save);
+
+// ---------- gates between zones ----------
+const gates = [];
+ZONES.forEach((zn, i) => {
+  if (!i) return;
+  const z = zn.z0 - 2;
+  const wallL = addBox(-19, 6, z, 22, 14, 2, 0x37474f), wallR = addBox(19, 6, z, 22, 14, 2, 0x37474f);
+  const door = addBox(0, 6, z, 16, 14, 1.5, 0x26c6da, { glow: 0x004d55 }); door.m.material = new THREE.MeshStandardMaterial({ color: 0x26c6da, emissive: 0x004d55, transparent: true, opacity: 0.6 });
+  const pad = addBox(0, 0.1, z - 4, 6, 0.3, 4, 0x43a047, { glow: 0x0a3a10 });
+  const label = makeLabel(`${zn.name}: ${fmt(zn.gate)}`, "#ffffff", 768, 56); label.scale.set(9, 1.5, 1); label.position.set(0, 4.5, z - 4); scene.add(label);
+  gates.push({ i, door, pad, label, zn });
+  if (S.zones > i) openGate(gates[gates.length - 1], true);
+});
+function openGate(g, quiet) { if (g.open) return; g.open = true; removeSolid(g.door); dropSprite(g.label); removeSolid(g.pad); if (!quiet) { SFX.win(); show(`${g.zn.name} unlocked!`, 2); } }
+function fmt(n) { return n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e4 ? (n / 1e3).toFixed(1) + "K" : String(Math.floor(n)); }
+
+// ---------- gems ----------
+const gemGeo = new THREE.OctahedronGeometry(1.2, 0), rockGeo = new THREE.BoxGeometry(2.2, 1.6, 2.2);
+const gems = [];
+ZONES.forEach((zn, zi) => {
+  for (let k = 0; k < 26; k++) {
+    const roll = Math.random(), type = roll < 0.55 ? 0 : roll < 0.88 ? 1 : 2;
+    const [name, value, color, hp] = zn.gems[type];
+    const g = new THREE.Group();
+    const rock = new THREE.Mesh(rockGeo, mat(0x616161)); rock.position.y = 0.8; rock.castShadow = rock.receiveShadow = true; g.add(rock);
+    const gem = new THREE.Mesh(gemGeo, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.25 })); gem.position.y = 2.1; gem.scale.set(0.7, 0.9, 0.7); g.add(gem);
+    const x = rr(-25, 25), z = rr(zn.z0 + 5, zn.z1 - 3); g.position.set(x, 0, z); scene.add(g);
+    gems.push({ g, gem, zi, type, name, value, hp, max: hp, pos: V(x, 0, z), down: 0 });
+  }
+});
+const crack = liveLabel(512, 56); crack.scale.set(4, 1, 1); crack.visible = false; scene.add(crack);
+
+// ---------- upgrades ----------
+const PICKS = [["Wooden Pickaxe", 1, 0], ["Stone Pickaxe", 3, 150], ["Iron Pickaxe", 8, 1200], ["Gold Pickaxe", 20, 8000], ["Diamond Pickaxe", 60, 60000], ["Ruby Pickaxe", 200, 450000], ["Star Pickaxe", 700, 3500000], ["Galaxy Pickaxe", 2500, 25000000]];
+const BAGS = [["Pouch", 20, 0], ["Backpack", 60, 300], ["Big Backpack", 180, 2500], ["Mining Cart", 600, 20000], ["Gem Vault", 2500, 180000], ["Treasure Ship", 12000, 1500000], ["Star Vault", 60000, 15000000]];
+const BOOTS = [["Shoes", 13, 0], ["Sneakers", 16, 500], ["Rocket Boots", 20, 15000], ["Star Boots", 25, 400000]];
+const upgradePads = [];
+function makeUpPad(x, z, kind) {
+  const pad = addBox(x, 0.1, z, 5, 0.3, 5, 0x42a5f5, { glow: 0x0d2a4a });
+  const label = liveLabel(768, 50); label.scale.set(8, 1.3, 1); label.position.set(x, 4, z); scene.add(label);
+  upgradePads.push({ pad, label, kind });
+}
+makeUpPad(6, 4, "pick"); makeUpPad(14, 4, "bag"); makeUpPad(22, 4, "boots");
+const eggPad = addBox(14, 0.1, 16, 5, 0.3, 5, 0xec407a, { glow: 0x4a0d22 });
+const egg = boxMesh(1.6, 2.2, 1.6, 0xfff59d, 0x333300); egg.position.set(14, 1.6, 16); scene.add(egg);
+const eggLabel = liveLabel(768, 50); eggLabel.scale.set(8, 1.3, 1); eggLabel.position.set(14, 4.6, 16); scene.add(eggLabel);
+const eggPrice = () => Math.round(400 * Math.pow(4.5, S.zones - 1));
+function upInfo(kind) {
+  const list = kind === "pick" ? PICKS : kind === "bag" ? BAGS : BOOTS, lv = kind === "pick" ? S.pick : kind === "bag" ? S.bagLv : S.boots;
+  return { list, lv, next: list[lv + 1] || null };
+}
+function drawPads() {
+  for (const u of upgradePads) { const { next } = upInfo(u.kind); u.label.set(next ? `${next[0]}: ${fmt(next[2])}` : "MAX", next && S.coins >= next[2] ? "#9cff6b" : "#ffffff"); }
+  eggLabel.set(`Hatch an egg: ${fmt(eggPrice())}`, S.coins >= eggPrice() ? "#9cff6b" : "#ffffff");
+}
+const pickPower = () => PICKS[S.pick][1], bagCap = () => BAGS[S.bagLv][1];
+P.speed = BOOTS[S.boots][1];
+
+// ---------- pets ----------
+const PETS = [["Dog", 0.1, 0x8d6e63, 50], ["Cat", 0.15, 0xffb74d, 30], ["Bunny", 0.25, 0xf5f5f5, 12], ["Fox", 0.5, 0xff7043, 5], ["Dragon", 1.2, 0x7e57c2, 2.5], ["Star Unicorn", 3, 0xe040fb, 0.5]];
+const RAR = ["Common", "Common", "Uncommon", "Rare", "Epic", "Legendary"];
+const petMeshes = [];
+function petBoost() { return 1 + S.pets.slice().sort((a, b) => b - a).slice(0, 3).reduce((a, i) => a + PETS[i][1] * Math.pow(2, S.zones - 1), 0); }
+function drawPets() {
+  for (const m of petMeshes) scene.remove(m.g); petMeshes.length = 0;
+  S.pets.slice().sort((a, b) => b - a).slice(0, 3).forEach((pi, k) => {
+    const g = new THREE.Group(), c = PETS[pi][2];
+    const body = boxMesh(1.2, 0.9, 1.6, c); body.position.y = 0.8; g.add(body); const head = boxMesh(0.9, 0.9, 0.9, c); head.position.set(0, 1.5, 0.8); g.add(head);
+    const eye = boxMesh(0.6, 0.12, 0.05, 0x111111); eye.position.set(0, 1.6, 1.26); g.add(eye);
+    if (pi >= 4) { const w = boxMesh(2.6, 0.12, 0.8, 0xffffff, 0x333333); w.position.y = 1.2; g.add(w); }
+    scene.add(g); petMeshes.push({ g, k, pi });
+  });
+}
+function hatch() {
+  if (S.coins < eggPrice()) { SFX.no(); show(`Need ${fmt(eggPrice() - S.coins)} more coins`, 1.2); return; }
+  S.coins -= eggPrice();
+  let r = Math.random() * PETS.reduce((a, p) => a + p[3], 0), pi = 0; for (let i = 0; i < PETS.length; i++) { r -= PETS[i][3]; if (r <= 0) { pi = i; break; } }
+  S.pets.push(pi); if (S.pets.length > 30) S.pets.sort((a, b) => b - a).splice(30);
+  drawPets(); save(); SFX.win();
+  $("petName").textContent = PETS[pi][0]; $("petName").style.color = ["#cfd8dc", "#cfd8dc", "#a5d6a7", "#90caf9", "#ce93d8", "#ffd54f"][pi];
+  $("petInfo").textContent = `${RAR[pi]} · +${Math.round(PETS[pi][1] * Math.pow(2, S.zones - 1) * 100)}% coins. Your best 3 pets follow you and boost every sale.`;
+  $("hatch").style.display = "grid"; started = false; document.exitPointerLock?.();
+}
+$("petOk").onclick = () => { $("hatch").style.display = "none"; started = true; };
+drawPets();
+
+// ---------- mining ----------
+let mining = false, hitT = 0, target = null, lastPad = null;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) mining = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) mining = false; });
+actions.KeyE = () => {}; addEventListener("keydown", (e) => { if (e.code === "KeyE") mining = true; }); addEventListener("keyup", (e) => { if (e.code === "KeyE") mining = false; });
+touchControls([JUMP_BUTTON, { label: "MINE", color: "rgba(128,222,234,.9)", down: () => { mining = true; }, up: () => { mining = false; } }]);
+function nearestGem() {
+  let best = null, bd = 6;
+  for (const g of gems) if (g.down <= 0 && S.zones > g.zi) { const d = Math.hypot(g.pos.x - P.pos.x, g.pos.z - P.pos.z); if (d < bd) { bd = d; best = g; } }
+  return best;
+}
+function mine() {
+  target = nearestGem();
+  if (!target) return;
+  if (S.bag >= bagCap()) { show("Backpack full! Sell at the shop", 1.2); SFX.no(); return; }
+  target.hp -= pickPower(); target.g.scale.setScalar(0.92);
+  tone(320 + Math.random() * 200, 0.06, "square", 0.03, -100);
+  P.body.arms[1].rotation.x = -2.2; P.body.pose = true; setTimeout(() => { P.body.pose = false; }, 120);
+  if (target.hp <= 0) {
+    const n = Math.min(bagCap() - S.bag, 1 + Math.floor(pickPower() / (target.max * 2)));
+    S.bag += n; S.bagVal += n * target.value;
+    target.down = 8; target.g.visible = false; target.hp = target.max; SFX.coin();
+    show(`+${n} ${target.name}`, 0.8);
+  }
+}
+function sell() {
+  if (!S.bag) return;
+  const v = Math.round(S.bagVal * petBoost());
+  S.coins += v; S.earned += v; S.bag = 0; S.bagVal = 0; SFX.buy(); show(`Sold for ${fmt(v)} coins!`, 1.6); save(); drawPads();
+}
+function buyUp(kind) {
+  const { next } = upInfo(kind); if (!next) return;
+  if (S.coins < next[2]) { SFX.no(); show(`Need ${fmt(next[2] - S.coins)} more coins`, 1.2); return; }
+  S.coins -= next[2]; if (kind === "pick") S.pick++; else if (kind === "bag") S.bagLv++; else { S.boots++; P.speed = BOOTS[S.boots][1]; }
+  SFX.buy(); show(`Got the ${next[0]}!`, 1.5); save(); drawPads();
+}
+function buyGate(g) {
+  if (S.coins < g.zn.gate) { SFX.no(); show(`${g.zn.name} costs ${fmt(g.zn.gate)} coins`, 1.3); return; }
+  S.coins -= g.zn.gate; S.zones = Math.max(S.zones, g.i + 1); openGate(g); save(); drawPads(); drawPets();
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.earned ? `Coins ${fmt(S.coins)} · Earned ${fmt(S.earned)} · ${PICKS[S.pick][0]} · ${S.zones}/${ZONES.length} zones · ${S.pets.length} pet${S.pets.length === 1 ? "" : "s"}` : ""; $("wipe").style.display = S.earned ? "inline-block" : "none"; }
+showStats(); drawPads();
+P.pos.set(0, 0.2, 14); cam.yaw = Math.PI;
+const zoneOf = (z) => { const i = ZONES.findIndex((zn) => z >= zn.z0 - 2 && z <= zn.z1 + 2); return i < 0 ? "Spawn" : ZONES[i].name; };
+
+onFrame((dt, T) => {
+  for (const g of gems) { if (g.down > 0) { g.down -= dt; if (g.down <= 0) { g.g.visible = true; g.g.scale.setScalar(0.1); } } g.g.scale.setScalar(Math.min(1, g.g.scale.x + dt * 3)); g.gem.rotation.y = T + g.pos.x; }
+  egg.rotation.y = Math.sin(T * 2) * 0.3;
+  if (started) {
+    const landed = stepPlayer(dt, T);
+    if (sellPads.includes(landed)) sell();
+    // the buy pads work once each time you step onto them
+    if (landed && landed !== lastPad) {
+      for (const u of upgradePads) if (landed === u.pad) buyUp(u.kind);
+      if (landed === eggPad) hatch();
+      for (const g of gates) if (!g.open && landed === g.pad) buyGate(g);
+    }
+    if (P.onGround) lastPad = landed;
+    hitT -= dt;
+    if (mining && hitT <= 0) { hitT = 0.22; mine(); }
+    const t = nearestGem();
+    if (t) { crack.visible = true; crack.position.set(t.pos.x, 4.2, t.pos.z); crack.set(`${t.name} ${Math.ceil((t.hp / t.max) * 100)}%`, t.type === 2 ? "#ffd54f" : "#ffffff"); } else crack.visible = false;
+    if (P.pos.y < -30) P.pos.set(0, 1, 14);
+  }
+  // pets follow you
+  petMeshes.forEach((m) => { const a = cam.yaw + 2.4 + m.k * 0.8, want = V(P.pos.x + Math.sin(a) * 3.2, 0, P.pos.z + Math.cos(a) * 3.2); m.g.position.lerp(want, Math.min(1, dt * 5)); m.g.position.y = Math.abs(Math.sin(T * 6 + m.k)) * 0.4; m.g.rotation.y = Math.atan2(P.pos.x - m.g.position.x, P.pos.z - m.g.position.z); });
+  updateCamera(dt);
+  $("coins").textContent = `${fmt(S.coins)} coins`;
+  $("bag").firstChild.style.width = `${Math.min(100, (S.bag / bagCap()) * 100)}%`;
+  $("bagT").textContent = `Backpack ${S.bag}/${bagCap()} · worth ${fmt(S.bagVal * petBoost())}`;
+  $("hZone").textContent = zoneOf(P.pos.z);
+  $("hInfo").textContent = `${PICKS[S.pick][0]} (power ${pickPower()}) · ${BOOTS[S.boots][0]}`;
+  $("hPets").textContent = S.pets.length ? `Pets: x${petBoost().toFixed(2)} coins` : "";
+});
+setInterval(drawPads, 700);
+setInterval(() => { if (started && S.earned) sendScore("coins", Math.min(1e9, Math.floor(S.earned))); }, 60000);
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); show(S.earned ? "Welcome back, miner!" : "Walk to the Meadow and hold Click or E to mine!", 3); };
+$("menuB").onclick = () => { started = false; mining = false; save(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+$("wipe").onclick = () => { if (!confirm("Start over? Your coins, upgrades, zones and pets are wiped.")) return; S = { ...DEF, pets: [] }; storeSave(SAVE, S); location.reload(); };
+if (TEST) window.__game = { give: (n) => { S.coins += n; }, S: () => S, state: () => ({ coins: Math.floor(S.coins), bag: S.bag, bagVal: S.bagVal, pick: S.pick, zones: S.zones, pets: S.pets.length }), mine, sell, buyUp, hatch, gates, gemsNear: () => { let b = null, bd = Infinity; for (const g of gems) if (g.down <= 0 && S.zones > g.zi) { const d = Math.hypot(g.pos.x - P.pos.x, g.pos.z - P.pos.z); if (d < bd) { bd = d; b = g; } } return b && { x: b.pos.x, z: b.pos.z }; } };
+loop();
+})();
+</script>
+</body>
+</html>

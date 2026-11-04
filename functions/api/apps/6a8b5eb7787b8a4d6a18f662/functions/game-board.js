@@ -23,6 +23,7 @@ export const BOARDS = {
   "midnight-manor": ["wins"],
   "block-factory-tycoon": ["money", "rebirths"],
   "block-tower-defense": ["wave"],
+  "gem-mine-simulator": ["coins"],
 };
 const MAX_SCORE = 1e9;
 
