@@ -19,6 +19,7 @@ export const BOARDS = {
   "disaster-island": [["survivals", "Most rounds survived", String]],
   "block-kart-racers": [["wins", "Most wins", String], ["laptime", "Best lap", (v) => `${Math.floor(v / 60)}:${(v % 60).toFixed(2).padStart(5, "0")}`]],
   "hide-and-seek-town": [["wins", "Most rounds won", String]],
+  "color-drop-party": [["wins", "Most wins", String]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

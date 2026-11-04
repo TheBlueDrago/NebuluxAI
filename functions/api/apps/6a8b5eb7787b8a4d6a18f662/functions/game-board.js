@@ -27,6 +27,7 @@ export const BOARDS = {
   "disaster-island": ["survivals"],
   "block-kart-racers": ["wins", "laptime"],
   "hide-and-seek-town": ["wins"],
+  "color-drop-party": ["wins"],
 };
 const MAX_SCORE = 1e9;
 
