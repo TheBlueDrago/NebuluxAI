@@ -13,6 +13,8 @@ export const BOARDS = {
   "storm-royale": [["wins", "Most wins", String]],
   "villain-battlegrounds": [["kills", "Most K.O.s", String]],
   "midnight-manor": [["wins", "Most wins", String]],
+  "block-factory-tycoon": [["money", "Most earned", (v) => "$" + Number(v).toLocaleString()], ["rebirths", "Most rebirths", String]],
+  "block-tower-defense": [["wave", "Best wave", (v) => `Wave ${v}`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

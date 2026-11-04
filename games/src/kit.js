@@ -48,6 +48,17 @@ function makeLabel(text, color = "#fff", w = 512, size = 64) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
 }
 
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
 // Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
 const solids = [], sightBlockers = [];
 function addBox(x, y, z, w, h, d, color, o = {}) {

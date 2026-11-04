@@ -21,6 +21,8 @@ export const BOARDS = {
   "storm-royale": ["wins"],
   "villain-battlegrounds": ["kills"],
   "midnight-manor": ["wins"],
+  "block-factory-tycoon": ["money", "rebirths"],
+  "block-tower-defense": ["wave"],
 };
 const MAX_SCORE = 1e9;
 
