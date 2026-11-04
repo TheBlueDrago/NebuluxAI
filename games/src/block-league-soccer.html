@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block League Soccer</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#2e7d32dd,#0a2410ee)}
+  #over{display:none}
+  h1{color:#fff176}
+  #score{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-weight:900;font-size:30px;pointer-events:none}
+  #score .t{padding:2px 14px;border:3px solid #000;border-radius:10px}
+  #score .blue{background:#1e88e5} #score .red{background:#e53935}
+  #clock{position:fixed;left:50%;top:56px;transform:translateX(-50%);font-size:16px;font-weight:900;pointer-events:none}
+  #power{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:200px;height:14px;border:3px solid #000;border-radius:8px;background:#263238;overflow:hidden;opacity:0;pointer-events:none}
+  #power i{display:block;height:100%;background:linear-gradient(90deg,#fff176,#ff7043)}
+  body.touch #power{bottom:auto;top:84px}
+  @media (max-width:600px){#score{top:54px;font-size:24px} #clock{top:92px} #hud{top:118px}}
+</style>
+</head>
+<body>
+<div id="score" class="sh"><span class="t blue" id="sB">0</span><span>-</span><span class="t red" id="sR">0</span></div>
+<div id="clock" class="sh">3:00</div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Block League</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="camB">Ball cam: on</button><button class="b" id="menuB">Menu</button></div>
+<div id="power"><i></i></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK LEAGUE<br>SOCCER</h1>
+  <p style="font-weight:700">You and two teammates in <b style="color:#90caf9">blue</b> against the <b style="color:#ef9a9a">red</b> team. Run into the ball to dribble, hold kick to power up a shot, and score in the red goal. The ball bounces off the walls, so there's no out of bounds. Three minutes, most goals wins.</p>
+  <p class="keys"><kbd>WASD</kbd> move · hold <kbd>Click</kbd> or <kbd>F</kbd> to kick · <kbd>Space</kbd> jump · <kbd>C</kbd> ball cam · <kbd>Right mouse</kbd> look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">KICK OFF</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">YOU WIN!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block League Soccer =================
+setSky("#42a5f5", "#e3f2fd", 0xe3f2fd, 120, 300);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+cam.dist = 14; cam.pitch = 0.38;
+const FX = 35, FZ = 22, GZ = 5, GH = 4, GD = 3.2;
+addBox(0, -1, 0, FX * 2 + 30, 2, FZ * 2 + 30, 0x2e7d32);
+// stripes, lines and the centre circle
+for (let i = 0; i < 10; i++) { const s = new THREE.Mesh(new THREE.PlaneGeometry(7, FZ * 2), new THREE.MeshStandardMaterial({ color: i % 2 ? 0x388e3c : 0x43a047, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); s.rotation.x = -Math.PI / 2; s.position.set(-FX + 3.5 + i * 7, 0.01, 0); s.receiveShadow = true; scene.add(s); }
+const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+const line = (x, z, w, d) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), lineMat); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z); scene.add(m); };
+line(0, 0, 0.3, FZ * 2); line(0, FZ, FX * 2, 0.3); line(0, -FZ, FX * 2, 0.3); line(FX, 0, 0.3, FZ * 2); line(-FX, 0, 0.3, FZ * 2);
+for (const s of [-1, 1]) { line(s * (FX - 6), 0, 0.3, 18); line(s * (FX - 3), 9, 6, 0.3); line(s * (FX - 3), -9, 6, 0.3); }
+const circ = new THREE.Mesh(new THREE.RingGeometry(6.8, 7.1, 48), lineMat); circ.rotation.x = -Math.PI / 2; circ.position.y = 0.02; scene.add(circ);
+// boards all round (a gap for each goal) and invisible walls above them
+const board = (x, z, w, d) => { addBox(x, 0.9, z, w, 1.8, d, 0xeceff1); addBox(x, 8, z, w, 12, d, 0).m.visible = false; };
+board(0, FZ + 0.5, FX * 2 + 2, 1); board(0, -FZ - 0.5, FX * 2 + 2, 1);
+for (const s of [-1, 1]) { board(s * (FX + 0.5), (FZ + GZ) / 2 + 0.5, 1, FZ - GZ + 1); board(s * (FX + 0.5), -(FZ + GZ) / 2 - 0.5, 1, FZ - GZ + 1); }
+// the goals: posts, crossbar, net
+const goals = [];
+for (const s of [-1, 1]) {
+  const col = s < 0 ? 0x1e88e5 : 0xe53935;
+  for (const z of [-GZ, GZ]) { const p = boxMesh(0.4, GH, 0.4, 0xffffff); p.position.set(s * FX, GH / 2, z); scene.add(p); }
+  const bar = boxMesh(0.4, 0.4, GZ * 2 + 0.4, 0xffffff); bar.position.set(s * FX, GH, 0); scene.add(bar);
+  const netM = new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(GZ * 2, GH), netM); back.rotation.y = Math.PI / 2; back.position.set(s * (FX + GD), GH / 2, 0); scene.add(back);
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(GD, GZ * 2), netM); top.rotation.x = Math.PI / 2; top.position.set(s * (FX + GD / 2), GH, 0); scene.add(top);
+  for (const z of [-GZ, GZ]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(GD, GH), netM); side.position.set(s * (FX + GD / 2), GH / 2, z); scene.add(side); }
+  // players can step into the goal but not through it
+  addBox(s * (FX + GD + 0.5), 4, 0, 1, 8, GZ * 2 + 2, 0).m.visible = false;
+  for (const z of [-GZ - 0.5, GZ + 0.5]) addBox(s * (FX + GD / 2 + 0.5), 4, z, GD + 1, 8, 0.6, 0).m.visible = false;
+  goals.push({ s });
+}
+// stands and a crowd
+for (const s of [-1, 1]) for (let r = 0; r < 4; r++) { const st = boxMesh(FX * 2 + 8, 1, 2.4, r % 2 ? 0x546e7a : 0x607d8b); st.position.set(0, 0.5 + r * 1.1, s * (FZ + 3.5 + r * 2.4)); scene.add(st); }
+const crowd = []; for (let i = 0; i < 90; i++) { const s = Math.random() < 0.5 ? -1 : 1, r = ri(0, 3), m = boxMesh(0.9, 1.4, 0.7, Math.random() < 0.5 ? (s < 0 ? 0x1e88e5 : 0xe53935) : pick(BOT_COLORS)); m.position.set(rr(-FX, FX), r * 1.1 + 1.7, s * (FZ + 3.5 + r * 2.4)); m.userData = { y: m.position.y, j: rr(0, 6) }; scene.add(m); crowd.push(m); }
+
+// ---------- the ball ----------
+const BR = 0.9;
+const ballTex = (() => { const c = document.createElement("canvas"); c.width = 128; c.height = 64; const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, 128, 64); x.fillStyle = "#222"; for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) if ((i + j) % 2) x.fillRect(i * 22, j * 22, 18, 18); return new THREE.CanvasTexture(c); })();
+const ballM = new THREE.Mesh(new THREE.SphereGeometry(BR, 20, 14), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.5 })); ballM.castShadow = true; scene.add(ballM);
+const ball = { pos: V(0, BR, 0), vel: V(), last: null };
+const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.4, 24), new THREE.MeshBasicMaterial({ color: 0xffeb3b, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; scene.add(ring);
+function stepBall(dt) {
+  const b = ball;
+  b.vel.y -= 26 * dt;
+  b.pos.addScaledVector(b.vel, dt);
+  if (b.pos.y < BR) { b.pos.y = BR; if (b.vel.y < -3) { b.vel.y = -b.vel.y * 0.55; tone(160, 0.05, "sine", 0.03); } else b.vel.y = 0; const f = Math.pow(0.5, dt); b.vel.x *= f; b.vel.z *= f; }
+  else { const f = Math.pow(0.9, dt); b.vel.x *= f; b.vel.z *= f; }
+  if (b.pos.y > 14) { b.pos.y = 14; b.vel.y = -Math.abs(b.vel.y) * 0.5; }
+  // the side boards
+  if (Math.abs(b.pos.z) > FZ - BR) { b.pos.z = Math.sign(b.pos.z) * (FZ - BR); b.vel.z = -b.vel.z * 0.75; wallHit(); }
+  // the end boards, the goal mouths and the goals
+  const ax = Math.abs(b.pos.x), sx = Math.sign(b.pos.x) || 1;
+  const inMouth = Math.abs(b.pos.z) < GZ - BR * 0.6 && b.pos.y < GH - BR * 0.4;
+  if (ax <= FX - BR) b.inGoal = false; else if (inMouth) b.inGoal = true;
+  if (ax > FX - BR && !b.inGoal && ax < FX + 0.6) { b.pos.x = sx * (FX - BR); b.vel.x = -b.vel.x * 0.75; wallHit(Math.abs(b.pos.z) < GZ + 0.6); }
+  if (ax > FX) {
+    // inside the goal: the net catches it
+    if (ax > FX + GD - BR) { b.pos.x = sx * (FX + GD - BR); b.vel.x *= -0.2; }
+    if (Math.abs(b.pos.z) > GZ - BR) { b.pos.z = Math.sign(b.pos.z) * (GZ - BR); b.vel.z *= -0.3; }
+    if (b.pos.y > GH - BR) { b.pos.y = GH - BR; b.vel.y = -Math.abs(b.vel.y) * 0.3; }
+    if (ax > FX + BR && phase === "play") goal(sx > 0 ? "blue" : "red");
+  }
+}
+let wallT = 0; function wallHit(post) { if (wallT > 0) return; wallT = 0.12; tone(post ? 700 : 220, 0.08, post ? "square" : "sine", 0.04); }
+
+// ---------- players ----------
+const SAVE = "block-league-soccer";
+let S = loadSave(SAVE, { games: 0, wins: 0, draws: 0, goals: 0 });
+const team = { blue: [], red: [] };
+const everyone = [P];
+Object.assign(P, { name: ME_NAME, team: "blue", role: "attack", kickCool: 0, home: V() });
+P.body.torso.material = mat(0x1e88e5);
+team.blue.push(P);
+const names = shuffle(BOT_NAMES.slice());
+const ROLES = { blue: ["attack", "keeper"], red: ["attack", "attack", "keeper"] };
+let ni = 0;
+for (const t of ["blue", "red"]) for (const role of ROLES[t]) {
+  const body = makeAvatar({ shirt: t === "blue" ? 0x1e88e5 : 0xe53935, pants: 0xffffff, skin: pick(SKINS), hat: role === "keeper" ? 0x212121 : null });
+  body.g.add(nameTag(names[ni], t === "blue" ? "#bbdefb" : "#ffcdd2")); scene.add(body.g);
+  const b = { name: names[ni++], body, team: t, role, pos: V(), vel: V(), onGround: false, yaw: 0, kickCool: 0, speed: role === "keeper" ? 11 : rr(11.8, 12.8), aim: 0, side: rr(-1, 1) };
+  team[t].push(b); everyone.push(b);
+}
+const bots = everyone.slice(1);
+const goalX = (t) => (t === "blue" ? FX : -FX); // the goal a team attacks
+const ownX = (t) => -goalX(t);
+function kickoff(scoredOn) {
+  ball.pos.set(0, BR, 0); ball.vel.set(0, 0, 0); ball.last = null; ball.inGoal = false;
+  for (const t of ["blue", "red"]) {
+    const s = t === "blue" ? -1 : 1;
+    team[t].forEach((e, i) => {
+      const role = e.role;
+      if (role === "keeper") e.pos.set(s * (FX - 2), 0.3, 0);
+      else e.pos.set(s * (i === 0 ? 9 : 16), 0.3, i === 0 ? (t === scoredOn ? -2.5 : -5) : 6 * (i % 2 ? 1 : -1));
+      e.vel.set(0, 0, 0); e.yaw = s < 0 ? Math.PI / 2 : -Math.PI / 2;
+    });
+  }
+  P.pos.set(-4, 0.3, 0); cam.yaw = -Math.PI / 2; // you take the kickoff spot just behind the ball
+  phase = "kickoff"; phaseT = TEST ? 0.8 : 2.2;
+}
+
+// ---------- kicking ----------
+let charge = 0, charging = false, holdMouse = false, holdTouch = false;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+const kickHeld = () => holdMouse || holdTouch || keys.KeyF;
+function kick(e, dir, power, lift) {
+  const d = Math.hypot(ball.pos.x - e.pos.x, ball.pos.z - e.pos.z);
+  if (d > 2.6 || ball.pos.y > 3.4 || e.kickCool > 0) return false;
+  ball.vel.set(dir.x * power, lift, dir.z * power); ball.last = e; e.kickCool = 0.35; ball.kickId = (ball.kickId || 0) + 1;
+  e.body.legs[1].rotation.x = -1.4;
+  tone(130 + power * 4, 0.1, "square", 0.05, 200);
+  return true;
+}
+function myKick() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+  // aim with the camera, but never backwards into yourself
+  const toBall = V(ball.pos.x - P.pos.x, 0, ball.pos.z - P.pos.z).normalize();
+  if (f.dot(toBall) < -0.2) f.copy(toBall);
+  const p = 16 + charge * 26;
+  if (kick(P, f, p, 3 + charge * 7)) { if (charge > 0.8) show("POWER SHOT!", 0.8); }
+}
+
+// ---------- the match ----------
+let phase = "menu", phaseT = 0, clockT = 0, score = { blue: 0, red: 0 }, myGoals = 0;
+const MATCH = TEST ? 45 : 180;
+function newMatch() { score = { blue: 0, red: 0 }; myGoals = 0; clockT = MATCH; $("over").style.display = "none"; kickoff("blue"); show("Kick off!", 1.6); }
+function goal(by) {
+  score[by]++; phase = "goal"; phaseT = TEST ? 1 : 3;
+  const scorer = ball.last;
+  if (by === "blue" && scorer === P) { myGoals++; S.goals++; storeSave(SAVE, S); sendScore("goals", S.goals); }
+  const who = scorer && scorer.team === by ? scorer.name : scorer ? `${scorer.name} (own goal)` : "";
+  show(`GOAL! ${by === "blue" ? "Blue" : "Red"} scores${who ? "\n" + (scorer === P ? "You scored!" : who) : ""}`, 2.6);
+  if (by === "blue") SFX.win(); else SFX.lose();
+  for (const m of crowd) m.userData.cheer = 2;
+}
+function endMatch() {
+  phase = "over"; S.games++;
+  const res = score.blue > score.red ? "win" : score.blue < score.red ? "lose" : "draw";
+  if (res === "win") { S.wins++; sendScore("wins", S.wins); SFX.win(); } else if (res === "draw") S.draws++; else SFX.lose();
+  storeSave(SAVE, S);
+  $("oT").textContent = res === "win" ? "YOU WIN!" : res === "draw" ? "IT'S A DRAW" : "RED WINS";
+  $("oInfo").textContent = `Blue ${score.blue} - ${score.red} Red · you scored ${myGoals} · career: ${S.wins} wins, ${S.goals} goals in ${S.games} games`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+
+// ---------- computer players ----------
+function botStep(b, dt, T) {
+  if (b.kickCool > 0) b.kickCool -= dt;
+  const gx = goalX(b.team), ox = ownX(b.team), s = Math.sign(gx);
+  const bp = ball.pos, toGoal = V(gx - bp.x, 0, -bp.z).normalize();
+  let target, speed = b.speed;
+  const mates = team[b.team].filter((m) => m.role !== "keeper");
+  const nearest = mates.reduce((a, m) => (m.pos.distanceTo(bp) < a.pos.distanceTo(bp) ? m : a), mates[0]);
+  const ballOurHalf = Math.sign(bp.x) === Math.sign(ox);
+  if (b.role === "keeper") {
+    const danger = Math.abs(bp.x - ox) < 13 && Math.abs(bp.z) < 12;
+    if (danger && Math.hypot(bp.x - b.pos.x, bp.z - b.pos.z) < 7) target = V(bp.x, 0, bp.z);
+    else target = V(ox + s * 1.8, 0, clamp(bp.z * 0.55, -GZ + 1, GZ - 1));
+    // clear it away to the side and up the field
+    // hard shots get past sometimes: one try per shot
+    const sp = Math.hypot(ball.vel.x, ball.vel.z);
+    if (b.rolled !== ball.kickId) { b.rolled = ball.kickId; b.canSave = Math.random() < clamp(1.15 - sp / 34, 0.15, 0.9); }
+    if (Math.hypot(bp.x - b.pos.x, bp.z - b.pos.z) < 2.2 && (b.canSave || sp < 12)) kick(b, V(s * 0.8, 0, bp.z > 0 ? 0.6 : -0.6).normalize(), 28, 8);
+  } else if (nearest === b || (b.team === "blue" && nearest === P && P.pos.distanceTo(bp) > b.pos.distanceTo(bp) + 6)) {
+    // get behind the ball, then push it toward the goal; shoot from close enough
+    const behind = bp.clone().addScaledVector(toGoal, -1.7); behind.y = 0;
+    const dBehind = Math.hypot(behind.x - b.pos.x, behind.z - b.pos.z);
+    const lined = V(bp.x - b.pos.x, 0, bp.z - b.pos.z).normalize().dot(toGoal);
+    target = dBehind > 1.2 && lined < 0.6 ? behind.add(V(-toGoal.z, 0, toGoal.x).multiplyScalar(b.side * 1.5)) : V(bp.x + toGoal.x * 2, 0, bp.z + toGoal.z * 2);
+    const distGoal = Math.hypot(gx - bp.x, bp.z);
+    if (lined > 0.55 && Math.hypot(bp.x - b.pos.x, bp.z - b.pos.z) < 2.2) {
+      if (distGoal < 26) { const aimZ = rr(-GZ + 1.2, GZ - 1.2), d = V(gx - bp.x, 0, aimZ - bp.z).normalize(); kick(b, d, rr(26, 36), rr(2, 6)); }
+      else if (Math.random() < dt * 1.5) kick(b, toGoal, rr(18, 24), rr(2, 5));
+    }
+  } else {
+    // spread out: help defend when the ball is in our half, otherwise get forward
+    target = ballOurHalf ? V((bp.x + ox) / 2, 0, bp.z * 0.5 + b.side * 6) : V(bp.x + s * 9, 0, clamp(-bp.z * 0.6 + b.side * 8, -FZ + 3, FZ - 3));
+    speed *= 0.85;
+  }
+  target.x = clamp(target.x, -FX - 2, FX + 2); target.z = clamp(target.z, -FZ + 1, FZ - 1);
+  const want = V(target.x - b.pos.x, 0, target.z - b.pos.z), l = want.length();
+  if (l > 0.4) want.multiplyScalar(Math.min(speed, l * 4) / l); else want.set(0, 0, 0);
+  if (phase !== "play") want.set(0, 0, 0);
+  physics(b, want, dt);
+  const sp = faceMove(b, dt); if (sp < 0.5) { b.yaw = Math.atan2(bp.x - b.pos.x, bp.z - b.pos.z); b.body.g.rotation.y = b.yaw; }
+  animate(b.body, sp, b.onGround, T);
+}
+// running into the ball pushes it along (dribbling)
+function touchBall(e) {
+  const dx = ball.pos.x - e.pos.x, dz = ball.pos.z - e.pos.z, d = Math.hypot(dx, dz);
+  if (d > BR + 0.6 || ball.pos.y > e.pos.y + HH + BR || ball.pos.y < e.pos.y - BR) return;
+  const nx = dx / (d || 1), nz = dz / (d || 1);
+  ball.pos.x = e.pos.x + nx * (BR + 0.6); ball.pos.z = e.pos.z + nz * (BR + 0.6);
+  const into = e.vel.x * nx + e.vel.z * nz, rel = ball.vel.x * nx + ball.vel.z * nz;
+  if (into > rel) { const push = into * 1.15 - rel; ball.vel.x += nx * push; ball.vel.z += nz * push; }
+  ball.last = e;
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.games ? `Games ${S.games} · Wins ${S.wins} · Draws ${S.draws} · Goals ${S.goals}` : ""; }
+showStats(); kickoff("blue"); phase = "menu";
+let ballCam = true;
+actions.KeyC = () => { ballCam = !ballCam; $("camB").textContent = `Ball cam: ${ballCam ? "on" : "off"}`; };
+$("camB").onclick = () => actions.KeyC();
+touchControls([{ label: "KICK", color: "rgba(255,241,118,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }, JUMP_BUTTON]);
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+
+onFrame((dt, T) => {
+  for (const m of crowd) { m.userData.cheer = Math.max(0, (m.userData.cheer || 0) - dt); m.position.y = m.userData.y + Math.abs(Math.sin(T * (m.userData.cheer > 0 ? 14 : 4) + m.userData.j)) * (m.userData.cheer > 0 ? 0.9 : 0.25); }
+  wallT -= dt;
+  if (started && phase !== "menu" && phase !== "over") {
+    phaseT -= dt;
+    if (phase === "kickoff" && phaseT <= 0) phase = "play";
+    if (phase === "goal" && phaseT <= 0) { if (clockT <= 0) endMatch(); else kickoff(score.blue > score.red ? "red" : "blue"); }
+    if (phase === "play") { clockT -= dt; if (clockT <= 0) { clockT = 0; endMatch(); } }
+    if (P.kickCool > 0) P.kickCool -= dt;
+    // charge and kick
+    if (kickHeld() && phase === "play") { charging = true; charge = Math.min(1, charge + dt * 1.4); }
+    else if (charging) { charging = false; myKick(); charge = 0; }
+    P.canMove = phase === "play" || phase === "goal";
+    stepPlayer(dt, T);
+    for (const b of bots) botStep(b, dt, T);
+    // players bump each other
+    for (let i = 0; i < everyone.length; i++) for (let j = i + 1; j < everyone.length; j++) {
+      const a = everyone[i], c = everyone[j], dx = c.pos.x - a.pos.x, dz = c.pos.z - a.pos.z, d = Math.hypot(dx, dz);
+      if (d < 1 && d > 0.001) { const k = (1 - d) / 2; a.pos.x -= (dx / d) * k; a.pos.z -= (dz / d) * k; c.pos.x += (dx / d) * k; c.pos.z += (dz / d) * k; }
+    }
+    if (phase === "play" || phase === "goal") { for (const e of everyone) touchBall(e); stepBall(dt); }
+  } else { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  ballM.position.copy(ball.pos); ballM.rotation.x += ball.vel.z * dt / BR; ballM.rotation.z -= ball.vel.x * dt / BR;
+  ring.position.set(ball.pos.x, 0.04, ball.pos.z); ring.scale.setScalar(1 + Math.min(1.5, (ball.pos.y - BR) * 0.15));
+  // ball cam: keep the ball in front of you
+  if (ballCam && phase !== "menu") { const want = Math.atan2(-(ball.pos.x - P.pos.x), -(ball.pos.z - P.pos.z)); if (Math.hypot(ball.pos.x - P.pos.x, ball.pos.z - P.pos.z) > 2.5) cam.yaw += angDiff(want, cam.yaw) * Math.min(1, dt * 5); }
+  updateCamera(dt);
+  $("sB").textContent = score.blue; $("sR").textContent = score.red;
+  $("clock").textContent = phase === "goal" ? "GOAL!" : fmtT(clockT);
+  $("hTitle").textContent = "Block League";
+  $("hInfo").textContent = `Your goals ${myGoals}`;
+  $("hInfo2").textContent = ballCam ? "Ball cam on (C)" : "Ball cam off (C)";
+  $("power").style.opacity = charging ? 1 : 0; $("power").firstChild.style.width = `${charge * 100}%`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "over") newMatch(); };
+$("again").onclick = () => newMatch();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, clock: Math.ceil(clockT), blue: score.blue, red: score.red, ball: [+ball.pos.x.toFixed(1), +ball.pos.y.toFixed(1), +ball.pos.z.toFixed(1)], myGoals }),
+  place: (x, z) => { ball.pos.set(x, BR, z); ball.vel.set(0, 0, 0); }, shoot: (vx, vy, vz) => { ball.vel.set(vx, vy, vz); ball.last = P; },
+  kick: (c) => { charge = c; myKick(); charge = 0; }, ball,
+};
+loop();
+})();
+</script>
+</body>
+</html>

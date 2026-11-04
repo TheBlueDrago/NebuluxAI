@@ -30,6 +30,7 @@ export const BOARDS = {
   "color-drop-party": ["wins"],
   "reel-rush-fishing": ["caught"],
   "parry-arena": ["wins"],
+  "block-league-soccer": ["wins", "goals"],
 };
 const MAX_SCORE = 1e9;
 

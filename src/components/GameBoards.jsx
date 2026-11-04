@@ -22,6 +22,7 @@ export const BOARDS = {
   "color-drop-party": [["wins", "Most wins", String]],
   "reel-rush-fishing": [["caught", "Most fish caught", String]],
   "parry-arena": [["wins", "Most wins", String]],
+  "block-league-soccer": [["wins", "Most wins", String], ["goals", "Most goals", String]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).
