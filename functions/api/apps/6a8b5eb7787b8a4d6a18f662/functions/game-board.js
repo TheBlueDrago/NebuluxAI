@@ -44,6 +44,7 @@ export const BOARDS = {
   "sky-glide": ["score"],
   "snow-fort-clash": ["wins"],
   "block-bowling": ["score"],
+  "block-dash-race": ["time"],
 };
 export const LOW_BOARDS = new Set(["block-mini-golf:strokes"]);
 export const lowFirst = (game, board) => board.endsWith("time") || LOW_BOARDS.has(`${game}:${board}`);

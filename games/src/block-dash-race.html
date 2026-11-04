@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Dash Race</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#ec407add,#2a0a1aee)}
+  #over{display:none}
+  h1{color:#ffeb3b}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .p{font-size:34px;color:#ffeb3b} #top .s{font-size:14px}
+  #count{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);font-size:110px;font-weight:900;-webkit-text-stroke:4px #000;color:#ffeb3b;pointer-events:none;display:none}
+  #resT{margin:10px auto;border-collapse:collapse;font-weight:800} #resT td{padding:3px 10px;border-bottom:1px solid rgba(255,255,255,.2)} #resT tr.me td{color:#ffeb3b}
+  @media (max-width:600px){#top{top:54px} #top .p{font-size:26px} #hud{top:110px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><div class="p" id="tPlace">1st</div><div class="s" id="tTime">0:00.0</div></div>
+<div id="hud" class="sh"><div class="big1" id="hSect">Start</div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="count"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK DASH<br>RACE</h1>
+  <p style="font-weight:700">Twelve runners, one wild obstacle course. Fight the conveyor belts while hammers swing across, hop the moving platforms over the gap (fall and you go back to the last checkpoint), jump the sweeping bars, smash through the right doors (some are solid!), and bounce up to the finish. Beat everyone to the line.</p>
+  <p class="keys"><kbd>WASD</kbd> run · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to look · <kbd>Shift</kbd> lock the camera</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">RACE</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">1ST PLACE!</h1><table id="resT"></table><p id="oInfo" style="font-weight:800"></p><button class="big" id="again">RACE AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block Dash Race =================
+setSky("#f48fb1", "#fff3e0", 0xfff3e0, 90, 280);
+hemi.intensity = 0.9; sun.intensity = 0.85;
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60 }); sun.shadow.camera.updateProjectionMatrix();
+cam.dist = 12; cam.pitch = 0.4;
+const HW2 = 8; // half the track's width
+const floor = (z0, z1, col, y = 0) => addBox(0, y - 0.5, (z0 + z1) / 2, HW2 * 2, 1, z1 - z0, col);
+const sideWalls = (z0, z1, y = 0) => { for (const s of [-1, 1]) addBox(s * (HW2 + 0.4), y + 1, (z0 + z1) / 2, 0.8, 2, z1 - z0, 0xffffff); for (const s of [-1, 1]) addBox(s * (HW2 + 0.4), y + 10, (z0 + z1) / 2, 0.8, 18, z1 - z0, 0).m.visible = false; };
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x7c4dff, emissive: 0x311b92, emissiveIntensity: 0.4 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -14; scene.add(sea);
+// 1. start
+floor(-12, 20, 0x90caf9); sideWalls(-12, 20); addBox(0, 2, -12.5, HW2 * 2, 4, 1, 0xffffff);
+const gate = addBox(0, 1.5, 18, HW2 * 2, 3, 0.6, 0xffeb3b, { glow: 0x5c5c00 });
+// 2. conveyor belts (they push you back) and swinging hammers
+const belts = [];
+floor(20, 62, 0x546e7a); sideWalls(20, 62);
+for (const [x, z0, z1] of [[-4, 24, 58], [4, 24, 58]]) { const b = addBox(x, 0.05, (z0 + z1) / 2, 7.4, 0.3, z1 - z0, 0x37474f); const stripes = new THREE.Mesh(new THREE.PlaneGeometry(7.4, z1 - z0), new THREE.MeshBasicMaterial({ map: (() => { const c = document.createElement("canvas"); c.width = 32; c.height = 32; const g = c.getContext("2d"); g.fillStyle = "#37474f"; g.fillRect(0, 0, 32, 32); g.fillStyle = "#ffca28"; g.fillRect(0, 0, 32, 6); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, (z1 - z0) / 2); return t; })() })); stripes.rotation.x = -Math.PI / 2; stripes.position.set(x, 0.22, (z0 + z1) / 2); scene.add(stripes); belts.push({ s: b, tex: stripes.material.map, speed: x < 0 ? 5 : 7 }); }
+const hammers = [];
+for (const [z, sp, ph] of [[32, 1.6, 0], [42, 2.1, 1.5], [52, 1.8, 3]]) { const h = addBox(0, 1.3, z, 3, 2.6, 1.6, 0xe53935); const arm = boxMesh(0.4, 8, 0.4, 0x5d4037); arm.position.set(0, 5.6, 0); h.m.add(arm); hammers.push({ s: h, z, sp, ph, x: 0 }); }
+// 3. moving platforms over the gap
+floor(62, 66, 0x546e7a); sideWalls(62, 66);
+const movers = [];
+for (const [z, amp, sp, ph] of [[70, 5, 1.1, 0], [76, 5, 1.4, 1.6], [82, 5, 1.2, 3.1], [88, 5, 1.5, 0.8]]) { const m = addBox(0, -0.4, z, 5, 0.8, 4, 0xff7043, { glow: 0x4a1800 }); movers.push({ s: m, z, amp, sp, ph, x: 0 }); }
+floor(92, 124, 0x81c784); sideWalls(92, 124);
+// 4. sweeping bars (jump over them)
+const sweepers = [];
+for (const [z, sp] of [[100, 1.6], [114, -2]]) { const hub = boxMesh(1.4, 1.6, 1.4, 0x212121); hub.position.set(0, 0.8, z); scene.add(hub); const bar = boxMesh(HW2 * 2 - 1, 0.6, 0.6, 0xffeb3b, 0x5c5c00); bar.position.set(0, 0.9, z); scene.add(bar); sweepers.push({ bar, z, sp, a: 0 }); }
+// 5. the door wall: some doors are fake and break, the rest are solid
+const doors = [];
+function buildDoors() {
+  for (const d of doors) if (d.s && solids.includes(d.s)) removeSolid(d.s); doors.length = 0;
+  const real = shuffle([0, 1, 2, 3, 4]).slice(0, 2);
+  for (let i = 0; i < 5; i++) { const x = -6.4 + i * 3.2; const s = addBox(x, 1.6, 127, 3, 3.2, 0.6, pick([0x29b6f6, 0xab47bc, 0x66bb6a, 0xffa726, 0xef5350])); doors.push({ s, x, solid: real.includes(i), broken: false }); }
+}
+floor(124, 130, 0x81c784); sideWalls(124, 130); addBox(0, 4.5, 127, HW2 * 2, 2.6, 0.6, 0xffffff);
+// 6. bounce pads up to the finish
+floor(130, 150, 0xce93d8); sideWalls(130, 150);
+const pads = [];
+for (const x of [-4, 0, 4]) { const p = addBox(x, 0.1, 146, 3, 0.3, 3, 0x00e676, { glow: 0x00512a }); pads.push(p); }
+floor(150, 176, 0xffd54f, 6); sideWalls(150, 176, 6); addBox(0, 2.75, 151, HW2 * 2, 5.5, 2, 0xce93d8);
+const finishLine = new THREE.Mesh(new THREE.PlaneGeometry(HW2 * 2, 2), new THREE.MeshBasicMaterial({ map: (() => { const c = document.createElement("canvas"); c.width = 128; c.height = 16; const x = c.getContext("2d"); for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (i + j) % 2 ? "#111" : "#fff"; x.fillRect(i * 8, j * 8, 8, 8); } return new THREE.CanvasTexture(c); })() }));
+finishLine.rotation.x = -Math.PI / 2; finishLine.position.set(0, 6.03, 168); scene.add(finishLine);
+const FINISH_Z = 168;
+const arch = boxMesh(HW2 * 2 + 2, 1.4, 1, 0xec407a); arch.position.set(0, 12, 168); scene.add(arch); for (const s of [-1, 1]) { const p = boxMesh(1, 6, 1, 0xec407a); p.position.set(s * (HW2 + 1), 9, 168); scene.add(p); }
+const sign = makeLabel("FINISH", "#fff", 512, 80); sign.scale.set(8, 2, 1); sign.position.set(0, 14, 168); scene.add(sign);
+const CHECKS = [{ z: 0, y: 0.3 }, { z: 63, y: 0.3 }, { z: 94, y: 0.3 }, { z: 128.5, y: 0.3 }, { z: 132, y: 0.3 }, { z: 155, y: 6.3 }];
+const SECT = (z) => z < 20 ? "Start" : z < 62 ? "Conveyor Hammers" : z < 92 ? "Platform Gap" : z < 124 ? "Sweepers" : z < 130 ? "The Doors" : z < 150 ? "Bounce Up" : "Final Dash";
+
+// ---------- runners ----------
+const SAVE = "block-dash-race";
+let S = loadSave(SAVE, { races: 0, wins: 0, best: 0, podiums: 0 });
+const runners = [P];
+Object.assign(P, { name: ME_NAME, cp: 0, done: false, time: 0 });
+const names = shuffle(BOT_NAMES.slice());
+for (let i = 0; i < 11; i++) {
+  const body = makeAvatar({ shirt: BOT_COLORS[i % BOT_COLORS.length], pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.5 ? pick(BOT_COLORS) : null });
+  body.g.add(nameTag(names[i])); scene.add(body.g);
+  runners.push({ name: names[i], body, pos: V(), vel: V(), onGround: false, yaw: 0, cp: 0, done: false, time: 0, lane: rr(-5, 5), skill: rr(0.55, 1), wait: 0, door: -1, doorT: 0, speed: rr(10.5, 12.5), jumpT: 0 });
+}
+const bots = runners.slice(1);
+const finishers = [];
+function respawn(r) { const c = CHECKS[r.cp]; r.pos.set(clamp(r.pos.x, -5, 5) * 0.5, c.y + 0.5, c.z); r.vel.set(0, 0, 0); if (r === P) show("Back to the checkpoint!", 1); }
+
+// ---------- the race ----------
+let phase = "menu", countT = 0, raceT = 0;
+function newRace() {
+  buildDoors(); finishers.length = 0; raceT = 0;
+  if (!solids.includes(gate)) { solids.push(gate); scene.add(gate.m); }
+  runners.forEach((r, i) => { r.pos.set(-6 + (i % 6) * 2.4, 0.3, 6 + Math.floor(i / 6) * 3); r.vel.set(0, 0, 0); r.cp = 0; r.done = false; r.time = 0; r.door = -1; });
+  cam.yaw = Math.PI; P.canMove = true; phase = "count"; countT = TEST ? 1 : 3.5; $("over").style.display = "none";
+}
+function finish(r) {
+  r.done = true; r.time = raceT; finishers.push(r);
+  if (r === P) {
+    const place = finishers.length; S.races++; if (place === 1) S.wins++; if (place <= 3) S.podiums++; const best = !S.best || raceT < S.best; if (best) S.best = +raceT.toFixed(1); storeSave(SAVE, S);
+    sendScore("time", +raceT.toFixed(1)); if (place === 1) SFX.win(); else if (place <= 3) SFX.buy(); else SFX.tick();
+    show(place === 1 ? "YOU WIN!" : `${ord(place)} place!`, 2.2);
+    setTimeout(results, TEST ? 800 : 3500);
+  }
+}
+const ord = (n) => n + (n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th");
+const prog = (r) => (r.done ? 1000 - finishers.indexOf(r) : r.pos.z);
+function results() {
+  phase = "over"; const order = finishers.concat(runners.filter((r) => !r.done).sort((a, b) => prog(b) - prog(a)));
+  const place = finishers.indexOf(P) + 1;
+  $("oT").textContent = place === 1 ? "1ST PLACE!" : place ? `${ord(place).toUpperCase()} PLACE` : "OUT OF TIME";
+  $("resT").innerHTML = order.slice(0, 12).map((r, i) => `<tr class="${r === P ? "me" : ""}"><td>${ord(i + 1)}</td><td>${(r === P ? "You" : r.name).replace(/[<>&]/g, "")}</td><td>${r.done ? fmtT(r.time) : SECT(r.pos.z)}</td></tr>`).join("");
+  $("oInfo").textContent = `Wins ${S.wins} · Podiums ${S.podiums} · Best time ${S.best ? fmtT(S.best) : "-"}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+const fmtT = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+
+// ---------- computer runners ----------
+function botStep(b, dt, T) {
+  if (b.done) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); return; }
+  b.jumpT -= dt;
+  let tx = b.lane, tz = b.pos.z + 6, sp = b.speed;
+  const z = b.pos.z;
+  if (z > 62 && z < 92) {
+    // platform gap: wait on the edge or the platform until the next one is close, then jump
+    const next = movers.find((m) => m.z > z + 1.5);
+    if (next && b.onGround) { const dx = Math.abs(next.x - b.pos.x); if (dx < 2.2 + (1 - b.skill) * 1.2) { tx = next.x; tz = next.z; if (Math.abs(next.z - z) < 4.6 && b.jumpT <= 0) { b.wantJump = true; b.jumpT = 0.6; } } else { tx = b.pos.x + (next.x - b.pos.x) * 0.5; tz = z; sp = 4; const ground = movers.find((m) => Math.abs(m.z - z) < 2.2 && Math.abs(m.x - b.pos.x) < 2.6); if (ground) tx = ground.x; } }
+    else if (!next) tz = 95;
+  } else if (z > 92 && z < 124) {
+    for (const s of sweepers) { if (Math.abs(s.z - z) < 7) { const barAt = Math.atan2(b.pos.x, b.pos.z - s.z); const lead = angDiff(s.a + (s.sp > 0 ? 0.6 : -0.6), Math.atan2(-(b.pos.z - s.z), b.pos.x)); if (Math.abs(lead) < 0.5 && b.onGround && b.jumpT <= 0 && Math.random() < b.skill) { b.wantJump = true; b.jumpT = 0.7; } } }
+  } else if (z > 120 && z < 128) {
+    if (b.door < 0) b.door = ri(0, 4);
+    const d = doors[b.door]; tx = d.x; tz = 130;
+    if (b.bumped && z > 125) { b.doorT += dt; if (b.doorT > 0.6) { b.door = doors.findIndex((o) => o.broken) >= 0 && Math.random() < 0.7 ? doors.findIndex((o) => o.broken) : ri(0, 4); b.doorT = 0; } }
+  } else if (z > 130 && z < 150) { tx = [-4, 0, 4][Math.abs(Math.round(b.lane)) % 3]; tz = 162; }
+  else if (z >= 150) { tx = b.lane * 0.6; tz = 175; }
+  const want = V(tx - b.pos.x, 0, tz - b.pos.z); if (want.lengthSq() > 0.3) want.normalize().multiplyScalar(sp); else want.set(0, 0, 0);
+  physics(b, want, dt);
+  if (b.bumped && b.onGround && Math.random() < 0.08 && !(z > 120 && z < 128)) b.wantJump = true;
+  faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T);
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.races ? `Races ${S.races} · Wins ${S.wins} · Podiums ${S.podiums}${S.best ? " · best " + fmtT(S.best) : ""}` : ""; }
+showStats(); buildDoors(); runners.forEach((r, i) => { r.pos.set(-6 + (i % 6) * 2.4, 0.3, 6 + Math.floor(i / 6) * 3); }); P.pos.set(0, 0.3, 4); cam.yaw = Math.PI;
+touchControls([JUMP_BUTTON]);
+onFrame((dt, T) => {
+  // the course moves
+  for (const b of belts) { b.s.dz = -b.speed * dt; b.s.dx = 0; b.tex.offset.y += b.speed * dt * 0.5; }
+  for (const h of hammers) { const nx = Math.sin(T * h.sp + h.ph) * (HW2 - 2); h.s.dx = nx - h.s.x; h.s.x = nx; h.s.m.position.x = nx; h.s.m.rotation.z = -Math.cos(T * h.sp + h.ph) * 0.5; }
+  for (const m of movers) { const nx = Math.sin(T * m.sp + m.ph) * m.amp; m.s.dx = nx - m.s.x; m.s.x = nx; m.x = nx; m.s.m.position.x = nx; }
+  for (const s of sweepers) { s.a += s.sp * dt; s.bar.rotation.y = s.a; }
+  if (started && phase === "count") { countT -= dt; const n = Math.ceil(countT); $("count").style.display = "block"; $("count").textContent = countT > 0 ? n : "GO!"; if (String(n) !== $("count").dataset.n) { $("count").dataset.n = String(n); tone(countT > 0 ? 440 : 880, 0.2, "square", 0.05); } if (countT <= 0) { phase = "race"; removeSolid(gate); setTimeout(() => { $("count").style.display = "none"; }, 600); } }
+  if (started && (phase === "race" || phase === "count")) {
+    if (phase === "race") raceT += dt;
+    if (!P.done) stepPlayer(dt, T); else { physics(P, V(), dt); P.body.g.position.copy(P.pos); }
+    for (const b of bots) botStep(b, dt, T);
+    for (const r of runners) {
+      // sweeping bars knock you flying unless you jump them
+      r.knockT = (r.knockT || 0) - dt;
+      for (const s of sweepers) { const dx = r.pos.x, dz = r.pos.z - s.z, dist = Math.hypot(dx, dz); if (dist > HW2 || r.pos.y > 1.1 || r.knockT > 0) continue; const ang = Math.atan2(-dz, dx), off = Math.abs(Math.sin(angDiff(ang, s.a))) * dist; if (off < 0.7) { const tang = V(-Math.sin(s.a), 0, -Math.cos(s.a)).multiplyScalar(Math.sign(s.sp) * (Math.sign(Math.cos(angDiff(ang, s.a))) || 1)); r.vel.addScaledVector(tang, 16); r.vel.y = 9; r.onGround = false; r.knockT = 0.7; if (r === P) SFX.hit(); } }
+      // bounce pads
+      for (const p of pads) if (r.ground === p) { r.vel.y = 24; r.vel.z = Math.max(r.vel.z, 9); r.onGround = false; if (r === P) SFX.jump(); }
+      // fake doors break when you run into them
+      for (const d of doors) if (!d.broken && !d.solid && Math.abs(r.pos.x - d.x) < 1.95 && Math.abs(r.pos.z - 127) < 1.2) { d.broken = true; removeSolid(d.s); tone(150, 0.25, "sawtooth", 0.05, -60); }
+      // checkpoints, falling, the finish
+      for (let k = CHECKS.length - 1; k > r.cp; k--) if (r.pos.z > CHECKS[k].z && r.pos.y > CHECKS[k].y - 1) { r.cp = k; if (r === P) show("Checkpoint!", 0.8); break; }
+      if (r.pos.y < -8) respawn(r);
+      if (!r.done && r.pos.z > FINISH_Z && r.pos.y > 4) finish(r);
+    }
+    if (phase === "race" && finishers.length && !P.done && raceT - finishers[0].time > (TEST ? 20 : 60)) { phase = "over"; results(); }
+    if (phase === "race" && raceT > (TEST ? 150 : 300) && !P.done) results();
+  } else if (!started || phase === "menu") { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  updateCamera(dt);
+  const order = runners.slice().sort((a, b) => prog(b) - prog(a)), place = P.done ? finishers.indexOf(P) + 1 : order.indexOf(P) + 1;
+  $("tPlace").textContent = ord(place); $("tTime").textContent = fmtT(P.done ? P.time : raceT);
+  $("hSect").textContent = SECT(P.pos.z); $("hInfo").textContent = `${finishers.length} of 12 finished`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "over") newRace(); };
+$("again").onclick = () => newRace();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, t: +raceT.toFixed(1), z: +P.pos.z.toFixed(1), y: +P.pos.y.toFixed(1), cp: P.cp, done: P.done, finishers: finishers.length, botZ: bots.map((b) => Math.round(b.pos.z)).join(","), botDone: bots.filter((b) => b.done).length }),
+  tp: (z, y = 0.5) => { P.pos.set(0, y, z); P.vel.set(0, 0, 0); }, doors, runners, movers,
+};
+loop();
+})();
+</script>
+</body>
+</html>
