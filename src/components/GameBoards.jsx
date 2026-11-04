@@ -24,6 +24,7 @@ export const BOARDS = {
   "parry-arena": [["wins", "Most wins", String]],
   "block-league-soccer": [["wins", "Most wins", String], ["goals", "Most goals", String]],
   "burger-rush-diner": [["coins", "Best shift", (v) => `${Number(v).toLocaleString()} coins`]],
+  "block-school-escape": [["time", "Fastest escape", (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")}`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

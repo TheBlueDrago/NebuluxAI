@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block School Escape</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#over{background:linear-gradient(#263238ee,#000000f2)}
+  #over{display:none}
+  h1{color:#b2ff59}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:16px;font-weight:900;font-size:22px;pointer-events:none;white-space:nowrap}
+  #warn{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);font-size:22px;font-weight:900;color:#ff5252;pointer-events:none;display:none}
+  #prompt{position:fixed;left:50%;bottom:15%;transform:translateX(-50%);font-size:17px;font-weight:900;pointer-events:none}
+  #locker{position:fixed;inset:0;pointer-events:none;display:none;background:repeating-linear-gradient(#0b0f12 0 34px,rgba(0,0,0,.15) 34px 46px)}
+  #hurt{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,0,0,0) 40%,rgba(255,0,0,.7))}
+  @media (max-width:600px){#top{top:54px;font-size:17px;gap:10px} #hud{top:88px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><span id="tKeys" style="color:#ffd54f">Keys 0/3</span><span id="tLives" style="color:#ff8a80">3 lives</span><span id="tTime">0:00</span></div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Block School</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="locker"></div><div id="hurt"></div>
+<div id="warn" class="sh">The Hall Monitor sees you!</div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK SCHOOL<br>ESCAPE</h1>
+  <p style="font-weight:700">You got locked in the school after dark. Find the <b style="color:#ffd54f">3 keys</b> hidden in the classrooms and get out through the exit at the end of the hall. The <b style="color:#ff5252">Hall Monitor</b> robot patrols the halls: if it spots you it gives chase. Hide in a <b>locker</b>, crouch behind desks, or switch your flashlight off to stay out of sight. Three lives.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>E</kbd> hide in or leave a locker · <kbd>F</kbd> flashlight · <kbd>C</kbd> crouch · <kbd>Right mouse</kbd> look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">ESCAPED!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Block School Escape =================
+scene.background = new THREE.Color(0x05070c); scene.fog = new THREE.Fog(0x05070c, 6, 46);
+hemi.intensity = 0.32; hemi.color.setHex(0x8fa8ff); hemi.groundColor.setHex(0x1a1f33); sun.intensity = 0.06;
+cam.dist = 7; cam.pitch = 0.32; cam.min = 3; cam.max = 12;
+const X0 = -44, X1 = 44, Z0 = -20, Z1 = 20, H = 4.5;
+addBox(0, -1, 0, 100, 2, 50, 0x37474f);
+const floorM = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, 8), new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); floorM.rotation.x = -Math.PI / 2; floorM.position.y = 0.01; floorM.receiveShadow = true; scene.add(floorM);
+const wallC = 0x5d6d7e;
+const wall = (x, z, w, d, c = wallC) => addBox(x, H / 2, z, w, H, d, c, { wall: true });
+function wallX(x1, x2, z, gaps, c) { let a = x1; for (const [g, w] of gaps) { if (g - w / 2 > a) wall((a + g - w / 2) / 2, z, g - w / 2 - a, 0.6, c); addBox(g, (H + 3.1) / 2, z, w, H - 3.1, 0.6, c || wallC, { wall: true }); a = g + w / 2; } if (x2 > a) wall((a + x2) / 2, z, x2 - a, 0.6, c); }
+// outer walls, with the exit in the east end of the hall
+wallX(X0, X1, Z1, []); wallX(X0, X1, Z0, []);
+wall(X0, 0, 0.6, Z1 - Z0); wall(X1, -12, 0.6, 16); wall(X1, 12, 0.6, 16);
+const exitDoor = addBox(X1, 1.8, 0, 0.8, 3.6, 8, 0x7b1fa2, { wall: true, glow: 0x2a0033 });
+const exitSign = makeLabel("EXIT", "#69f0ae", 256, 80); exitSign.scale.set(3, 1.5, 1); exitSign.position.set(X1 - 1, 4.2, 0); scene.add(exitSign);
+// the hall and the 8 rooms off it
+const ROOMS = [];
+for (const side of [1, -1]) for (let i = 0; i < 4; i++) {
+  const x0 = X0 + i * 22, x1 = x0 + 22, cx = (x0 + x1) / 2, door = cx + (i % 2 ? 5 : -5);
+  ROOMS.push({ side, x0, x1, cx, cz: side * 12, door, kind: ["classroom", "library", "lab", "cafeteria", "art", "music", "storage", "office"][ROOMS.length] });
+}
+wallX(X0, X1, 4, ROOMS.filter((r) => r.side > 0).map((r) => [r.door, 3.2]), 0x455a64);
+wallX(X0, X1, -4, ROOMS.filter((r) => r.side < 0).map((r) => [r.door, 3.2]), 0x455a64);
+for (const x of [-22, 0, 22]) { wall(x, 12, 0.6, 16); wall(x, -12, 0.6, 16); }
+// lights along the hall: they flicker
+const lamps = [];
+for (let x = X0 + 6; x < X1; x += 11) { const m = boxMesh(3, 0.2, 1, 0xfffde7, 0xfff59d); m.position.set(x, H - 0.15, 0); m.castShadow = false; scene.add(m); lamps.push(m); }
+const hallLights = [-26, 0, 26].map((x) => { const l = new THREE.PointLight(0xfff3c4, 0.9, 22, 2); l.position.set(x, H - 0.8, 0); scene.add(l); return l; });
+// furniture: it blocks the Hall Monitor's view too
+const thing = (x, z, w, h, d, c) => addBox(x, h / 2, z, w, h, d, c, { wall: true });
+const KEY_SPOTS = [];
+const ROOM_NAME = { classroom: "classroom", library: "library", lab: "science lab", cafeteria: "cafeteria", art: "art room", music: "music room", storage: "storage room", office: "office" };
+for (const r of ROOMS) {
+  const zN = r.side > 0 ? 5 : -19, zF = r.side > 0 ? 19 : -5, zc = (zN + zF) / 2, back = r.side > 0 ? 18 : -18;
+  if (r.kind === "classroom" || r.kind === "office") {
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 2; b++) { const x = r.cx - 6 + a * 6, z = zc - 2 + b * 4; thing(x, z, 2.2, 1.2, 1.4, 0x8d6e63); KEY_SPOTS.push(V(x, 1.4, z)); }
+    thing(r.cx, back - r.side * 0.6, 4, 1.4, 1.6, 0x5d4037); KEY_SPOTS.push(V(r.cx, 1.6, back - r.side * 0.6));
+  } else if (r.kind === "library") {
+    for (let a = 0; a < 4; a++) { const x = r.x0 + 4 + a * 4.6; thing(x, zc, 1.2, 3.4, 9, 0x6d4c41); KEY_SPOTS.push(V(x + 1.4, 0.6, zc + rr(-3, 3))); }
+  } else if (r.kind === "lab") {
+    for (const dz of [-3, 3]) { thing(r.cx, zc + dz, 12, 1.3, 2, 0xeceff1); KEY_SPOTS.push(V(r.cx + rr(-5, 5), 1.5, zc + dz)); }
+  } else if (r.kind === "cafeteria") {
+    for (const dz of [-3.5, 0, 3.5]) { thing(r.cx, zc + dz, 14, 1.1, 1.8, 0xb0bec5); KEY_SPOTS.push(V(r.cx + rr(-6, 6), 1.3, zc + dz)); }
+  } else if (r.kind === "art") {
+    for (let a = 0; a < 4; a++) { const x = r.cx - 7 + a * 4.6, z = zc + (a % 2 ? 2.5 : -2.5); thing(x, z, 1.6, 2.6, 0.3, pick([0xef5350, 0x42a5f5, 0xffee58, 0x66bb6a])); KEY_SPOTS.push(V(x, 0.6, z + 1.2)); }
+  } else if (r.kind === "music") {
+    thing(r.cx - 4, zc, 5, 1.6, 3, 0x212121); KEY_SPOTS.push(V(r.cx - 4, 1.8, zc + 1.3));
+    for (let a = 0; a < 3; a++) { thing(r.cx + 3 + a * 2.4, zc + 3, 1, 1.2, 1, 0x8e24aa); }
+    KEY_SPOTS.push(V(r.cx + 5, 0.6, zc - 4));
+  } else if (r.kind === "storage") {
+    for (let a = 0; a < 6; a++) { const x = r.x0 + 3 + (a % 3) * 6, z = zc + (a < 3 ? -3 : 3); thing(x, z, 2.4, a % 2 ? 2.4 : 4.6, 2.4, 0xa1887f); KEY_SPOTS.push(V(x + 1.8, 0.6, z)); }
+  }
+  const l = makeLabel(ROOM_NAME[r.kind].toUpperCase(), "#b0bec5", 512, 56); l.scale.set(3.6, 0.9, 1); l.position.set(r.door, 3.7, r.side * 4.5); scene.add(l);
+}
+// lockers along the hall walls
+const lockers = [];
+for (let x = X0 + 4; x < X1 - 3; x += 3.2) for (const s of [1, -1]) {
+  if (ROOMS.some((r) => r.side === s && Math.abs(r.door - x) < 3.2)) continue;
+  if (Math.random() < 0.45) continue;
+  const lk = addBox(x, 1.5, s * 3.3, 1.4, 3, 0.8, pick([0x1565c0, 0x2e7d32, 0xc62828]), { wall: true });
+  lockers.push({ x, z: s * 3.3, s, lk, front: V(x, 0, s * 2.2) });
+}
+
+// ---------- waypoints for the Hall Monitor ----------
+const nav = gridNav({ x0: X0 + 2, x1: X1 - 2, z0: Z0 + 2, z1: Z1 - 2, step: 3 });
+for (const r of ROOMS) { nav.attach(V(r.door, 0, r.side * 2.4)); const inside = nav.attach(V(r.door, 0, r.side * 5.8)); nav.link(inside, nav.N.length - 2); }
+const NODES = nav.ground();
+
+// ---------- you and the robot ----------
+const SAVE = "block-school-escape";
+let S = loadSave(SAVE, { tries: 0, escapes: 0, best: 0 });
+const flash = new THREE.SpotLight(0xfff2cc, 2.2, 36, 0.55, 0.45, 1.3); scene.add(flash, flash.target);
+let lightOn = true;
+const RG = new THREE.Group();
+const robot = { body: { g: RG }, pos: V(), vel: V(), onGround: false, yaw: 0, path: [], state: "patrol", seenT: 0, last: null, look: 0 };
+{
+  const b = boxMesh(1.8, 2.6, 1.2, 0x37474f); b.position.y = 1.9; RG.add(b);
+  const head = boxMesh(1.4, 1, 1.2, 0x263238); head.position.y = 3.8; RG.add(head);
+  const visor = boxMesh(1.2, 0.25, 0.1, 0xff1744, 0xff1744); visor.position.set(0, 3.85, 0.62); RG.add(visor);
+  for (const x of [-0.5, 0.5]) { const l = boxMesh(0.6, 0.6, 0.6, 0x212121); l.position.set(x, 0.3, 0); RG.add(l); }
+  const eye = new THREE.PointLight(0xff1744, 1.4, 9, 2); eye.position.set(0, 3.8, 1); RG.add(eye);
+  const badge = makeLabel("HALL MONITOR", "#ff5252", 512, 50); badge.scale.set(3.4, 0.8, 1); badge.position.y = 5; RG.add(badge);
+  scene.add(RG);
+}
+const keyGeo = new THREE.TorusGeometry(0.35, 0.12, 8, 16), keyMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffb300, emissiveIntensity: 0.9, metalness: 0.6, roughness: 0.3 });
+let keys3 = [], got = 0, lives = 3, hidden = null, crouch = false, phase = "menu", elapsed = 0, safeT = 0, hurtT = 0;
+function placeKeys() {
+  for (const k of keys3) scene.remove(k.m); keys3 = [];
+  const rooms = shuffle(ROOMS.slice()).slice(0, 3);
+  for (const r of rooms) {
+    const spots = KEY_SPOTS.filter((p) => p.x > r.x0 && p.x < r.x1 && Math.sign(p.z) === r.side);
+    const p = pick(spots); const g = new THREE.Group(); const ring = new THREE.Mesh(keyGeo, keyMat); g.add(ring); const stem = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.8), keyMat); stem.position.z = 0.7; g.add(stem);
+    g.position.copy(p).setY(p.y + 0.5); scene.add(g); keys3.push({ m: g, p: g.position.clone(), room: r.kind });
+  }
+}
+function setCrouch(on) { crouch = on; P.body.g.scale.set(0.62, on ? 0.4 : 0.62, 0.62); P.speed = on ? 5.5 : 11.5; }
+function newGame() {
+  got = 0; lives = 3; elapsed = 0; safeT = 3; hidden = null; setCrouch(false); placeKeys(); phase = "play";
+  P.pos.set(X0 + 4, 0.3, 0); P.canMove = true; P.body.g.visible = true; cam.yaw = -Math.PI / 2;
+  robot.pos.set(20, 0.3, 0); robot.path = []; robot.state = "patrol"; robot.speedUp = 0;
+  removeSolid(exitDoor); scene.add(exitDoor.m); solids.push(exitDoor); exitDoor.m.material = mat(0x7b1fa2, 0x2a0033);
+  $("over").style.display = "none"; $("locker").style.display = "none"; S.tries++; storeSave(SAVE, S);
+  show("Find the 3 keys. Stay out of the Hall Monitor's sight.", 3);
+}
+function caught() {
+  lives--; hurtT = 0.9; SFX.lose(); hidden = null; $("locker").style.display = "none"; P.body.g.visible = true;
+  if (lives <= 0) { phase = "over"; $("oT").textContent = "CAUGHT!"; $("oInfo").textContent = `The Hall Monitor caught you with ${got} of 3 keys. Try again!`; $("over").style.display = "grid"; document.exitPointerLock?.(); return; }
+  show(`Caught! ${lives} ${lives === 1 ? "life" : "lives"} left. Back to the start.`, 2.4);
+  P.pos.set(X0 + 4, 0.3, 0); P.vel.set(0, 0, 0); P.canMove = true; safeT = 3; setCrouch(false);
+  robot.state = "patrol"; robot.path = []; const far = NODES.filter((i) => nav.N[i].x > 10); robot.pos.copy(nav.N[pick(far)]).setY(0.3);
+}
+function escaped() {
+  phase = "over"; S.escapes++; const best = !S.best || elapsed < S.best; if (best) S.best = +elapsed.toFixed(1); storeSave(SAVE, S);
+  sendScore("time", +elapsed.toFixed(1)); SFX.win();
+  $("oT").textContent = "ESCAPED!"; $("oInfo").textContent = `You got out in ${fmtT(elapsed)} with ${lives} ${lives === 1 ? "life" : "lives"} left.${best ? " New best time!" : ` Best: ${fmtT(S.best)}`}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+function nearLocker() { let best = null, bd = 2.2; for (const l of lockers) { const d = Math.hypot(l.front.x - P.pos.x, l.front.z - P.pos.z); if (d < bd) { bd = d; best = l; } } return best; }
+function use() {
+  if (phase !== "play") return;
+  if (hidden) { hidden = null; P.canMove = true; P.body.g.visible = true; $("locker").style.display = "none"; P.pos.set(P.pos.x, 0.3, P.pos.z); tone(300, 0.15, "square", 0.03); return; }
+  const l = nearLocker(); if (!l) return;
+  // if it was chasing you from close by, it saw you get in
+  robot.sawHide = robot.state === "chase" && robot.pos.distanceTo(P.pos) < 9;
+  hidden = l; P.canMove = false; P.body.g.visible = false; P.pos.set(l.front.x, 0.3, l.front.z); setCrouch(false); $("locker").style.display = "block"; tone(220, 0.2, "square", 0.03);
+}
+actions.KeyE = use; actions.KeyF = () => { lightOn = !lightOn; tone(lightOn ? 900 : 600, 0.05, "square", 0.03); }; actions.KeyC = () => { if (!hidden) setCrouch(!crouch); };
+touchControls([{ label: "USE", color: "rgba(178,255,89,.95)", down: use }, { label: "LIGHT", color: "rgba(255,241,118,.95)", down: () => actions.KeyF() }, { label: "CROUCH", color: "rgba(128,203,196,.95)", down: () => actions.KeyC() }, JUMP_BUTTON]);
+
+// ---------- the Hall Monitor's brain ----------
+function canSeeYou() {
+  if (hidden || safeT > 0) return false;
+  const dx = P.pos.x - robot.pos.x, dz = P.pos.z - robot.pos.z, d = Math.hypot(dx, dz);
+  const range = (lightOn ? 26 : 13) * (crouch ? 0.55 : 1);
+  if (d > range) return false;
+  if (d > 3 && Math.abs(angDiff(Math.atan2(dx, dz), robot.yaw)) > 1.1) return false;
+  const eye = robot.pos.clone().setY(3.8);
+  return canSee(eye, P.pos.clone().setY(P.pos.y + (crouch ? 1.1 : 2.2))) || canSee(eye, P.pos.clone().setY(P.pos.y + (crouch ? 0.6 : 1.2)));
+}
+let seen = false;
+function robotStep(dt) {
+  const fast = 1 + got * 0.08;
+  robot.scan = (robot.scan || 0) - dt;
+  if (robot.scan <= 0) { robot.scan = 0.12; seen = canSeeYou(); if (seen) { if (robot.state !== "chase") { tone(160, 0.4, "sawtooth", 0.06, 200); } robot.state = "chase"; robot.last = P.pos.clone(); robot.seenT = 0; } }
+  if (robot.state === "chase") {
+    if (!seen) { robot.seenT += dt; if (robot.seenT > 1.6) { robot.state = "search"; robot.path = nav.route(robot.pos, nav.near(robot.last)); robot.look = 0; } }
+    if (hidden && robot.sawHide && robot.pos.distanceTo(P.pos) < 2.6) { caught(); return; }
+    walkToward(robot, hidden && robot.sawHide ? hidden.front : P.pos, dt, 10.8 * fast);
+    if (robot.bumped && robot.onGround && Math.random() < 0.05) robot.wantJump = true;
+  } else {
+    if (!robot.path.length) {
+      robot.look += dt; robot.yaw += dt * 1.8; physics(robot, V(), dt);
+      if (robot.look > (robot.state === "search" ? 2.6 : 0.8)) { robot.look = 0; robot.state = "patrol"; const keyRoom = Math.random() < 0.35 && keys3.length; robot.path = nav.route(robot.pos, keyRoom ? nav.near(pick(keys3).p.clone().setY(0)) : pick(NODES)); }
+      RG.position.copy(robot.pos); RG.rotation.y = robot.yaw; return;
+    }
+    followPath(robot, dt, (robot.state === "search" ? 9 : 7.5) * fast);
+  }
+  faceMove(robot, dt);
+  if (!hidden && safeT <= 0 && Math.hypot(P.pos.x - robot.pos.x, P.pos.z - robot.pos.z) < 1.9) caught();
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.tries ? `Escapes ${S.escapes} of ${S.tries} tries${S.best ? " · best " + fmtT(S.best) : ""}` : ""; }
+showStats(); placeKeys(); P.pos.set(X0 + 4, 0.3, 0); cam.yaw = -Math.PI / 2; robot.pos.set(20, 0.3, 0);
+onFrame((dt, T) => {
+  for (const k of keys3) k.m.rotation.y += dt * 2;
+  lamps.forEach((m, i) => { const on = Math.sin(T * 7 + i * 3) + Math.sin(T * 13 + i) > -1.6; m.material = mat(0xfffde7, on ? 0xfff59d : 0x111111); });
+  hallLights.forEach((l, i) => { l.intensity = 0.8 + Math.sin(T * 9 + i * 2) * 0.12 - (Math.sin(T * 3.1 + i) > 0.97 ? 0.7 : 0); });
+  if (started && phase === "play") {
+    elapsed += dt; safeT -= dt; hurtT -= dt;
+    stepPlayer(dt, T);
+    robotStep(dt);
+    // keys and the exit
+    for (let i = keys3.length - 1; i >= 0; i--) { const k = keys3[i]; if (Math.hypot(k.p.x - P.pos.x, k.p.z - P.pos.z) < 1.8 && Math.abs(k.p.y - P.pos.y) < 3.2) { scene.remove(k.m); keys3.splice(i, 1); got++; SFX.coin(); show(got < 3 ? `Key ${got} of 3! It's getting faster...` : "All 3 keys! Get to the EXIT!", 2.2); if (got === 3) { exitDoor.m.material = mat(0x00e676, 0x00512a); } } }
+    if (got === 3 && solids.includes(exitDoor) && P.pos.x > X1 - 3 && Math.abs(P.pos.z) < 4) { removeSolid(exitDoor); SFX.win(); }
+    if (P.pos.x > X1 + 1) escaped();
+  } else if (!started || phase === "menu") stepPlayer(dt, T);
+  // the robot's body and the flashlight
+  RG.position.copy(robot.pos);
+  updateCamera(dt);
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+  flash.visible = lightOn && !hidden; flash.position.copy(P.pos).add(V(0, 2.3, 0)).addScaledVector(f, 0.6); flash.target.position.copy(P.pos).addScaledVector(f, 12).setY(1);
+  // HUD
+  $("tKeys").textContent = `Keys ${got}/3`; $("tLives").textContent = `${lives} ${lives === 1 ? "life" : "lives"}`; $("tTime").textContent = fmtT(elapsed);
+  $("warn").style.display = phase === "play" && seen ? "block" : "none";
+  $("hurt").style.opacity = Math.max(0, hurtT);
+  $("hTitle").textContent = hidden ? "Hiding in a locker" : "Block School";
+  $("hInfo").textContent = `${lightOn ? "Flashlight on" : "Flashlight off"}${crouch ? " · crouching" : ""}`;
+  $("hInfo2").textContent = got === 3 ? "Go to the EXIT at the end of the hall" : keys3.length ? `A key is in the ${ROOM_NAME[keys3[0].room]}` : "";
+  const l = !hidden && phase === "play" && nearLocker();
+  $("prompt").textContent = hidden ? `${touch ? "USE" : "E"}: get out` : l ? `${touch ? "USE" : "E"}: hide in the locker` : "";
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "play") newGame(); };
+$("again").onclick = () => newGame();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, got, lives, robot: robot.state, seen, hidden: !!hidden, keys: keys3.map((k) => [k.p.x | 0, k.p.z | 0]), t: +elapsed.toFixed(1), nodes: nav.N.length }),
+  keyAt: (i) => keys3[i] && keys3[i].p, lockers, use, robot, nav, KEY_SPOTS,
+};
+loop();
+})();
+</script>
+</body>
+</html>

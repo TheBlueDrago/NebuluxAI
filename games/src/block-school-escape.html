@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block School Escape</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#263238ee,#000000f2)}
+  #over{display:none}
+  h1{color:#b2ff59}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:16px;font-weight:900;font-size:22px;pointer-events:none;white-space:nowrap}
+  #warn{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);font-size:22px;font-weight:900;color:#ff5252;pointer-events:none;display:none}
+  #prompt{position:fixed;left:50%;bottom:15%;transform:translateX(-50%);font-size:17px;font-weight:900;pointer-events:none}
+  #locker{position:fixed;inset:0;pointer-events:none;display:none;background:repeating-linear-gradient(#0b0f12 0 34px,rgba(0,0,0,.15) 34px 46px)}
+  #hurt{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,0,0,0) 40%,rgba(255,0,0,.7))}
+  @media (max-width:600px){#top{top:54px;font-size:17px;gap:10px} #hud{top:88px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><span id="tKeys" style="color:#ffd54f">Keys 0/3</span><span id="tLives" style="color:#ff8a80">3 lives</span><span id="tTime">0:00</span></div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Block School</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="locker"></div><div id="hurt"></div>
+<div id="warn" class="sh">The Hall Monitor sees you!</div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK SCHOOL<br>ESCAPE</h1>
+  <p style="font-weight:700">You got locked in the school after dark. Find the <b style="color:#ffd54f">3 keys</b> hidden in the classrooms and get out through the exit at the end of the hall. The <b style="color:#ff5252">Hall Monitor</b> robot patrols the halls: if it spots you it gives chase. Hide in a <b>locker</b>, crouch behind desks, or switch your flashlight off to stay out of sight. Three lives.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>E</kbd> hide in or leave a locker · <kbd>F</kbd> flashlight · <kbd>C</kbd> crouch · <kbd>Right mouse</kbd> look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">ESCAPED!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block School Escape =================
+scene.background = new THREE.Color(0x05070c); scene.fog = new THREE.Fog(0x05070c, 6, 46);
+hemi.intensity = 0.32; hemi.color.setHex(0x8fa8ff); hemi.groundColor.setHex(0x1a1f33); sun.intensity = 0.06;
+cam.dist = 7; cam.pitch = 0.32; cam.min = 3; cam.max = 12;
+const X0 = -44, X1 = 44, Z0 = -20, Z1 = 20, H = 4.5;
+addBox(0, -1, 0, 100, 2, 50, 0x37474f);
+const floorM = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, 8), new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); floorM.rotation.x = -Math.PI / 2; floorM.position.y = 0.01; floorM.receiveShadow = true; scene.add(floorM);
+const wallC = 0x5d6d7e;
+const wall = (x, z, w, d, c = wallC) => addBox(x, H / 2, z, w, H, d, c, { wall: true });
+function wallX(x1, x2, z, gaps, c) { let a = x1; for (const [g, w] of gaps) { if (g - w / 2 > a) wall((a + g - w / 2) / 2, z, g - w / 2 - a, 0.6, c); addBox(g, (H + 3.1) / 2, z, w, H - 3.1, 0.6, c || wallC, { wall: true }); a = g + w / 2; } if (x2 > a) wall((a + x2) / 2, z, x2 - a, 0.6, c); }
+// outer walls, with the exit in the east end of the hall
+wallX(X0, X1, Z1, []); wallX(X0, X1, Z0, []);
+wall(X0, 0, 0.6, Z1 - Z0); wall(X1, -12, 0.6, 16); wall(X1, 12, 0.6, 16);
+const exitDoor = addBox(X1, 1.8, 0, 0.8, 3.6, 8, 0x7b1fa2, { wall: true, glow: 0x2a0033 });
+const exitSign = makeLabel("EXIT", "#69f0ae", 256, 80); exitSign.scale.set(3, 1.5, 1); exitSign.position.set(X1 - 1, 4.2, 0); scene.add(exitSign);
+// the hall and the 8 rooms off it
+const ROOMS = [];
+for (const side of [1, -1]) for (let i = 0; i < 4; i++) {
+  const x0 = X0 + i * 22, x1 = x0 + 22, cx = (x0 + x1) / 2, door = cx + (i % 2 ? 5 : -5);
+  ROOMS.push({ side, x0, x1, cx, cz: side * 12, door, kind: ["classroom", "library", "lab", "cafeteria", "art", "music", "storage", "office"][ROOMS.length] });
+}
+wallX(X0, X1, 4, ROOMS.filter((r) => r.side > 0).map((r) => [r.door, 3.2]), 0x455a64);
+wallX(X0, X1, -4, ROOMS.filter((r) => r.side < 0).map((r) => [r.door, 3.2]), 0x455a64);
+for (const x of [-22, 0, 22]) { wall(x, 12, 0.6, 16); wall(x, -12, 0.6, 16); }
+// lights along the hall: they flicker
+const lamps = [];
+for (let x = X0 + 6; x < X1; x += 11) { const m = boxMesh(3, 0.2, 1, 0xfffde7, 0xfff59d); m.position.set(x, H - 0.15, 0); m.castShadow = false; scene.add(m); lamps.push(m); }
+const hallLights = [-26, 0, 26].map((x) => { const l = new THREE.PointLight(0xfff3c4, 0.9, 22, 2); l.position.set(x, H - 0.8, 0); scene.add(l); return l; });
+// furniture: it blocks the Hall Monitor's view too
+const thing = (x, z, w, h, d, c) => addBox(x, h / 2, z, w, h, d, c, { wall: true });
+const KEY_SPOTS = [];
+const ROOM_NAME = { classroom: "classroom", library: "library", lab: "science lab", cafeteria: "cafeteria", art: "art room", music: "music room", storage: "storage room", office: "office" };
+for (const r of ROOMS) {
+  const zN = r.side > 0 ? 5 : -19, zF = r.side > 0 ? 19 : -5, zc = (zN + zF) / 2, back = r.side > 0 ? 18 : -18;
+  if (r.kind === "classroom" || r.kind === "office") {
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 2; b++) { const x = r.cx - 6 + a * 6, z = zc - 2 + b * 4; thing(x, z, 2.2, 1.2, 1.4, 0x8d6e63); KEY_SPOTS.push(V(x, 1.4, z)); }
+    thing(r.cx, back - r.side * 0.6, 4, 1.4, 1.6, 0x5d4037); KEY_SPOTS.push(V(r.cx, 1.6, back - r.side * 0.6));
+  } else if (r.kind === "library") {
+    for (let a = 0; a < 4; a++) { const x = r.x0 + 4 + a * 4.6; thing(x, zc, 1.2, 3.4, 9, 0x6d4c41); KEY_SPOTS.push(V(x + 1.4, 0.6, zc + rr(-3, 3))); }
+  } else if (r.kind === "lab") {
+    for (const dz of [-3, 3]) { thing(r.cx, zc + dz, 12, 1.3, 2, 0xeceff1); KEY_SPOTS.push(V(r.cx + rr(-5, 5), 1.5, zc + dz)); }
+  } else if (r.kind === "cafeteria") {
+    for (const dz of [-3.5, 0, 3.5]) { thing(r.cx, zc + dz, 14, 1.1, 1.8, 0xb0bec5); KEY_SPOTS.push(V(r.cx + rr(-6, 6), 1.3, zc + dz)); }
+  } else if (r.kind === "art") {
+    for (let a = 0; a < 4; a++) { const x = r.cx - 7 + a * 4.6, z = zc + (a % 2 ? 2.5 : -2.5); thing(x, z, 1.6, 2.6, 0.3, pick([0xef5350, 0x42a5f5, 0xffee58, 0x66bb6a])); KEY_SPOTS.push(V(x, 0.6, z + 1.2)); }
+  } else if (r.kind === "music") {
+    thing(r.cx - 4, zc, 5, 1.6, 3, 0x212121); KEY_SPOTS.push(V(r.cx - 4, 1.8, zc + 1.3));
+    for (let a = 0; a < 3; a++) { thing(r.cx + 3 + a * 2.4, zc + 3, 1, 1.2, 1, 0x8e24aa); }
+    KEY_SPOTS.push(V(r.cx + 5, 0.6, zc - 4));
+  } else if (r.kind === "storage") {
+    for (let a = 0; a < 6; a++) { const x = r.x0 + 3 + (a % 3) * 6, z = zc + (a < 3 ? -3 : 3); thing(x, z, 2.4, a % 2 ? 2.4 : 4.6, 2.4, 0xa1887f); KEY_SPOTS.push(V(x + 1.8, 0.6, z)); }
+  }
+  const l = makeLabel(ROOM_NAME[r.kind].toUpperCase(), "#b0bec5", 512, 56); l.scale.set(3.6, 0.9, 1); l.position.set(r.door, 3.7, r.side * 4.5); scene.add(l);
+}
+// lockers along the hall walls
+const lockers = [];
+for (let x = X0 + 4; x < X1 - 3; x += 3.2) for (const s of [1, -1]) {
+  if (ROOMS.some((r) => r.side === s && Math.abs(r.door - x) < 3.2)) continue;
+  if (Math.random() < 0.45) continue;
+  const lk = addBox(x, 1.5, s * 3.3, 1.4, 3, 0.8, pick([0x1565c0, 0x2e7d32, 0xc62828]), { wall: true });
+  lockers.push({ x, z: s * 3.3, s, lk, front: V(x, 0, s * 2.2) });
+}
+
+// ---------- waypoints for the Hall Monitor ----------
+const nav = gridNav({ x0: X0 + 2, x1: X1 - 2, z0: Z0 + 2, z1: Z1 - 2, step: 3 });
+for (const r of ROOMS) { nav.attach(V(r.door, 0, r.side * 2.4)); const inside = nav.attach(V(r.door, 0, r.side * 5.8)); nav.link(inside, nav.N.length - 2); }
+const NODES = nav.ground();
+
+// ---------- you and the robot ----------
+const SAVE = "block-school-escape";
+let S = loadSave(SAVE, { tries: 0, escapes: 0, best: 0 });
+const flash = new THREE.SpotLight(0xfff2cc, 2.2, 36, 0.55, 0.45, 1.3); scene.add(flash, flash.target);
+let lightOn = true;
+const RG = new THREE.Group();
+const robot = { body: { g: RG }, pos: V(), vel: V(), onGround: false, yaw: 0, path: [], state: "patrol", seenT: 0, last: null, look: 0 };
+{
+  const b = boxMesh(1.8, 2.6, 1.2, 0x37474f); b.position.y = 1.9; RG.add(b);
+  const head = boxMesh(1.4, 1, 1.2, 0x263238); head.position.y = 3.8; RG.add(head);
+  const visor = boxMesh(1.2, 0.25, 0.1, 0xff1744, 0xff1744); visor.position.set(0, 3.85, 0.62); RG.add(visor);
+  for (const x of [-0.5, 0.5]) { const l = boxMesh(0.6, 0.6, 0.6, 0x212121); l.position.set(x, 0.3, 0); RG.add(l); }
+  const eye = new THREE.PointLight(0xff1744, 1.4, 9, 2); eye.position.set(0, 3.8, 1); RG.add(eye);
+  const badge = makeLabel("HALL MONITOR", "#ff5252", 512, 50); badge.scale.set(3.4, 0.8, 1); badge.position.y = 5; RG.add(badge);
+  scene.add(RG);
+}
+const keyGeo = new THREE.TorusGeometry(0.35, 0.12, 8, 16), keyMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffb300, emissiveIntensity: 0.9, metalness: 0.6, roughness: 0.3 });
+let keys3 = [], got = 0, lives = 3, hidden = null, crouch = false, phase = "menu", elapsed = 0, safeT = 0, hurtT = 0;
+function placeKeys() {
+  for (const k of keys3) scene.remove(k.m); keys3 = [];
+  const rooms = shuffle(ROOMS.slice()).slice(0, 3);
+  for (const r of rooms) {
+    const spots = KEY_SPOTS.filter((p) => p.x > r.x0 && p.x < r.x1 && Math.sign(p.z) === r.side);
+    const p = pick(spots); const g = new THREE.Group(); const ring = new THREE.Mesh(keyGeo, keyMat); g.add(ring); const stem = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.8), keyMat); stem.position.z = 0.7; g.add(stem);
+    g.position.copy(p).setY(p.y + 0.5); scene.add(g); keys3.push({ m: g, p: g.position.clone(), room: r.kind });
+  }
+}
+function setCrouch(on) { crouch = on; P.body.g.scale.set(0.62, on ? 0.4 : 0.62, 0.62); P.speed = on ? 5.5 : 11.5; }
+function newGame() {
+  got = 0; lives = 3; elapsed = 0; safeT = 3; hidden = null; setCrouch(false); placeKeys(); phase = "play";
+  P.pos.set(X0 + 4, 0.3, 0); P.canMove = true; P.body.g.visible = true; cam.yaw = -Math.PI / 2;
+  robot.pos.set(20, 0.3, 0); robot.path = []; robot.state = "patrol"; robot.speedUp = 0;
+  removeSolid(exitDoor); scene.add(exitDoor.m); solids.push(exitDoor); exitDoor.m.material = mat(0x7b1fa2, 0x2a0033);
+  $("over").style.display = "none"; $("locker").style.display = "none"; S.tries++; storeSave(SAVE, S);
+  show("Find the 3 keys. Stay out of the Hall Monitor's sight.", 3);
+}
+function caught() {
+  lives--; hurtT = 0.9; SFX.lose(); hidden = null; $("locker").style.display = "none"; P.body.g.visible = true;
+  if (lives <= 0) { phase = "over"; $("oT").textContent = "CAUGHT!"; $("oInfo").textContent = `The Hall Monitor caught you with ${got} of 3 keys. Try again!`; $("over").style.display = "grid"; document.exitPointerLock?.(); return; }
+  show(`Caught! ${lives} ${lives === 1 ? "life" : "lives"} left. Back to the start.`, 2.4);
+  P.pos.set(X0 + 4, 0.3, 0); P.vel.set(0, 0, 0); P.canMove = true; safeT = 3; setCrouch(false);
+  robot.state = "patrol"; robot.path = []; const far = NODES.filter((i) => nav.N[i].x > 10); robot.pos.copy(nav.N[pick(far)]).setY(0.3);
+}
+function escaped() {
+  phase = "over"; S.escapes++; const best = !S.best || elapsed < S.best; if (best) S.best = +elapsed.toFixed(1); storeSave(SAVE, S);
+  sendScore("time", +elapsed.toFixed(1)); SFX.win();
+  $("oT").textContent = "ESCAPED!"; $("oInfo").textContent = `You got out in ${fmtT(elapsed)} with ${lives} ${lives === 1 ? "life" : "lives"} left.${best ? " New best time!" : ` Best: ${fmtT(S.best)}`}`;
+  $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+function nearLocker() { let best = null, bd = 2.2; for (const l of lockers) { const d = Math.hypot(l.front.x - P.pos.x, l.front.z - P.pos.z); if (d < bd) { bd = d; best = l; } } return best; }
+function use() {
+  if (phase !== "play") return;
+  if (hidden) { hidden = null; P.canMove = true; P.body.g.visible = true; $("locker").style.display = "none"; P.pos.set(P.pos.x, 0.3, P.pos.z); tone(300, 0.15, "square", 0.03); return; }
+  const l = nearLocker(); if (!l) return;
+  // if it was chasing you from close by, it saw you get in
+  robot.sawHide = robot.state === "chase" && robot.pos.distanceTo(P.pos) < 9;
+  hidden = l; P.canMove = false; P.body.g.visible = false; P.pos.set(l.front.x, 0.3, l.front.z); setCrouch(false); $("locker").style.display = "block"; tone(220, 0.2, "square", 0.03);
+}
+actions.KeyE = use; actions.KeyF = () => { lightOn = !lightOn; tone(lightOn ? 900 : 600, 0.05, "square", 0.03); }; actions.KeyC = () => { if (!hidden) setCrouch(!crouch); };
+touchControls([{ label: "USE", color: "rgba(178,255,89,.95)", down: use }, { label: "LIGHT", color: "rgba(255,241,118,.95)", down: () => actions.KeyF() }, { label: "CROUCH", color: "rgba(128,203,196,.95)", down: () => actions.KeyC() }, JUMP_BUTTON]);
+
+// ---------- the Hall Monitor's brain ----------
+function canSeeYou() {
+  if (hidden || safeT > 0) return false;
+  const dx = P.pos.x - robot.pos.x, dz = P.pos.z - robot.pos.z, d = Math.hypot(dx, dz);
+  const range = (lightOn ? 26 : 13) * (crouch ? 0.55 : 1);
+  if (d > range) return false;
+  if (d > 3 && Math.abs(angDiff(Math.atan2(dx, dz), robot.yaw)) > 1.1) return false;
+  const eye = robot.pos.clone().setY(3.8);
+  return canSee(eye, P.pos.clone().setY(P.pos.y + (crouch ? 1.1 : 2.2))) || canSee(eye, P.pos.clone().setY(P.pos.y + (crouch ? 0.6 : 1.2)));
+}
+let seen = false;
+function robotStep(dt) {
+  const fast = 1 + got * 0.08;
+  robot.scan = (robot.scan || 0) - dt;
+  if (robot.scan <= 0) { robot.scan = 0.12; seen = canSeeYou(); if (seen) { if (robot.state !== "chase") { tone(160, 0.4, "sawtooth", 0.06, 200); } robot.state = "chase"; robot.last = P.pos.clone(); robot.seenT = 0; } }
+  if (robot.state === "chase") {
+    if (!seen) { robot.seenT += dt; if (robot.seenT > 1.6) { robot.state = "search"; robot.path = nav.route(robot.pos, nav.near(robot.last)); robot.look = 0; } }
+    if (hidden && robot.sawHide && robot.pos.distanceTo(P.pos) < 2.6) { caught(); return; }
+    walkToward(robot, hidden && robot.sawHide ? hidden.front : P.pos, dt, 10.8 * fast);
+    if (robot.bumped && robot.onGround && Math.random() < 0.05) robot.wantJump = true;
+  } else {
+    if (!robot.path.length) {
+      robot.look += dt; robot.yaw += dt * 1.8; physics(robot, V(), dt);
+      if (robot.look > (robot.state === "search" ? 2.6 : 0.8)) { robot.look = 0; robot.state = "patrol"; const keyRoom = Math.random() < 0.35 && keys3.length; robot.path = nav.route(robot.pos, keyRoom ? nav.near(pick(keys3).p.clone().setY(0)) : pick(NODES)); }
+      RG.position.copy(robot.pos); RG.rotation.y = robot.yaw; return;
+    }
+    followPath(robot, dt, (robot.state === "search" ? 9 : 7.5) * fast);
+  }
+  faceMove(robot, dt);
+  if (!hidden && safeT <= 0 && Math.hypot(P.pos.x - robot.pos.x, P.pos.z - robot.pos.z) < 1.9) caught();
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.tries ? `Escapes ${S.escapes} of ${S.tries} tries${S.best ? " · best " + fmtT(S.best) : ""}` : ""; }
+showStats(); placeKeys(); P.pos.set(X0 + 4, 0.3, 0); cam.yaw = -Math.PI / 2; robot.pos.set(20, 0.3, 0);
+onFrame((dt, T) => {
+  for (const k of keys3) k.m.rotation.y += dt * 2;
+  lamps.forEach((m, i) => { const on = Math.sin(T * 7 + i * 3) + Math.sin(T * 13 + i) > -1.6; m.material = mat(0xfffde7, on ? 0xfff59d : 0x111111); });
+  hallLights.forEach((l, i) => { l.intensity = 0.8 + Math.sin(T * 9 + i * 2) * 0.12 - (Math.sin(T * 3.1 + i) > 0.97 ? 0.7 : 0); });
+  if (started && phase === "play") {
+    elapsed += dt; safeT -= dt; hurtT -= dt;
+    stepPlayer(dt, T);
+    robotStep(dt);
+    // keys and the exit
+    for (let i = keys3.length - 1; i >= 0; i--) { const k = keys3[i]; if (Math.hypot(k.p.x - P.pos.x, k.p.z - P.pos.z) < 1.8 && Math.abs(k.p.y - P.pos.y) < 3.2) { scene.remove(k.m); keys3.splice(i, 1); got++; SFX.coin(); show(got < 3 ? `Key ${got} of 3! It's getting faster...` : "All 3 keys! Get to the EXIT!", 2.2); if (got === 3) { exitDoor.m.material = mat(0x00e676, 0x00512a); } } }
+    if (got === 3 && solids.includes(exitDoor) && P.pos.x > X1 - 3 && Math.abs(P.pos.z) < 4) { removeSolid(exitDoor); SFX.win(); }
+    if (P.pos.x > X1 + 1) escaped();
+  } else if (!started || phase === "menu") stepPlayer(dt, T);
+  // the robot's body and the flashlight
+  RG.position.copy(robot.pos);
+  updateCamera(dt);
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+  flash.visible = lightOn && !hidden; flash.position.copy(P.pos).add(V(0, 2.3, 0)).addScaledVector(f, 0.6); flash.target.position.copy(P.pos).addScaledVector(f, 12).setY(1);
+  // HUD
+  $("tKeys").textContent = `Keys ${got}/3`; $("tLives").textContent = `${lives} ${lives === 1 ? "life" : "lives"}`; $("tTime").textContent = fmtT(elapsed);
+  $("warn").style.display = phase === "play" && seen ? "block" : "none";
+  $("hurt").style.opacity = Math.max(0, hurtT);
+  $("hTitle").textContent = hidden ? "Hiding in a locker" : "Block School";
+  $("hInfo").textContent = `${lightOn ? "Flashlight on" : "Flashlight off"}${crouch ? " · crouching" : ""}`;
+  $("hInfo2").textContent = got === 3 ? "Go to the EXIT at the end of the hall" : keys3.length ? `A key is in the ${ROOM_NAME[keys3[0].room]}` : "";
+  const l = !hidden && phase === "play" && nearLocker();
+  $("prompt").textContent = hidden ? `${touch ? "USE" : "E"}: get out` : l ? `${touch ? "USE" : "E"}: hide in the locker` : "";
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "play") newGame(); };
+$("again").onclick = () => newGame();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, got, lives, robot: robot.state, seen, hidden: !!hidden, keys: keys3.map((k) => [k.p.x | 0, k.p.z | 0]), t: +elapsed.toFixed(1), nodes: nav.N.length }),
+  keyAt: (i) => keys3[i] && keys3[i].p, lockers, use, robot, nav, KEY_SPOTS,
+};
+loop();
+})();
+</script>
+</body>
+</html>

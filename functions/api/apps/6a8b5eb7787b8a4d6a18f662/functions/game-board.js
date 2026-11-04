@@ -32,6 +32,7 @@ export const BOARDS = {
   "parry-arena": ["wins"],
   "block-league-soccer": ["wins", "goals"],
   "burger-rush-diner": ["coins"],
+  "block-school-escape": ["time"],
 };
 const MAX_SCORE = 1e9;
 
