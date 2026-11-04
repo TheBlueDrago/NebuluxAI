@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Builder Island</title>
+<style>
+/*KIT_CSS*/
+  #start{background:linear-gradient(#26c6dadd,#00303aee)}
+  h1{color:#ffee58}
+  #bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:4px;pointer-events:none}
+  #bar div{width:38px;height:38px;border:3px solid #000;border-radius:8px;position:relative;font:900 11px Segoe UI,sans-serif;color:#fff;text-shadow:0 1px 0 #000}
+  #bar div.on{outline:3px solid #fff;transform:translateY(-6px)}
+  #bar div span{position:absolute;left:3px;top:1px}
+  #cross{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #000}
+  #goals{text-align:left;max-width:420px;margin:10px auto;font-weight:800;font-size:14px;line-height:1.7}
+  body.touch #bar{bottom:auto;top:150px;flex-wrap:wrap;width:196px;justify-content:center} body.touch #bar div{width:26px;height:26px} body.touch #bar div.on{transform:none}
+</style>
+</head>
+<body>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Build mode</div><div class="sub" id="hInfo"></div><div class="sub" id="hGoal"></div></div>
+<div id="btns"><button class="b" id="flyB">Fly: off</button><button class="b" id="menuB">Menu</button></div>
+<div id="bar"></div>
+<div id="cross"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK BUILDER<br>ISLAND</h1>
+  <p style="font-weight:700">Your own island to build on. Aim with the circle in the middle of the screen, place blocks with a click and take them away with <kbd>X</kbd>. Pick from 12 blocks (glass, glowing light, water, lava and more), climb what you build, and switch on <b>fly</b> to build high. Your island saves itself.</p>
+  <p class="keys"><kbd>Click</kbd> or <kbd>E</kbd> place · <kbd>X</kbd> remove · <kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd> or <kbd>Q</kbd> pick a block · <kbd>G</kbd> fly (<kbd>Space</kbd> up, <kbd>C</kbd> down) · <kbd>Right mouse</kbd> or <kbd>Shift</kbd> to aim</p>
+  <div id="goals"></div>
+  <button class="big" id="play">BUILD</button>
+  <p><button class="b" id="wipe">Clear my island</button></p>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block Builder Island =================
+setSky("#4fc3f7", "#e1f5fe", 0xe1f5fe, 120, 320);
+hemi.intensity = 0.85; sun.intensity = 0.85;
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60 }); sun.shadow.camera.updateProjectionMatrix();
+cam.dist = 12; cam.pitch = 0.45; cam.max = 34;
+const B = 2, ISLE = 46, MAX_BLOCKS = 900;
+// the island and the sea
+addBox(0, -2, 0, ISLE * 2, 4, ISLE * 2, 0x558b2f);
+const sand = boxMesh(ISLE * 2 + 6, 3.4, ISLE * 2 + 6, 0xffe082); sand.position.set(0, -2.4, 0); scene.add(sand);
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x0288d1, roughness: 0.5 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -1.2; scene.add(sea);
+for (const [x, z, w, d] of [[0, -ISLE - 0.5, ISLE * 2 + 2, 1], [0, ISLE + 0.5, ISLE * 2 + 2, 1], [-ISLE - 0.5, 0, 1, ISLE * 2 + 2], [ISLE + 0.5, 0, 1, ISLE * 2 + 2]]) addBox(x, 60, z, w, 124, d, 0).m.visible = false;
+const grid = new THREE.GridHelper(ISLE * 2, ISLE, 0x33691e, 0x33691e); grid.position.y = 0.02; grid.material.transparent = true; grid.material.opacity = 0.35; scene.add(grid);
+
+// ---------- blocks ----------
+const TYPES = [
+  ["Grass", 0x7cb342], ["Wood", 0x8d6e63], ["Stone", 0x9e9e9e], ["Brick", 0xc62828], ["Sand", 0xffe082], ["White", 0xfafafa],
+  ["Black", 0x263238], ["Glass", 0xb3e5fc, { transparent: true, opacity: 0.35 }], ["Water", 0x1e88e5, { transparent: true, opacity: 0.6 }],
+  ["Lava", 0xff5722, { emissive: 0xdd2c00 }], ["Light", 0xfff59d, { emissive: 0xffee58 }], ["Leaves", 0x2e7d32],
+];
+const blockGeo = new THREE.BoxGeometry(B, B, B);
+const MATS = TYPES.map(([, c, o = {}]) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, depthWrite: !o.transparent, ...o }));
+const SAVE = "block-builder-island";
+let S = loadSave(SAVE, { blocks: [], placed: 0, tallest: 0, goals: {}, used: {} });
+const blocks = new Map(); // "x,y,z" -> { mesh, solid, t }
+const keyOf = (x, y, z) => `${x},${y},${z}`;
+function addBlock(x, y, z, t, quiet) {
+  const k = keyOf(x, y, z); if (blocks.has(k) || blocks.size >= MAX_BLOCKS) return false;
+  const solid = addBox(x * B, y * B + B / 2, z * B, B, B, B, 0, { wall: t !== 7 && t !== 8 });
+  solid.m.material = MATS[t]; solid.m.castShadow = !TYPES[t][2]?.transparent; solid.m.userData.key = k;
+  if (t === 8) solids.splice(solids.indexOf(solid), 1); // you can swim through water blocks
+  blocks.set(k, { solid, t, x, y, z });
+  if (!quiet) { S.placed++; S.used[t] = 1; S.tallest = Math.max(S.tallest, (y + 1) * B); }
+  return true;
+}
+function removeBlock(k) { const b = blocks.get(k); if (!b) return; if (solids.includes(b.solid)) removeSolid(b.solid); else scene.remove(b.solid.m); const i = sightBlockers.indexOf(b.solid.m); if (i >= 0) sightBlockers.splice(i, 1); blocks.delete(k); }
+const saveBlocks = () => { S.blocks = [...blocks.values()].map((b) => [b.x, b.y, b.z, b.t]); storeSave(SAVE, S); };
+for (const [x, y, z, t] of S.blocks) addBlock(x, y, z, t, true);
+// a starter house if the island is empty, so there's something to see
+if (!S.blocks.length) { for (let x = -3; x <= 3; x++) for (let z = 4; z <= 9; z++) for (let y = 0; y < 3; y++) { const edge = x === -3 || x === 3 || z === 4 || z === 9; if (edge && !(z === 4 && x === 0 && y < 2)) addBlock(x, y, z, y === 1 && (x === -2 || x === 2) && z === 4 ? 7 : 1, true); } for (let x = -4; x <= 4; x++) for (let z = 3; z <= 10; z++) addBlock(x, 3, z, 3, true); addBlock(0, 2, 4, 10, true); }
+
+// ---------- aiming ----------
+const ghost = new THREE.Mesh(new THREE.BoxGeometry(B * 1.02, B * 1.02, B * 1.02), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
+const ghostEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(B * 1.03, B * 1.03, B * 1.03)), new THREE.LineBasicMaterial({ color: 0xffffff }));
+ghost.add(ghostEdge); scene.add(ghost);
+const ray2 = new THREE.Raycaster(), groundPlane = new THREE.Plane(V(0, 1, 0), 0);
+let aim = null; // { place: [x,y,z] | null, remove: key | null }
+function findAim() {
+  ray2.setFromCamera({ x: 0, y: 0 }, camera); ray2.far = cam.dist + 16;
+  const meshes = [...blocks.values()].map((b) => b.solid.m);
+  const hit = ray2.intersectObjects(meshes, false)[0];
+  if (hit && hit.object.position.distanceTo(P.pos) < 18) {
+    const b = blocks.get(hit.object.userData.key), n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+    return { place: [b.x + Math.round(n.x), b.y + Math.round(n.y), b.z + Math.round(n.z)], remove: hit.object.userData.key };
+  }
+  const p = V(); if (ray2.ray.intersectPlane(groundPlane, p) && p.distanceTo(P.pos) < 18) return { place: [Math.round(p.x / B), 0, Math.round(p.z / B)], remove: null };
+  return null;
+}
+function placeOk([x, y, z]) {
+  if (y < 0 || y > 60 || Math.abs(x * B) > ISLE - 1 || Math.abs(z * B) > ISLE - 1 || blocks.has(keyOf(x, y, z))) return false;
+  // not inside you
+  const c = V(x * B, y * B + B / 2, z * B); return !(Math.abs(c.x - P.pos.x) < B / 2 + HW && Math.abs(c.z - P.pos.z) < B / 2 + HW && P.pos.y < c.y + B / 2 && P.pos.y + HH > c.y - B / 2);
+}
+let cur = 0;
+function place() {
+  if (!started || !aim || !aim.place) return;
+  if (!placeOk(aim.place)) { SFX.no(); return; }
+  if (blocks.size >= MAX_BLOCKS) { SFX.no(); show(`Your island is full (${MAX_BLOCKS} blocks)`, 1.5); return; }
+  addBlock(...aim.place, cur); tone(420 + cur * 30, 0.06, "square", 0.04); swing(); checkGoals(); saveSoon();
+}
+function remove() { if (!started || !aim || !aim.remove) return; removeBlock(aim.remove); tone(220, 0.08, "square", 0.04); swing(); saveSoon(); }
+let saveT = 0; const saveSoon = () => { saveT = 1.2; };
+function swing() { P.body.pose = true; P.body.arms[1].rotation.x = -1.8; setTimeout(() => { P.body.pose = false; }, 140); }
+actions.KeyE = place; actions.click = place; actions.KeyX = remove;
+for (let i = 0; i < 10; i++) actions["Digit" + ((i + 1) % 10)] = () => pick2(i);
+actions.KeyQ = () => pick2((cur + 1) % TYPES.length);
+function pick2(i) { cur = i; drawBar(); SFX.tick(); }
+let fly = false, tUp = false, tDown = false;
+function toggleFly() { fly = !fly; $("flyB").textContent = `Fly: ${fly ? "on" : "off"}`; P.vel.y = 0; show(fly ? "Flying! Space to go up, C to go down" : "Walking", 1.4); }
+actions.KeyG = toggleFly; $("flyB").onclick = toggleFly;
+touchControls([{ label: "PLACE", color: "rgba(156,204,101,.95)", down: place }, { label: "REMOVE", color: "rgba(239,83,80,.9)", down: remove }, { label: "BLOCK", color: "rgba(255,238,88,.95)", down: () => actions.KeyQ() }, { label: "UP", color: "rgba(129,212,250,.95)", down: () => { if (!fly) toggleFly(); tUp = true; }, up: () => { tUp = false; } }]);
+function drawBar() { $("bar").innerHTML = TYPES.map(([n, c], i) => `<div class="${i === cur ? "on" : ""}" style="background:#${c.toString(16).padStart(6, "0")}"><span>${i < 10 ? (i + 1) % 10 : ""}</span></div>`).join(""); }
+drawBar();
+
+// ---------- goals ----------
+const GOALS = [
+  ["first", "Place your first block", () => S.placed >= 1], ["fifty", "Place 50 blocks", () => S.placed >= 50], ["twohundred", "Place 200 blocks", () => S.placed >= 200],
+  ["tower", "Build up to 20 high", () => S.tallest >= 20], ["sky", "Build something 60 high (fly up!)", () => S.tallest >= 60], ["rainbow", "Use every kind of block", () => TYPES.every((t, i) => S.used[i])],
+  ["glass", "A glass house: 20 glass blocks on the island", () => [...blocks.values()].filter((b) => b.t === 7).length >= 20], ["lights", "Light it up: 8 light blocks", () => [...blocks.values()].filter((b) => b.t === 10).length >= 8],
+];
+function checkGoals() { for (const [id, name, ok] of GOALS) if (!S.goals[id] && ok()) { S.goals[id] = 1; SFX.win(); show(`Goal done: ${name}!`, 2.2); } }
+function drawGoals() { $("goals").innerHTML = `<div>Goals ${Object.keys(S.goals).length}/${GOALS.length}</div>` + GOALS.map(([id, name]) => `<div style="color:${S.goals[id] ? "#b9f6ca" : "#fff"}">${S.goals[id] ? "Done" : "To do"}: ${name}</div>`).join(""); }
+drawGoals();
+
+// ---------- the loop ----------
+P.pos.set(0, 0.3, -6); cam.yaw = Math.PI;
+onFrame((dt, T) => {
+  if (started) {
+    if (fly) {
+      // flying: no gravity, Space and C move you up and down
+      const want = moveDir().multiplyScalar(P.speed); want.y = (keys.Space || tUp ? 1 : 0) - (keys.KeyC || tDown ? 1 : 0); want.y *= 9;
+      P.vel.lerp(want, Math.min(1, dt * 8)); P.wantJump = false;
+      const vy = P.vel.y; P.vel.y = 0; physics(P, V(P.vel.x, 0, P.vel.z), dt, 0, 30); P.vel.y = vy; P.pos.y = clamp(P.pos.y + vy * dt, 0, 130);
+      for (const s of solids) if (overlap(P.pos, s)) { P.pos.y = P.vel.y > 0 ? s.y - s.h / 2 - HH : s.y + s.h / 2; P.vel.y = 0; }
+      if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z); P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt); P.body.g.position.copy(P.pos); animate(P.body, 0, false, T);
+    } else stepPlayer(dt, T);
+    if (P.pos.y < -10) P.pos.set(0, 2, -6);
+    aim = findAim();
+    saveT -= dt; if (saveT > 0 && saveT - dt <= 0) saveBlocks();
+  }
+  ghost.visible = !!(aim && aim.place);
+  if (aim && aim.place) { const [x, y, z] = aim.place; ghost.position.set(x * B, y * B + B / 2, z * B); const ok = placeOk(aim.place); ghost.material.color.setHex(ok ? TYPES[cur][1] : 0xff1744); ghostEdge.material.color.setHex(ok ? 0xffffff : 0xff1744); }
+  // over the shoulder, so the aiming circle isn't on top of you
+  updateCamera(dt, P.pos.clone().add(V(Math.cos(cam.yaw) * 1.7, 0.4, -Math.sin(cam.yaw) * 1.7)));
+  $("hTitle").textContent = fly ? "Flying" : "Build mode";
+  $("hInfo").textContent = `${TYPES[cur][0]} · ${blocks.size}/${MAX_BLOCKS} blocks · tallest ${S.tallest}`;
+  const next = GOALS.find(([id]) => !S.goals[id]); $("hGoal").textContent = next ? `Goal: ${next[1]}` : "Every goal done!";
+});
+setInterval(() => { if (started) saveBlocks(); if (S.tallest > (S.sentTallest || 0)) { S.sentTallest = S.tallest; sendScore("tallest", S.tallest); } }, 15000);
+addEventListener("beforeunload", () => saveBlocks());
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); show(touch ? "Aim with the circle, tap PLACE" : "Aim with the circle (right mouse or Shift), click to place", 2.6); };
+$("menuB").onclick = () => { started = false; saveBlocks(); drawGoals(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+$("wipe").onclick = () => { if (!confirm("Clear every block on your island? Your goals stay done.")) return; for (const k of [...blocks.keys()]) removeBlock(k); saveBlocks(); show("Island cleared", 1.4); };
+if (TEST) window.__game = {
+  state: () => ({ blocks: blocks.size, placed: S.placed, tallest: S.tallest, goals: Object.keys(S.goals).length, fly, cur, aim: aim && { place: aim.place, remove: !!aim.remove, ok: aim.place ? placeOk(aim.place) : false } }),
+  look: (yaw, pitch) => { cam.yaw = yaw; cam.pitch = pitch; }, place, remove, pick: pick2, toggleFly, addAt: (x, y, z, t) => addBlock(x, y, z, t), S: () => S,
+  reset: () => { for (const k of [...blocks.keys()]) removeBlock(k); S.placed = 0; S.tallest = 0; S.goals = {}; S.used = {}; saveBlocks(); },
+};
+loop();
+})();
+</script>
+</body>
+</html>

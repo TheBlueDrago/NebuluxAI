@@ -31,6 +31,7 @@ export const BOARDS = {
   "block-farm-valley": [["earned", "Most coins earned", (v) => Number(v).toLocaleString()]],
   "treasure-dive": [["depth", "Deepest dive", (v) => `${v} m`]],
   "titan-raid": [["time", "Fastest win", (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")}`]],
+  "block-builder-island": [["tallest", "Tallest build", (v) => `${v} high`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).
