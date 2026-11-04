@@ -4,7 +4,7 @@
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 // Games with a screenshot in public/game-thumbs/<name>.jpg (480x360) show it as the preview picture.
-export const GAME_THUMBS = new Set(["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale", "villain-battlegrounds", "midnight-manor", "block-factory-tycoon", "block-tower-defense", "gem-mine-simulator", "disaster-island", "block-kart-racers", "hide-and-seek-town", "color-drop-party", "reel-rush-fishing", "parry-arena", "block-league-soccer", "burger-rush-diner", "block-school-escape", "block-mini-golf", "taxi-rush-city", "block-rush-runner", "block-farm-valley", "treasure-dive", "titan-raid", "block-builder-island", "sky-glide"]);
+export const GAME_THUMBS = new Set(["fruit-seas", "sky-obby", "bed-brawl", "brawl-blitz", "storm-royale", "villain-battlegrounds", "midnight-manor", "block-factory-tycoon", "block-tower-defense", "gem-mine-simulator", "disaster-island", "block-kart-racers", "hide-and-seek-town", "color-drop-party", "reel-rush-fishing", "parry-arena", "block-league-soccer", "burger-rush-diner", "block-school-escape", "block-mini-golf", "taxi-rush-city", "block-rush-runner", "block-farm-valley", "treasure-dive", "titan-raid", "block-builder-island", "sky-glide", "snow-fort-clash"]);
 
 export function withGameMeta(html, { title, genre, name: slug }) {
   const name = String(title || "").trim().slice(0, 80);

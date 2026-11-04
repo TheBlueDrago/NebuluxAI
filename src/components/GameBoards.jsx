@@ -33,6 +33,7 @@ export const BOARDS = {
   "titan-raid": [["time", "Fastest win", (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")}`]],
   "block-builder-island": [["tallest", "Tallest build", (v) => `${v} high`]],
   "sky-glide": [["score", "Best flight", (v) => Number(v).toLocaleString()]],
+  "snow-fort-clash": [["wins", "Most wins", String]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snow Fort Clash</title>
+<style>
+/*KIT_CSS*/
+  #start,#over{background:linear-gradient(#81d4fadd,#0b2a3fee)}
+  #over{display:none}
+  h1{color:#ffffff}
+  #score{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-weight:900;font-size:28px;pointer-events:none}
+  #score .t{padding:2px 14px;border:3px solid #000;border-radius:10px}
+  #clock{position:fixed;left:50%;top:54px;transform:translateX(-50%);font-size:15px;font-weight:900;pointer-events:none}
+  #ammo{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:5px;pointer-events:none}
+  #ammo i{width:16px;height:16px;border-radius:50%;border:2px solid #000;background:#fff}
+  #ammo i.off{background:rgba(255,255,255,.2)}
+  #dazed{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,255,255,0) 40%,rgba(255,255,255,.8));opacity:0}
+  body.touch #ammo{bottom:auto;top:84px}
+  @media (max-width:600px){#score{top:54px;font-size:22px} #clock{top:90px} #hud{top:116px} body.touch #ammo{top:184px;left:auto;right:14px;transform:none}}
+</style>
+</head>
+<body>
+<div id="dazed"></div>
+<div id="score" class="sh"><span class="t" style="background:#1e88e5" id="sB">0</span><span>-</span><span class="t" style="background:#e53935" id="sR">0</span></div>
+<div id="clock" class="sh">First to 25</div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Blue team</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="ammo"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>SNOW FORT<br>CLASH</h1>
+  <p style="font-weight:700">Blue against red, four a side. Hold to wind up a throw (the dotted arc shows where it'll land), let go to fire, and every snowball that hits scores a point for your team and leaves them dazed for a moment. Duck behind your fort, put up snow walls, and keep an eye on your snowballs: they come back on their own. First team to 30 hits wins.</p>
+  <p class="keys">hold <kbd>Click</kbd> or <kbd>F</kbd> throw · <kbd>E</kbd> snow wall · <kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> aim (look up to throw farther)</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">BLUE WINS!</h1><p id="oInfo" style="font-weight:800;font-size:18px"></p><button class="big" id="again">PLAY AGAIN</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Snow Fort Clash =================
+setSky("#90caf9", "#ffffff", 0xffffff, 80, 220);
+hemi.intensity = 0.8; sun.intensity = 0.8;
+cam.dist = 11; cam.pitch = 0.32;
+const W = 36, D = 26;
+addBox(0, -1, 0, W * 2 + 30, 2, D * 2 + 30, 0xf5f9ff);
+for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2 + 2], [W + 0.5, 0, 1, D * 2 + 2]]) { addBox(x, 0.6, z, w, 1.2, d, 0xe3f2fd); addBox(x, 8, z, w, 14, d, 0).m.visible = false; }
+const line = new THREE.Mesh(new THREE.PlaneGeometry(0.4, D * 2), new THREE.MeshBasicMaterial({ color: 0x90a4ae })); line.rotation.x = -Math.PI / 2; line.position.y = 0.02; scene.add(line);
+// the two forts: low walls with gaps, and a tower in the back
+for (const s of [-1, 1]) {
+  const col = s < 0 ? 0xbbdefb : 0xffcdd2;
+  for (const z of [-15, -6, 6, 15]) addBox(s * 22, 0.9, z, 1.6, 1.8, 6, col, { wall: true });
+  addBox(s * 30, 1.6, 0, 3, 3.2, 3, col, { wall: true });
+  const flag = makeLabel(s < 0 ? "BLUE" : "RED", s < 0 ? "#42a5f5" : "#ef5350", 256, 80); flag.scale.set(4, 1.6, 1); flag.position.set(s * 30, 5.4, 0); scene.add(flag);
+}
+// middle cover: snowmen and trees
+for (const [x, z] of [[-9, -10], [9, 10], [-6, 12], [6, -12], [0, 0]]) { addBox(x, 1, z, 2, 2, 2, 0xffffff, { wall: true }); const b = boxMesh(1.5, 1.5, 1.5, 0xffffff); b.position.set(x, 2.75, z); scene.add(b); const h = boxMesh(1, 1, 1, 0xffffff); h.position.set(x, 4, z); scene.add(h); const n = boxMesh(0.2, 0.2, 0.6, 0xff7043); n.position.set(x, 4, z + 0.7); scene.add(n); }
+for (const [x, z] of [[-14, 22], [14, -22], [-16, -21], [16, 21]]) { addBox(x, 2, z, 1.2, 4, 1.2, 0x6d4c41, { wall: true }); const l = boxMesh(4, 4, 4, 0xe8f5e9); l.position.set(x, 5.5, z); scene.add(l); }
+// falling snow
+const SN = 700, sPos = new Float32Array(SN * 3); for (let i = 0; i < SN; i++) { sPos[i * 3] = rr(-50, 50); sPos[i * 3 + 1] = rr(0, 30); sPos[i * 3 + 2] = rr(-40, 40); }
+const sGeo = new THREE.BufferGeometry(); sGeo.setAttribute("position", new THREE.BufferAttribute(sPos, 3)); const snow = new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.22 })); scene.add(snow);
+
+// ---------- players ----------
+const SAVE = "snow-fort-clash";
+let S = loadSave(SAVE, { games: 0, wins: 0, hits: 0 });
+const everyone = [P];
+Object.assign(P, { name: ME_NAME, team: "blue", ammo: 8, regen: 0, daze: 0, hits: 0, walls: 0, charge: 0 });
+P.body.torso.material = mat(0x1e88e5);
+const names = shuffle(BOT_NAMES.slice());
+let ni = 0;
+for (const team of ["blue", "red"]) for (let k = 0; k < (team === "blue" ? 3 : 4); k++) {
+  const body = makeAvatar({ shirt: team === "blue" ? 0x1e88e5 : 0xe53935, pants: 0x37474f, skin: pick(SKINS), hat: Math.random() < 0.6 ? (team === "blue" ? 0x0d47a1 : 0xb71c1c) : null });
+  body.g.add(nameTag(names[ni], team === "blue" ? "#bbdefb" : "#ffcdd2")); scene.add(body.g);
+  everyone.push({ name: names[ni++], body, team, pos: V(), vel: V(), onGround: false, yaw: 0, ammo: 8, regen: 0, daze: 0, hits: 0, walls: 0, cool: rr(1, 2), skill: rr(0.45, 0.95), spot: V(), spotT: 0, wallT: rr(4, 10) });
+}
+const bots = everyone.slice(1);
+const enemiesOf = (e) => everyone.filter((o) => o.team !== e.team);
+const home = (t) => (t === "blue" ? -1 : 1);
+
+// ---------- snowballs and walls ----------
+const balls = [], puffs = [], walls = [];
+const ballGeo = new THREE.SphereGeometry(0.32, 10, 8), ballMat = mat(0xffffff);
+const G = 22;
+function throwBall(e, v) { if (e.ammo <= 0) return false; e.ammo--; const m = new THREE.Mesh(ballGeo, ballMat); m.castShadow = true; const p = e.pos.clone().add(V(0, 2.6, 0)); m.position.copy(p); scene.add(m); balls.push({ m, v, by: e, t: 4 }); e.body.pose = true; e.body.arms[1].rotation.x = -2.8; setTimeout(() => { e.body.pose = false; }, 180); tone(400, 0.06, "sine", 0.03, 200); return true; }
+function puff(p) { for (let i = 0; i < 6; i++) { const m = boxMesh(0.25, 0.25, 0.25, 0xffffff); m.position.copy(p); scene.add(m); puffs.push({ m, v: V(rr(-4, 4), rr(2, 6), rr(-4, 4)), t: 0.6 }); } }
+function buildWall(e) {
+  if (e.walls >= 3 || phase !== "play") return false;
+  const f = V(Math.sin(e === P ? P.body.g.rotation.y : e.yaw), 0, Math.cos(e === P ? P.body.g.rotation.y : e.yaw));
+  const at = e.pos.clone().addScaledVector(f, 2.2);
+  if (Math.abs(at.x) > W - 1 || Math.abs(at.z) > D - 1) return false;
+  const s = addBox(at.x, 0.8, at.z, Math.abs(f.x) > Math.abs(f.z) ? 0.9 : 3, 1.6, Math.abs(f.x) > Math.abs(f.z) ? 3 : 0.9, 0xffffff, { wall: true });
+  walls.push({ s, by: e, t: 25 }); e.walls++; tone(180, 0.2, "sine", 0.04, 120); return true;
+}
+function hit(target, by, p) {
+  if (target.daze > 0) { puff(p); return; }
+  target.daze = 1.3; score[by.team]++; by.hits++; puff(p);
+  const kb = V(target.pos.x - p.x, 0, target.pos.z - p.z).normalize(); target.vel.addScaledVector(kb, 9); target.vel.y = 5;
+  if (by === P) { S.hits++; SFX.coin(); show(`Hit ${target.name}!`, 0.8); }
+  else if (target === P) { SFX.hit(); dazeFlash = 0.8; }
+  else tone(300, 0.05, "square", 0.02);
+  if (score[by.team] >= TARGET) endGame(by.team);
+}
+
+// ---------- the match ----------
+let phase = "menu", score = { blue: 0, red: 0 }, matchT = 0, dazeFlash = 0;
+const TARGET = TEST ? 8 : 30, TIME = TEST ? 70 : 240;
+function newMatch() {
+  score = { blue: 0, red: 0 }; matchT = TIME; phase = "play";
+  for (const w of walls) removeSolid(w.s); walls.length = 0; for (const b of balls) scene.remove(b.m); balls.length = 0;
+  everyone.forEach((e, i) => { const s = home(e.team), k = e.team === "blue" ? i : i - 4; e.pos.set(s * rr(26, 32), 0.3, -12 + k * 8); e.vel.set(0, 0, 0); e.ammo = 8; e.daze = 0; e.hits = 0; e.walls = 0; });
+  P.canMove = true; cam.yaw = -Math.PI / 2; $("over").style.display = "none"; show("Snowball fight! First to " + TARGET, 2);
+}
+function endGame(winner) {
+  if (phase !== "play") return; phase = "over"; S.games++;
+  const won = winner === "blue"; if (won) { S.wins++; sendScore("wins", S.wins); SFX.win(); } else if (winner) SFX.lose();
+  storeSave(SAVE, S);
+  const mvp = everyone.slice().sort((a, b) => b.hits - a.hits)[0];
+  setTimeout(() => { $("oT").textContent = !winner ? "IT'S A TIE" : won ? "BLUE WINS!" : "RED WINS"; $("oInfo").textContent = `Blue ${score.blue} - ${score.red} Red · you hit ${P.hits} · most hits: ${mvp === P ? "you" : mvp.name} (${mvp.hits})`; $("over").style.display = "grid"; document.exitPointerLock?.(); }, 700);
+}
+
+// ---------- throwing (you) ----------
+let holdMouse = false, holdTouch = false, charging = false;
+cvs.addEventListener("mousedown", (e) => { if (e.button === 0) holdMouse = true; });
+addEventListener("mouseup", (e) => { if (e.button === 0) holdMouse = false; });
+const held = () => holdMouse || holdTouch || keys.KeyF;
+function myThrowVel() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), sp = 13 + P.charge * 19, up = 3 + P.charge * 3 + (0.5 - cam.pitch) * 12;
+  return f.multiplyScalar(sp).setY(clamp(up, 1, 16));
+}
+actions.KeyE = () => buildWall(P);
+touchControls([{ label: "THROW", color: "rgba(255,255,255,.95)", down: () => { holdTouch = true; }, up: () => { holdTouch = false; } }, JUMP_BUTTON, { label: "WALL", color: "rgba(144,202,249,.95)", down: () => buildWall(P) }]);
+// the dotted arc while you wind up
+const arc = []; for (let i = 0; i < 18; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), new THREE.MeshBasicMaterial({ color: 0x1e88e5, transparent: true, opacity: 0.8 })); m.visible = false; scene.add(m); arc.push(m); }
+
+// ---------- computer players ----------
+function botStep(b, dt, T) {
+  b.cool -= dt; b.spotT -= dt; b.wallT -= dt;
+  const s = home(b.team), foes = enemiesOf(b).filter((o) => o.daze <= 0);
+  const eye = b.pos.clone().setY(b.pos.y + 2.4);
+  const seen = foes.filter((o) => canSee(eye, o.pos.clone().setY(o.pos.y + 1.6)) && o.pos.distanceTo(b.pos) < 30).sort((a, c) => a.pos.distanceTo(b.pos) - c.pos.distanceTo(b.pos));
+  // pick a spot: near cover on our side, sometimes pushing forward
+  if (b.spotT <= 0) { b.spotT = rr(2, 4.5); const fwd = Math.random() < 0.6; b.spot.set(s * (fwd ? rr(4, 13) : rr(16, 26)), 0, clamp(b.pos.z + rr(-8, 8), -D + 2, D - 2)); }
+  let want = V(b.spot.x - b.pos.x, 0, b.spot.z - b.pos.z);
+  want = want.length() > 0.8 ? want.normalize().multiplyScalar(b.daze > 0 ? 3 : 10) : V();
+  // dodge incoming snowballs
+  for (const ball of balls) if (ball.by.team !== b.team) { const to = b.pos.clone().sub(ball.m.position); if (to.length() < 9 && to.dot(ball.v) > 0 && Math.random() < b.skill * dt * 1.6) { const side = V(-ball.v.z, 0, ball.v.x).normalize().multiplyScalar(Math.random() < 0.5 ? 11 : -11); want.copy(side); if (b.onGround && Math.random() < 0.3) b.wantJump = true; } }
+  physics(b, want, dt);
+  // throw: solve the arc to where they'll be, with some aim error
+  const t = seen[0];
+  if (t && b.cool <= 0 && b.ammo > 0 && b.daze <= 0) {
+    const vh = rr(20, 26), dist = Math.hypot(t.pos.x - b.pos.x, t.pos.z - b.pos.z), tt = dist / vh;
+    const err = (1.25 - b.skill) * 1.4, aim = t.pos.clone().addScaledVector(t.vel, tt * (0.5 + b.skill * 0.5)).add(V(rr(-1, 1) * err, 0, rr(-1, 1) * err));
+    const dx = aim.x - b.pos.x, dz = aim.z - b.pos.z, dh = Math.hypot(dx, dz), t2 = dh / vh, dy = (aim.y + 1.4) - (b.pos.y + 2.6);
+    const v = V((dx / dh) * vh, (dy + 0.5 * G * t2 * t2) / t2, (dz / dh) * vh);
+    if (throwBall(b, v)) b.cool = rr(1.4, 2.6) / (0.6 + b.skill * 0.5);
+    b.yaw = Math.atan2(dx, dz);
+  }
+  if (b.wallT <= 0 && seen.length && b.walls < 3 && Math.random() < 0.5) { b.wallT = rr(8, 16); buildWall(b); } else if (b.wallT <= 0) b.wallT = rr(4, 8);
+  const sp = faceMove(b, dt); if (t && sp < 2) { b.yaw = Math.atan2(t.pos.x - b.pos.x, t.pos.z - b.pos.z); b.body.g.rotation.y = b.yaw; }
+  animate(b.body, sp, b.onGround, T);
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.games ? `Games ${S.games} · Wins ${S.wins} · Snowballs that hit ${S.hits}` : ""; }
+showStats(); newMatch(); phase = "menu";
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+onFrame((dt, T) => {
+  for (let i = 0; i < SN; i++) { let y = sPos[i * 3 + 1] - 3 * dt; if (y < 0) y += 30; sPos[i * 3 + 1] = y; } sGeo.attributes.position.needsUpdate = true;
+  if (started && phase === "play") {
+    matchT -= dt; if (matchT <= 0) { matchT = 0; endGame(score.blue > score.red ? "blue" : score.red > score.blue ? "red" : null); }
+    for (const e of everyone) { e.daze -= dt; e.regen += dt; if (e.ammo < 8 && e.regen > 1.3) { e.ammo++; e.regen = 0; } }
+    // you
+    P.speed = P.daze > 0 ? 4 : 13;
+    if (held() && P.ammo > 0 && P.daze <= 0) { charging = true; P.charge = Math.min(1, P.charge + dt * 1.3); }
+    else if (charging) { charging = false; throwBall(P, myThrowVel()); P.charge = 0; P.yaw = cam.yaw + Math.PI; }
+    stepPlayer(dt, T);
+    for (const b of bots) botStep(b, dt, T);
+    // keep each team on its own half
+    for (const e of everyone) { const s = home(e.team); if (s < 0 && e.pos.x > -1.2) e.pos.x = -1.2; if (s > 0 && e.pos.x < 1.2) e.pos.x = 1.2; }
+    // snowballs fly in an arc
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i]; b.t -= dt; b.v.y -= G * dt; b.m.position.addScaledVector(b.v, dt);
+      const p = b.m.position; let gone = b.t <= 0 || p.y < 0.2;
+      if (!gone) for (const s of solids) if (s.m.visible && Math.abs(p.x - s.x) < s.w / 2 + 0.3 && Math.abs(p.z - s.z) < s.d / 2 + 0.3 && p.y < s.y + s.h / 2 + 0.3 && p.y > s.y - s.h / 2 && s.h < 20) { gone = true; break; }
+      if (!gone) for (const e of everyone) if (e.team !== b.by.team && Math.abs(p.x - e.pos.x) < 1.1 && Math.abs(p.z - e.pos.z) < 1.1 && p.y > e.pos.y && p.y < e.pos.y + HH + 0.3) { hit(e, b.by, p.clone()); gone = true; break; }
+      if (gone) { puff(p.clone().setY(Math.max(0.3, p.y))); scene.remove(b.m); balls.splice(i, 1); }
+    }
+    // walls melt
+    for (let i = walls.length - 1; i >= 0; i--) { const w = walls[i]; w.t -= dt; if (w.t < 4) w.s.m.scale.y = Math.max(0.1, w.t / 4); if (w.t <= 0) { removeSolid(w.s); const k = sightBlockers.indexOf(w.s.m); if (k >= 0) sightBlockers.splice(k, 1); w.by.walls--; walls.splice(i, 1); } }
+  } else { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.t -= dt; p.v.y -= 20 * dt; p.m.position.addScaledVector(p.v, dt); if (p.t <= 0) { scene.remove(p.m); puffs.splice(i, 1); } }
+  // the arc preview
+  const show2 = charging && phase === "play"; let pp = P.pos.clone().add(V(0, 2.6, 0)), vv = show2 ? myThrowVel() : V();
+  for (const m of arc) { m.visible = show2; if (!show2) continue; for (let k = 0; k < 3; k++) { vv.y -= G * 0.03; pp.addScaledVector(vv, 0.03); } m.position.copy(pp); if (pp.y < 0) m.visible = false; }
+  dazeFlash -= dt; $("dazed").style.opacity = P.daze > 0 ? 0.7 : 0;
+  updateCamera(dt);
+  $("sB").textContent = score.blue; $("sR").textContent = score.red;
+  $("clock").textContent = phase === "play" ? `First to ${TARGET} · ${fmtT(matchT)}` : `First to ${TARGET}`;
+  $("hTitle").textContent = P.daze > 0 ? "Dazed!" : "Blue team";
+  $("hInfo").textContent = `Your hits ${P.hits} · snow walls ${3 - P.walls} left`;
+  $("hInfo2").textContent = charging ? `Power ${Math.round(P.charge * 100)}%` : "";
+  $("ammo").innerHTML = Array.from({ length: 8 }, (_, i) => `<i class="${i < P.ammo ? "" : "off"}"></i>`).join("");
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase !== "play") newMatch(); };
+$("again").onclick = () => newMatch();
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, blue: score.blue, red: score.red, t: Math.round(matchT), ammo: P.ammo, myHits: P.hits, daze: P.daze > 0, walls: walls.length, balls: balls.length, hits: everyone.map((e) => e.hits).join(",") }),
+  aimAt: (i) => { const t = enemiesOf(P)[i]; const d = t.pos.clone().sub(P.pos); cam.yaw = Math.atan2(-d.x, -d.z); return Math.hypot(d.x, d.z); }, setCharge: (c) => { P.charge = c; }, throwNow: () => { throwBall(P, myThrowVel()); }, buildWall: () => buildWall(P), everyone,
+};
+loop();
+})();
+</script>
+</body>
+</html>
