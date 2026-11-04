@@ -38,6 +38,7 @@ export const BOARDS = {
   "taxi-rush-city": ["fares"],
   "block-rush-runner": ["distance"],
   "block-farm-valley": ["earned"],
+  "treasure-dive": ["depth"],
 };
 export const LOW_BOARDS = new Set(["block-mini-golf:strokes"]);
 export const lowFirst = (game, board) => board.endsWith("time") || LOW_BOARDS.has(`${game}:${board}`);

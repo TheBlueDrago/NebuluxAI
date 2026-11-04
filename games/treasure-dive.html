@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Treasure Dive</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+
+  #start,#boat{background:linear-gradient(#0277bddd,#001a33ee)}
+  #boat{display:none}
+  h1{color:#80deea}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .d{font-size:28px} #top .s{font-size:14px;color:#ffd54f}
+  #air{position:fixed;left:50%;top:70px;transform:translateX(-50%);width:240px;height:16px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #air i{display:block;height:100%;background:linear-gradient(90deg,#4fc3f7,#e1f5fe)}
+  #prompt{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);font-size:17px;font-weight:900;pointer-events:none;text-align:center}
+  #ups{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:12px 0}
+  #ups button{font:inherit;font-weight:800;font-size:13px;border:3px solid #000;border-radius:10px;padding:8px;background:#e0f7fa;color:#000;cursor:pointer}
+  #dark{position:fixed;inset:0;pointer-events:none;background:#000;opacity:0}
+  @media (max-width:600px){#top{top:54px} #top .d{font-size:22px} #air{top:108px;width:60vw} #hud{top:134px}}
+</style>
+</head>
+<body>
+<div id="dark"></div>
+<div id="top" class="sh"><div class="d" id="tDepth">Surface</div><div class="s" id="tCoins">0 coins</div></div>
+<div id="air"><i></i></div>
+<div id="hud" class="sh"><div class="big1" id="hZone">The Shallows</div><div class="sub" id="hBag"></div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>TREASURE<br>DIVE</h1>
+  <p style="font-weight:700">Dive from your boat and swim down to the seabed to collect treasure. Watch your <b style="color:#81d4fa">air</b>: come back up to breathe, or grab a bubble vent. The deeper you go the better the treasure, from shells in the shallows to glowing relics in the dark abyss. Keep away from the jellyfish. Sell at the boat and buy a bigger tank, faster fins, a deeper suit, a bigger bag and a flashlight.</p>
+  <p class="keys"><kbd>W</kbd> swim where you look · <kbd>S</kbd> back · <kbd>A</kbd><kbd>D</kbd> sideways · <kbd>Space</kbd> up · <kbd>C</kbd> down · <kbd>Right mouse</kbd> look · <kbd>E</kbd> boat</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">DIVE</button>
+</div></div>
+<div id="boat" class="ov"><div class="c"><h1 style="font-size:40px">THE BOAT</h1><p id="bInfo" style="font-weight:800"></p><div id="ups"></div><button class="big" id="bClose">BACK TO DIVING</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Waypoints worked out from the map itself: a grid of points wherever a character fits, joined where
+// they can walk straight from one to the next. o: { x0, x1, z0, z1, step = 3, skip(x, z) }.
+// attach(point) joins an extra point (a door, a hiding spot) to the grid; route(from, id) -> points.
+function gridNav(o) {
+  const step = o.step || 3;
+  const blocked = (x, z, y = 0.05) => solids.some((s) => !s.off && s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+  const clearLine = (a, b) => { const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+  const N = [], adj = [], key = {};
+  const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a !== b && !adj[a].includes(b)) { adj[a].push(b); adj[b].push(a); } };
+  for (let x = o.x0; x <= o.x1; x += step) for (let z = o.z0; z <= o.z1; z += step) if (!blocked(x, z) && !(o.skip && o.skip(x, z))) key[x + "," + z] = addNode(V(x, 0, z));
+  for (const k in key) { const [x, z] = k.split(",").map(Number); for (const [dx, dz] of [[step, 0], [0, step], [step, step], [step, -step]]) { const b = key[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[key[k]], N[b])) link(key[k], b); } }
+  const near = (p) => {
+    const order = []; for (let i = 0; i < N.length; i++) if (adj[i].length && Math.abs(N[i].y - p.y) < 1.6) order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]);
+    order.sort((a, b) => a[0] - b[0]);
+    for (let k = 0; k < Math.min(8, order.length); k++) if (order[k][0] > 1e-6 && (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]]))) return order[k][1];
+    return order.length ? order[0][1] : -1;
+  };
+  const attach = (p) => { const g = near(p), id = addNode(p); if (g >= 0) link(id, g); return id; };
+  const route = (from, to) => {
+    const s = near(from); if (s < 0 || s === to) return [N[to].clone()];
+    const prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+    for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+    if (prev[to] < 0) return [N[to].clone()];
+    const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+  };
+  const ground = () => N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5);
+  return { N, adj, blocked, clearLine, addNode, link, near, attach, route, ground, key };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Treasure Dive =================
+const SKY = skyTex("#4fc3f7", "#e1f5fe");
+scene.background = SKY; scene.fog = new THREE.Fog(0xe1f5fe, 80, 300);
+hemi.intensity = 0.9; sun.intensity = 0.9;
+cam.dist = 9; cam.pitch = 0.3; cam.min = 4; cam.max = 16;
+const R = 150;
+// the seabed: deeper the further you go from the boat, with a trench to the north
+const floorY = (x, z) => { const r = Math.hypot(x, z); return -5 - r * 0.42 - Math.max(0, -z - 40) * 0.25 + Math.sin(x * 0.11) * 2.2 + Math.cos(z * 0.09 + x * 0.03) * 2.4; };
+{
+  const g = new THREE.PlaneGeometry(R * 2.2, R * 2.2, 110, 110); g.rotateX(-Math.PI / 2);
+  const pos = g.attributes.position, col = [];
+  for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), z = pos.getZ(i), y = floorY(x, z); pos.setY(i, y); const t = clamp(-y / 90, 0, 1); col.push(0.85 - t * 0.6, 0.78 - t * 0.55, 0.55 - t * 0.3); }
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })); m.receiveShadow = true; scene.add(m);
+}
+const surf = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshStandardMaterial({ color: 0x0288d1, transparent: true, opacity: 0.62, side: THREE.DoubleSide, roughness: 0.15, depthWrite: false }));
+surf.rotation.x = -Math.PI / 2; surf.position.y = 0; scene.add(surf);
+// the boat
+const boat = new THREE.Group();
+{ const hull = boxMesh(5, 1.6, 11, 0xffffff); hull.position.y = 0.3; boat.add(hull); const stripe = boxMesh(5.05, 0.4, 11.05, 0xe53935); stripe.position.y = 0.6; boat.add(stripe); const cab = boxMesh(3.6, 2.2, 3.4, 0xeceff1); cab.position.set(0, 2.2, -1.5); boat.add(cab); const roof = boxMesh(4, 0.3, 3.8, 0x1565c0); roof.position.set(0, 3.4, -1.5); boat.add(roof); const flag = makeLabel("BOAT", "#fff", 256, 70); flag.scale.set(3, 1.3, 1); flag.position.set(0, 5, -1.5); boat.add(flag); }
+boat.position.set(0, 0, 0); scene.add(boat);
+// reef decorations: coral, seaweed, rocks
+const sway = [];
+for (let i = 0; i < 260; i++) {
+  const a = rr(0, 6.3), r = Math.sqrt(Math.random()) * (R - 8), x = Math.sin(a) * r, z = Math.cos(a) * r, y = floorY(x, z);
+  if (Math.hypot(x, z) < 10) continue;
+  const k = Math.random();
+  if (k < 0.45) { const h = rr(2, 6); const m = boxMesh(0.35, h, 0.35, y > -30 ? 0x43a047 : 0x2e7d32); m.position.set(x, y + h / 2, z); scene.add(m); sway.push({ m, p: rr(0, 6) }); }
+  else if (k < 0.75) { const c = pick([0xff7043, 0xec407a, 0xab47bc, 0xffca28, 0x26c6da]); const m = boxMesh(rr(1, 2.4), rr(1, 3), rr(1, 2.4), c, y < -60 ? c : 0); m.position.set(x, y + 0.6, z); scene.add(m); }
+  else { const s = rr(1.5, 4); const m = boxMesh(s, s * 0.7, s, 0x546e7a); m.position.set(x, y + s * 0.3, z); m.rotation.y = rr(0, 3); scene.add(m); }
+}
+// fish swimming about
+const fish = [];
+for (let i = 0; i < 14; i++) { const g = new THREE.Group(), col = pick([0xffeb3b, 0x29b6f6, 0xff7043, 0xffffff]), n = ri(4, 8); for (let k = 0; k < n; k++) { const f = boxMesh(0.8, 0.4, 0.25, col); f.position.set(rr(-2, 2), rr(-1, 1), rr(-2, 2)); g.add(f); } const a = rr(0, 6.3), r = rr(15, R - 20); g.position.set(Math.sin(a) * r, 0, Math.cos(a) * r); g.position.y = (floorY(g.position.x, g.position.z) * 0.6); scene.add(g); fish.push({ g, a, r, y: g.position.y, s: rr(0.05, 0.12) * (Math.random() < 0.5 ? 1 : -1) }); }
+
+// ---------- treasure ----------
+const KINDS = [ // name, value, min depth, colour, shape
+  ["Shell", 6, 0, 0xffccbc, "shell"], ["Coin", 10, 0, 0xffd54f, "coin"], ["Pearl", 30, 18, 0xffffff, "pearl"], ["Gem", 45, 22, 0x26c6da, "gem"],
+  ["Chest", 140, 38, 0x8d6e63, "chest"], ["Crown", 260, 45, 0xffd600, "crown"], ["Relic", 650, 62, 0xb388ff, "relic"], ["Glow Orb", 1300, 72, 0x76ff03, "orb"],
+];
+function treasureMesh(k) {
+  const [, , , c, shape] = KINDS[k];
+  if (shape === "coin") { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.15, 14), new THREE.MeshStandardMaterial({ color: c, emissive: 0x7a5c00, metalness: 0.6, roughness: 0.3 })); m.rotation.x = Math.PI / 2; return m; }
+  if (shape === "chest") { const g = new THREE.Group(); g.add(boxMesh(1.6, 1, 1.1, c)); const lid = boxMesh(1.65, 0.4, 1.15, 0x6d4c41); lid.position.y = 0.6; g.add(lid); const lock = boxMesh(0.3, 0.3, 0.1, 0xffd54f, 0x7a5c00); lock.position.set(0, 0.35, 0.58); g.add(lock); return g; }
+  if (shape === "gem" || shape === "relic") return new THREE.Mesh(new THREE.OctahedronGeometry(shape === "relic" ? 0.8 : 0.55, 0), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6 }));
+  if (shape === "orb") return new THREE.Mesh(new THREE.SphereGeometry(0.6, 14, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1 }));
+  if (shape === "crown") { const g = new THREE.Group(); g.add(boxMesh(1.1, 0.4, 1.1, c, 0x6d5c00)); for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { const s = boxMesh(0.2, 0.4, 0.2, c, 0x6d5c00); s.position.set(x, 0.4, z); g.add(s); } return g; }
+  return boxMesh(shape === "pearl" ? 0.45 : 0.8, shape === "pearl" ? 0.45 : 0.3, shape === "pearl" ? 0.45 : 0.6, c, shape === "pearl" ? 0x444444 : 0);
+}
+const loot = [];
+function placeTreasure(item) {
+  for (let tries = 0; tries < 40; tries++) {
+    const a = rr(0, 6.3), r = rr(12, R - 6), x = Math.sin(a) * r, z = Math.cos(a) * r, d = -floorY(x, z);
+    const ok = KINDS.map((k, i) => i).filter((i) => KINDS[i][2] <= d && (KINDS[i][2] > d - 40 || i < 2));
+    if (!ok.length) continue;
+    const k = ok[Math.min(ok.length - 1, Math.floor(Math.pow(Math.random(), 0.6) * ok.length))];
+    if (item) { scene.remove(item.m); } const m = treasureMesh(k); m.position.set(x, -d + 0.6, z); scene.add(m);
+    const t = item || {}; Object.assign(t, { k, m, p: m.position.clone(), gone: 0 }); return t;
+  }
+}
+for (let i = 0; i < 90; i++) loot.push(placeTreasure());
+// bubble vents refill your air
+const vents = [];
+for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2 + rr(-0.2, 0.2), r = rr(35, R - 15), x = Math.sin(a) * r, z = Math.cos(a) * r, y = floorY(x, z); const base = boxMesh(1.6, 0.8, 1.6, 0x37474f); base.position.set(x, y + 0.4, z); scene.add(base); const col = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, -y, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xe1f5fe, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false })); col.position.set(x, y / 2, z); scene.add(col); vents.push({ p: V(x, y, z) }); }
+// jellyfish drift up and down
+const jellies = [];
+for (let i = 0; i < 26; i++) { const g = new THREE.Group(); const bell = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf48fb1, emissive: 0xad1457, emissiveIntensity: 0.6, transparent: true, opacity: 0.75 })); g.add(bell); for (let k = 0; k < 5; k++) { const t = boxMesh(0.08, 1.6, 0.08, 0xf8bbd0, 0x880e4f); t.position.set(Math.sin(k) * 0.5, -0.8, Math.cos(k) * 0.5); g.add(t); } const a = rr(0, 6.3), r = rr(25, R - 10), x = Math.sin(a) * r, z = Math.cos(a) * r; g.position.set(x, rr(floorY(x, z) + 3, -4), z); scene.add(g); jellies.push({ g, base: g.position.y, ph: rr(0, 6), hit: 0 }); }
+
+// ---------- you ----------
+const SAVE = "treasure-dive";
+let S = loadSave(SAVE, { coins: 0, earned: 0, deepest: 0, dives: 0, lv: { tank: 0, fins: 0, suit: 0, bag: 0, light: 0 }, found: {} });
+const UP = {
+  tank: ["Air tank", [30, 45, 65, 90, 125], (n) => `${n}s of air`], fins: ["Fins", [7, 9, 11, 13, 15], (n) => `speed ${n}`],
+  suit: ["Dive suit", [28, 48, 70, 95, 120], (n) => `safe to ${n} m`], bag: ["Bag", [8, 16, 28, 45, 70], (n) => `holds ${n}`], light: ["Flashlight", [0, 1, 2], (n) => (n ? (n > 1 ? "bright light" : "light") : "no light")],
+};
+const COST = [0, 150, 900, 4000, 15000];
+const stat = (k) => UP[k][1][S.lv[k]];
+const diver = { pos: V(3, -0.3, 6), vel: V(), air: 30, bag: [] };
+const tank = boxMesh(0.9, 1.6, 0.6, 0xffca28); tank.position.set(0, 2.5, -0.7); P.body.g.add(tank);
+const mask = boxMesh(0.9, 0.35, 0.2, 0x4fc3f7, 0x01579b); mask.position.set(0, 3.85, 0.62); P.body.g.add(mask);
+const torch = new THREE.SpotLight(0xffffff, 0, 40, 0.6, 0.5, 1.2); scene.add(torch, torch.target);
+const bubbles = []; const bubGeo = new THREE.SphereGeometry(0.12, 6, 4), bubMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+let phase = "menu", maxThisDive = 0, tUp = false, tDown = false;
+
+function rescue() {
+  // out of air: the boat crew pulls you up, but the bag is lost
+  const lost = diver.bag.length; diver.bag = []; diver.pos.set(3, -0.3, 6); diver.vel.set(0, 0, 0); diver.air = stat("tank");
+  $("dark").style.opacity = 0; SFX.lose(); show(`Out of air! The crew pulled you up.${lost ? `\nYou dropped ${lost} treasure${lost === 1 ? "" : "s"}.` : ""}`, 3);
+}
+function sellAll() {
+  if (!diver.bag.length) return 0;
+  const v = diver.bag.reduce((a, k) => a + KINDS[k][1], 0); S.coins += v; S.earned += v; diver.bag = []; storeSave(SAVE, S); SFX.buy(); return v;
+}
+function openBoat() {
+  const v = sellAll(); phase = "boat"; started = false; if (S.deepest) sendScore("depth", S.deepest);
+  $("bInfo").textContent = `${v ? `Sold your bag for ${v} coins. ` : ""}Coins: ${S.coins} · Deepest dive: ${S.deepest} m`;
+  drawUps(); $("boat").style.display = "grid"; document.exitPointerLock?.();
+}
+function drawUps() {
+  $("ups").innerHTML = Object.keys(UP).map((k) => { const lv = S.lv[k], max = UP[k][1].length - 1, nx = lv < max ? UP[k][2](UP[k][1][lv + 1]) : ""; return `<button data-k="${k}">${UP[k][0]}: ${UP[k][2](stat(k))}<br>${lv >= max ? "MAX" : `${nx} for ${COST[lv + 1].toLocaleString()} coins`}</button>`; }).join("");
+  for (const b of $("ups").querySelectorAll("button")) b.onclick = () => { const k = b.dataset.k, lv = S.lv[k]; if (lv >= UP[k][1].length - 1) return; if (S.coins < COST[lv + 1]) { SFX.no(); b.textContent = `Need ${(COST[lv + 1] - S.coins).toLocaleString()} more coins`; return; } S.coins -= COST[lv + 1]; S.lv[k]++; storeSave(SAVE, S); SFX.buy(); diver.air = stat("tank"); $("bInfo").textContent = `Coins: ${S.coins} · Deepest dive: ${S.deepest} m`; drawUps(); };
+}
+$("bClose").onclick = () => { $("boat").style.display = "none"; phase = "dive"; started = true; diver.air = stat("tank"); S.dives++; storeSave(SAVE, S); };
+actions.KeyE = () => { if (phase === "dive" && nearBoat()) openBoat(); };
+const nearBoat = () => diver.pos.y > -2.5 && Math.hypot(diver.pos.x, diver.pos.z) < 9;
+touchControls([{ label: "UP", color: "rgba(129,212,250,.95)", down: () => { tUp = true; }, up: () => { tUp = false; } }, { label: "DOWN", color: "rgba(2,136,209,.95)", down: () => { tDown = true; }, up: () => { tDown = false; } }, { label: "BOAT", color: "rgba(255,213,79,.95)", down: () => actions.KeyE() }]);
+
+const ZONE = (d) => d < 18 ? "The Shallows" : d < 38 ? "The Reef" : d < 62 ? "The Deep" : "The Abyss";
+function showStats() { $("stats").textContent = S.dives ? `Coins ${S.coins} · Deepest ${S.deepest} m · ${S.dives} dives` : ""; }
+showStats();
+const camPos = V();
+onFrame((dt, T) => {
+  for (const s of sway) s.m.rotation.z = Math.sin(T * 1.4 + s.p) * 0.12;
+  for (const f of fish) { f.a += f.s * dt; f.g.position.set(Math.sin(f.a) * f.r, f.y + Math.sin(T + f.r) * 1.5, Math.cos(f.a) * f.r); f.g.rotation.y = f.a + (f.s > 0 ? Math.PI / 2 : -Math.PI / 2); }
+  for (const j of jellies) { j.g.position.y = j.base + Math.sin(T * 0.6 + j.ph) * 2.5; j.g.scale.y = 1 + Math.sin(T * 3 + j.ph) * 0.12; j.hit -= dt; }
+  for (const t of loot) { if (t.gone > 0) { t.gone -= dt; if (t.gone <= 0) placeTreasure(t); continue; } t.m.rotation.y += dt * 1.5; }
+  boat.position.y = Math.sin(T * 1.2) * 0.12; boat.rotation.z = Math.sin(T * 0.9) * 0.03;
+  const depth = Math.max(0, -diver.pos.y);
+  if (started && phase === "dive") {
+    // swimming: W goes where the camera looks (so looking down dives)
+    const f = V(-Math.sin(cam.yaw) * Math.cos(cam.pitch), -Math.sin(cam.pitch), -Math.cos(cam.yaw) * Math.cos(cam.pitch)), r = V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
+    const want = V();
+    if (keys.KeyW || keys.ArrowUp) want.add(f); if (keys.KeyS || keys.ArrowDown) want.sub(f);
+    if (keys.KeyD || keys.ArrowRight) want.add(r); if (keys.KeyA || keys.ArrowLeft) want.sub(r);
+    if (joy.x || joy.y) { want.addScaledVector(r, joy.x); want.addScaledVector(f, -joy.y); }
+    if (keys.Space || tUp) want.y += 1; if (keys.KeyC || tDown) want.y -= 1;
+    if (want.lengthSq() > 1) want.normalize();
+    diver.vel.lerp(want.multiplyScalar(stat("fins")), Math.min(1, dt * 3));
+    diver.pos.addScaledVector(diver.vel, dt);
+    const fy = floorY(diver.pos.x, diver.pos.z) + 0.8; if (diver.pos.y < fy) { diver.pos.y = fy; diver.vel.y = Math.max(0, diver.vel.y); }
+    if (diver.pos.y > -0.3) { diver.pos.y = -0.3; diver.vel.y = Math.min(0, diver.vel.y); }
+    const rr2 = Math.hypot(diver.pos.x, diver.pos.z); if (rr2 > R - 4) { diver.pos.x *= (R - 4) / rr2; diver.pos.z *= (R - 4) / rr2; }
+    // air
+    const atTop = diver.pos.y > -1;
+    if (atTop) diver.air = Math.min(stat("tank"), diver.air + dt * 20);
+    else diver.air -= dt * (depth > stat("suit") ? 3 : 1);
+    for (const v of vents) if (Math.hypot(diver.pos.x - v.p.x, diver.pos.z - v.p.z) < 1.8 && diver.pos.y < -1) { diver.air = Math.min(stat("tank"), diver.air + dt * 12); if (Math.random() < dt * 6) tone(rr(600, 900), 0.05, "sine", 0.02); }
+    if (diver.air <= 0) rescue();
+    maxThisDive = Math.max(maxThisDive, depth); if (Math.floor(depth) > S.deepest) { S.deepest = Math.floor(depth); if (S.deepest % 10 === 0) { storeSave(SAVE, S); sendScore("depth", S.deepest); } }
+    // treasure
+    for (const t of loot) if (t.gone <= 0 && t.m.position.distanceTo(diver.pos) < 2.2) {
+      if (diver.bag.length >= stat("bag")) { if (Math.random() < dt * 2) show("Your bag is full! Back to the boat.", 1.4); continue; }
+      diver.bag.push(t.k); t.gone = rr(40, 80); scene.remove(t.m); const first = !S.found[KINDS[t.k][0]]; S.found[KINDS[t.k][0]] = 1;
+      SFX.coin(); show(`${KINDS[t.k][0]}! +${KINDS[t.k][1]}${first ? " (new find)" : ""}`, 1.1);
+    }
+    // jellyfish sting (costs air and bumps you back)
+    for (const j of jellies) if (j.hit <= 0 && j.g.position.distanceTo(diver.pos) < 1.8) { j.hit = 2; diver.air -= 8; const away = diver.pos.clone().sub(j.g.position).normalize(); diver.vel.addScaledVector(away, 12); SFX.hit(); show("Jellyfish sting! -8 air", 1.1); }
+    // bubbles from the tank
+    if (!atTop && Math.random() < dt * 5) { const m = new THREE.Mesh(bubGeo, bubMat); m.position.copy(diver.pos).add(V(rr(-0.3, 0.3), 2.6, rr(-0.3, 0.3))); scene.add(m); bubbles.push(m); }
+  }
+  for (let i = bubbles.length - 1; i >= 0; i--) { const m = bubbles[i]; m.position.y += 3 * dt; m.position.x += Math.sin(m.position.y * 3) * 0.01; if (m.position.y > -0.2) { scene.remove(m); bubbles.splice(i, 1); } }
+  // the diver's body: lie flat while swimming, kick with the legs
+  P.pos.copy(diver.pos); const sp = diver.vel.length();
+  P.body.g.position.copy(diver.pos).add(V(0, -1.2, 0));
+  if (sp > 0.6) P.yaw = Math.atan2(diver.vel.x, diver.vel.z);
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, dt * 6);
+  P.body.g.rotation.x = diver.pos.y < -1 ? clamp(0.9 + (sp > 0.6 ? -Math.atan2(diver.vel.y, Math.hypot(diver.vel.x, diver.vel.z)) : 0), 0, 1.8) : 0.2;
+  P.body.legs[0].rotation.x = Math.sin(T * 8) * 0.5; P.body.legs[1].rotation.x = -Math.sin(T * 8) * 0.5; P.body.pose = true; P.body.arms[0].rotation.x = P.body.arms[1].rotation.x = -2.8;
+  updateCamera(dt, diver.pos.clone().add(V(0, -1.4, 0)));
+  // underwater look: fog closes in as you go deeper, a flashlight helps in the dark
+  const camUnder = camera.position.y < 0, cd = Math.max(0, -camera.position.y), lightLv = S.lv.light;
+  if (camUnder) {
+    const t = clamp(cd / 90, 0, 1), c = new THREE.Color(0x0277bd).lerp(new THREE.Color(0x00040a), Math.sqrt(t));
+    scene.background = c; scene.fog.color.copy(c); scene.fog.near = 3; scene.fog.far = (95 - t * 75) + lightLv * 14 * t;
+    hemi.intensity = 0.9 - t * 0.65; sun.intensity = 0.8 * (1 - t);
+  } else { scene.background = SKY; scene.fog.color.setHex(0xe1f5fe); scene.fog.near = 80; scene.fog.far = 300; hemi.intensity = 0.9; sun.intensity = 0.9; }
+  torch.intensity = lightLv && depth > 20 ? 1.2 + lightLv * 0.9 : 0; torch.position.copy(diver.pos).add(V(0, 0.6, 0)); const lf = V(-Math.sin(cam.yaw) * Math.cos(cam.pitch), -Math.sin(cam.pitch), -Math.cos(cam.yaw) * Math.cos(cam.pitch)); torch.target.position.copy(diver.pos).addScaledVector(lf, 10);
+  sun.position.copy(diver.pos).add(V(30, 60, 20)); sun.target.position.copy(diver.pos);
+  // HUD
+  const airMax = stat("tank"), airF = clamp(diver.air / airMax, 0, 1);
+  $("air").firstChild.style.width = `${airF * 100}%`; $("air").firstChild.style.background = airF < 0.25 ? "#ff5252" : "";
+  $("dark").style.opacity = phase === "dive" && airF < 0.2 && depth > 1 ? (0.2 - airF) * 2 : 0;
+  $("tDepth").textContent = depth < 1 ? "Surface" : `${Math.floor(depth)} m deep${depth > stat("suit") ? " (too deep for your suit!)" : ""}`;
+  $("tDepth").style.color = depth > stat("suit") ? "#ff8a80" : "#fff";
+  $("tCoins").textContent = `${S.coins} coins`;
+  $("hZone").textContent = ZONE(depth); $("hBag").textContent = `Bag ${diver.bag.length}/${stat("bag")}${diver.bag.length ? ` · worth ${diver.bag.reduce((a, k) => a + KINDS[k][1], 0)}` : ""}`;
+  $("hInfo").textContent = `Air ${Math.ceil(Math.max(0, diver.air))}s · deepest ${S.deepest} m`;
+  $("prompt").textContent = phase === "dive" && nearBoat() ? `${touch ? "BOAT" : "E"}: climb aboard${diver.bag.length ? " and sell your bag" : ""}` : "";
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; phase = "dive"; audio(); diver.air = stat("tank"); S.dives++; storeSave(SAVE, S); show("Look down and hold W to dive!", 2.5); };
+$("menuB").onclick = () => { started = false; phase = "menu"; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, depth: +Math.max(0, -diver.pos.y).toFixed(1), air: +diver.air.toFixed(1), bag: diver.bag.length, coins: S.coins, deepest: S.deepest, lv: { ...S.lv }, nearBoat: nearBoat(), pos: diver.pos.toArray().map((v) => +v.toFixed(1)) }),
+  goto: (x, y, z) => { diver.pos.set(x, y, z); diver.vel.set(0, 0, 0); }, nearestLoot: (minD = 0) => { let b = null, bd = Infinity; for (const t of loot) if (t.gone <= 0 && -t.p.y >= minD) { const d = t.p.distanceTo(diver.pos); if (d < bd) { bd = d; b = t; } } return b && { x: b.p.x, y: b.p.y, z: b.p.z, k: KINDS[b.k][0] }; },
+  openBoat, give: (n) => { S.coins += n; }, floorY,
+};
+loop();
+})();
+</script>
+</body>
+</html>

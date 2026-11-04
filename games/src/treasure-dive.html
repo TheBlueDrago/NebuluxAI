@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Treasure Dive</title>
+<style>
+/*KIT_CSS*/
+  #start,#boat{background:linear-gradient(#0277bddd,#001a33ee)}
+  #boat{display:none}
+  h1{color:#80deea}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .d{font-size:28px} #top .s{font-size:14px;color:#ffd54f}
+  #air{position:fixed;left:50%;top:70px;transform:translateX(-50%);width:240px;height:16px;border:3px solid #000;border-radius:9px;background:#263238;overflow:hidden;pointer-events:none}
+  #air i{display:block;height:100%;background:linear-gradient(90deg,#4fc3f7,#e1f5fe)}
+  #prompt{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);font-size:17px;font-weight:900;pointer-events:none;text-align:center}
+  #ups{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:12px 0}
+  #ups button{font:inherit;font-weight:800;font-size:13px;border:3px solid #000;border-radius:10px;padding:8px;background:#e0f7fa;color:#000;cursor:pointer}
+  #dark{position:fixed;inset:0;pointer-events:none;background:#000;opacity:0}
+  @media (max-width:600px){#top{top:54px} #top .d{font-size:22px} #air{top:108px;width:60vw} #hud{top:134px}}
+</style>
+</head>
+<body>
+<div id="dark"></div>
+<div id="top" class="sh"><div class="d" id="tDepth">Surface</div><div class="s" id="tCoins">0 coins</div></div>
+<div id="air"><i></i></div>
+<div id="hud" class="sh"><div class="big1" id="hZone">The Shallows</div><div class="sub" id="hBag"></div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>TREASURE<br>DIVE</h1>
+  <p style="font-weight:700">Dive from your boat and swim down to the seabed to collect treasure. Watch your <b style="color:#81d4fa">air</b>: come back up to breathe, or grab a bubble vent. The deeper you go the better the treasure, from shells in the shallows to glowing relics in the dark abyss. Keep away from the jellyfish. Sell at the boat and buy a bigger tank, faster fins, a deeper suit, a bigger bag and a flashlight.</p>
+  <p class="keys"><kbd>W</kbd> swim where you look · <kbd>S</kbd> back · <kbd>A</kbd><kbd>D</kbd> sideways · <kbd>Space</kbd> up · <kbd>C</kbd> down · <kbd>Right mouse</kbd> look · <kbd>E</kbd> boat</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">DIVE</button>
+</div></div>
+<div id="boat" class="ov"><div class="c"><h1 style="font-size:40px">THE BOAT</h1><p id="bInfo" style="font-weight:800"></p><div id="ups"></div><button class="big" id="bClose">BACK TO DIVING</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Treasure Dive =================
+const SKY = skyTex("#4fc3f7", "#e1f5fe");
+scene.background = SKY; scene.fog = new THREE.Fog(0xe1f5fe, 80, 300);
+hemi.intensity = 0.9; sun.intensity = 0.9;
+cam.dist = 9; cam.pitch = 0.3; cam.min = 4; cam.max = 16;
+const R = 150;
+// the seabed: deeper the further you go from the boat, with a trench to the north
+const floorY = (x, z) => { const r = Math.hypot(x, z); return -5 - r * 0.42 - Math.max(0, -z - 40) * 0.25 + Math.sin(x * 0.11) * 2.2 + Math.cos(z * 0.09 + x * 0.03) * 2.4; };
+{
+  const g = new THREE.PlaneGeometry(R * 2.2, R * 2.2, 110, 110); g.rotateX(-Math.PI / 2);
+  const pos = g.attributes.position, col = [];
+  for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), z = pos.getZ(i), y = floorY(x, z); pos.setY(i, y); const t = clamp(-y / 90, 0, 1); col.push(0.85 - t * 0.6, 0.78 - t * 0.55, 0.55 - t * 0.3); }
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })); m.receiveShadow = true; scene.add(m);
+}
+const surf = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshStandardMaterial({ color: 0x0288d1, transparent: true, opacity: 0.62, side: THREE.DoubleSide, roughness: 0.15, depthWrite: false }));
+surf.rotation.x = -Math.PI / 2; surf.position.y = 0; scene.add(surf);
+// the boat
+const boat = new THREE.Group();
+{ const hull = boxMesh(5, 1.6, 11, 0xffffff); hull.position.y = 0.3; boat.add(hull); const stripe = boxMesh(5.05, 0.4, 11.05, 0xe53935); stripe.position.y = 0.6; boat.add(stripe); const cab = boxMesh(3.6, 2.2, 3.4, 0xeceff1); cab.position.set(0, 2.2, -1.5); boat.add(cab); const roof = boxMesh(4, 0.3, 3.8, 0x1565c0); roof.position.set(0, 3.4, -1.5); boat.add(roof); const flag = makeLabel("BOAT", "#fff", 256, 70); flag.scale.set(3, 1.3, 1); flag.position.set(0, 5, -1.5); boat.add(flag); }
+boat.position.set(0, 0, 0); scene.add(boat);
+// reef decorations: coral, seaweed, rocks
+const sway = [];
+for (let i = 0; i < 260; i++) {
+  const a = rr(0, 6.3), r = Math.sqrt(Math.random()) * (R - 8), x = Math.sin(a) * r, z = Math.cos(a) * r, y = floorY(x, z);
+  if (Math.hypot(x, z) < 10) continue;
+  const k = Math.random();
+  if (k < 0.45) { const h = rr(2, 6); const m = boxMesh(0.35, h, 0.35, y > -30 ? 0x43a047 : 0x2e7d32); m.position.set(x, y + h / 2, z); scene.add(m); sway.push({ m, p: rr(0, 6) }); }
+  else if (k < 0.75) { const c = pick([0xff7043, 0xec407a, 0xab47bc, 0xffca28, 0x26c6da]); const m = boxMesh(rr(1, 2.4), rr(1, 3), rr(1, 2.4), c, y < -60 ? c : 0); m.position.set(x, y + 0.6, z); scene.add(m); }
+  else { const s = rr(1.5, 4); const m = boxMesh(s, s * 0.7, s, 0x546e7a); m.position.set(x, y + s * 0.3, z); m.rotation.y = rr(0, 3); scene.add(m); }
+}
+// fish swimming about
+const fish = [];
+for (let i = 0; i < 14; i++) { const g = new THREE.Group(), col = pick([0xffeb3b, 0x29b6f6, 0xff7043, 0xffffff]), n = ri(4, 8); for (let k = 0; k < n; k++) { const f = boxMesh(0.8, 0.4, 0.25, col); f.position.set(rr(-2, 2), rr(-1, 1), rr(-2, 2)); g.add(f); } const a = rr(0, 6.3), r = rr(15, R - 20); g.position.set(Math.sin(a) * r, 0, Math.cos(a) * r); g.position.y = (floorY(g.position.x, g.position.z) * 0.6); scene.add(g); fish.push({ g, a, r, y: g.position.y, s: rr(0.05, 0.12) * (Math.random() < 0.5 ? 1 : -1) }); }
+
+// ---------- treasure ----------
+const KINDS = [ // name, value, min depth, colour, shape
+  ["Shell", 6, 0, 0xffccbc, "shell"], ["Coin", 10, 0, 0xffd54f, "coin"], ["Pearl", 30, 18, 0xffffff, "pearl"], ["Gem", 45, 22, 0x26c6da, "gem"],
+  ["Chest", 140, 38, 0x8d6e63, "chest"], ["Crown", 260, 45, 0xffd600, "crown"], ["Relic", 650, 62, 0xb388ff, "relic"], ["Glow Orb", 1300, 72, 0x76ff03, "orb"],
+];
+function treasureMesh(k) {
+  const [, , , c, shape] = KINDS[k];
+  if (shape === "coin") { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.15, 14), new THREE.MeshStandardMaterial({ color: c, emissive: 0x7a5c00, metalness: 0.6, roughness: 0.3 })); m.rotation.x = Math.PI / 2; return m; }
+  if (shape === "chest") { const g = new THREE.Group(); g.add(boxMesh(1.6, 1, 1.1, c)); const lid = boxMesh(1.65, 0.4, 1.15, 0x6d4c41); lid.position.y = 0.6; g.add(lid); const lock = boxMesh(0.3, 0.3, 0.1, 0xffd54f, 0x7a5c00); lock.position.set(0, 0.35, 0.58); g.add(lock); return g; }
+  if (shape === "gem" || shape === "relic") return new THREE.Mesh(new THREE.OctahedronGeometry(shape === "relic" ? 0.8 : 0.55, 0), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6 }));
+  if (shape === "orb") return new THREE.Mesh(new THREE.SphereGeometry(0.6, 14, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1 }));
+  if (shape === "crown") { const g = new THREE.Group(); g.add(boxMesh(1.1, 0.4, 1.1, c, 0x6d5c00)); for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { const s = boxMesh(0.2, 0.4, 0.2, c, 0x6d5c00); s.position.set(x, 0.4, z); g.add(s); } return g; }
+  return boxMesh(shape === "pearl" ? 0.45 : 0.8, shape === "pearl" ? 0.45 : 0.3, shape === "pearl" ? 0.45 : 0.6, c, shape === "pearl" ? 0x444444 : 0);
+}
+const loot = [];
+function placeTreasure(item) {
+  for (let tries = 0; tries < 40; tries++) {
+    const a = rr(0, 6.3), r = rr(12, R - 6), x = Math.sin(a) * r, z = Math.cos(a) * r, d = -floorY(x, z);
+    const ok = KINDS.map((k, i) => i).filter((i) => KINDS[i][2] <= d && (KINDS[i][2] > d - 40 || i < 2));
+    if (!ok.length) continue;
+    const k = ok[Math.min(ok.length - 1, Math.floor(Math.pow(Math.random(), 0.6) * ok.length))];
+    if (item) { scene.remove(item.m); } const m = treasureMesh(k); m.position.set(x, -d + 0.6, z); scene.add(m);
+    const t = item || {}; Object.assign(t, { k, m, p: m.position.clone(), gone: 0 }); return t;
+  }
+}
+for (let i = 0; i < 90; i++) loot.push(placeTreasure());
+// bubble vents refill your air
+const vents = [];
+for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2 + rr(-0.2, 0.2), r = rr(35, R - 15), x = Math.sin(a) * r, z = Math.cos(a) * r, y = floorY(x, z); const base = boxMesh(1.6, 0.8, 1.6, 0x37474f); base.position.set(x, y + 0.4, z); scene.add(base); const col = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, -y, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xe1f5fe, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false })); col.position.set(x, y / 2, z); scene.add(col); vents.push({ p: V(x, y, z) }); }
+// jellyfish drift up and down
+const jellies = [];
+for (let i = 0; i < 26; i++) { const g = new THREE.Group(); const bell = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf48fb1, emissive: 0xad1457, emissiveIntensity: 0.6, transparent: true, opacity: 0.75 })); g.add(bell); for (let k = 0; k < 5; k++) { const t = boxMesh(0.08, 1.6, 0.08, 0xf8bbd0, 0x880e4f); t.position.set(Math.sin(k) * 0.5, -0.8, Math.cos(k) * 0.5); g.add(t); } const a = rr(0, 6.3), r = rr(25, R - 10), x = Math.sin(a) * r, z = Math.cos(a) * r; g.position.set(x, rr(floorY(x, z) + 3, -4), z); scene.add(g); jellies.push({ g, base: g.position.y, ph: rr(0, 6), hit: 0 }); }
+
+// ---------- you ----------
+const SAVE = "treasure-dive";
+let S = loadSave(SAVE, { coins: 0, earned: 0, deepest: 0, dives: 0, lv: { tank: 0, fins: 0, suit: 0, bag: 0, light: 0 }, found: {} });
+const UP = {
+  tank: ["Air tank", [30, 45, 65, 90, 125], (n) => `${n}s of air`], fins: ["Fins", [7, 9, 11, 13, 15], (n) => `speed ${n}`],
+  suit: ["Dive suit", [28, 48, 70, 95, 120], (n) => `safe to ${n} m`], bag: ["Bag", [8, 16, 28, 45, 70], (n) => `holds ${n}`], light: ["Flashlight", [0, 1, 2], (n) => (n ? (n > 1 ? "bright light" : "light") : "no light")],
+};
+const COST = [0, 150, 900, 4000, 15000];
+const stat = (k) => UP[k][1][S.lv[k]];
+const diver = { pos: V(3, -0.3, 6), vel: V(), air: 30, bag: [] };
+const tank = boxMesh(0.9, 1.6, 0.6, 0xffca28); tank.position.set(0, 2.5, -0.7); P.body.g.add(tank);
+const mask = boxMesh(0.9, 0.35, 0.2, 0x4fc3f7, 0x01579b); mask.position.set(0, 3.85, 0.62); P.body.g.add(mask);
+const torch = new THREE.SpotLight(0xffffff, 0, 40, 0.6, 0.5, 1.2); scene.add(torch, torch.target);
+const bubbles = []; const bubGeo = new THREE.SphereGeometry(0.12, 6, 4), bubMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+let phase = "menu", maxThisDive = 0, tUp = false, tDown = false;
+
+function rescue() {
+  // out of air: the boat crew pulls you up, but the bag is lost
+  const lost = diver.bag.length; diver.bag = []; diver.pos.set(3, -0.3, 6); diver.vel.set(0, 0, 0); diver.air = stat("tank");
+  $("dark").style.opacity = 0; SFX.lose(); show(`Out of air! The crew pulled you up.${lost ? `\nYou dropped ${lost} treasure${lost === 1 ? "" : "s"}.` : ""}`, 3);
+}
+function sellAll() {
+  if (!diver.bag.length) return 0;
+  const v = diver.bag.reduce((a, k) => a + KINDS[k][1], 0); S.coins += v; S.earned += v; diver.bag = []; storeSave(SAVE, S); SFX.buy(); return v;
+}
+function openBoat() {
+  const v = sellAll(); phase = "boat"; started = false; if (S.deepest) sendScore("depth", S.deepest);
+  $("bInfo").textContent = `${v ? `Sold your bag for ${v} coins. ` : ""}Coins: ${S.coins} · Deepest dive: ${S.deepest} m`;
+  drawUps(); $("boat").style.display = "grid"; document.exitPointerLock?.();
+}
+function drawUps() {
+  $("ups").innerHTML = Object.keys(UP).map((k) => { const lv = S.lv[k], max = UP[k][1].length - 1, nx = lv < max ? UP[k][2](UP[k][1][lv + 1]) : ""; return `<button data-k="${k}">${UP[k][0]}: ${UP[k][2](stat(k))}<br>${lv >= max ? "MAX" : `${nx} for ${COST[lv + 1].toLocaleString()} coins`}</button>`; }).join("");
+  for (const b of $("ups").querySelectorAll("button")) b.onclick = () => { const k = b.dataset.k, lv = S.lv[k]; if (lv >= UP[k][1].length - 1) return; if (S.coins < COST[lv + 1]) { SFX.no(); b.textContent = `Need ${(COST[lv + 1] - S.coins).toLocaleString()} more coins`; return; } S.coins -= COST[lv + 1]; S.lv[k]++; storeSave(SAVE, S); SFX.buy(); diver.air = stat("tank"); $("bInfo").textContent = `Coins: ${S.coins} · Deepest dive: ${S.deepest} m`; drawUps(); };
+}
+$("bClose").onclick = () => { $("boat").style.display = "none"; phase = "dive"; started = true; diver.air = stat("tank"); S.dives++; storeSave(SAVE, S); };
+actions.KeyE = () => { if (phase === "dive" && nearBoat()) openBoat(); };
+const nearBoat = () => diver.pos.y > -2.5 && Math.hypot(diver.pos.x, diver.pos.z) < 9;
+touchControls([{ label: "UP", color: "rgba(129,212,250,.95)", down: () => { tUp = true; }, up: () => { tUp = false; } }, { label: "DOWN", color: "rgba(2,136,209,.95)", down: () => { tDown = true; }, up: () => { tDown = false; } }, { label: "BOAT", color: "rgba(255,213,79,.95)", down: () => actions.KeyE() }]);
+
+const ZONE = (d) => d < 18 ? "The Shallows" : d < 38 ? "The Reef" : d < 62 ? "The Deep" : "The Abyss";
+function showStats() { $("stats").textContent = S.dives ? `Coins ${S.coins} · Deepest ${S.deepest} m · ${S.dives} dives` : ""; }
+showStats();
+const camPos = V();
+onFrame((dt, T) => {
+  for (const s of sway) s.m.rotation.z = Math.sin(T * 1.4 + s.p) * 0.12;
+  for (const f of fish) { f.a += f.s * dt; f.g.position.set(Math.sin(f.a) * f.r, f.y + Math.sin(T + f.r) * 1.5, Math.cos(f.a) * f.r); f.g.rotation.y = f.a + (f.s > 0 ? Math.PI / 2 : -Math.PI / 2); }
+  for (const j of jellies) { j.g.position.y = j.base + Math.sin(T * 0.6 + j.ph) * 2.5; j.g.scale.y = 1 + Math.sin(T * 3 + j.ph) * 0.12; j.hit -= dt; }
+  for (const t of loot) { if (t.gone > 0) { t.gone -= dt; if (t.gone <= 0) placeTreasure(t); continue; } t.m.rotation.y += dt * 1.5; }
+  boat.position.y = Math.sin(T * 1.2) * 0.12; boat.rotation.z = Math.sin(T * 0.9) * 0.03;
+  const depth = Math.max(0, -diver.pos.y);
+  if (started && phase === "dive") {
+    // swimming: W goes where the camera looks (so looking down dives)
+    const f = V(-Math.sin(cam.yaw) * Math.cos(cam.pitch), -Math.sin(cam.pitch), -Math.cos(cam.yaw) * Math.cos(cam.pitch)), r = V(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
+    const want = V();
+    if (keys.KeyW || keys.ArrowUp) want.add(f); if (keys.KeyS || keys.ArrowDown) want.sub(f);
+    if (keys.KeyD || keys.ArrowRight) want.add(r); if (keys.KeyA || keys.ArrowLeft) want.sub(r);
+    if (joy.x || joy.y) { want.addScaledVector(r, joy.x); want.addScaledVector(f, -joy.y); }
+    if (keys.Space || tUp) want.y += 1; if (keys.KeyC || tDown) want.y -= 1;
+    if (want.lengthSq() > 1) want.normalize();
+    diver.vel.lerp(want.multiplyScalar(stat("fins")), Math.min(1, dt * 3));
+    diver.pos.addScaledVector(diver.vel, dt);
+    const fy = floorY(diver.pos.x, diver.pos.z) + 0.8; if (diver.pos.y < fy) { diver.pos.y = fy; diver.vel.y = Math.max(0, diver.vel.y); }
+    if (diver.pos.y > -0.3) { diver.pos.y = -0.3; diver.vel.y = Math.min(0, diver.vel.y); }
+    const rr2 = Math.hypot(diver.pos.x, diver.pos.z); if (rr2 > R - 4) { diver.pos.x *= (R - 4) / rr2; diver.pos.z *= (R - 4) / rr2; }
+    // air
+    const atTop = diver.pos.y > -1;
+    if (atTop) diver.air = Math.min(stat("tank"), diver.air + dt * 20);
+    else diver.air -= dt * (depth > stat("suit") ? 3 : 1);
+    for (const v of vents) if (Math.hypot(diver.pos.x - v.p.x, diver.pos.z - v.p.z) < 1.8 && diver.pos.y < -1) { diver.air = Math.min(stat("tank"), diver.air + dt * 12); if (Math.random() < dt * 6) tone(rr(600, 900), 0.05, "sine", 0.02); }
+    if (diver.air <= 0) rescue();
+    maxThisDive = Math.max(maxThisDive, depth); if (Math.floor(depth) > S.deepest) { S.deepest = Math.floor(depth); if (S.deepest % 10 === 0) { storeSave(SAVE, S); sendScore("depth", S.deepest); } }
+    // treasure
+    for (const t of loot) if (t.gone <= 0 && t.m.position.distanceTo(diver.pos) < 2.2) {
+      if (diver.bag.length >= stat("bag")) { if (Math.random() < dt * 2) show("Your bag is full! Back to the boat.", 1.4); continue; }
+      diver.bag.push(t.k); t.gone = rr(40, 80); scene.remove(t.m); const first = !S.found[KINDS[t.k][0]]; S.found[KINDS[t.k][0]] = 1;
+      SFX.coin(); show(`${KINDS[t.k][0]}! +${KINDS[t.k][1]}${first ? " (new find)" : ""}`, 1.1);
+    }
+    // jellyfish sting (costs air and bumps you back)
+    for (const j of jellies) if (j.hit <= 0 && j.g.position.distanceTo(diver.pos) < 1.8) { j.hit = 2; diver.air -= 8; const away = diver.pos.clone().sub(j.g.position).normalize(); diver.vel.addScaledVector(away, 12); SFX.hit(); show("Jellyfish sting! -8 air", 1.1); }
+    // bubbles from the tank
+    if (!atTop && Math.random() < dt * 5) { const m = new THREE.Mesh(bubGeo, bubMat); m.position.copy(diver.pos).add(V(rr(-0.3, 0.3), 2.6, rr(-0.3, 0.3))); scene.add(m); bubbles.push(m); }
+  }
+  for (let i = bubbles.length - 1; i >= 0; i--) { const m = bubbles[i]; m.position.y += 3 * dt; m.position.x += Math.sin(m.position.y * 3) * 0.01; if (m.position.y > -0.2) { scene.remove(m); bubbles.splice(i, 1); } }
+  // the diver's body: lie flat while swimming, kick with the legs
+  P.pos.copy(diver.pos); const sp = diver.vel.length();
+  P.body.g.position.copy(diver.pos).add(V(0, -1.2, 0));
+  if (sp > 0.6) P.yaw = Math.atan2(diver.vel.x, diver.vel.z);
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, dt * 6);
+  P.body.g.rotation.x = diver.pos.y < -1 ? clamp(0.9 + (sp > 0.6 ? -Math.atan2(diver.vel.y, Math.hypot(diver.vel.x, diver.vel.z)) : 0), 0, 1.8) : 0.2;
+  P.body.legs[0].rotation.x = Math.sin(T * 8) * 0.5; P.body.legs[1].rotation.x = -Math.sin(T * 8) * 0.5; P.body.pose = true; P.body.arms[0].rotation.x = P.body.arms[1].rotation.x = -2.8;
+  updateCamera(dt, diver.pos.clone().add(V(0, -1.4, 0)));
+  // underwater look: fog closes in as you go deeper, a flashlight helps in the dark
+  const camUnder = camera.position.y < 0, cd = Math.max(0, -camera.position.y), lightLv = S.lv.light;
+  if (camUnder) {
+    const t = clamp(cd / 90, 0, 1), c = new THREE.Color(0x0277bd).lerp(new THREE.Color(0x00040a), Math.sqrt(t));
+    scene.background = c; scene.fog.color.copy(c); scene.fog.near = 3; scene.fog.far = (95 - t * 75) + lightLv * 14 * t;
+    hemi.intensity = 0.9 - t * 0.65; sun.intensity = 0.8 * (1 - t);
+  } else { scene.background = SKY; scene.fog.color.setHex(0xe1f5fe); scene.fog.near = 80; scene.fog.far = 300; hemi.intensity = 0.9; sun.intensity = 0.9; }
+  torch.intensity = lightLv && depth > 20 ? 1.2 + lightLv * 0.9 : 0; torch.position.copy(diver.pos).add(V(0, 0.6, 0)); const lf = V(-Math.sin(cam.yaw) * Math.cos(cam.pitch), -Math.sin(cam.pitch), -Math.cos(cam.yaw) * Math.cos(cam.pitch)); torch.target.position.copy(diver.pos).addScaledVector(lf, 10);
+  sun.position.copy(diver.pos).add(V(30, 60, 20)); sun.target.position.copy(diver.pos);
+  // HUD
+  const airMax = stat("tank"), airF = clamp(diver.air / airMax, 0, 1);
+  $("air").firstChild.style.width = `${airF * 100}%`; $("air").firstChild.style.background = airF < 0.25 ? "#ff5252" : "";
+  $("dark").style.opacity = phase === "dive" && airF < 0.2 && depth > 1 ? (0.2 - airF) * 2 : 0;
+  $("tDepth").textContent = depth < 1 ? "Surface" : `${Math.floor(depth)} m deep${depth > stat("suit") ? " (too deep for your suit!)" : ""}`;
+  $("tDepth").style.color = depth > stat("suit") ? "#ff8a80" : "#fff";
+  $("tCoins").textContent = `${S.coins} coins`;
+  $("hZone").textContent = ZONE(depth); $("hBag").textContent = `Bag ${diver.bag.length}/${stat("bag")}${diver.bag.length ? ` · worth ${diver.bag.reduce((a, k) => a + KINDS[k][1], 0)}` : ""}`;
+  $("hInfo").textContent = `Air ${Math.ceil(Math.max(0, diver.air))}s · deepest ${S.deepest} m`;
+  $("prompt").textContent = phase === "dive" && nearBoat() ? `${touch ? "BOAT" : "E"}: climb aboard${diver.bag.length ? " and sell your bag" : ""}` : "";
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; phase = "dive"; audio(); diver.air = stat("tank"); S.dives++; storeSave(SAVE, S); show("Look down and hold W to dive!", 2.5); };
+$("menuB").onclick = () => { started = false; phase = "menu"; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, depth: +Math.max(0, -diver.pos.y).toFixed(1), air: +diver.air.toFixed(1), bag: diver.bag.length, coins: S.coins, deepest: S.deepest, lv: { ...S.lv }, nearBoat: nearBoat(), pos: diver.pos.toArray().map((v) => +v.toFixed(1)) }),
+  goto: (x, y, z) => { diver.pos.set(x, y, z); diver.vel.set(0, 0, 0); }, nearestLoot: (minD = 0) => { let b = null, bd = Infinity; for (const t of loot) if (t.gone <= 0 && -t.p.y >= minD) { const d = t.p.distanceTo(diver.pos); if (d < bd) { bd = d; b = t; } } return b && { x: b.p.x, y: b.p.y, z: b.p.z, k: KINDS[b.k][0] }; },
+  openBoat, give: (n) => { S.coins += n; }, floorY,
+};
+loop();
+})();
+</script>
+</body>
+</html>

@@ -29,6 +29,7 @@ export const BOARDS = {
   "taxi-rush-city": [["fares", "Best shift", (v) => "$" + Number(v).toLocaleString()]],
   "block-rush-runner": [["distance", "Farthest run", (v) => `${Number(v).toLocaleString()} m`]],
   "block-farm-valley": [["earned", "Most coins earned", (v) => Number(v).toLocaleString()]],
+  "treasure-dive": [["depth", "Deepest dive", (v) => `${v} m`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).
