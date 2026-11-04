@@ -24,6 +24,7 @@ export const BOARDS = {
   "block-factory-tycoon": ["money", "rebirths"],
   "block-tower-defense": ["wave"],
   "gem-mine-simulator": ["coins"],
+  "disaster-island": ["survivals"],
 };
 const MAX_SCORE = 1e9;
 

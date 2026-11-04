@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Disaster Island</title>
+<style>
+/*KIT_CSS*/
+  #start{background:linear-gradient(#bf360cdd,#3e1a0aee)}
+  h1{color:#ffca28}
+  #hpbar{position:fixed;left:50%;top:14px;transform:translateX(-50%);width:280px;max-width:60vw;height:20px;border:3px solid #000;border-radius:10px;background:#3b0d0d;overflow:hidden;pointer-events:none}
+  #hpbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#43a047,#9ccc65);transition:width .15s}
+  #hpT{position:fixed;left:50%;top:40px;transform:translateX(-50%);font-size:13px;font-weight:900;pointer-events:none}
+  #tint{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,0,0,0) 45%,rgba(255,0,0,.55))}
+  #under{position:fixed;inset:0;pointer-events:none;display:none;background:rgba(21,101,192,.42)}
+  #hud .big1{max-width:46vw}
+  @media (max-width:600px){#hud .sub{font-size:12px;max-width:44vw}}
+</style>
+</head>
+<body>
+<div id="hpbar"><i></i></div><div id="hpT" class="sh">100 HP</div>
+<div id="hud" class="sh"><div class="big1" id="hPhase">Disaster Island</div><div class="sub" id="hTip"></div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="tint"></div><div id="under"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>DISASTER<br>ISLAND</h1>
+  <p style="font-weight:700">Every round a random disaster hits the island. Floods and lava mean <b>climb high</b>. Blizzards and acid rain mean <b>get inside a house</b>. For meteors and lightning, <b>stay out of the circles</b>, and run from the tornado. Survive to the end of the round to score.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to look · <kbd>Wheel</kbd> zoom · <kbd>Shift</kbd> lock the camera</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Disaster Island =================
+hemi.intensity = 0.85; sun.intensity = 0.9;
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70 }); sun.shadow.camera.updateProjectionMatrix();
+cam.dist = 14; cam.pitch = 0.42;
+const SKIES = {
+  day: [skyTex("#4fa3ff", "#dff0ff"), new THREE.Fog(0xdff0ff, 110, 300), 0.85, 0.9],
+  storm: [skyTex("#263238", "#607d8b"), new THREE.Fog(0x607d8b, 50, 170), 0.55, 0.35],
+  snow: [skyTex("#90a4ae", "#eceff1"), new THREE.Fog(0xeceff1, 18, 85), 0.8, 0.4],
+  acid: [skyTex("#33691e", "#c5e1a5"), new THREE.Fog(0xaed581, 25, 110), 0.7, 0.45],
+  fire: [skyTex("#bf360c", "#ffab91"), new THREE.Fog(0xffab91, 70, 220), 0.62, 0.62],
+};
+function sky(k) { const [bg, fog, h, s] = SKIES[k]; scene.background = bg; scene.fog = fog; hemi.intensity = h; sun.intensity = s; }
+sky("day");
+
+// ---------- the island ----------
+const ISLE = 42;
+addBox(0, -1, 0, ISLE * 2, 2, ISLE * 2, 0x689f38);
+const sand = boxMesh(ISLE * 2 + 8, 1.6, ISLE * 2 + 8, 0xffe082); sand.position.set(0, -1.25, 0); scene.add(sand);
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.35 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -0.8; scene.add(sea);
+for (const [x, z, w, d] of [[0, -ISLE - 0.5, ISLE * 2 + 2, 1], [0, ISLE + 0.5, ISLE * 2 + 2, 1], [-ISLE - 0.5, 0, 1, ISLE * 2 + 2], [ISLE + 0.5, 0, 1, ISLE * 2 + 2]]) addBox(x, 16, z, w, 34, d, 0).m.visible = false;
+// the stepped hill in the middle (every step is half a block, so you walk straight up)
+const TIERS = 14;
+for (let k = 0; k < TIERS; k++) { const s = 30 - k * 1.7, top = 0.5 * (k + 1); addBox(0, top / 2, 0, s, top, s, k % 2 ? 0xd7ccc8 : 0xbcaaa4); }
+// the lookout tower and its stairs
+const LX = 28, LZ = -27;
+addBox(LX, 5, LZ, 7, 10, 7, 0x8d6e63, { wall: true });
+for (let k = 1; k <= 20; k++) { const top = 0.5 * k; addBox(LX, top / 2, -3 - k, 3, top, 1, k % 2 ? 0xbcaaa4 : 0xa1887f); }
+for (const [dx, dz] of [[-3.2, -3.2], [3.2, -3.2], [-3.2, 3.2], [3.2, 3.2]]) { const p = boxMesh(0.4, 1.4, 0.4, 0x5d4037); p.position.set(LX + dx, 10.7, LZ + dz); scene.add(p); }
+// houses (the only shelter from blizzards and acid rain)
+const houses = [];
+function house(x, z, face, col) {
+  const w = 11, d = 9, h = 4.2, t = 0.6, fx = x + face * (w / 2 - t / 2), seg = (d - 3) / 2;
+  addBox(x - face * (w / 2 - t / 2), h / 2, z, t, h, d, col, { wall: true });
+  addBox(x, h / 2, z - d / 2 + t / 2, w, h, t, col, { wall: true }); addBox(x, h / 2, z + d / 2 - t / 2, w, h, t, col, { wall: true });
+  addBox(fx, h / 2, z - d / 2 + seg / 2, t, h, seg, col, { wall: true }); addBox(fx, h / 2, z + d / 2 - seg / 2, t, h, seg, col, { wall: true });
+  addBox(fx, h - 0.6, z, t, 1.2, 3, col, { wall: true });
+  addBox(x, h + 0.25, z, w + 1.2, 0.5, d + 1.2, 0x6d4c41, { wall: true });
+  houses.push({ x, z, w, d, door: V(x + face * (w / 2 + 2), 0, z), inside: V(x - face * 1.5, 0, z) });
+}
+house(-30, 26, 1, 0xef9a9a); house(-30, 0, 1, 0x90caf9); house(-30, -26, 1, 0xfff59d); house(30, 24, -1, 0xa5d6a7);
+const inHouse = (p) => houses.some((h) => Math.abs(p.x - h.x) < h.w / 2 - 0.4 && Math.abs(p.z - h.z) < h.d / 2 - 0.4 && p.y < 3);
+const underRoof = (p) => houses.some((h) => Math.abs(p.x - h.x) < h.w / 2 && Math.abs(p.z - h.z) < h.d / 2 && p.y < 4.3);
+for (const [x, z] of [[-12, 31], [14, 30], [20, 37], [-17, -31], [10, -34], [-4, -38], [37, -6], [-38, 13], [38, 38], [-38, -39], [4, 22], [-8, -22]]) {
+  addBox(x, 2, z, 1.2, 4, 1.2, 0x6d4c41); const l = boxMesh(4.5, 3.5, 4.5, 0x2e7d32); l.position.set(x, 5.2, z); scene.add(l);
+}
+function groundY(x, z) { let y = 0; for (const s of solids) { const top = s.y + s.h / 2; if (s.m.visible && top > y && top < 12 && Math.abs(x - s.x) < s.w / 2 && Math.abs(z - s.z) < s.d / 2) y = top; } return y; }
+
+// ---------- waypoints for the computer players ----------
+const N = [], L = [], RING = 8;
+for (let i = 0; i < RING; i++) { const a = (i / RING) * Math.PI * 2; N.push(V(Math.sin(a) * 21, 0, Math.cos(a) * 21)); L.push([i, (i + 1) % RING]); }
+const TOP = N.push(V(0, 7, 0)) - 1; for (let i = 0; i < RING; i++) L.push([i, TOP]);
+const LB = N.push(V(LX, 0, -1.5)) - 1, LT = N.push(V(LX, 10, LZ)) - 1; L.push([LB, LT], [2, LB]);
+for (const h of houses) {
+  h.dn = N.push(h.door) - 1; h.in = N.push(h.inside) - 1; L.push([h.dn, h.in]);
+  let best = 0, bd = Infinity; for (let i = 0; i < RING; i++) { const d = N[i].distanceTo(h.door); if (d < bd) { bd = d; best = i; } } L.push([best, h.dn]);
+}
+const nav = makeNav(N, L);
+
+// ---------- everyone ----------
+const SAVE = "disaster-island";
+let S = loadSave(SAVE, { survived: 0, rounds: 0, streak: 0, best: 0 });
+const everyone = [P]; P.name = ME_NAME; P.hp = 100; P.alive = true; P.color = 0x1e88e5;
+const names = shuffle(BOT_NAMES.slice());
+for (let i = 0; i < 9; i++) {
+  const color = BOT_COLORS[i], body = makeAvatar({ shirt: color, pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.4 ? pick(BOT_COLORS) : null });
+  body.g.add(nameTag(names[i])); scene.add(body.g);
+  everyone.push({ name: names[i], body, color, pos: V(), vel: V(), onGround: false, hp: 100, alive: true, path: [], think: 0, yaw: 0, mode: "wander", react: 0, smart: true });
+}
+const bots = everyone.slice(1);
+function spawnAll() {
+  const start = Math.random() * Math.PI * 2;
+  everyone.forEach((e, i) => { const a = start + (i / everyone.length) * Math.PI * 2; e.pos.set(Math.sin(a) * 19, 0.4, Math.cos(a) * 19); e.vel.set(0, 0, 0); e.hp = 100; e.alive = true; e.body.g.visible = true; e.path = []; e.mode = "wander"; });
+  P.canMove = true; cam.yaw = Math.atan2(P.pos.x, P.pos.z);
+}
+
+// ---------- disasters ----------
+const DIS = {
+  flood: { name: "FLOOD", tip: "The sea is rising. Get to high ground!", plan: "high" },
+  lava: { name: "LAVA RISING", tip: "The ground is turning to lava. Climb up!", plan: "high" },
+  meteors: { name: "METEOR SHOWER", tip: "Get out of the red circles!", plan: "dodge" },
+  tornado: { name: "TORNADO", tip: "Run from the twister!", plan: "flee" },
+  lightning: { name: "LIGHTNING STORM", tip: "Stay out of the yellow circles, or hide indoors!", plan: "shelter" },
+  blizzard: { name: "BLIZZARD", tip: "It's freezing outside. Get inside a house!", plan: "shelter" },
+  acid: { name: "ACID RAIN", tip: "The rain burns. Get inside a house!", plan: "shelter" },
+};
+const FORCE = new URLSearchParams(location.search).get("disaster");
+const water = new THREE.Mesh(new THREE.PlaneGeometry(ISLE * 2 + 40, ISLE * 2 + 40), new THREE.MeshStandardMaterial({ color: 0x1976d2, transparent: true, opacity: 0.72, roughness: 0.2, side: THREE.DoubleSide, depthWrite: false }));
+water.rotation.x = -Math.PI / 2; water.visible = false; scene.add(water);
+const lava = new THREE.Mesh(new THREE.PlaneGeometry(ISLE * 2 + 2, ISLE * 2 + 2), new THREE.MeshStandardMaterial({ color: 0xff5722, emissive: 0xdd2c00, emissiveIntensity: 0.8, side: THREE.DoubleSide }));
+lava.rotation.x = -Math.PI / 2; lava.visible = false; scene.add(lava);
+let level = -0.8, levelTo = -0.8;
+// falling snow or rain around the camera
+const PN = 1500, pPos = new Float32Array(PN * 3);
+for (let i = 0; i < PN; i++) { pPos[i * 3] = rr(-40, 40); pPos[i * 3 + 1] = rr(0, 40); pPos[i * 3 + 2] = rr(-40, 40); }
+const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
+const flake = document.createElement("canvas"); flake.width = flake.height = 32; { const x = flake.getContext("2d"), g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, 32, 32); }
+const pMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.4, map: new THREE.CanvasTexture(flake), transparent: true, opacity: 0.9, depthWrite: false });
+const parts = new THREE.Points(pGeo, pMat); parts.visible = false; parts.frustumCulled = false; scene.add(parts);
+let pFall = 6, pWind = 0;
+// the twister
+const tor = new THREE.Group(); tor.visible = false; scene.add(tor);
+const torMat = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+const torRings = [];
+for (let i = 0; i < 8; i++) { const r = 1.2 + i * 1.1, m = new THREE.Mesh(new THREE.CylinderGeometry(r + 1.1, r, 4, 18, 1, true), torMat); m.position.y = 2 + i * 4; tor.add(m); torRings.push(m); }
+const debris = []; for (let i = 0; i < 14; i++) { const m = boxMesh(rr(0.4, 1), rr(0.4, 1), rr(0.4, 1), pick([0x6d4c41, 0x795548, 0x9e9e9e, 0x2e7d32])); tor.add(m); debris.push({ m, a: rr(0, 6.3), r: rr(2, 7), y: rr(1, 26), s: rr(2, 4) }); }
+const torV = V(), torTo = V(); let torRetarget = 0;
+const torR = () => phase === "disaster" ? 4.8 + (DUR - phaseT) * 0.11 : 5.5; // it grows as the round goes on
+// meteors and lightning: a circle warns where they will hit
+const hz = [];
+const ringGeo = new THREE.RingGeometry(0.75, 1, 36), rockGeo = new THREE.DodecahedronGeometry(1.1, 0), boomGeo = new THREE.SphereGeometry(1, 16, 10);
+const rockMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, emissive: 0xff6d00, emissiveIntensity: 0.7 });
+const booms = [];
+function addHazard(kind) {
+  let x, z;
+  const live = everyone.filter((e) => e.alive);
+  if (live.length && Math.random() < 0.5) { const e = pick(live); x = e.pos.x + rr(-4, 4); z = e.pos.z + rr(-4, 4); } else { x = rr(-ISLE + 2, ISLE - 2); z = rr(-ISLE + 2, ISLE - 2); }
+  x = clamp(x, -ISLE + 1, ISLE - 1); z = clamp(z, -ISLE + 1, ISLE - 1);
+  const y = groundY(x, z), meteor = kind === "meteor", r = meteor ? 3.6 : 2.7;
+  const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: meteor ? 0xff1744 : 0xffea00, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, y + 0.06, z); ring.scale.setScalar(r); scene.add(ring);
+  const h = { kind, x, y, z, r, t: meteor ? 2.3 : 1.2, ring };
+  if (meteor) { h.rock = new THREE.Mesh(rockGeo, rockMat); h.rock.scale.setScalar(rr(0.8, 1.4)); scene.add(h.rock); }
+  hz.push(h);
+}
+function clearHazards() { for (const h of hz) { scene.remove(h.ring); h.ring.material.dispose(); if (h.rock) scene.remove(h.rock); } hz.length = 0; }
+const bolt = boxMesh(0.35, 80, 0.35, 0xffffff, 0xffffff); bolt.castShadow = false; bolt.visible = false; scene.add(bolt); let boltT = 0;
+function strike(h) {
+  const at = V(h.x, h.y, h.z);
+  for (const e of everyone) if (e.alive && e.pos.clone().setY(e.pos.y + 1.2).distanceTo(at) < h.r + 0.6) hurt(e, h.kind === "meteor" ? 55 : 70, true);
+  if (h.kind === "meteor") { const m = new THREE.Mesh(boomGeo, new THREE.MeshBasicMaterial({ color: 0xff9100, transparent: true, opacity: 0.9, depthWrite: false })); m.position.copy(at); scene.add(m); booms.push({ m, t: 0 }); tone(90, 0.35, "sawtooth", 0.06, -40); }
+  else { bolt.position.set(h.x, h.y + 40, h.z); bolt.visible = true; boltT = 0.14; hemi.intensity = 2.2; tone(1600, 0.25, "sawtooth", 0.05, -1400); }
+  scene.remove(h.ring); h.ring.material.dispose(); if (h.rock) scene.remove(h.rock);
+}
+
+// ---------- getting hurt ----------
+let flashT = 0, phase = "menu", phaseT = 0, cur = null, last = null, spawnT = 0;
+const bits = [];
+function hurt(e, n, big) {
+  if (!e.alive || phase !== "disaster") return;
+  e.hp -= n;
+  if (e === P) { flashT = Math.max(flashT, big ? 0.6 : 0.25); if (big) SFX.hit(); }
+  if (e.hp <= 0) die(e);
+}
+function die(e) {
+  e.alive = false; e.hp = 0; e.body.g.visible = false; e.path = [];
+  for (let i = 0; i < 9; i++) { const m = boxMesh(0.5, 0.5, 0.5, i % 3 ? e.color : 0xffcc80); m.position.copy(e.pos).add(V(0, 1.5, 0)); scene.add(m); bits.push({ m, v: V(rr(-6, 6), rr(6, 13), rr(-6, 6)), t: 2.2 }); }
+  if (e === P) { P.canMove = false; SFX.lose(); show("You didn't make it!\nWatch the others until the round ends.", 3); }
+  if (!everyone.some((x) => x.alive)) phaseT = Math.min(phaseT, 1.5);
+}
+
+// ---------- rounds ----------
+const INTER = TEST ? 3 : 12, DUR = TEST ? 22 : 32;
+function resetWorld() {
+  clearHazards(); sky("day"); water.visible = lava.visible = false; level = levelTo = -0.8; tor.visible = false; parts.visible = false; bolt.visible = false;
+}
+function startInter() { phase = "inter"; phaseT = INTER; cur = null; resetWorld(); spawnAll(); }
+function startDisaster() {
+  phase = "disaster"; phaseT = DUR; spawnT = 1.5;
+  cur = FORCE && DIS[FORCE] ? FORCE : pick(Object.keys(DIS).filter((k) => k !== last)); last = cur;
+  if (cur === "flood") { water.visible = true; levelTo = 4.6; sky("storm"); }
+  if (cur === "lava") { lava.visible = true; level = -0.2; levelTo = 1.7; sky("fire"); }
+  if (cur === "meteors") sky("fire");
+  if (cur === "lightning") sky("storm");
+  if (cur === "blizzard") { sky("snow"); parts.visible = true; pMat.color.set(0xffffff); pMat.size = 0.45; pFall = 5; pWind = 6; }
+  if (cur === "acid") { sky("acid"); parts.visible = true; pMat.color.set(0x76ff03); pMat.size = 0.28; pFall = 32; pWind = 1; }
+  if (cur === "tornado") { const a = rr(0, 6.3); tor.position.set(Math.sin(a) * 36, 0, Math.cos(a) * 36); torTo.set(0, 0, 0); torRetarget = 3; tor.visible = true; sky("storm"); }
+  for (const b of bots) { b.react = rr(0.3, 4.5); b.smart = Math.random() < 0.74; b.mode = "wait"; }
+  show(`${DIS[cur].name}!\n${DIS[cur].tip}`, 4); SFX.zap();
+}
+function endDisaster() {
+  phase = "results"; phaseT = TEST ? 3 : 6; clearHazards();
+  const alive = everyone.filter((e) => e.alive);
+  S.rounds++;
+  if (P.alive) { S.survived++; S.streak++; S.best = Math.max(S.best, S.streak); SFX.win(); sendScore("survivals", S.survived); }
+  else S.streak = 0;
+  storeSave(SAVE, S);
+  const who = alive.length ? alive.map((e) => e.name).slice(0, 6).join(", ") + (alive.length > 6 ? ` and ${alive.length - 6} more` : "") : "nobody";
+  show(`${P.alive ? "You survived the " + DIS[cur].name.toLowerCase() + "!" : "Round over"}\nSurvivors: ${who}`, 5);
+  levelTo = -0.8;
+}
+
+// ---------- computer players ----------
+function plan(b) {
+  const p = DIS[cur].plan, how = b.smart ? p : (Math.random() < 0.5 && p !== "shelter" ? p : "wander");
+  b.mode = how;
+  if (how === "high") { const to = Math.random() < 0.78 ? TOP : LT; b.path = nav.route(b.pos, to); if (b.path.length) b.path[b.path.length - 1] = N[to].clone().add(V(rr(-2.2, 2.2), 0, rr(-2.2, 2.2))); }
+  else if (how === "shelter") {
+    const h = houses.slice().sort((a, c) => a.door.distanceTo(b.pos) - c.door.distanceTo(b.pos))[Math.random() < 0.8 ? 0 : 1];
+    b.path = nav.route(b.pos, h.in); if (b.path.length) b.path[b.path.length - 1] = h.inside.clone().add(V(rr(-1.8, 1.8), 0, rr(-2.4, 2.4)));
+  } else b.path = [];
+}
+function wanderTo(b) { b.path = Math.random() < 0.5 ? nav.route(b.pos, ri(0, RING - 1)) : [V(clamp(b.pos.x + rr(-9, 9), -38, 38), 0, clamp(b.pos.z + rr(-9, 9), -38, 38))]; b.think = rr(2, 5); }
+function stepBot(b, dt, T) {
+  if (!b.alive) return;
+  const sp = 11.5;
+  b.think -= dt;
+  if (phase === "disaster") {
+    if (b.mode === "wait") { b.react -= dt; if (b.react <= 0) plan(b); }
+    if (b.mode === "flee") {
+      const away = V(b.pos.x - tor.position.x, 0, b.pos.z - tor.position.z); if (away.lengthSq() < 0.01) away.set(1, 0, 0);
+      const to = b.pos.clone().add(away.normalize().multiplyScalar(10)); to.x = clamp(to.x, -38, 38); to.z = clamp(to.z, -38, 38);
+      if (Math.abs(to.x) >= 37.5 && Math.abs(to.z) >= 37.5) to.set(-to.x * 0.3, 0, to.z);
+      walkToward(b, to, dt, sp); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T); return;
+    }
+    // stay out of the warning circles (the careless ones only once they notice)
+    if (b.smart || b.mode === "dodge") for (const h of hz) {
+      const dx = b.pos.x - h.x, dz = b.pos.z - h.z, d = Math.hypot(dx, dz);
+      if (d < h.r + 1.4 && h.t < 1.9 && Math.abs(b.pos.y - h.y) < 3) { walkToward(b, V(b.pos.x + (dx / (d || 1)) * 6, 0, b.pos.z + (dz / (d || 1)) * 6), dt, sp); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T); return; }
+    }
+    if ((b.mode === "wander" || b.mode === "dodge" || b.mode === "wait") && (!b.path.length || b.think <= 0)) wanderTo(b);
+  } else if (!b.path.length || b.think <= 0) wanderTo(b);
+  followPath(b, dt, sp); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T);
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.rounds ? `Survived ${S.survived} of ${S.rounds} rounds · best streak ${S.best}` : ""; }
+showStats(); spawnAll();
+touchControls([JUMP_BUTTON]);
+const pPosArr = pGeo.attributes.position;
+
+onFrame((dt, T) => {
+  // the disaster's effects
+  level += clamp(levelTo - level, -dt * 0.5, dt * (cur === "lava" ? 0.24 : 0.42));
+  water.position.y = level; lava.position.y = level + 0.02;
+  if (level <= -0.79 && phase !== "disaster") water.visible = lava.visible = false;
+  pMat.opacity = underRoof(camera.position) ? 0 : 0.9;
+  if (parts.visible) {
+    parts.position.set(camera.position.x, 0, camera.position.z);
+    for (let i = 0; i < PN; i++) { let y = pPos[i * 3 + 1] - pFall * dt, x = pPos[i * 3] + pWind * dt; if (y < 0) y += 40; if (x > 40) x -= 80; pPos[i * 3 + 1] = y; pPos[i * 3] = x; }
+    pPosArr.needsUpdate = true;
+  }
+  if (boltT > 0) { boltT -= dt; if (boltT <= 0) { bolt.visible = false; hemi.intensity = SKIES[cur && phase === "disaster" ? "storm" : "day"][2]; } }
+  for (let i = booms.length - 1; i >= 0; i--) { const b = booms[i]; b.t += dt; b.m.scale.setScalar(1 + b.t * 9); b.m.material.opacity = Math.max(0, 0.9 - b.t * 2.2); if (b.t > 0.45) { scene.remove(b.m); b.m.material.dispose(); booms.splice(i, 1); } }
+  for (let i = bits.length - 1; i >= 0; i--) { const b = bits[i]; b.t -= dt; b.v.y -= 30 * dt; b.m.position.addScaledVector(b.v, dt); const gy = groundY(b.m.position.x, b.m.position.z) + 0.25; if (b.m.position.y < gy) { b.m.position.y = gy; b.v.multiplyScalar(0.5); b.v.y = 0; } if (b.t <= 0) { scene.remove(b.m); bits.splice(i, 1); } }
+  if (tor.visible) {
+    torRetarget -= dt;
+    if (torRetarget <= 0) { torRetarget = rr(2.5, 4.5); const live = everyone.filter((e) => e.alive); if (live.length && Math.random() < 0.7) { const e = pick(live); torTo.set(e.pos.x, 0, e.pos.z); } else torTo.set(rr(-34, 34), 0, rr(-34, 34)); }
+    const d = V(torTo.x - tor.position.x, 0, torTo.z - tor.position.z); if (d.lengthSq() > 1) torV.lerp(d.normalize().multiplyScalar(phase === "disaster" ? 9 : 0), Math.min(1, dt));
+    tor.position.addScaledVector(torV, dt); tor.position.x = clamp(tor.position.x, -40, 40); tor.position.z = clamp(tor.position.z, -40, 40);
+    tor.scale.set(torR() / 5.5, 1, torR() / 5.5);
+    torRings.forEach((m, i) => { m.rotation.y += dt * (3 + i * 0.4); m.position.x = Math.sin(T * 2 + i * 0.7) * i * 0.25; });
+    for (const b of debris) { b.a += dt * b.s; b.m.position.set(Math.cos(b.a) * b.r, b.y, Math.sin(b.a) * b.r); b.m.rotation.x += dt * 3; }
+  }
+
+  if (started && phase !== "menu") {
+    phaseT -= dt;
+    if (phaseT <= 0) { if (phase === "inter") startDisaster(); else if (phase === "disaster") endDisaster(); else startInter(); }
+    if (phase === "disaster") {
+      spawnT -= dt;
+      if (spawnT <= 0 && (cur === "meteors" || cur === "lightning")) { spawnT = cur === "meteors" ? 0.42 : 0.38; addHazard(cur === "meteors" ? "meteor" : "bolt"); }
+      for (let i = hz.length - 1; i >= 0; i--) {
+        const h = hz[i]; h.t -= dt; h.ring.material.opacity = 0.45 + Math.abs(Math.sin(T * 10)) * 0.45;
+        if (h.rock) { h.rock.position.set(h.x + h.t * 6, h.y + h.t * 32, h.z); h.rock.rotation.x += dt * 4; }
+        if (h.t <= 0) { strike(h); hz.splice(i, 1); }
+      }
+      for (const e of everyone) {
+        if (!e.alive) continue;
+        if (cur === "flood" && level > e.pos.y + 1.7) hurt(e, 16 * dt);
+        if (cur === "lava" && e.pos.y < level + 0.06 && e.onGround) hurt(e, 32 * dt);
+        if ((cur === "blizzard" || cur === "acid") && !inHouse(e.pos)) hurt(e, (cur === "acid" ? 9 : 7) * dt);
+        if (cur === "tornado") {
+          const dx = e.pos.x - tor.position.x, dz = e.pos.z - tor.position.z, d = Math.hypot(dx, dz);
+          if (d < torR() && e.pos.y < 16) { e.vel.y = Math.max(e.vel.y, 15); e.pos.x += ((-dz / (d || 1)) * 10 + (dx / (d || 1)) * 3) * dt; e.pos.z += ((dx / (d || 1)) * 10 + (dz / (d || 1)) * 3) * dt; e.onGround = false; hurt(e, 7 * dt); }
+        }
+      }
+    }
+    // move everyone (and fall damage)
+    for (const e of everyone) {
+      if (!e.alive) continue;
+      const vy = e.vel.y;
+      if (e === P) stepPlayer(dt, T); else stepBot(e, dt, T);
+      if (e.onGround && vy < -25) hurt(e, (-vy - 25) * 4, true);
+      if (e.pos.y < -20) { e.pos.set(0, 8, 0); e.vel.set(0, 0, 0); }
+    }
+  } else {
+    for (const b of bots) { if (!b.alive) continue; if (!b.path.length || b.think <= 0) wanderTo(b); b.think -= dt; followPath(b, dt, 8); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T); }
+    stepPlayer(dt, T);
+  }
+
+  // camera: you, or someone still alive once you're out
+  let follow = P.pos;
+  if (!P.alive) { const live = bots.find((b) => b.alive); follow = live ? live.pos : V(0, 7, 0); }
+  updateCamera(dt, follow);
+  $("under").style.display = water.visible && camera.position.y < level ? "block" : "none";
+  flashT = Math.max(0, flashT - dt); $("tint").style.opacity = Math.min(0.9, flashT * 1.6);
+
+  // HUD
+  const alive = everyone.filter((e) => e.alive).length;
+  $("hpbar").firstChild.style.width = `${Math.max(0, P.hp)}%`;
+  $("hpT").textContent = P.alive ? `${Math.ceil(P.hp)} HP` : "Out this round";
+  if (phase === "inter") { $("hPhase").textContent = `Next disaster in ${Math.ceil(phaseT)}`; $("hTip").textContent = "Look around the island while you can"; }
+  else if (phase === "disaster") { $("hPhase").textContent = `${DIS[cur].name} · ${Math.ceil(phaseT)}`; $("hTip").textContent = DIS[cur].tip; }
+  else if (phase === "results") { $("hPhase").textContent = "Round over"; $("hTip").textContent = "Next round coming up"; }
+  $("hInfo").textContent = `Alive ${alive}/${everyone.length} · Survived ${S.survived} · Streak ${S.streak}`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu") startInter(); show("Get ready, a disaster is on its way!", 2.5); };
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = { state: () => ({ phase, cur, t: Math.ceil(phaseT), alive: everyone.filter((e) => e.alive).length, hp: Math.ceil(P.hp), meAlive: P.alive, survived: S.survived, rounds: S.rounds, level: +level.toFixed(2), hz: hz.length, tor: tor.visible ? [tor.position.x | 0, tor.position.z | 0] : null }), skip: () => { phaseT = 0.01; }, bots: () => bots.map((b) => ({ alive: b.alive, mode: b.mode, y: +b.pos.y.toFixed(1), inside: inHouse(b.pos) })), heal: () => { P.hp = 100; } };
+loop();
+})();
+</script>
+</body>
+</html>

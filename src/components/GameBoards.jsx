@@ -16,6 +16,7 @@ export const BOARDS = {
   "block-factory-tycoon": [["money", "Most earned", (v) => "$" + Number(v).toLocaleString()], ["rebirths", "Most rebirths", String]],
   "block-tower-defense": [["wave", "Best wave", (v) => `Wave ${v}`]],
   "gem-mine-simulator": [["coins", "Most coins earned", (v) => Number(v).toLocaleString()]],
+  "disaster-island": [["survivals", "Most rounds survived", String]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

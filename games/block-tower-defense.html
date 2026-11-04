@@ -170,7 +170,14 @@ function physics(e, want, dt, jumpV = 15.5, accel = 16) {
     e.pos[a] += e.vel[a] * dt;
     for (const s of solids) {
       if (s.off || !overlap(e.pos, s)) continue;
-      if (a === "y") { if (e.vel.y <= 0) { e.pos.y = s.y + s.h / 2; landed = s; } else e.pos.y = s.y - s.h / 2 - HH; e.vel.y = 0; }
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
       else {
         const top = s.y + s.h / 2 - e.pos.y;
         if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }

@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Disaster Island</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:"Segoe UI",system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+  canvas{display:block}
+  .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
+  #hud{position:fixed;left:14px;top:12px;font-weight:900;pointer-events:none}
+  #hud .big1{font-size:28px} #hud .sub{font-size:14px;opacity:.95;margin-top:2px}
+  #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line;width:90%}
+  #btns{position:fixed;right:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .b{font:inherit;font-weight:900;font-size:13px;border:3px solid #000;border-radius:8px;padding:8px 12px;background:#2b2b2b;color:#fff;cursor:pointer}
+  .b:hover{background:#3d3d3d}
+  .ov{position:fixed;inset:0;display:grid;place-items:center;z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  .c{text-align:center;max-width:620px;padding:20px}
+  h1{font-size:64px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000;line-height:1.05}
+  .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;color:#000;cursor:pointer;margin-top:12px}
+  .big:hover{filter:brightness(1.08)}
+  kbd{background:#fff;color:#000;border-radius:4px;padding:0 6px;font-weight:800}
+  .keys{font-size:14px;line-height:1.9}
+  #touch{display:none} body.touch #touch{display:block} body.touch .keys{display:none}
+  #joy{position:fixed;left:24px;bottom:24px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.25);border:3px solid rgba(255,255,255,.35);touch-action:none}
+  #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
+  .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
+  @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud .big1{font-size:22px}}
+
+  #start{background:linear-gradient(#bf360cdd,#3e1a0aee)}
+  h1{color:#ffca28}
+  #hpbar{position:fixed;left:50%;top:14px;transform:translateX(-50%);width:280px;max-width:60vw;height:20px;border:3px solid #000;border-radius:10px;background:#3b0d0d;overflow:hidden;pointer-events:none}
+  #hpbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#43a047,#9ccc65);transition:width .15s}
+  #hpT{position:fixed;left:50%;top:40px;transform:translateX(-50%);font-size:13px;font-weight:900;pointer-events:none}
+  #tint{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,0,0,0) 45%,rgba(255,0,0,.55))}
+  #under{position:fixed;inset:0;pointer-events:none;display:none;background:rgba(21,101,192,.42)}
+  #hud .big1{max-width:46vw}
+  @media (max-width:600px){#hud .sub{font-size:12px;max-width:44vw}}
+</style>
+</head>
+<body>
+<div id="hpbar"><i></i></div><div id="hpT" class="sh">100 HP</div>
+<div id="hud" class="sh"><div class="big1" id="hPhase">Disaster Island</div><div class="sub" id="hTip"></div><div class="sub" id="hInfo"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="tint"></div><div id="under"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>DISASTER<br>ISLAND</h1>
+  <p style="font-weight:700">Every round a random disaster hits the island. Floods and lava mean <b>climb high</b>. Blizzards and acid rain mean <b>get inside a house</b>. For meteors and lightning, <b>stay out of the circles</b>, and run from the tornado. Survive to the end of the round to score.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to look · <kbd>Wheel</kbd> zoom · <kbd>Shift</kbd> lock the camera</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- Nebulux games kit (games/src/kit.js) ----------
+// Shared by the newer 3D games: scripts/build-games.mjs puts it into each game's single HTML file, so
+// every game still works on its own. Third person, blocky Roblox-style characters, keyboard + mouse
+// and touch controls, box collisions, waypoints for computer players, sounds and leaderboards.
+const $ = (id) => document.getElementById(id);
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rr = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rr(a, b + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ---------- sound (made on the fly, no files) ----------
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch { AC = null; } return AC; };
+function tone(f, d, type = "square", v = 0.06, slide = 0, when = 0) { const a = audio(); if (!a) return; const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02); }
+const SFX = {
+  jump: () => tone(300, 0.12, "square", 0.04, 300),
+  coin: () => { tone(988, 0.08, "square", 0.05); tone(1319, 0.14, "square", 0.05, 0, 0.07); },
+  buy: () => [523, 784, 1047].forEach((n, i) => tone(n, 0.1, "triangle", 0.06, 0, i * 0.06)),
+  no: () => tone(180, 0.25, "sawtooth", 0.05, -60),
+  win: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.2, "triangle", 0.08, 0, i * 0.1)),
+  lose: () => [392, 330, 262, 196].forEach((n, i) => tone(n, 0.25, "triangle", 0.07, 0, i * 0.14)),
+  hit: () => tone(220, 0.12, "square", 0.05, -120),
+  pop: () => tone(660, 0.08, "sine", 0.06, 500),
+  zap: () => tone(1400, 0.3, "sawtooth", 0.04, -1100),
+  tick: () => tone(880, 0.05, "square", 0.03),
+};
+
+// ---------- world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement); const cvs = renderer.domElement;
+const skyTex = (top, bottom) => { const c = document.createElement("canvas"); c.width = 2; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, top); g.addColorStop(0.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256); return new THREE.CanvasTexture(c); };
+const scene = new THREE.Scene(); scene.background = skyTex("#3d8bff", "#cfe8ff"); scene.fog = new THREE.Fog(0xcfe8ff, 90, 260);
+function setSky(top, bottom, fog, near = 90, far = 260) { scene.background = skyTex(top, bottom); scene.fog = new THREE.Fog(fog, near, far); }
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x88aacc, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, far: 250 }); scene.add(sun, sun.target);
+const mats = {}; const mat = (c, e = 0) => mats[c + "_" + e] || (mats[c + "_" + e] = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.02, color: c, emissive: e }));
+const boxMesh = (w, h, d, c, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, e)); m.castShadow = m.receiveShadow = true; return m; };
+function makeLabel(text, color = "#fff", w = 512, size = 64) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(w / 128, 1, 1); return s;
+}
+
+// A sign whose words can change (it redraws its own canvas instead of making a new picture each time).
+function liveLabel(w = 512, size = 60) {
+  const c = document.createElement("canvas"); c.width = w; c.height = 128; const x = c.getContext("2d");
+  const tex = new THREE.CanvasTexture(c); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); s.scale.set(w / 128, 1, 1);
+  let last = "";
+  s.set = (text, color = "#fff") => { if (text + color === last) return; last = text + color; x.clearRect(0, 0, w, 128); x.font = `900 ${size}px Segoe UI, system-ui`; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(text, w / 2, 64); x.fillStyle = color; x.fillText(text, w / 2, 64); tex.needsUpdate = true; };
+  return s;
+}
+// Frees a sign's picture once it's taken out of the world.
+function dropSprite(s) { scene.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+
+// Every solid is an axis-aligned box { x, y, z (center), w, h, d }. Walls also block the camera and sight.
+const solids = [], sightBlockers = [];
+function addBox(x, y, z, w, h, d, color, o = {}) {
+  const m = boxMesh(w, h, d, color, o.glow || 0); m.position.set(x, y, z); if (o.noShadow) m.castShadow = false; scene.add(m);
+  const s = { x, y, z, w, h, d, m, kind: o.kind || "solid", dx: 0, dz: 0 };
+  if (!o.ghost) solids.push(s);
+  if (o.wall) sightBlockers.push(m);
+  return s;
+}
+const removeSolid = (s) => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); scene.remove(s.m); };
+
+// ---------- blocky characters ----------
+function makeAvatar({ shirt = 0x1e88e5, pants = 0x37474f, skin = 0xffcc80, hat = null, face = 0x111111 } = {}) {
+  const g = new THREE.Group(); const torso = boxMesh(1.6, 1.6, 0.8, shirt); torso.position.y = 2.4; g.add(torso);
+  const head = boxMesh(1.1, 1.1, 1.1, skin); head.position.y = 3.75; g.add(head);
+  const eyes = boxMesh(0.6, 0.15, 0.05, face); eyes.position.set(0, 3.85, 0.56); g.add(eyes);
+  if (hat !== null) { const h = boxMesh(1.25, 0.35, 1.25, hat); h.position.y = 4.45; g.add(h); }
+  const legs = [], arms = [];
+  for (const sx of [-0.4, 0.4]) {
+    const L = new THREE.Group(); L.position.set(sx, 1.6, 0); const l = boxMesh(0.78, 1.6, 0.78, pants); l.position.y = -0.8; L.add(l); g.add(L); legs.push(L);
+    const A = new THREE.Group(); A.position.set(sx * 2.5, 3.1, 0); const a = boxMesh(0.75, 1.6, 0.75, skin); a.position.y = -0.7; A.add(a); g.add(A); arms.push(A);
+  }
+  g.scale.setScalar(0.62); return { g, legs, arms, torso, head };
+}
+// A name over someone's head (in the body's own units: the body is drawn at 0.62 scale).
+function nameTag(text, color = "#fff", throughWalls = false) { const s = makeLabel(text, color, 512, 56); s.scale.set(3.2 / 0.62, 0.8 / 0.62, 1); s.position.y = 5.1; s.material.depthTest = !throughWalls; s.renderOrder = 5; return s; }
+// Walk / jump animation. sp: ground speed.
+function animate(b, sp, onGround, T) {
+  const sw = Math.sin(T * 12) * Math.min(sp / 12, 1) * 0.9;
+  b.legs[0].rotation.x = onGround ? sw : -0.5; b.legs[1].rotation.x = onGround ? -sw : 0.3;
+  if (!b.pose) { b.arms[0].rotation.x = onGround ? -sw : -2.6; b.arms[1].rotation.x = onGround ? sw : -2.6; }
+}
+const HW = 0.45, HH = 2.6; // a character's half-width and height
+const BOT_COLORS = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0x6d4c41, 0xd81b60, 0x00acc1, 0x5e35b1, 0x43a047];
+const SKINS = [0xffcc80, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
+const BOT_NAMES = ["Pixel", "Nova", "Blocky", "Zed", "Mango", "Comet", "Sparky", "Luna", "Echo", "Biscuit", "Jinx", "Orbit", "Turbo", "Maple", "Fizz", "Rocket", "Pepper", "Quill", "Nugget", "Sky"];
+const ME_NAME = (window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous") ? String(window.nebulux.username).slice(0, 18) : "You";
+
+// One physics step for a character { pos, vel, onGround, ground, coyote, buffer }: walk toward `want`
+// (a velocity), gravity, push out of boxes one axis at a time, step up small ledges. -> the box it stands on.
+const overlap = (p, s, hw = HW) => Math.abs(p.x - s.x) < s.w / 2 + hw && Math.abs(p.z - s.z) < s.d / 2 + hw && p.y < s.y + s.h / 2 && p.y + HH > s.y - s.h / 2;
+function physics(e, want, dt, jumpV = 15.5, accel = 16) {
+  if (e.onGround && e.ground) { e.pos.x += e.ground.dx || 0; e.pos.z += e.ground.dz || 0; }
+  const k = e.onGround ? accel : 7;
+  e.vel.x += (want.x - e.vel.x) * Math.min(1, k * dt); e.vel.z += (want.z - e.vel.z) * Math.min(1, k * dt);
+  e.coyote = e.onGround ? 0.1 : (e.coyote || 0) - dt; e.buffer = (e.buffer || 0) - dt;
+  if (e.wantJump && e.coyote > 0) { e.vel.y = jumpV; e.coyote = 0; e.buffer = 0; e.onGround = false; e.wantJump = false; if (e === P) SFX.jump(); }
+  e.vel.y = Math.max(e.vel.y - 40 * dt, -60);
+  let landed = null; e.bumped = false;
+  for (const a of ["x", "z", "y"]) {
+    e.pos[a] += e.vel[a] * dt;
+    for (const s of solids) {
+      if (s.off || !overlap(e.pos, s)) continue;
+      if (a === "y") {
+        // Land on it or bump your head only when you came from above or below; when you were pushed
+        // into it from the side (a corner, a moving thing), slide out sideways instead of popping on top.
+        const top = s.y + s.h / 2, bottom = s.y - s.h / 2, was = e.pos.y - e.vel.y * dt;
+        if (e.vel.y <= 0 && was >= top - 0.6) { e.pos.y = top; landed = s; e.vel.y = 0; }
+        else if (e.vel.y > 0 && was + HH <= bottom + 0.6) { e.pos.y = bottom - HH; e.vel.y = 0; }
+        else { const ox = s.w / 2 + HW - Math.abs(e.pos.x - s.x), oz = s.d / 2 + HW - Math.abs(e.pos.z - s.z); if (ox < oz) e.pos.x += Math.sign(e.pos.x - s.x || 1) * ox; else e.pos.z += Math.sign(e.pos.z - s.z || 1) * oz; }
+      }
+      else {
+        const top = s.y + s.h / 2 - e.pos.y;
+        if (top < 0.6 && top > 0) { e.pos.y = s.y + s.h / 2; continue; }
+        const c = a === "x" ? s.x : s.z, half = (a === "x" ? s.w : s.d) / 2 + HW;
+        e.pos[a] = e.pos[a] > c ? c + half : c - half; e.vel[a] = 0; e.bumped = true;
+      }
+    }
+  }
+  e.onGround = !!landed; e.ground = landed; return landed;
+}
+
+// ---------- the player ----------
+const P = { body: makeAvatar(), pos: V(0, 1, 0), vel: V(), onGround: false, ground: null, yaw: 0, speed: 13, jump: 15.5, canMove: true };
+scene.add(P.body.g);
+const cam = { yaw: 0, pitch: 0.35, dist: 13, min: 5, max: 30 };
+const keys = {}; let started = false, locked = false, rmb = false;
+const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
+addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (!started) return;
+  if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
+  if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
+});
+addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
+document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
+cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
+addEventListener("mouseup", (e) => { if (e.button === 2) rmb = false; });
+cvs.addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("mousemove", (e) => { if (rmb || locked) { cam.yaw -= clamp(e.movementX, -60, 60) * 0.005; cam.pitch = clamp(cam.pitch + clamp(e.movementY, -60, 60) * 0.004, -0.3, 1.35); } });
+cvs.addEventListener("wheel", (e) => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.5, cam.min, cam.max); }, { passive: true });
+const joy = { x: 0, y: 0, id: null };
+const touch = matchMedia("(pointer: coarse)").matches;
+if (touch) document.body.classList.add("touch");
+// Touch: a joystick on the left, drag anywhere else to look, and big round buttons on the right.
+function touchControls(buttons) {
+  if (!touch) return;
+  const box = $("touch"); if (!box) return;
+  box.innerHTML = '<div id="joy"><div id="knob"></div></div>' + buttons.map((b, i) => `<button class="tb" id="tb${i}" style="bottom:${30 + Math.floor(i / 2) * 104}px;right:${24 + (i % 2) * 104}px;background:${b.color || "rgba(58,209,58,.85)"}">${b.label}</button>`).join("");
+  const J = $("joy"), K = $("knob");
+  const setJoy = (t) => { const r = J.getBoundingClientRect(); let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; K.style.transform = `translate(${x * 40}px,${y * 40}px)`; };
+  J.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.id = t.identifier; setJoy(t); }, { passive: false });
+  addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) setJoy(t); }, { passive: true });
+  const end = (e) => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; K.style.transform = ""; } };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+  buttons.forEach((b, i) => {
+    const el = $("tb" + i); b.el = el;
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); b.down?.(); }, { passive: false });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); b.up?.(); }, { passive: false });
+  });
+  let look = null;
+  cvs.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; if (!look) look = { id: t.identifier, x: t.clientX, y: t.clientY }; }, { passive: true });
+  cvs.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) { cam.yaw -= (t.clientX - look.x) * 0.008; cam.pitch = clamp(cam.pitch + (t.clientY - look.y) * 0.006, -0.3, 1.35); look.x = t.clientX; look.y = t.clientY; } }, { passive: true });
+  const endL = (e) => { for (const t of e.changedTouches) if (look && t.identifier === look.id) look = null; };
+  cvs.addEventListener("touchend", endL); cvs.addEventListener("touchcancel", endL);
+  return buttons;
+}
+const JUMP_BUTTON = { label: "JUMP", down: () => { P.wantJump = true; }, up: () => { P.wantJump = false; } };
+function moveDir() {
+  const f = V(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw)), r = V(-f.z, 0, f.x), d = V();
+  if (keys.KeyW || keys.ArrowUp) d.add(f); if (keys.KeyS || keys.ArrowDown) d.sub(f); if (keys.KeyD || keys.ArrowRight) d.add(r); if (keys.KeyA || keys.ArrowLeft) d.sub(r);
+  if (joy.x || joy.y) d.addScaledVector(r, joy.x).addScaledVector(f, -joy.y);
+  return d.lengthSq() > 1 ? d.normalize() : d;
+}
+// Move the player one frame (unless the game froze them) and turn the body the way they walk.
+function stepPlayer(dt, T) {
+  const want = P.canMove ? moveDir().multiplyScalar(P.speed) : V();
+  if (!P.canMove) P.wantJump = false;
+  const landed = physics(P, want, dt, P.jump);
+  if (want.lengthSq() > 1) P.yaw = Math.atan2(want.x, want.z);
+  if (locked) P.yaw = cam.yaw + Math.PI;
+  P.body.g.rotation.y += angDiff(P.yaw, P.body.g.rotation.y) * Math.min(1, 15 * dt);
+  P.body.g.position.copy(P.pos);
+  animate(P.body, Math.hypot(P.vel.x, P.vel.z), P.onGround, T);
+  return landed;
+}
+// Third-person camera behind `target` (the player unless the game says otherwise); it pulls in
+// instead of going through walls.
+const ray = new THREE.Raycaster();
+function updateCamera(dt, target = P.pos) {
+  const head = target.clone().setY(target.y + 2.2);
+  const dir = V(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  let dist = cam.dist;
+  if (sightBlockers.length) { ray.set(head, dir); ray.far = cam.dist; const hit = ray.intersectObjects(sightBlockers, false)[0]; if (hit) dist = Math.max(1.2, hit.distance - 0.5); }
+  camera.position.lerp(head.clone().addScaledVector(dir, dist), 1 - Math.exp(-16 * dt)); camera.lookAt(head);
+  sun.position.copy(target).add(V(30, 60, 20)); sun.target.position.copy(target);
+}
+// Can a see b (both points), with no wall in between?
+function canSee(a, b) {
+  const d = b.clone().sub(a), len = d.length(); if (len < 0.01) return true;
+  ray.set(a, d.divideScalar(len)); ray.far = len; return ray.intersectObjects(sightBlockers, false).length === 0;
+}
+
+// ---------- waypoints (computer players find their way between rooms) ----------
+// nodes: [V], links: [[i, j]]. route(fromPos, toNode) -> the list of points to walk through.
+function makeNav(nodes, links) {
+  const adj = nodes.map(() => []); for (const [a, b] of links) { adj[a].push(b); adj[b].push(a); }
+  const nearest = (p) => { let best = 0, bd = Infinity; nodes.forEach((n, i) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; if (d < bd && canSee(p.clone().setY(p.y + 2), n.clone().setY(p.y + 2))) { bd = d; best = i; } }); return best; };
+  const route = (from, to) => {
+    const s = nearest(from), prev = new Array(nodes.length).fill(-1), q = [s], seen = new Set([s]);
+    while (q.length) { const c = q.shift(); if (c === to) break; for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); prev[n] = c; q.push(n); } }
+    const path = []; for (let c = to; c !== -1; c = prev[c]) { path.unshift(nodes[c]); if (c === s) break; }
+    return path;
+  };
+  return { nodes, adj, nearest, route };
+}
+// Walk a computer player { pos, vel, path, ... } along its path. -> true once it has arrived.
+function followPath(e, dt, speed) {
+  while (e.path && e.path.length && Math.hypot(e.path[0].x - e.pos.x, e.path[0].z - e.pos.z) < 1.2) e.path.shift();
+  const t = e.path && e.path[0];
+  const want = t ? V(t.x - e.pos.x, 0, t.z - e.pos.z).normalize().multiplyScalar(speed) : V();
+  physics(e, want, dt);
+  if (e.bumped && e.onGround && Math.random() < 0.08) e.wantJump = true;
+  return !t;
+}
+function walkToward(e, p, dt, speed) { const want = V(p.x - e.pos.x, 0, p.z - e.pos.z); if (want.lengthSq() > 0.01) want.normalize().multiplyScalar(speed); physics(e, want, dt); }
+function faceMove(e, dt) { const sp = Math.hypot(e.vel.x, e.vel.z); if (sp > 0.5) e.yaw = Math.atan2(e.vel.x, e.vel.z); e.body.g.rotation.y += angDiff(e.yaw || 0, e.body.g.rotation.y) * Math.min(1, 10 * dt); e.body.g.position.copy(e.pos); return sp; }
+
+// ---------- messages ----------
+let msgT = 0;
+function show(t, s = 1.8) { const m = $("msg"); if (!m) return; m.innerText = t; m.style.opacity = 1; msgT = s; }
+function tickMsg(dt) { if (msgT > 0) { msgT -= dt; if (msgT <= 0 && $("msg")) $("msg").style.opacity = 0; } }
+
+// ---------- leaderboards (on Nebulux AI the game gets window.nebulux.score / .top) ----------
+const NX = window.nebulux && window.nebulux.top ? window.nebulux : null;
+function sendScore(board, score) { if (NX && Number.isFinite(score)) NX.score(board, score).catch?.(() => {}); }
+
+// ---------- saving (this browser) ----------
+function loadSave(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || "null"); return s ? { ...def, ...s } : { ...def }; } catch { return { ...def }; } }
+function storeSave(key, s) { try { localStorage.setItem(key, JSON.stringify(s)); } catch { /* no storage */ } }
+
+// ---------- the loop ----------
+// Opened with ?test (only by the automated checks): window.__kit can run the game faster.
+const TEST = /[?&]test\b/.test(location.search);
+let timeScale = 1;
+const clock = new THREE.Clock(); let T = 0; const frames = [];
+const onFrame = (f) => frames.push(f);
+function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+// ---------- end of kit ----------
+
+
+// ================= Disaster Island =================
+hemi.intensity = 0.85; sun.intensity = 0.9;
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70 }); sun.shadow.camera.updateProjectionMatrix();
+cam.dist = 14; cam.pitch = 0.42;
+const SKIES = {
+  day: [skyTex("#4fa3ff", "#dff0ff"), new THREE.Fog(0xdff0ff, 110, 300), 0.85, 0.9],
+  storm: [skyTex("#263238", "#607d8b"), new THREE.Fog(0x607d8b, 50, 170), 0.55, 0.35],
+  snow: [skyTex("#90a4ae", "#eceff1"), new THREE.Fog(0xeceff1, 18, 85), 0.8, 0.4],
+  acid: [skyTex("#33691e", "#c5e1a5"), new THREE.Fog(0xaed581, 25, 110), 0.7, 0.45],
+  fire: [skyTex("#bf360c", "#ffab91"), new THREE.Fog(0xffab91, 70, 220), 0.62, 0.62],
+};
+function sky(k) { const [bg, fog, h, s] = SKIES[k]; scene.background = bg; scene.fog = fog; hemi.intensity = h; sun.intensity = s; }
+sky("day");
+
+// ---------- the island ----------
+const ISLE = 42;
+addBox(0, -1, 0, ISLE * 2, 2, ISLE * 2, 0x689f38);
+const sand = boxMesh(ISLE * 2 + 8, 1.6, ISLE * 2 + 8, 0xffe082); sand.position.set(0, -1.25, 0); scene.add(sand);
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.35 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -0.8; scene.add(sea);
+for (const [x, z, w, d] of [[0, -ISLE - 0.5, ISLE * 2 + 2, 1], [0, ISLE + 0.5, ISLE * 2 + 2, 1], [-ISLE - 0.5, 0, 1, ISLE * 2 + 2], [ISLE + 0.5, 0, 1, ISLE * 2 + 2]]) addBox(x, 16, z, w, 34, d, 0).m.visible = false;
+// the stepped hill in the middle (every step is half a block, so you walk straight up)
+const TIERS = 14;
+for (let k = 0; k < TIERS; k++) { const s = 30 - k * 1.7, top = 0.5 * (k + 1); addBox(0, top / 2, 0, s, top, s, k % 2 ? 0xd7ccc8 : 0xbcaaa4); }
+// the lookout tower and its stairs
+const LX = 28, LZ = -27;
+addBox(LX, 5, LZ, 7, 10, 7, 0x8d6e63, { wall: true });
+for (let k = 1; k <= 20; k++) { const top = 0.5 * k; addBox(LX, top / 2, -3 - k, 3, top, 1, k % 2 ? 0xbcaaa4 : 0xa1887f); }
+for (const [dx, dz] of [[-3.2, -3.2], [3.2, -3.2], [-3.2, 3.2], [3.2, 3.2]]) { const p = boxMesh(0.4, 1.4, 0.4, 0x5d4037); p.position.set(LX + dx, 10.7, LZ + dz); scene.add(p); }
+// houses (the only shelter from blizzards and acid rain)
+const houses = [];
+function house(x, z, face, col) {
+  const w = 11, d = 9, h = 4.2, t = 0.6, fx = x + face * (w / 2 - t / 2), seg = (d - 3) / 2;
+  addBox(x - face * (w / 2 - t / 2), h / 2, z, t, h, d, col, { wall: true });
+  addBox(x, h / 2, z - d / 2 + t / 2, w, h, t, col, { wall: true }); addBox(x, h / 2, z + d / 2 - t / 2, w, h, t, col, { wall: true });
+  addBox(fx, h / 2, z - d / 2 + seg / 2, t, h, seg, col, { wall: true }); addBox(fx, h / 2, z + d / 2 - seg / 2, t, h, seg, col, { wall: true });
+  addBox(fx, h - 0.6, z, t, 1.2, 3, col, { wall: true });
+  addBox(x, h + 0.25, z, w + 1.2, 0.5, d + 1.2, 0x6d4c41, { wall: true });
+  houses.push({ x, z, w, d, door: V(x + face * (w / 2 + 2), 0, z), inside: V(x - face * 1.5, 0, z) });
+}
+house(-30, 26, 1, 0xef9a9a); house(-30, 0, 1, 0x90caf9); house(-30, -26, 1, 0xfff59d); house(30, 24, -1, 0xa5d6a7);
+const inHouse = (p) => houses.some((h) => Math.abs(p.x - h.x) < h.w / 2 - 0.4 && Math.abs(p.z - h.z) < h.d / 2 - 0.4 && p.y < 3);
+const underRoof = (p) => houses.some((h) => Math.abs(p.x - h.x) < h.w / 2 && Math.abs(p.z - h.z) < h.d / 2 && p.y < 4.3);
+for (const [x, z] of [[-12, 31], [14, 30], [20, 37], [-17, -31], [10, -34], [-4, -38], [37, -6], [-38, 13], [38, 38], [-38, -39], [4, 22], [-8, -22]]) {
+  addBox(x, 2, z, 1.2, 4, 1.2, 0x6d4c41); const l = boxMesh(4.5, 3.5, 4.5, 0x2e7d32); l.position.set(x, 5.2, z); scene.add(l);
+}
+function groundY(x, z) { let y = 0; for (const s of solids) { const top = s.y + s.h / 2; if (s.m.visible && top > y && top < 12 && Math.abs(x - s.x) < s.w / 2 && Math.abs(z - s.z) < s.d / 2) y = top; } return y; }
+
+// ---------- waypoints for the computer players ----------
+const N = [], L = [], RING = 8;
+for (let i = 0; i < RING; i++) { const a = (i / RING) * Math.PI * 2; N.push(V(Math.sin(a) * 21, 0, Math.cos(a) * 21)); L.push([i, (i + 1) % RING]); }
+const TOP = N.push(V(0, 7, 0)) - 1; for (let i = 0; i < RING; i++) L.push([i, TOP]);
+const LB = N.push(V(LX, 0, -1.5)) - 1, LT = N.push(V(LX, 10, LZ)) - 1; L.push([LB, LT], [2, LB]);
+for (const h of houses) {
+  h.dn = N.push(h.door) - 1; h.in = N.push(h.inside) - 1; L.push([h.dn, h.in]);
+  let best = 0, bd = Infinity; for (let i = 0; i < RING; i++) { const d = N[i].distanceTo(h.door); if (d < bd) { bd = d; best = i; } } L.push([best, h.dn]);
+}
+const nav = makeNav(N, L);
+
+// ---------- everyone ----------
+const SAVE = "disaster-island";
+let S = loadSave(SAVE, { survived: 0, rounds: 0, streak: 0, best: 0 });
+const everyone = [P]; P.name = ME_NAME; P.hp = 100; P.alive = true; P.color = 0x1e88e5;
+const names = shuffle(BOT_NAMES.slice());
+for (let i = 0; i < 9; i++) {
+  const color = BOT_COLORS[i], body = makeAvatar({ shirt: color, pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.4 ? pick(BOT_COLORS) : null });
+  body.g.add(nameTag(names[i])); scene.add(body.g);
+  everyone.push({ name: names[i], body, color, pos: V(), vel: V(), onGround: false, hp: 100, alive: true, path: [], think: 0, yaw: 0, mode: "wander", react: 0, smart: true });
+}
+const bots = everyone.slice(1);
+function spawnAll() {
+  const start = Math.random() * Math.PI * 2;
+  everyone.forEach((e, i) => { const a = start + (i / everyone.length) * Math.PI * 2; e.pos.set(Math.sin(a) * 19, 0.4, Math.cos(a) * 19); e.vel.set(0, 0, 0); e.hp = 100; e.alive = true; e.body.g.visible = true; e.path = []; e.mode = "wander"; });
+  P.canMove = true; cam.yaw = Math.atan2(P.pos.x, P.pos.z);
+}
+
+// ---------- disasters ----------
+const DIS = {
+  flood: { name: "FLOOD", tip: "The sea is rising. Get to high ground!", plan: "high" },
+  lava: { name: "LAVA RISING", tip: "The ground is turning to lava. Climb up!", plan: "high" },
+  meteors: { name: "METEOR SHOWER", tip: "Get out of the red circles!", plan: "dodge" },
+  tornado: { name: "TORNADO", tip: "Run from the twister!", plan: "flee" },
+  lightning: { name: "LIGHTNING STORM", tip: "Stay out of the yellow circles, or hide indoors!", plan: "shelter" },
+  blizzard: { name: "BLIZZARD", tip: "It's freezing outside. Get inside a house!", plan: "shelter" },
+  acid: { name: "ACID RAIN", tip: "The rain burns. Get inside a house!", plan: "shelter" },
+};
+const FORCE = new URLSearchParams(location.search).get("disaster");
+const water = new THREE.Mesh(new THREE.PlaneGeometry(ISLE * 2 + 40, ISLE * 2 + 40), new THREE.MeshStandardMaterial({ color: 0x1976d2, transparent: true, opacity: 0.72, roughness: 0.2, side: THREE.DoubleSide, depthWrite: false }));
+water.rotation.x = -Math.PI / 2; water.visible = false; scene.add(water);
+const lava = new THREE.Mesh(new THREE.PlaneGeometry(ISLE * 2 + 2, ISLE * 2 + 2), new THREE.MeshStandardMaterial({ color: 0xff5722, emissive: 0xdd2c00, emissiveIntensity: 0.8, side: THREE.DoubleSide }));
+lava.rotation.x = -Math.PI / 2; lava.visible = false; scene.add(lava);
+let level = -0.8, levelTo = -0.8;
+// falling snow or rain around the camera
+const PN = 1500, pPos = new Float32Array(PN * 3);
+for (let i = 0; i < PN; i++) { pPos[i * 3] = rr(-40, 40); pPos[i * 3 + 1] = rr(0, 40); pPos[i * 3 + 2] = rr(-40, 40); }
+const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
+const flake = document.createElement("canvas"); flake.width = flake.height = 32; { const x = flake.getContext("2d"), g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, 32, 32); }
+const pMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.4, map: new THREE.CanvasTexture(flake), transparent: true, opacity: 0.9, depthWrite: false });
+const parts = new THREE.Points(pGeo, pMat); parts.visible = false; parts.frustumCulled = false; scene.add(parts);
+let pFall = 6, pWind = 0;
+// the twister
+const tor = new THREE.Group(); tor.visible = false; scene.add(tor);
+const torMat = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+const torRings = [];
+for (let i = 0; i < 8; i++) { const r = 1.2 + i * 1.1, m = new THREE.Mesh(new THREE.CylinderGeometry(r + 1.1, r, 4, 18, 1, true), torMat); m.position.y = 2 + i * 4; tor.add(m); torRings.push(m); }
+const debris = []; for (let i = 0; i < 14; i++) { const m = boxMesh(rr(0.4, 1), rr(0.4, 1), rr(0.4, 1), pick([0x6d4c41, 0x795548, 0x9e9e9e, 0x2e7d32])); tor.add(m); debris.push({ m, a: rr(0, 6.3), r: rr(2, 7), y: rr(1, 26), s: rr(2, 4) }); }
+const torV = V(), torTo = V(); let torRetarget = 0;
+const torR = () => phase === "disaster" ? 4.8 + (DUR - phaseT) * 0.11 : 5.5; // it grows as the round goes on
+// meteors and lightning: a circle warns where they will hit
+const hz = [];
+const ringGeo = new THREE.RingGeometry(0.75, 1, 36), rockGeo = new THREE.DodecahedronGeometry(1.1, 0), boomGeo = new THREE.SphereGeometry(1, 16, 10);
+const rockMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, emissive: 0xff6d00, emissiveIntensity: 0.7 });
+const booms = [];
+function addHazard(kind) {
+  let x, z;
+  const live = everyone.filter((e) => e.alive);
+  if (live.length && Math.random() < 0.5) { const e = pick(live); x = e.pos.x + rr(-4, 4); z = e.pos.z + rr(-4, 4); } else { x = rr(-ISLE + 2, ISLE - 2); z = rr(-ISLE + 2, ISLE - 2); }
+  x = clamp(x, -ISLE + 1, ISLE - 1); z = clamp(z, -ISLE + 1, ISLE - 1);
+  const y = groundY(x, z), meteor = kind === "meteor", r = meteor ? 3.6 : 2.7;
+  const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: meteor ? 0xff1744 : 0xffea00, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, y + 0.06, z); ring.scale.setScalar(r); scene.add(ring);
+  const h = { kind, x, y, z, r, t: meteor ? 2.3 : 1.2, ring };
+  if (meteor) { h.rock = new THREE.Mesh(rockGeo, rockMat); h.rock.scale.setScalar(rr(0.8, 1.4)); scene.add(h.rock); }
+  hz.push(h);
+}
+function clearHazards() { for (const h of hz) { scene.remove(h.ring); h.ring.material.dispose(); if (h.rock) scene.remove(h.rock); } hz.length = 0; }
+const bolt = boxMesh(0.35, 80, 0.35, 0xffffff, 0xffffff); bolt.castShadow = false; bolt.visible = false; scene.add(bolt); let boltT = 0;
+function strike(h) {
+  const at = V(h.x, h.y, h.z);
+  for (const e of everyone) if (e.alive && e.pos.clone().setY(e.pos.y + 1.2).distanceTo(at) < h.r + 0.6) hurt(e, h.kind === "meteor" ? 55 : 70, true);
+  if (h.kind === "meteor") { const m = new THREE.Mesh(boomGeo, new THREE.MeshBasicMaterial({ color: 0xff9100, transparent: true, opacity: 0.9, depthWrite: false })); m.position.copy(at); scene.add(m); booms.push({ m, t: 0 }); tone(90, 0.35, "sawtooth", 0.06, -40); }
+  else { bolt.position.set(h.x, h.y + 40, h.z); bolt.visible = true; boltT = 0.14; hemi.intensity = 2.2; tone(1600, 0.25, "sawtooth", 0.05, -1400); }
+  scene.remove(h.ring); h.ring.material.dispose(); if (h.rock) scene.remove(h.rock);
+}
+
+// ---------- getting hurt ----------
+let flashT = 0, phase = "menu", phaseT = 0, cur = null, last = null, spawnT = 0;
+const bits = [];
+function hurt(e, n, big) {
+  if (!e.alive || phase !== "disaster") return;
+  e.hp -= n;
+  if (e === P) { flashT = Math.max(flashT, big ? 0.6 : 0.25); if (big) SFX.hit(); }
+  if (e.hp <= 0) die(e);
+}
+function die(e) {
+  e.alive = false; e.hp = 0; e.body.g.visible = false; e.path = [];
+  for (let i = 0; i < 9; i++) { const m = boxMesh(0.5, 0.5, 0.5, i % 3 ? e.color : 0xffcc80); m.position.copy(e.pos).add(V(0, 1.5, 0)); scene.add(m); bits.push({ m, v: V(rr(-6, 6), rr(6, 13), rr(-6, 6)), t: 2.2 }); }
+  if (e === P) { P.canMove = false; SFX.lose(); show("You didn't make it!\nWatch the others until the round ends.", 3); }
+  if (!everyone.some((x) => x.alive)) phaseT = Math.min(phaseT, 1.5);
+}
+
+// ---------- rounds ----------
+const INTER = TEST ? 3 : 12, DUR = TEST ? 22 : 32;
+function resetWorld() {
+  clearHazards(); sky("day"); water.visible = lava.visible = false; level = levelTo = -0.8; tor.visible = false; parts.visible = false; bolt.visible = false;
+}
+function startInter() { phase = "inter"; phaseT = INTER; cur = null; resetWorld(); spawnAll(); }
+function startDisaster() {
+  phase = "disaster"; phaseT = DUR; spawnT = 1.5;
+  cur = FORCE && DIS[FORCE] ? FORCE : pick(Object.keys(DIS).filter((k) => k !== last)); last = cur;
+  if (cur === "flood") { water.visible = true; levelTo = 4.6; sky("storm"); }
+  if (cur === "lava") { lava.visible = true; level = -0.2; levelTo = 1.7; sky("fire"); }
+  if (cur === "meteors") sky("fire");
+  if (cur === "lightning") sky("storm");
+  if (cur === "blizzard") { sky("snow"); parts.visible = true; pMat.color.set(0xffffff); pMat.size = 0.45; pFall = 5; pWind = 6; }
+  if (cur === "acid") { sky("acid"); parts.visible = true; pMat.color.set(0x76ff03); pMat.size = 0.28; pFall = 32; pWind = 1; }
+  if (cur === "tornado") { const a = rr(0, 6.3); tor.position.set(Math.sin(a) * 36, 0, Math.cos(a) * 36); torTo.set(0, 0, 0); torRetarget = 3; tor.visible = true; sky("storm"); }
+  for (const b of bots) { b.react = rr(0.3, 4.5); b.smart = Math.random() < 0.74; b.mode = "wait"; }
+  show(`${DIS[cur].name}!\n${DIS[cur].tip}`, 4); SFX.zap();
+}
+function endDisaster() {
+  phase = "results"; phaseT = TEST ? 3 : 6; clearHazards();
+  const alive = everyone.filter((e) => e.alive);
+  S.rounds++;
+  if (P.alive) { S.survived++; S.streak++; S.best = Math.max(S.best, S.streak); SFX.win(); sendScore("survivals", S.survived); }
+  else S.streak = 0;
+  storeSave(SAVE, S);
+  const who = alive.length ? alive.map((e) => e.name).slice(0, 6).join(", ") + (alive.length > 6 ? ` and ${alive.length - 6} more` : "") : "nobody";
+  show(`${P.alive ? "You survived the " + DIS[cur].name.toLowerCase() + "!" : "Round over"}\nSurvivors: ${who}`, 5);
+  levelTo = -0.8;
+}
+
+// ---------- computer players ----------
+function plan(b) {
+  const p = DIS[cur].plan, how = b.smart ? p : (Math.random() < 0.5 && p !== "shelter" ? p : "wander");
+  b.mode = how;
+  if (how === "high") { const to = Math.random() < 0.78 ? TOP : LT; b.path = nav.route(b.pos, to); if (b.path.length) b.path[b.path.length - 1] = N[to].clone().add(V(rr(-2.2, 2.2), 0, rr(-2.2, 2.2))); }
+  else if (how === "shelter") {
+    const h = houses.slice().sort((a, c) => a.door.distanceTo(b.pos) - c.door.distanceTo(b.pos))[Math.random() < 0.8 ? 0 : 1];
+    b.path = nav.route(b.pos, h.in); if (b.path.length) b.path[b.path.length - 1] = h.inside.clone().add(V(rr(-1.8, 1.8), 0, rr(-2.4, 2.4)));
+  } else b.path = [];
+}
+function wanderTo(b) { b.path = Math.random() < 0.5 ? nav.route(b.pos, ri(0, RING - 1)) : [V(clamp(b.pos.x + rr(-9, 9), -38, 38), 0, clamp(b.pos.z + rr(-9, 9), -38, 38))]; b.think = rr(2, 5); }
+function stepBot(b, dt, T) {
+  if (!b.alive) return;
+  const sp = 11.5;
+  b.think -= dt;
+  if (phase === "disaster") {
+    if (b.mode === "wait") { b.react -= dt; if (b.react <= 0) plan(b); }
+    if (b.mode === "flee") {
+      const away = V(b.pos.x - tor.position.x, 0, b.pos.z - tor.position.z); if (away.lengthSq() < 0.01) away.set(1, 0, 0);
+      const to = b.pos.clone().add(away.normalize().multiplyScalar(10)); to.x = clamp(to.x, -38, 38); to.z = clamp(to.z, -38, 38);
+      if (Math.abs(to.x) >= 37.5 && Math.abs(to.z) >= 37.5) to.set(-to.x * 0.3, 0, to.z);
+      walkToward(b, to, dt, sp); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T); return;
+    }
+    // stay out of the warning circles (the careless ones only once they notice)
+    if (b.smart || b.mode === "dodge") for (const h of hz) {
+      const dx = b.pos.x - h.x, dz = b.pos.z - h.z, d = Math.hypot(dx, dz);
+      if (d < h.r + 1.4 && h.t < 1.9 && Math.abs(b.pos.y - h.y) < 3) { walkToward(b, V(b.pos.x + (dx / (d || 1)) * 6, 0, b.pos.z + (dz / (d || 1)) * 6), dt, sp); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T); return; }
+    }
+    if ((b.mode === "wander" || b.mode === "dodge" || b.mode === "wait") && (!b.path.length || b.think <= 0)) wanderTo(b);
+  } else if (!b.path.length || b.think <= 0) wanderTo(b);
+  followPath(b, dt, sp); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T);
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.rounds ? `Survived ${S.survived} of ${S.rounds} rounds · best streak ${S.best}` : ""; }
+showStats(); spawnAll();
+touchControls([JUMP_BUTTON]);
+const pPosArr = pGeo.attributes.position;
+
+onFrame((dt, T) => {
+  // the disaster's effects
+  level += clamp(levelTo - level, -dt * 0.5, dt * (cur === "lava" ? 0.24 : 0.42));
+  water.position.y = level; lava.position.y = level + 0.02;
+  if (level <= -0.79 && phase !== "disaster") water.visible = lava.visible = false;
+  pMat.opacity = underRoof(camera.position) ? 0 : 0.9;
+  if (parts.visible) {
+    parts.position.set(camera.position.x, 0, camera.position.z);
+    for (let i = 0; i < PN; i++) { let y = pPos[i * 3 + 1] - pFall * dt, x = pPos[i * 3] + pWind * dt; if (y < 0) y += 40; if (x > 40) x -= 80; pPos[i * 3 + 1] = y; pPos[i * 3] = x; }
+    pPosArr.needsUpdate = true;
+  }
+  if (boltT > 0) { boltT -= dt; if (boltT <= 0) { bolt.visible = false; hemi.intensity = SKIES[cur && phase === "disaster" ? "storm" : "day"][2]; } }
+  for (let i = booms.length - 1; i >= 0; i--) { const b = booms[i]; b.t += dt; b.m.scale.setScalar(1 + b.t * 9); b.m.material.opacity = Math.max(0, 0.9 - b.t * 2.2); if (b.t > 0.45) { scene.remove(b.m); b.m.material.dispose(); booms.splice(i, 1); } }
+  for (let i = bits.length - 1; i >= 0; i--) { const b = bits[i]; b.t -= dt; b.v.y -= 30 * dt; b.m.position.addScaledVector(b.v, dt); const gy = groundY(b.m.position.x, b.m.position.z) + 0.25; if (b.m.position.y < gy) { b.m.position.y = gy; b.v.multiplyScalar(0.5); b.v.y = 0; } if (b.t <= 0) { scene.remove(b.m); bits.splice(i, 1); } }
+  if (tor.visible) {
+    torRetarget -= dt;
+    if (torRetarget <= 0) { torRetarget = rr(2.5, 4.5); const live = everyone.filter((e) => e.alive); if (live.length && Math.random() < 0.7) { const e = pick(live); torTo.set(e.pos.x, 0, e.pos.z); } else torTo.set(rr(-34, 34), 0, rr(-34, 34)); }
+    const d = V(torTo.x - tor.position.x, 0, torTo.z - tor.position.z); if (d.lengthSq() > 1) torV.lerp(d.normalize().multiplyScalar(phase === "disaster" ? 9 : 0), Math.min(1, dt));
+    tor.position.addScaledVector(torV, dt); tor.position.x = clamp(tor.position.x, -40, 40); tor.position.z = clamp(tor.position.z, -40, 40);
+    tor.scale.set(torR() / 5.5, 1, torR() / 5.5);
+    torRings.forEach((m, i) => { m.rotation.y += dt * (3 + i * 0.4); m.position.x = Math.sin(T * 2 + i * 0.7) * i * 0.25; });
+    for (const b of debris) { b.a += dt * b.s; b.m.position.set(Math.cos(b.a) * b.r, b.y, Math.sin(b.a) * b.r); b.m.rotation.x += dt * 3; }
+  }
+
+  if (started && phase !== "menu") {
+    phaseT -= dt;
+    if (phaseT <= 0) { if (phase === "inter") startDisaster(); else if (phase === "disaster") endDisaster(); else startInter(); }
+    if (phase === "disaster") {
+      spawnT -= dt;
+      if (spawnT <= 0 && (cur === "meteors" || cur === "lightning")) { spawnT = cur === "meteors" ? 0.42 : 0.38; addHazard(cur === "meteors" ? "meteor" : "bolt"); }
+      for (let i = hz.length - 1; i >= 0; i--) {
+        const h = hz[i]; h.t -= dt; h.ring.material.opacity = 0.45 + Math.abs(Math.sin(T * 10)) * 0.45;
+        if (h.rock) { h.rock.position.set(h.x + h.t * 6, h.y + h.t * 32, h.z); h.rock.rotation.x += dt * 4; }
+        if (h.t <= 0) { strike(h); hz.splice(i, 1); }
+      }
+      for (const e of everyone) {
+        if (!e.alive) continue;
+        if (cur === "flood" && level > e.pos.y + 1.7) hurt(e, 16 * dt);
+        if (cur === "lava" && e.pos.y < level + 0.06 && e.onGround) hurt(e, 32 * dt);
+        if ((cur === "blizzard" || cur === "acid") && !inHouse(e.pos)) hurt(e, (cur === "acid" ? 9 : 7) * dt);
+        if (cur === "tornado") {
+          const dx = e.pos.x - tor.position.x, dz = e.pos.z - tor.position.z, d = Math.hypot(dx, dz);
+          if (d < torR() && e.pos.y < 16) { e.vel.y = Math.max(e.vel.y, 15); e.pos.x += ((-dz / (d || 1)) * 10 + (dx / (d || 1)) * 3) * dt; e.pos.z += ((dx / (d || 1)) * 10 + (dz / (d || 1)) * 3) * dt; e.onGround = false; hurt(e, 7 * dt); }
+        }
+      }
+    }
+    // move everyone (and fall damage)
+    for (const e of everyone) {
+      if (!e.alive) continue;
+      const vy = e.vel.y;
+      if (e === P) stepPlayer(dt, T); else stepBot(e, dt, T);
+      if (e.onGround && vy < -25) hurt(e, (-vy - 25) * 4, true);
+      if (e.pos.y < -20) { e.pos.set(0, 8, 0); e.vel.set(0, 0, 0); }
+    }
+  } else {
+    for (const b of bots) { if (!b.alive) continue; if (!b.path.length || b.think <= 0) wanderTo(b); b.think -= dt; followPath(b, dt, 8); faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T); }
+    stepPlayer(dt, T);
+  }
+
+  // camera: you, or someone still alive once you're out
+  let follow = P.pos;
+  if (!P.alive) { const live = bots.find((b) => b.alive); follow = live ? live.pos : V(0, 7, 0); }
+  updateCamera(dt, follow);
+  $("under").style.display = water.visible && camera.position.y < level ? "block" : "none";
+  flashT = Math.max(0, flashT - dt); $("tint").style.opacity = Math.min(0.9, flashT * 1.6);
+
+  // HUD
+  const alive = everyone.filter((e) => e.alive).length;
+  $("hpbar").firstChild.style.width = `${Math.max(0, P.hp)}%`;
+  $("hpT").textContent = P.alive ? `${Math.ceil(P.hp)} HP` : "Out this round";
+  if (phase === "inter") { $("hPhase").textContent = `Next disaster in ${Math.ceil(phaseT)}`; $("hTip").textContent = "Look around the island while you can"; }
+  else if (phase === "disaster") { $("hPhase").textContent = `${DIS[cur].name} · ${Math.ceil(phaseT)}`; $("hTip").textContent = DIS[cur].tip; }
+  else if (phase === "results") { $("hPhase").textContent = "Round over"; $("hTip").textContent = "Next round coming up"; }
+  $("hInfo").textContent = `Alive ${alive}/${everyone.length} · Survived ${S.survived} · Streak ${S.streak}`;
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu") startInter(); show("Get ready, a disaster is on its way!", 2.5); };
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+if (TEST) window.__game = { state: () => ({ phase, cur, t: Math.ceil(phaseT), alive: everyone.filter((e) => e.alive).length, hp: Math.ceil(P.hp), meAlive: P.alive, survived: S.survived, rounds: S.rounds, level: +level.toFixed(2), hz: hz.length, tor: tor.visible ? [tor.position.x | 0, tor.position.z | 0] : null }), skip: () => { phaseT = 0.01; }, bots: () => bots.map((b) => ({ alive: b.alive, mode: b.mode, y: +b.pos.y.toFixed(1), inside: inHouse(b.pos) })), heal: () => { P.hp = 100; } };
+loop();
+})();
+</script>
+</body>
+</html>
