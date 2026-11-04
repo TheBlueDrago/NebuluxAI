@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Block Farm Valley</title>
+<style>
+/*KIT_CSS*/
+  #start{background:linear-gradient(#8bc34add,#1b3300ee)}
+  h1{color:#fff59d}
+  #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
+  #top .c{font-size:28px;color:#ffd54f} #top .s{font-size:13px}
+  #xp{width:200px;height:10px;border:2px solid #000;border-radius:6px;background:#263238;margin:4px auto 0;overflow:hidden}
+  #xp i{display:block;height:100%;background:#9ccc65}
+  #seed{position:fixed;left:14px;bottom:18px;font-weight:900;font-size:15px;pointer-events:none;background:rgba(0,0,0,.45);border:3px solid #000;border-radius:10px;padding:6px 10px}
+  #prompt{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);font-size:17px;font-weight:900;pointer-events:none;text-align:center}
+  body.touch #seed{bottom:auto;top:244px}
+  @media (max-width:600px){#top{top:54px} #top .c{font-size:22px} #hud{top:166px}}
+</style>
+</head>
+<body>
+<div id="top" class="sh"><div class="c" id="tCoins">0 coins</div><div class="s" id="tLevel">Level 1</div><div id="xp"><i></i></div></div>
+<div id="hud" class="sh"><div class="big1" id="hTitle">Your farm</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="seed" class="sh"></div>
+<div id="prompt" class="sh"></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>BLOCK FARM<br>VALLEY</h1>
+  <p style="font-weight:700">Plant seeds in your fields, <b style="color:#81d4fa">water</b> them when the soil dries out, and harvest them when they're ready. Sell your basket at the <b style="color:#ffd54f">market</b>, level up to unlock new crops, and spend your coins on sprinklers, more fields, fertilizer and a chicken coop. Your crops keep growing while you're away.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>E</kbd> or <kbd>Click</kbd> plant, water, harvest · <kbd>1</kbd>-<kbd>8</kbd> or <kbd>Q</kbd> pick a seed · <kbd>Right mouse</kbd> look</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+  <p><button class="b" id="wipe" style="display:none">Start a new farm</button></p>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Block Farm Valley =================
+setSky("#81d4fa", "#f1f8e9", 0xf1f8e9, 90, 260);
+hemi.intensity = 0.8; sun.intensity = 0.9;
+cam.dist = 13; cam.pitch = 0.62;
+addBox(0, -1, 0, 120, 2, 120, 0x558b2f);
+const fence = (x, z, w, d) => { addBox(x, 0.6, z, w, 1.2, d, 0xd7ccc8); };
+fence(0, -40, 80, 0.4); fence(0, 40, 80, 0.4); fence(-40, 0, 0.4, 80); fence(40, 0, 0.4, 80);
+for (const [x, z, w, d] of [[0, -40.5, 82, 1], [0, 40.5, 82, 1], [-40.5, 0, 1, 82], [40.5, 0, 1, 82]]) addBox(x, 8, z, w, 14, d, 0).m.visible = false;
+// a barn, a house and some trees
+{ addBox(24, 4, 20, 12, 8, 10, 0xc62828, { wall: true }); const r = boxMesh(13, 1.2, 11, 0xeeeeee); r.position.set(24, 8.6, 20); scene.add(r); const d = boxMesh(4, 5, 0.2, 0xffffff); d.position.set(24, 2.5, 14.9); scene.add(d); }
+{ addBox(-26, 3, -26, 10, 6, 8, 0xfff3e0, { wall: true }); const r = boxMesh(11, 1.2, 9, 0x6d4c41); r.position.set(-26, 6.6, -26); scene.add(r); }
+for (const [x, z] of [[-34, 30], [-30, 34], [34, -32], [30, -34], [-34, -6], [34, 4], [8, 34], [-10, 34]]) { addBox(x, 2, z, 1.2, 4, 1.2, 0x6d4c41); const l = boxMesh(4.4, 3.6, 4.4, 0x2e7d32); l.position.set(x, 5.4, z); scene.add(l); }
+
+// ---------- crops ----------
+// name, seed cost, grow seconds, sells for, level needed, colour
+const CROPS = [
+  ["Carrot", 2, 20, 6, 1, 0xff7043], ["Wheat", 4, 35, 12, 1, 0xffd54f], ["Tomato", 8, 50, 26, 2, 0xe53935], ["Corn", 14, 70, 45, 3, 0xfdd835],
+  ["Pumpkin", 25, 100, 90, 4, 0xff8f00], ["Strawberry", 40, 80, 120, 5, 0xd81b60], ["Sunflower", 70, 140, 240, 6, 0xffeb3b], ["Golden Melon", 150, 200, 600, 8, 0xc6ff00],
+];
+function cropMesh(ci, stage) {
+  const g = new THREE.Group(), col = CROPS[ci][5];
+  if (stage < 3) { const n = stage + 1; for (let k = 0; k < n + 1; k++) { const s = boxMesh(0.25, 0.4 + stage * 0.35, 0.25, 0x66bb6a); s.position.set((k - n / 2) * 0.5, 0.2 + stage * 0.17, 0); g.add(s); } return g; }
+  const leaf = boxMesh(1.4, 0.4, 1.4, 0x43a047); leaf.position.y = 0.3; g.add(leaf);
+  if (ci === 0) { for (const x of [-0.4, 0.4]) { const c = boxMesh(0.35, 0.6, 0.35, col); c.position.set(x, 0.3, 0); g.add(c); } }
+  else if (ci === 1) { for (let k = 0; k < 5; k++) { const s = boxMesh(0.18, 1.6, 0.18, col); s.position.set(-0.6 + k * 0.3, 0.9, (k % 2) * 0.3 - 0.15); g.add(s); } }
+  else if (ci === 2) { const st = boxMesh(0.2, 1.4, 0.2, 0x388e3c); st.position.y = 0.8; g.add(st); for (const [x, y] of [[-0.4, 1], [0.35, 1.3], [0, 0.7]]) { const t = boxMesh(0.4, 0.4, 0.4, col); t.position.set(x, y, 0.2); g.add(t); } }
+  else if (ci === 3) { const st = boxMesh(0.3, 2.4, 0.3, 0x558b2f); st.position.y = 1.3; g.add(st); const cob = boxMesh(0.4, 0.9, 0.4, col); cob.position.set(0.3, 1.5, 0); g.add(cob); }
+  else if (ci === 4) { const p = boxMesh(1.4, 1, 1.4, col); p.position.y = 0.6; g.add(p); const s = boxMesh(0.2, 0.4, 0.2, 0x5d4037); s.position.y = 1.3; g.add(s); }
+  else if (ci === 5) { for (const [x, z] of [[-0.4, -0.3], [0.4, 0.2], [0, 0.4], [-0.2, 0.1]]) { const b = boxMesh(0.3, 0.3, 0.3, col); b.position.set(x, 0.6, z); g.add(b); } }
+  else if (ci === 6) { const st = boxMesh(0.25, 2.6, 0.25, 0x558b2f); st.position.y = 1.4; g.add(st); const h = boxMesh(1.1, 1.1, 0.3, col); h.position.y = 2.8; g.add(h); const c = boxMesh(0.5, 0.5, 0.32, 0x5d4037); c.position.y = 2.8; g.add(c); }
+  else { const m = boxMesh(1.3, 1, 1.6, col, 0x445500); m.position.y = 0.65; g.add(m); }
+  return g;
+}
+
+// ---------- the save ----------
+const SAVE = "block-farm-valley";
+const DEF = { coins: 30, earned: 0, xp: 0, level: 1, rows: 4, sprinkler: 0, fert: 0, coop: 0, basket: [], tiles: {}, harvested: 0, seen: Date.now(), eggs: 0 };
+let S = loadSave(SAVE, DEF);
+const save = () => { S.seen = Date.now(); storeSave(SAVE, S); };
+setInterval(() => { if (started) save(); }, 6000); addEventListener("beforeunload", save);
+const xpNeed = (l) => 20 + (l - 1) * 30;
+
+// ---------- the fields ----------
+const COLS = 8, TS = 3.2, FX0 = -((COLS - 1) * TS) / 2, FZ0 = -14;
+const tiles = [];
+const soilDry = mat(0x795548), soilWet = mat(0x3e2723);
+function makeTile(c, r) {
+  const x = FX0 + c * TS, z = FZ0 + r * TS, key = c + "," + r;
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(TS - 0.25, 0.2, TS - 0.25), soilDry); soil.position.set(x, 0.1, z); soil.receiveShadow = true; scene.add(soil);
+  const t = { c, r, x, z, key, soil, crop: null };
+  tiles.push(t); drawTile(t); return t;
+}
+function st(t) { return S.tiles[t.key]; } // { ci, prog, wet }
+function stageOf(s) { return s.prog >= 1 ? 3 : Math.min(2, Math.floor(s.prog * 3)); }
+function drawTile(t) {
+  const s = st(t);
+  if (t.crop) { scene.remove(t.crop); t.crop = null; }
+  t.soil.material = s && (s.wet || sprinklered(t)) ? soilWet : soilDry;
+  if (s) { t.crop = cropMesh(s.ci, stageOf(s)); t.crop.position.set(t.x, 0.2, t.z); scene.add(t.crop); t.stage = stageOf(s); }
+}
+const sprinklered = (t) => t.r < S.sprinkler * 2;
+const sprinklerMeshes = [];
+function drawSprinklers() { for (const m of sprinklerMeshes) scene.remove(m); sprinklerMeshes.length = 0; for (let r = 0; r < Math.min(S.rows, S.sprinkler * 2); r += 2) { const m = boxMesh(0.3, 1.2, 0.3, 0x90a4ae); m.position.set(FX0 - TS * 0.9, 0.6, FZ0 + (r + 0.5) * TS); scene.add(m); const h = boxMesh(0.6, 0.2, 0.6, 0x29b6f6, 0x01579b); h.position.set(m.position.x, 1.3, m.position.z); scene.add(h); sprinklerMeshes.push(m, h); } }
+function buildFields() { for (let r = 0; r < S.rows; r++) for (let c = 0; c < COLS; c++) if (!tiles.some((t) => t.c === c && t.r === r)) makeTile(c, r); drawSprinklers(); }
+buildFields();
+// growth while you were away (only watered tiles grow, up to the point they dry out)
+{
+  const away = Math.min(8 * 3600, (Date.now() - (S.seen || Date.now())) / 1000);
+  for (const t of tiles) { const s = st(t); if (!s || s.prog >= 1) continue; grow(t, s, away); }
+}
+function grow(t, s, sec) {
+  const g = CROPS[s.ci][2] / (1 + S.fert * 0.25);
+  let left = sec;
+  while (left > 0 && s.prog < 1) {
+    if (!s.wet && !sprinklered(t)) break;
+    const nextStop = s.prog < 1 / 3 ? 1 / 3 : s.prog < 2 / 3 ? 2 / 3 : 1, need = (nextStop - s.prog) * g;
+    if (need > left) { s.prog += left / g; left = 0; }
+    else { s.prog = nextStop; left -= need; if (s.prog < 1) s.wet = false; }
+  }
+}
+
+// ---------- the market, upgrades and the coop ----------
+function pad(x, z, col, text) { const p = addBox(x, 0.1, z, 4.4, 0.3, 4.4, col, { glow: 0x222222 }); const l = liveLabel(768, 50); l.scale.set(8, 1.3, 1); l.position.set(x, 3.2, z); l.set(text, "#fff"); scene.add(l); return { p, l }; }
+const sellPad = pad(-16, 18, 0xffb300, "MARKET: SELL");
+{ const roof = boxMesh(6, 0.4, 6, 0xff7043); roof.position.set(-16, 4.6, 18); scene.add(roof); for (const [dx, dz] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) { const p = boxMesh(0.3, 4.5, 0.3, 0x6d4c41); p.position.set(-16 + dx, 2.25, 18 + dz); scene.add(p); } }
+const UPS = {
+  rows: { name: "More fields", max: 8, cost: () => 120 * Math.pow(2.2, S.rows - 4), lv: () => S.rows, at: [-4, 22] },
+  sprinkler: { name: "Sprinklers", max: 4, cost: () => 250 * Math.pow(2.5, S.sprinkler), lv: () => S.sprinkler, at: [4, 22] },
+  fert: { name: "Fertilizer", max: 5, cost: () => 300 * Math.pow(2.4, S.fert), lv: () => S.fert, at: [12, 22] },
+  coop: { name: "Chickens", max: 4, cost: () => 400 * Math.pow(2, S.coop), lv: () => S.coop, at: [-24, 4] },
+};
+const upPads = {};
+for (const k in UPS) upPads[k] = pad(UPS[k].at[0], UPS[k].at[1], 0x42a5f5, "");
+function drawPads() {
+  for (const k in UPS) { const u = UPS[k], done = (k === "rows" ? S.rows >= u.max : u.lv() >= u.max); upPads[k].l.set(done ? `${u.name}: MAX` : `${u.name}: ${Math.round(u.cost())}`, !done && S.coins >= u.cost() ? "#9cff6b" : "#fff"); }
+  sellPad.l.set(S.basket.length || S.eggs ? `SELL ${S.basket.length + S.eggs} ITEMS` : "MARKET: SELL", "#fff");
+}
+function buy(k) {
+  const u = UPS[k]; if ((k === "rows" ? S.rows : u.lv()) >= u.max) return;
+  const c = Math.round(u.cost()); if (S.coins < c) { SFX.no(); show(`${u.name} costs ${c} coins`, 1.3); return; }
+  S.coins -= c; if (k === "rows") { S.rows += 1; buildFields(); } else S[k]++;
+  if (k === "sprinkler") { drawSprinklers(); tiles.forEach(drawTile); }
+  if (k === "coop") addChicken();
+  SFX.buy(); show(`${u.name} ${k === "rows" ? "added" : "upgraded"}!`, 1.4); save(); drawPads();
+}
+// chickens wander in their pen and lay eggs
+addBox(-24, 0.6, 14, 12, 1.2, 0.3, 0xd7ccc8); addBox(-24, 0.6, 22, 12, 1.2, 0.3, 0xd7ccc8); addBox(-30, 0.6, 18, 0.3, 1.2, 8, 0xd7ccc8);
+{ const c = boxMesh(4, 3, 3, 0xa1887f); c.position.set(-28, 1.5, 18); scene.add(c); const r = boxMesh(4.6, 0.4, 3.6, 0xd84315); r.position.set(-28, 3.2, 18); scene.add(r); }
+const chickens = [], eggs = [];
+function addChicken() {
+  const g = new THREE.Group(); const b = boxMesh(0.8, 0.7, 1, 0xffffff); b.position.y = 0.5; g.add(b); const h = boxMesh(0.45, 0.45, 0.45, 0xffffff); h.position.set(0, 1, 0.5); g.add(h); const k = boxMesh(0.2, 0.15, 0.25, 0xffa000); k.position.set(0, 0.95, 0.8); g.add(k); const comb = boxMesh(0.12, 0.2, 0.3, 0xe53935); comb.position.set(0, 1.3, 0.5); g.add(comb);
+  g.position.set(rr(-28, -20), 0, rr(15, 21)); scene.add(g); chickens.push({ g, to: g.position.clone(), t: 0, lay: rr(20, 40) });
+}
+for (let i = 0; i < S.coop; i++) addChicken();
+function dropEgg(ch) { const e = boxMesh(0.35, 0.45, 0.35, 0xfff8e1); e.position.copy(ch.g.position).setY(0.25); scene.add(e); eggs.push(e); }
+
+// ---------- doing things ----------
+let seedI = 0;
+const unlocked = () => CROPS.filter((c) => c[4] <= S.level).length;
+function frontTile() {
+  const f = V(Math.sin(P.body.g.rotation.y), 0, Math.cos(P.body.g.rotation.y));
+  const at = P.pos.clone().addScaledVector(f, 1.6);
+  let best = null, bd = 2.2; for (const t of tiles) { const d = Math.hypot(t.x - at.x, t.z - at.z); if (d < bd) { bd = d; best = t; } }
+  return best;
+}
+function act() {
+  if (!started) return;
+  const t = frontTile(); if (!t) return;
+  const s = st(t);
+  if (!s) {
+    const c = CROPS[seedI]; if (c[4] > S.level) { SFX.no(); show(`${c[0]} unlocks at level ${c[4]}`, 1.3); return; }
+    if (S.coins < c[1]) { SFX.no(); show(`${c[0]} seeds cost ${c[1]} coins`, 1.3); return; }
+    S.coins -= c[1]; S.tiles[t.key] = { ci: seedI, prog: 0, wet: true }; drawTile(t); SFX.pop(); swing(); return;
+  }
+  if (s.prog >= 1) {
+    if (S.basket.length >= 60) { SFX.no(); show("Your basket is full! Sell at the market.", 1.5); return; }
+    S.basket.push(s.ci); delete S.tiles[t.key]; drawTile(t); S.harvested++; addXp(Math.ceil(CROPS[s.ci][3] / 6)); SFX.coin(); swing(); return;
+  }
+  if (!s.wet && !sprinklered(t)) { s.wet = true; drawTile(t); splash(t); tone(600, 0.2, "sine", 0.04, -300); swing(); return; }
+  show(`${CROPS[s.ci][0]}: ${Math.round(s.prog * 100)}% grown`, 0.9);
+}
+function addXp(n) { S.xp += n; while (S.xp >= xpNeed(S.level)) { S.xp -= xpNeed(S.level); S.level++; SFX.win(); const nu = CROPS.filter((c) => c[4] === S.level); show(`Level ${S.level}!${nu.length ? "\nNew seeds: " + nu.map((c) => c[0]).join(", ") : ""}`, 2.5); } }
+function sell() {
+  if (!S.basket.length && !S.eggs) return;
+  const v = S.basket.reduce((a, ci) => a + CROPS[ci][3], 0) + S.eggs * 15, n = S.basket.length;
+  S.coins += v; S.earned += v; const e = S.eggs; S.basket = []; S.eggs = 0; SFX.buy(); show(`Sold ${n ? n + " crops" : ""}${n && e ? " and " : ""}${e ? e + " eggs" : ""} for ${v} coins!`, 1.8); save(); drawPads();
+}
+function swing() { P.body.pose = true; P.body.arms[1].rotation.x = -1.6; setTimeout(() => { P.body.pose = false; }, 160); }
+const drops = [];
+function splash(t) { for (let k = 0; k < 8; k++) { const d = boxMesh(0.15, 0.3, 0.15, 0x4fc3f7, 0x01579b); d.position.set(t.x + rr(-1, 1), 2.2, t.z + rr(-1, 1)); scene.add(d); drops.push({ m: d, v: -rr(4, 8) }); } }
+const pickSeed = (i) => { if (i < CROPS.length) { seedI = i; SFX.tick(); } };
+for (let i = 0; i < 8; i++) actions["Digit" + (i + 1)] = () => pickSeed(i);
+actions.KeyQ = () => pickSeed((seedI + 1) % unlocked());
+actions.KeyE = act; actions.click = act;
+touchControls([{ label: "USE", color: "rgba(255,213,79,.95)", down: act }, { label: "SEED", color: "rgba(156,204,101,.95)", down: () => actions.KeyQ() }, JUMP_BUTTON]);
+
+// ---------- rain ----------
+const RN = 900, rPos = new Float32Array(RN * 3); for (let i = 0; i < RN; i++) { rPos[i * 3] = rr(-30, 30); rPos[i * 3 + 1] = rr(0, 25); rPos[i * 3 + 2] = rr(-30, 30); }
+const rGeo = new THREE.BufferGeometry(); rGeo.setAttribute("position", new THREE.BufferAttribute(rPos, 3));
+const rain = new THREE.Points(rGeo, new THREE.PointsMaterial({ color: 0x90caf9, size: 0.25, transparent: true, opacity: 0.8 })); rain.visible = false; rain.frustumCulled = false; scene.add(rain);
+let rainT = 0, nextRain = rr(120, 220);
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.harvested ? `Level ${S.level} · ${S.coins} coins · ${S.harvested} crops harvested` : ""; $("wipe").style.display = S.harvested ? "inline-block" : "none"; }
+showStats(); drawPads();
+P.pos.set(0, 0.3, -20); cam.yaw = Math.PI;
+let lastPad = null;
+onFrame((dt, T) => {
+  // growing
+  for (const t of tiles) { const s = st(t); if (!s || s.prog >= 1) continue; const before = stageOf(s), wet = s.wet; grow(t, s, dt * (rainT > 0 ? 1.3 : 1)); if (stageOf(s) !== before || s.wet !== wet) drawTile(t); }
+  // rain now and then waters everything
+  nextRain -= dt; if (nextRain <= 0 && rainT <= 0) { rainT = 25; nextRain = rr(150, 260); rain.visible = true; setSky("#78909c", "#cfd8dc", 0xcfd8dc, 70, 220); show("It's raining! Your crops are watered.", 2); }
+  if (rainT > 0) { rainT -= dt; for (const t of tiles) { const s = st(t); if (s && !s.wet && s.prog < 1) { s.wet = true; drawTile(t); } } rain.position.set(P.pos.x, 0, P.pos.z); for (let i = 0; i < RN; i++) { let y = rPos[i * 3 + 1] - 30 * dt; if (y < 0) y += 25; rPos[i * 3 + 1] = y; } rGeo.attributes.position.needsUpdate = true; if (rainT <= 0) { rain.visible = false; setSky("#81d4fa", "#f1f8e9", 0xf1f8e9, 90, 260); } }
+  for (let i = drops.length - 1; i >= 0; i--) { const d = drops[i]; d.v -= 20 * dt; d.m.position.y += d.v * dt; if (d.m.position.y < 0.2) { scene.remove(d.m); drops.splice(i, 1); } }
+  for (const t of tiles) if (t.crop && t.stage === 3) t.crop.rotation.y = Math.sin(T * 2 + t.x) * 0.08;
+  // chickens
+  for (const ch of chickens) { ch.t -= dt; if (ch.t <= 0) { ch.t = rr(1, 3); ch.to.set(rr(-28.5, -19.5), 0, rr(14.8, 21.2)); } const d = ch.to.clone().sub(ch.g.position); if (d.length() > 0.2) { d.normalize(); ch.g.position.addScaledVector(d, dt * 2); ch.g.rotation.y = Math.atan2(d.x, d.z); ch.g.position.y = Math.abs(Math.sin(T * 12)) * 0.1; } ch.lay -= dt; if (ch.lay <= 0 && eggs.length < 12) { ch.lay = rr(30, 50); dropEgg(ch); } }
+  if (started) {
+    const landed = stepPlayer(dt, T);
+    if (landed === sellPad.p) sell();
+    if (landed && landed !== lastPad) for (const k in UPS) if (landed === upPads[k].p) buy(k);
+    if (P.onGround) lastPad = landed;
+    for (let i = eggs.length - 1; i >= 0; i--) if (eggs[i].position.distanceTo(P.pos.clone().setY(0.25)) < 1.4) { scene.remove(eggs[i]); eggs.splice(i, 1); S.eggs++; SFX.coin(); show(`Egg! (${S.eggs} to sell)`, 0.9); }
+  }
+  updateCamera(dt);
+  // HUD
+  const c = CROPS[seedI], t = started ? frontTile() : null, s = t && st(t);
+  $("tCoins").textContent = `${S.coins} coins`; $("tLevel").textContent = `Level ${S.level} · ${S.harvested} harvested`;
+  $("xp").firstChild.style.width = `${(S.xp / xpNeed(S.level)) * 100}%`;
+  $("seed").innerHTML = `Seed: <span style="color:#${c[5].toString(16).padStart(6, "0")}">${c[0]}</span> (${c[1]} coins)${c[4] > S.level ? ` · level ${c[4]}` : ""}<br><span style="font-size:12px;opacity:.85">${touch ? "SEED" : "Q or 1-8"} to change · sells for ${c[3]}</span>`;
+  const key = touch ? "USE" : "E";
+  $("prompt").textContent = !t ? "" : !s ? `${key}: plant ${c[0].toLowerCase()}` : s.prog >= 1 ? `${key}: harvest ${CROPS[s.ci][0].toLowerCase()}` : !s.wet && !sprinklered(t) ? `${key}: water it` : `${CROPS[s.ci][0]} ${Math.round(s.prog * 100)}%`;
+  $("hTitle").textContent = rainT > 0 ? "Rainy day" : "Your farm";
+  $("hInfo").textContent = `Basket ${S.basket.length}/60${S.eggs ? ` · ${S.eggs} eggs` : ""}`;
+  const dry = tiles.filter((t) => { const s = st(t); return s && !s.wet && s.prog < 1 && !sprinklered(t); }).length, ready = tiles.filter((t) => { const s = st(t); return s && s.prog >= 1; }).length;
+  $("hInfo2").textContent = `${ready} ready · ${dry} need water`;
+});
+setInterval(drawPads, 800);
+setInterval(() => { if (started && S.earned) sendScore("earned", Math.min(1e9, Math.floor(S.earned))); }, 60000);
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); show(S.harvested ? "Welcome back to the farm!" : "Walk up to the soil and press E to plant carrots!", 3); };
+$("menuB").onclick = () => { started = false; save(); showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
+$("wipe").onclick = () => { if (!confirm("Start a new farm? Your crops, coins and upgrades are wiped.")) return; S = JSON.parse(JSON.stringify(DEF)); S.seen = Date.now(); storeSave(SAVE, S); removeEventListener("beforeunload", save); location.reload(); };
+if (TEST) window.__game = {
+  state: () => ({ coins: S.coins, level: S.level, xp: S.xp, rows: S.rows, basket: S.basket.length, harvested: S.harvested, planted: Object.keys(S.tiles).length, ready: tiles.filter((t) => st(t) && st(t).prog >= 1).length, dry: tiles.filter((t) => st(t) && !st(t).wet && st(t).prog < 1).length, eggs: S.eggs, chickens: chickens.length, sprinkler: S.sprinkler }),
+  faceTile: (i) => { const t = tiles[i]; P.pos.set(t.x, 0.3, t.z - 1.6); P.body.g.rotation.y = 0; P.yaw = 0; P.vel.set(0, 0, 0); }, act, give: (n) => { S.coins += n; drawPads(); }, seed: pickSeed, tiles: () => tiles.length,
+  wipe: () => { S = JSON.parse(JSON.stringify(DEF)); S.seen = Date.now(); storeSave(SAVE, S); removeEventListener("beforeunload", save); }, rainNow: () => { nextRain = 0; }, S: () => S,
+};
+loop();
+})();
+</script>
+</body>
+</html>
