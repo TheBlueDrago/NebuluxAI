@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hide and Seek Town</title>
+<style>
+/*KIT_CSS*/
+  #start{background:linear-gradient(#26a69add,#0b2e2aee)}
+  h1{color:#ffe082}
+  #timer{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;text-align:center}
+  #timer .s{font-size:14px;font-weight:800}
+  #warn{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);font-size:20px;font-weight:900;color:#ff5252;pointer-events:none;display:none}
+  #blind{position:fixed;inset:0;background:#000;display:none;place-items:center;z-index:5;pointer-events:none;text-align:center}
+  #blind b{font-size:72px;color:#ffe082}
+  #hud .big1.seek{color:#ff5252} #hud .big1.hide{color:#80cbc4}
+</style>
+</head>
+<body>
+<div id="timer" class="sh">0:00<div class="s" id="tSub"></div></div>
+<div id="hud" class="sh"><div class="big1" id="hRole">Hide and Seek</div><div class="sub" id="hInfo"></div><div class="sub" id="hInfo2"></div></div>
+<div id="btns"><button class="b" id="menuB">Menu</button></div>
+<div id="warn" class="sh">The seeker can see you!</div>
+<div id="blind"><div><p style="font-weight:800;font-size:20px">You are the SEEKER. Counting while they hide...</p><b id="blindN">20</b></div></div>
+<div id="msg" class="sh"></div>
+<div id="touch"></div>
+<div id="start" class="ov"><div class="c">
+  <h1>HIDE AND SEEK<br>TOWN</h1>
+  <p style="font-weight:700">One player is the <b style="color:#ff5252">Seeker</b>, everyone else hides somewhere in town: the two houses, the hedge maze, the playground, the treehouse, behind cars. <b>Crouch</b> to stay hidden behind things. The seeker tags you by touching you and sends you to the jail in the middle of town, but any hider can step on the <b style="color:#69f0ae">green button</b> next to the jail to free everyone.</p>
+  <p class="keys"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>C</kbd> crouch · <kbd>Right mouse</kbd> drag to look · <kbd>Wheel</kbd> zoom</p>
+  <p id="stats" style="font-weight:700"></p>
+  <button class="big" id="play">PLAY</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+/*KIT*/
+
+// ================= Hide and Seek Town =================
+setSky("#64b5f6", "#e1f5fe", 0xe1f5fe, 90, 260);
+hemi.intensity = 0.9; sun.intensity = 0.85;
+cam.dist = 11; cam.pitch = 0.4;
+
+// ---------- the town ----------
+const EDGE = 52;
+addBox(0, -1, 0, EDGE * 2 + 6, 2, EDGE * 2 + 6, 0x5f9a35);
+const flat = (x, z, w, d, color, y = 0.02) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m; };
+flat(0, 0, 14, EDGE * 2, 0x546e7a); flat(0, 0, EDGE * 2, 14, 0x546e7a);
+for (let i = -EDGE + 4; i < EDGE; i += 8) { if (Math.abs(i) > 8) { flat(0, i, 0.4, 3.5, 0xfff59d, 0.03); flat(i, 0, 3.5, 0.4, 0xfff59d, 0.03); } }
+for (const [x, z, w, d] of [[0, -EDGE, EDGE * 2, 0.4], [0, EDGE, EDGE * 2, 0.4], [-EDGE, 0, 0.4, EDGE * 2], [EDGE, 0, 0.4, EDGE * 2]]) { addBox(x, 0.7, z, w, 1.4, d, 0xffffff); addBox(x, 16, z * 1.01, w + 1, 30, d + 1, 0).m.visible = false; }
+const WALL_H = 4.2, WT = 0.6;
+const HIDES = [];
+function wallX(x1, x2, z, gaps, col, h = WALL_H) {
+  let a = x1; const segs = [];
+  for (const [g, w] of gaps.slice().sort((p, q) => p[0] - q[0])) { if (g - w / 2 > a) segs.push([a, g - w / 2]); a = g + w / 2; }
+  if (x2 > a) segs.push([a, x2]);
+  for (const [s, e] of segs) addBox((s + e) / 2, h / 2, z, e - s, h, WT, col, { wall: true });
+  for (const [g, w] of gaps) if (h > 3.3) addBox(g, (h + 3.1) / 2, z, w, h - 3.1, WT, col, { wall: true });
+}
+function wallZ(z1, z2, x, gaps, col, h = WALL_H) {
+  let a = z1; const segs = [];
+  for (const [g, w] of gaps.slice().sort((p, q) => p[0] - q[0])) { if (g - w / 2 > a) segs.push([a, g - w / 2]); a = g + w / 2; }
+  if (z2 > a) segs.push([a, z2]);
+  for (const [s, e] of segs) addBox(x, h / 2, (s + e) / 2, WT, h, e - s, col, { wall: true });
+  for (const [g, w] of gaps) if (h > 3.3) addBox(x, (h + 3.1) / 2, g, WT, h - 3.1, w, col, { wall: true });
+}
+const thing = (x, z, w, h, d, col) => addBox(x, h / 2, z, w, h, d, col, { wall: true });
+const roofs = [];
+function roof(x0, z0, x1, z1, col) { roofs.push(addBox((x0 + x1) / 2, WALL_H + 0.25, (z0 + z1) / 2, x1 - x0 + 1.2, 0.5, z1 - z0 + 1.2, col, { wall: true })); const r = boxMesh(x1 - x0 + 1.2, 1.4, (z1 - z0) / 2, col); r.position.set((x0 + x1) / 2, WALL_H + 1.2, (z0 + z1) / 2); scene.add(r); }
+const doorNodes = [];
+const door = (x, z, nx, nz) => doorNodes.push([V(x + nx * 1.6, 0, z + nz * 1.6), V(x - nx * 1.6, 0, z - nz * 1.6)]);
+// House A (north-west): bedroom with a closet, living room
+{
+  const c = 0xffccbc;
+  flat(-29, 26, 30, 24, 0xa1887f, 0.03);
+  wallX(-44, -14, 14, [[-22, 3]], c); wallX(-44, -14, 38, [], c); wallZ(14, 38, -44, [], c); wallZ(14, 38, -14, [[30, 3]], c);
+  wallZ(14, 38, -29, [[20, 3], [33, 3]], c);
+  door(-22, 14, 0, -1); door(-14, 30, 1, 0); door(-29, 20, 1, 0); door(-29, 33, 1, 0);
+  wallX(-44, -40, 33, [[-42, 2]], 0xbcaaa4); wallZ(33, 38, -40, [], 0xbcaaa4); HIDES.push(V(-42, 0, 36));
+  thing(-34, 33, 5, 1.2, 7, 0x5c6bc0); thing(-34, 37.2, 5, 1.8, 0.6, 0x3949ab); HIDES.push(V(-37.4, 0, 31));
+  thing(-42.6, 18, 1.6, 2.2, 3.2, 0x8d6e63); thing(-33, 15.6, 4, 1.4, 1.8, 0x6d4c41); HIDES.push(V(-30.4, 0, 15.6), V(-42.8, 0, 21.4));
+  thing(-21, 26, 6, 1.4, 1.8, 0xef5350); HIDES.push(V(-21, 0, 24.2));
+  thing(-15.6, 19, 1, 3, 5, 0x795548); HIDES.push(V(-16.6, 0, 15.4));
+  thing(-24, 33.5, 3, 1.1, 3, 0x8d6e63); thing(-21, 37.3, 4, 1.6, 0.8, 0x37474f); HIDES.push(V(-27.6, 0, 36.8));
+  roof(-44, 14, -14, 38, 0x6d4c41);
+}
+// House B (south-east): kitchen, bedroom, bathroom
+{
+  const c = 0xc5e1a5;
+  flat(29, -26, 30, 24, 0x90a4ae, 0.03);
+  wallX(14, 44, -14, [[22, 3]], c); wallX(14, 44, -38, [], c); wallZ(-38, -14, 14, [[-30, 3]], c); wallZ(-38, -14, 44, [], c);
+  wallZ(-38, -14, 29, [[-20, 3], [-33, 3]], c);
+  door(22, -14, 0, 1); door(14, -30, -1, 0); door(29, -20, 1, 0); door(29, -33, 1, 0);
+  thing(21.5, -36.9, 13, 1.6, 1.4, 0xeceff1); thing(21, -26, 5, 1.4, 2.4, 0xb0bec5); thing(15.4, -16.4, 1.4, 3.2, 2, 0xfafafa);
+  HIDES.push(V(21, 0, -23.8), V(15.6, 0, -19.4), V(27.6, 0, -35.2));
+  wallX(36, 44, -30, [[38, 2.2]], 0x80deea); wallZ(-38, -30, 36, [], 0x80deea); thing(41, -36, 4, 1.2, 2.4, 0xffffff); HIDES.push(V(41, 0, -32));
+  thing(34, -18, 5, 1.2, 6, 0xab47bc); thing(43.1, -20, 1.2, 3, 4, 0x6d4c41); HIDES.push(V(34, 0, -21.8), V(42.4, 0, -24.4));
+  roof(14, -38, 44, -14, 0x455a64);
+}
+// the shed
+{ const c = 0x8d6e63; wallX(20, 28, -50, [], c); wallX(20, 28, -44, [[24, 2.6]], c); wallZ(-50, -44, 20, [], c); wallZ(-50, -44, 28, [], c); door(24, -44, 0, 1); roof(20, -50, 28, -44, 0x5d4037); HIDES.push(V(21.6, 0, -48.6), V(26.4, 0, -48.6)); }
+// crates in the alley
+for (const [x, y, z] of [[11, 1, -47], [13.2, 1, -47], [11, 3, -47], [11, 1, -44.8], [9.2, 1, -40], [9.2, 1, -37.8], [9.2, 3, -40]]) addBox(x, y, z, 2, 2, 2, 0xa1887f, { wall: true });
+HIDES.push(V(13, 0, -44.4), V(10.8, 0, -38.8));
+// the hedge maze (south-west, new every visit)
+{
+  const n = 6, c = 6, x0 = -46, z0 = -46, H = 3.4;
+  const vis = [...Array(n)].map(() => Array(n).fill(false)), hW = [...Array(n)].map(() => Array(n + 1).fill(true)), vW = [...Array(n + 1)].map(() => Array(n).fill(true));
+  const st = [[0, 0]]; vis[0][0] = true;
+  while (st.length) {
+    const [i, j] = st[st.length - 1], nb = shuffle([[1, 0], [-1, 0], [0, 1], [0, -1]]).map(([a, b]) => [i + a, j + b, a, b]).filter(([a, b]) => a >= 0 && b >= 0 && a < n && b < n && !vis[a][b]);
+    if (!nb.length) { st.pop(); continue; }
+    const [a, b, da, db] = nb[0]; vis[a][b] = true; st.push([a, b]);
+    if (da) vW[Math.max(i, a)][j] = false; else hW[i][Math.max(j, b)] = false;
+  }
+  hW[2][n] = false; vW[n][3] = false; hW[4][n] = false;
+  for (let i = 0; i < n; i++) for (let j = 0; j <= n; j++) if (hW[i][j]) addBox(x0 + i * c + c / 2, H / 2, z0 + j * c, c + 1.2, H, 1.2, 0x2e7d32, { wall: true });
+  for (let i = 0; i <= n; i++) for (let j = 0; j < n; j++) if (vW[i][j]) addBox(x0 + i * c, H / 2, z0 + j * c + c / 2, 1.2, H, c + 1.2, 0x2e7d32, { wall: true });
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const walls = hW[i][j] + hW[i][j + 1] + vW[i][j] + vW[i + 1][j]; if (walls >= 3) HIDES.push(V(x0 + i * c + c / 2, 0, z0 + j * c + c / 2)); }
+}
+// the playground (north-east)
+const ups = [];
+{
+  addBox(30, 2.75, 30, 5, 0.5, 5, 0xff7043);
+  for (const [dx, dz] of [[-2.3, -2.3], [2.3, -2.3], [-2.3, 2.3], [2.3, 2.3]]) addBox(30 + dx, 1.25, 30 + dz, 0.4, 2.5, 0.4, 0x546e7a);
+  addBox(30, 3.5, 32.3, 5, 1, 0.3, 0x42a5f5, { wall: true }); addBox(32.3, 3.5, 30, 0.3, 1, 5, 0x42a5f5, { wall: true });
+  for (let k = 1; k <= 5; k++) { addBox(30, k * 0.25, 27.5 - 0.5 - (5 - k), 2.2, k * 0.5, 1, 0x26c6da); addBox(27.5 - 0.5 - (k - 1), (3 - k * 0.5) / 2, 30, 1, 3 - k * 0.5, 2.2, 0xffee58); }
+  ups.push([V(30, 0, 21.4), V(30, 3, 30), V(21.4, 0, 30)]);
+  addBox(40, 1.4, 18.8, 6, 2.8, 0.4, 0xab47bc, { wall: true }); addBox(40, 1.4, 21.2, 6, 2.8, 0.4, 0xab47bc, { wall: true }); addBox(40, 3, 20, 6, 0.4, 2.8, 0x8e24aa, { wall: true }); HIDES.push(V(40, 0, 20));
+  addBox(42, 4, 42, 2, 8, 2, 0x6d4c41, { wall: true }); addBox(42, 6.25, 42, 6, 0.5, 6, 0x8d6e63);
+  addBox(42, 7.2, 44.8, 6, 1.4, 0.4, 0xa1887f, { wall: true }); addBox(44.8, 7.2, 42, 0.4, 1.4, 6, 0xa1887f, { wall: true }); addBox(39.2, 7.2, 42, 0.4, 1.4, 6, 0xa1887f, { wall: true });
+  addBox(39.6, 7.2, 39.2, 1.2, 1.4, 0.4, 0xa1887f, { wall: true }); addBox(44.4, 7.2, 39.2, 1.2, 1.4, 0.4, 0xa1887f, { wall: true });
+  const leaves = boxMesh(9, 4, 9, 0x388e3c); leaves.position.set(42, 10.5, 42); scene.add(leaves);
+  for (let k = 1; k <= 13; k++) addBox(42, k * 0.25, 39 - 0.5 - (13 - k), 2, k * 0.5, 1, 0xbcaaa4);
+  ups.push([V(42, 0, 24.6), V(42, 6.5, 39.9)]); HIDES.push(V(40, 6.5, 40), V(44, 6.5, 40));
+  for (const [x, z, w, d] of [[18, 36.2, 8, 0.4], [18, 43.8, 8, 0.4], [14.2, 40, 0.4, 8], [21.8, 40, 0.4, 8]]) addBox(x, 0.2, z, w, 0.4, d, 0xffd54f);
+  flat(18, 40, 7.6, 7.6, 0xffe0b2, 0.05);
+  for (const x of [15, 23]) addBox(x, 2, 18, 0.35, 4, 0.35, 0x78909c); const bar = boxMesh(8.4, 0.35, 0.35, 0x78909c); bar.position.set(19, 4, 18); scene.add(bar);
+}
+// cars parked along the streets, and trees
+function car(x, z, alongX, col) { const L = 4.6, W = 2.3; addBox(x, 0.75, z, alongX ? L : W, 1.5, alongX ? W : L, col, { wall: true }); addBox(x, 2, z, alongX ? 2.6 : 2.1, 1, alongX ? 2.1 : 2.6, 0x90a4ae, { wall: true }); }
+car(-9.8, 24, false, 0xe53935); car(9.8, -24, false, 0x1e88e5); car(24, 9.8, true, 0xfdd835); car(-26, -9.8, true, 0x43a047); car(38, -9.8, true, 0x8e24aa); car(-9.8, 44, false, 0xfb8c00);
+HIDES.push(V(-12, 0, 24), V(12, 0, -24), V(24, 0, 12), V(38, 0, -12.2));
+for (const [x, z] of [[-48, 46], [-14, 47], [48, 48], [12.5, 47], [48, -48], [-49, -49], [48, 10], [-48, 10]]) { addBox(x, 2, z, 1.2, 4, 1.2, 0x6d4c41, { wall: true }); const l = boxMesh(4.6, 3.6, 4.6, 0x2e7d32); l.position.set(x, 5.2, z); scene.add(l); }
+// the jail and its button
+for (let k = 0; k < 8; k++) { const o = -3 + k * (6 / 7); addBox(o, 2, -3, 0.3, 4, 0.3, 0x424242); addBox(o, 2, 3, 0.3, 4, 0.3, 0x424242); addBox(-3, 2, o, 0.3, 4, 0.3, 0x424242); addBox(3, 2, o, 0.3, 4, 0.3, 0x424242); }
+addBox(0, 4.2, 0, 6.6, 0.4, 6.6, 0x616161);
+const jailSign = makeLabel("JAIL", "#ff5252", 512, 80); jailSign.scale.set(5, 1.25, 1); jailSign.position.set(0, 5.6, 0); scene.add(jailSign);
+const pad = addBox(0, 0.1, -8, 3, 0.3, 3, 0x00e676, { glow: 0x00512a });
+const padSign = makeLabel("FREE THEM", "#69f0ae", 512, 64); padSign.scale.set(4.5, 1.1, 1); padSign.position.set(0, 2.4, -8); scene.add(padSign);
+
+// ---------- getting around (waypoints made from the map itself) ----------
+const blocked = (x, z, y = 0.05) => solids.some((s) => s.h > 0.05 && s.y + s.h / 2 > y + 0.6 && Math.abs(x - s.x) < s.w / 2 + HW && Math.abs(z - s.z) < s.d / 2 + HW && y < s.y + s.h / 2 && y + HH > s.y - s.h / 2);
+const clearLine = (a, b) => { const d = a.distanceTo(b), n = Math.ceil(d / 0.5); for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t)) return false; } return true; };
+const N = [], adj = [];
+const addNode = (p) => { N.push(p); adj.push([]); return N.length - 1; };
+const link = (a, b) => { adj[a].push(b); adj[b].push(a); };
+const GRID = {};
+for (let x = -49; x <= 49; x += 3) for (let z = -49; z <= 49; z += 3) if (!blocked(x, z) && !(Math.abs(x) < 3.4 && Math.abs(z) < 3.4)) GRID[x + "," + z] = addNode(V(x, 0, z));
+for (const k in GRID) { const [x, z] = k.split(",").map(Number), a = GRID[k]; for (const [dx, dz] of [[3, 0], [0, 3], [3, 3], [3, -3]]) { const b = GRID[(x + dx) + "," + (z + dz)]; if (b !== undefined && clearLine(N[a], N[b])) link(a, b); } }
+const groundNear = (p) => { let best = -1, bd = Infinity; for (let i = 0; i < N.length; i++) { if (Math.abs(N[i].y - p.y) > 1 || !adj[i].length) continue; const d = (N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2; if (d > 1e-6 && d < bd && clearLine(N[i], p)) { bd = d; best = i; } } return best; };
+for (const [o, i] of doorNodes) { const a = addNode(o), b = addNode(i); link(a, b); for (const p of [a, b]) { const g = groundNear(N[p]); if (g >= 0 && g !== a && g !== b) link(p, g); } }
+// the inside nodes near each door may not be on the grid; join every grid node inside to its neighbours again
+for (const route of ups) { const ids = route.map((p) => addNode(p)); for (let i = 1; i < ids.length; i++) link(ids[i - 1], ids[i]); for (const id of ids) if (N[id].y < 0.5) { const g = groundNear(N[id]); if (g >= 0) link(id, g); } }
+const HIDE_IDS = HIDES.map((h) => { const id = addNode(h); if (h.y > 0.5) { let best = -1, bd = Infinity; N.forEach((n, i) => { if (i !== id && Math.abs(n.y - h.y) < 0.6) { const d = n.distanceTo(h); if (d < bd) { bd = d; best = i; } } }); if (best >= 0) link(id, best); } else { const g = groundNear(h); if (g >= 0) link(id, g); } return id; });
+const PAD_ID = (() => { const id = addNode(V(0, 0.25, -8)); const g = groundNear(V(0, 0, -8)); if (g >= 0) link(id, g); return id; })();
+function nearestNode(p) {
+  const order = []; for (let i = 0; i < N.length; i++) { if (!adj[i].length || Math.abs(N[i].y - p.y) > 1.6) continue; order.push([(N[i].x - p.x) ** 2 + (N[i].z - p.z) ** 2, i]); }
+  order.sort((a, b) => a[0] - b[0]);
+  for (let k = 0; k < Math.min(8, order.length); k++) if (N[order[k][1]].y > 0.5 || clearLine(p, N[order[k][1]])) return order[k][1];
+  return order.length ? order[0][1] : 0;
+}
+function route(from, to) {
+  const s = nearestNode(from), prev = new Int32Array(N.length).fill(-1), q = [s]; prev[s] = s;
+  for (let h = 0; h < q.length; h++) { const c = q[h]; if (c === to) break; for (const n of adj[c]) if (prev[n] < 0) { prev[n] = c; q.push(n); } }
+  if (prev[to] < 0) return [N[to].clone()];
+  const path = []; for (let c = to; c !== s; c = prev[c]) path.unshift(N[c].clone()); return path;
+}
+const GROUND_IDS = N.map((n, i) => i).filter((i) => adj[i].length && N[i].y < 0.5 && Math.abs(N[i].x) < 48 && Math.abs(N[i].z) < 48);
+
+// ---------- players ----------
+const SAVE = "hide-and-seek-town";
+let S = loadSave(SAVE, { rounds: 0, wins: 0, tags: 0, seekWins: 0, hideWins: 0 });
+const everyone = [P];
+Object.assign(P, { name: ME_NAME, crouch: false, jailed: false, tagT: 0 });
+const names = shuffle(BOT_NAMES.slice());
+for (let i = 0; i < 7; i++) {
+  const body = makeAvatar({ shirt: BOT_COLORS[i + 2], pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.45 ? pick(BOT_COLORS) : null }); scene.add(body.g);
+  everyone.push({ name: names[i], body, pos: V(), vel: V(), onGround: false, yaw: 0, path: [], crouch: false, jailed: false, mode: "go", brave: Math.random() < 0.4, scan: 0 });
+}
+const bots = everyone.slice(1);
+for (const e of everyone) { e.tag = makeLabel(e === P ? ME_NAME : e.name, "#ffffff", 512, 56); e.tag.scale.set(3.2, 0.8, 1); scene.add(e.tag); }
+P.tag.visible = false;
+let seeker = null, phase = "menu", phaseT = 0, outcome = null;
+const HIDE_T = TEST ? 4 : 22, SEEK_T = TEST ? 40 : 110;
+const FORCE = new URLSearchParams(location.search).get("role");
+const hiders = () => everyone.filter((e) => e !== seeker);
+const free = () => hiders().filter((e) => !e.jailed);
+function setCrouch(e, on) { e.crouch = on; e.body.g.scale.set(0.62, on ? 0.4 : 0.62, 0.62); if (e === P) P.speed = on ? 6 : e === seeker ? 14 : 13; }
+function sees(e, h) {
+  const dx = h.pos.x - e.pos.x, dz = h.pos.z - e.pos.z, d = Math.hypot(dx, dz);
+  if (d > (h.crouch ? 13 : 34) || Math.abs(h.pos.y - e.pos.y) > 9) return false;
+  if (d > 4 && Math.abs(angDiff(Math.atan2(dx, dz), e === P ? cam.yaw + Math.PI : e.yaw || 0)) > 1.25) return false;
+  const eye = e.pos.clone().setY(e.pos.y + 2.3);
+  return canSee(eye, h.pos.clone().setY(h.pos.y + (h.crouch ? 1.3 : 2.3))) || canSee(eye, h.pos.clone().setY(h.pos.y + (h.crouch ? 0.7 : 1.3)));
+}
+function jail(h) {
+  h.jailed = true; setCrouch(h, false); h.path = []; h.pos.set(rr(-2, 2), 0.2, rr(-2, 2)); h.vel.set(0, 0, 0);
+  if (seeker === P) { S.tags++; storeSave(SAVE, S); SFX.coin(); }
+  show(h === P ? "You were found! Wait in jail for someone to free you." : `${h.name} was found!`, 1.8);
+  if (h === P) SFX.lose();
+  if (!free().length) endRound();
+}
+function freeAll(by) {
+  const j = hiders().filter((e) => e.jailed); if (!j.length) return;
+  for (const e of j) { e.jailed = false; const a = rr(0, 6.3); e.pos.set(Math.sin(a) * 6, 0.3, -11 + Math.cos(a) * 3); if (e !== P) { e.mode = "go"; e.hideId = pick(HIDE_IDS); e.path = route(e.pos, e.hideId); } }
+  SFX.win(); show(`${by === P ? "You" : by.name} freed ${j.length === 1 ? j[0] === P ? "you" : j[0].name : j.length + " players"}!`, 2);
+}
+function startRound() {
+  outcome = null; phase = "hide"; phaseT = HIDE_T;
+  seeker = FORCE === "seeker" ? P : FORCE === "hider" ? pick(bots) : Math.random() < 0.25 ? P : pick(bots);
+  const a0 = rr(0, 6.3);
+  everyone.forEach((e, i) => { const a = a0 + i * 0.8; e.pos.set(Math.sin(a) * 9, 0.3, Math.cos(a) * 9); e.vel.set(0, 0, 0); e.jailed = false; e.path = []; e.mode = "go"; e.target = null; setCrouch(e, false); e.claimed = null; });
+  seeker.pos.set(0, 0.3, -12);
+  P.canMove = seeker !== P; P.speed = seeker === P ? 14 : 13;
+  for (const e of everyone) e.tag.material.color.set(e === seeker ? 0xff5252 : 0xffffff);
+  const taken = new Set();
+  for (const b of bots) if (b !== seeker) { let id; for (let k = 0; k < 20; k++) { id = pick(HIDE_IDS); if (!taken.has(id)) break; } taken.add(id); b.hideId = id; b.path = route(b.pos, id); b.speedMul = rr(0.9, 1.05); }
+  $("blind").style.display = seeker === P ? "grid" : "none";
+  if (seeker === P) show("", 0.1); else show(`${seeker.name} is the seeker. Go hide!`, 3);
+  cam.yaw = Math.atan2(P.pos.x, P.pos.z);
+}
+function endRound() {
+  if (phase === "end") return;
+  phase = "end"; phaseT = TEST ? 3 : 7; $("blind").style.display = "none";
+  const left = free();
+  let won;
+  if (seeker === P) { won = !left.length; if (won) S.seekWins++; } else { won = !P.jailed; if (won) S.hideWins++; }
+  S.rounds++; if (won) { S.wins++; sendScore("wins", S.wins); }
+  storeSave(SAVE, S); outcome = won ? "win" : "lose";
+  if (won) SFX.win(); else SFX.lose();
+  const msg = !left.length ? `${seeker === P ? "You" : seeker.name} found everyone!` : `Time's up! ${left.length} still hidden.`;
+  show(`${msg}\n${won ? "You win this round!" : "You lose this round."}`, 5);
+}
+
+// ---------- computer players ----------
+function seekerBot(b, dt) {
+  b.scan -= dt;
+  if (b.scan <= 0) {
+    b.scan = 0.15;
+    let best = null, bd = Infinity;
+    for (const h of free()) if (sees(b, h)) { const d = h.pos.distanceTo(b.pos); if (d < bd) { bd = d; best = h; } }
+    if (best) { b.target = best; b.last = best.pos.clone(); b.lost = 0; best.spotted = 0.6; }
+    else if (b.target) { b.lost += 0.15; if (b.lost > 1.4 || b.target.jailed) { b.target = null; b.path = route(b.pos, nearestNode(b.last)); b.look = 0; } }
+  }
+  if (b.target && !b.target.jailed) { walkToward(b, b.target.pos, dt, 13.6); if (b.bumped && b.onGround && Math.random() < 0.1) b.wantJump = true; return; }
+  if (!b.path.length) {
+    b.look = (b.look || 0) + dt; b.yaw = (b.yaw || 0) + dt * 2.2; physics(b, V(), dt);
+    if (b.look > 1.1) { b.look = 0; const jailed = hiders().some((e) => e.jailed); b.path = route(b.pos, jailed && Math.random() < 0.25 ? PAD_ID : Math.random() < 0.65 ? pick(HIDE_IDS) : pick(GROUND_IDS)); }
+    return;
+  }
+  followPath(b, dt, 11.5);
+}
+function hiderBot(b, dt) {
+  if (b.jailed) { physics(b, V(), dt); return; }
+  b.spotted = Math.max(0, (b.spotted || 0) - dt);
+  const s = seeker, d = Math.hypot(s.pos.x - b.pos.x, s.pos.z - b.pos.z);
+  if (phase === "seek") {
+    const danger = b.spotted > 0 && d < 20 || (b.mode !== "hidden" && d < 14 && canSee(b.pos.clone().setY(b.pos.y + 2.2), s.pos.clone().setY(s.pos.y + 2))) || d < 5;
+    const runAway = () => { let best = pick(GROUND_IDS), far = 0; for (let k = 0; k < 12; k++) { const id = pick(GROUND_IDS), f = N[id].distanceTo(s.pos) - N[id].distanceTo(b.pos) * 0.4; if (f > far) { far = f; best = id; } } b.path = route(b.pos, best); };
+    if (danger && b.mode !== "flee") { b.mode = "flee"; setCrouch(b, false); b.fleeT = 0; runAway(); }
+    if (b.mode === "flee") {
+      b.fleeT += dt;
+      if ((!b.path.length || b.fleeT > 5) && d > 16) { b.mode = "go"; b.hideId = pick(HIDE_IDS); b.path = route(b.pos, b.hideId); }
+      else if (!b.path.length) runAway();
+    }
+    if (b.mode === "hidden" && b.brave && d > 26 && hiders().some((e) => e.jailed) && Math.random() < dt * 0.08) { b.mode = "rescue"; setCrouch(b, false); b.path = route(b.pos, PAD_ID); }
+  }
+  if ((b.mode === "go" || b.mode === "rescue") && !b.path.length) {
+    if (b.mode === "rescue") { b.mode = "go"; b.hideId = pick(HIDE_IDS); b.path = route(b.pos, b.hideId); }
+    else { b.mode = "hidden"; setCrouch(b, true); }
+  }
+  if (b.mode === "hidden") { physics(b, V(), dt); if (b.pos.distanceTo(N[b.hideId]) > 2.5 && !b.path.length) b.path = [N[b.hideId].clone()]; else return; }
+  followPath(b, dt, (b.crouch ? 5 : b.mode === "flee" ? 12.8 : 12) * (b.speedMul || 1));
+}
+
+// ---------- start ----------
+function showStats() { $("stats").textContent = S.rounds ? `Rounds ${S.rounds} · Wins ${S.wins} (hiding ${S.hideWins}, seeking ${S.seekWins}) · Players found ${S.tags}` : ""; }
+showStats();
+startRound(); phase = "menu"; $("blind").style.display = "none";
+actions.KeyC = () => { if (!P.jailed && phase !== "menu") setCrouch(P, !P.crouch); };
+touchControls([JUMP_BUTTON, { label: "CROUCH", color: "rgba(128,203,196,.95)", down: () => actions.KeyC() }]);
+const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+
+onFrame((dt, T) => {
+  if (started && phase !== "menu") {
+    phaseT -= dt;
+    if (phase === "hide" && phaseT <= 0) { phase = "seek"; phaseT = SEEK_T; P.canMove = true; $("blind").style.display = "none"; show(seeker === P ? "Ready or not! Go find them!" : `${seeker.name} is coming. Stay hidden!`, 2.5); SFX.zap(); }
+    else if (phase === "seek" && phaseT <= 0) endRound();
+    else if (phase === "end" && phaseT <= 0) startRound();
+    // everyone moves
+    for (const b of bots) {
+      if (b === seeker) { if (phase === "seek") seekerBot(b, dt); else { physics(b, V(), dt); b.yaw = Math.PI; } }
+      else if (phase === "hide" || phase === "seek") hiderBot(b, dt); else physics(b, V(), dt);
+      const sp = faceMove(b, dt); if (b === seeker && !b.path.length && !b.target && phase === "seek") b.body.g.rotation.y = b.yaw; animate(b.body, sp, b.onGround, T);
+    }
+    const landed = stepPlayer(dt, T);
+    if (P.crouch) P.body.legs.forEach((l) => { l.rotation.x *= 0.5; });
+    // tags and the jail button
+    if (phase === "seek") {
+      for (const h of free()) if (Math.hypot(h.pos.x - seeker.pos.x, h.pos.z - seeker.pos.z) < 2.3 && Math.abs(h.pos.y - seeker.pos.y) < 2) jail(h);
+      for (const h of free()) if (Math.abs(h.pos.x - pad.x) < 1.8 && Math.abs(h.pos.z - pad.z) < 1.8 && h.pos.y < 1) freeAll(h);
+    }
+    if (landed === pad && seeker !== P && !P.jailed && phase === "seek") freeAll(P);
+    if (P.pos.y < -10) P.pos.set(0, 1, -12);
+  } else { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  for (const e of everyone) { e.tag.position.set(e.pos.x, e.pos.y + (e.crouch ? 2.5 : 3.4), e.pos.z); e.tag.visible = e !== P && (e === seeker || !e.crouch || e.pos.distanceTo(P.pos) < 8); }
+  updateCamera(dt);
+  // HUD
+  const left = free().length, total = hiders().length;
+  $("timer").firstChild.textContent = phase === "hide" ? fmtT(phaseT) : phase === "seek" ? fmtT(phaseT) : phase === "end" ? (outcome === "win" ? "You win!" : "Round over") : "";
+  $("tSub").textContent = phase === "hide" ? "Hiding time" : phase === "seek" ? "Seeking" : "";
+  $("blindN").textContent = Math.ceil(Math.max(0, phaseT));
+  const role = seeker === P ? "SEEKER" : P.jailed ? "IN JAIL" : "HIDER";
+  $("hRole").textContent = role; $("hRole").className = "big1 " + (seeker === P ? "seek" : "hide");
+  $("hInfo").textContent = `Hidden ${left}/${total} · Seeker: ${seeker === P ? "you" : seeker.name}`;
+  $("hInfo2").textContent = P.crouch ? "Crouching (C to stand)" : seeker !== P && !P.jailed ? "C to crouch" : "";
+  $("warn").style.display = phase === "seek" && seeker !== P && !P.jailed && (P.spotted || 0) > 0 ? "block" : "none";
+  P.spotted = Math.max(0, (P.spotted || 0) - dt);
+});
+
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu") startRound(); };
+$("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; $("blind").style.display = "none"; document.exitPointerLock?.(); };
+if (TEST) window.__game = {
+  state: () => ({ phase, t: Math.ceil(phaseT), role: seeker === P ? "seeker" : "hider", seeker: seeker && seeker.name, left: free().length, jailed: hiders().filter((e) => e.jailed).length, meJailed: P.jailed, outcome, nodes: N.length, hides: HIDES.length }),
+  bots: () => bots.map((b) => ({ n: b.name, m: b === seeker ? (b.target ? "chase" : "patrol") : b.jailed ? "jail" : b.mode, x: b.pos.x | 0, z: b.pos.z | 0, y: +b.pos.y.toFixed(1) })),
+  skip: () => { phaseT = 0.01; }, near: () => { const h = free().filter((e) => e !== P).sort((a, b) => a.pos.distanceTo(P.pos) - b.pos.distanceTo(P.pos))[0]; return h ? { x: h.pos.x, y: h.pos.y, z: h.pos.z } : null; },
+  hidesBlocked: () => HIDES.filter((h) => h.y < 0.5 && blocked(h.x, h.z)).length, unreachable: () => HIDE_IDS.filter((id) => adj[id].length === 0).length,
+  nav: { N, adj, GRID, blocked, clearLine, doorNodes },
+  dbg: (x, z) => { const id = HIDE_IDS.find((i) => Math.hypot(N[i].x - x, N[i].z - z) < 0.5); const walk = (i, depth, seen = new Set()) => { if (depth < 0 || seen.has(i)) return []; seen.add(i); return [[i, N[i].x, N[i].y, N[i].z, adj[i].length]].concat(...adj[i].map((n) => walk(n, depth - 1, seen))); }; return walk(id, 3); },
+  reach: () => { const s = GRID["-1,-10"] !== undefined ? GRID["-1,-10"] : nearestNode(V(0, 0, -12)); const seen = new Set([s]), q = [s]; while (q.length) { const c = q.shift(); for (const n of adj[c]) if (!seen.has(n)) { seen.add(n); q.push(n); } } return { hides: HIDE_IDS.filter((id) => !seen.has(id)).map((id) => [N[id].x, N[id].z]), pad: seen.has(PAD_ID) }; },
+};
+loop();
+})();
+</script>
+</body>
+</html>

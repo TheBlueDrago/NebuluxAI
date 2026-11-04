@@ -26,6 +26,7 @@ export const BOARDS = {
   "gem-mine-simulator": ["coins"],
   "disaster-island": ["survivals"],
   "block-kart-racers": ["wins", "laptime"],
+  "hide-and-seek-town": ["wins"],
 };
 const MAX_SCORE = 1e9;
 
