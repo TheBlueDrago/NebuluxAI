@@ -17,6 +17,7 @@ export const BOARDS = {
   "block-tower-defense": [["wave", "Best wave", (v) => `Wave ${v}`]],
   "gem-mine-simulator": [["coins", "Most coins earned", (v) => Number(v).toLocaleString()]],
   "disaster-island": [["survivals", "Most rounds survived", String]],
+  "block-kart-racers": [["wins", "Most wins", String], ["laptime", "Best lap", (v) => `${Math.floor(v / 60)}:${(v % 60).toFixed(2).padStart(5, "0")}`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

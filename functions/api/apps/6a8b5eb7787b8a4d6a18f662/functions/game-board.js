@@ -25,6 +25,7 @@ export const BOARDS = {
   "block-tower-defense": ["wave"],
   "gem-mine-simulator": ["coins"],
   "disaster-island": ["survivals"],
+  "block-kart-racers": ["wins", "laptime"],
 };
 const MAX_SCORE = 1e9;
 
