@@ -35,7 +35,7 @@ export const BOARDS = {
   "sky-glide": [["score", "Best flight", (v) => Number(v).toLocaleString()]],
   "snow-fort-clash": [["wins", "Most wins", String]],
   "block-bowling": [["score", "Best game", String]],
-  "block-dash-race": [["time", "Fastest race", (v) => `${Math.floor(v / 60)}:${(v % 60).toFixed(1).padStart(4, "0")}`]],
+  "block-dash-race": [["wins", "Shows won", String], ["time", "Fastest Round 1", (v) => `${Math.floor(v / 60)}:${(v % 60).toFixed(1).padStart(4, "0")}`]],
 };
 
 // The boards' tabs and top-10 list (also shown in the in-game menu, components/GameMenu.jsx).

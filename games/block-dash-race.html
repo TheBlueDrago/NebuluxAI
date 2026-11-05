@@ -27,18 +27,20 @@
   .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
   @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
 
-  #start,#over{background:linear-gradient(#ec407add,#2a0a1aee)}
-  #over{display:none}
+  #start,#over,#card{background:linear-gradient(#ec407add,#2a0a1aee)}
+  #over,#card{display:none}
+  #card{z-index:5}
   h1{color:#ffeb3b}
   #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);text-align:center;font-weight:900;pointer-events:none}
-  #top .p{font-size:34px;color:#ffeb3b} #top .s{font-size:14px}
+  #top .p{font-size:30px;color:#ffeb3b} #top .s{font-size:14px}
   #count{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);font-size:110px;font-weight:900;-webkit-text-stroke:4px #000;color:#ffeb3b;pointer-events:none;display:none}
-  #resT{margin:10px auto;border-collapse:collapse;font-weight:800} #resT td{padding:3px 10px;border-bottom:1px solid rgba(255,255,255,.2)} #resT tr.me td{color:#ffeb3b}
-  @media (max-width:600px){#top{top:54px} #top .p{font-size:26px} #hud{top:110px}}
+  #resT{margin:10px auto;border-collapse:collapse;font-weight:800} #resT td{padding:3px 10px;border-bottom:1px solid rgba(255,255,255,.2)} #resT tr.me td{color:#ffeb3b} #resT tr.out td{opacity:.5}
+  #cardR{font-weight:900;letter-spacing:2px;color:#fff;opacity:.9}
+  @media (max-width:600px){#top{top:54px} #top .p{font-size:22px} #hud{top:110px}}
 </style>
 </head>
 <body>
-<div id="top" class="sh"><div class="p" id="tPlace">1st</div><div class="s" id="tTime">0:00.0</div></div>
+<div id="top" class="sh"><div class="p" id="tMain">Round 1</div><div class="s" id="tSub"></div></div>
 <div id="hud" class="sh"><div class="big1" id="hSect">Start</div><div class="sub" id="hInfo"></div></div>
 <div id="btns"><button class="b" id="menuB">Menu</button></div>
 <div id="count"></div>
@@ -46,12 +48,13 @@
 <div id="touch"></div>
 <div id="start" class="ov"><div class="c">
   <h1>BLOCK DASH<br>RACE</h1>
-  <p style="font-weight:700">Twelve runners, one wild obstacle course. Fight the conveyor belts while hammers swing across, hop the moving platforms over the gap (fall and you go back to the last checkpoint), jump the sweeping bars, smash through the right doors (some are solid!), and bounce up to the finish. Beat everyone to the line.</p>
+  <p style="font-weight:700">Sixteen runners, three rounds, one winner. <b>Round 1, Dash Course:</b> the first 9 over the line go through. <b>Round 2, Spin Island:</b> jump the spinning bars while the island crumbles; the last 4 standing go through. <b>The Final, Summit Sprint:</b> first to grab the trophy at the top wins the show.</p>
   <p class="keys"><kbd>WASD</kbd> run · <kbd>Space</kbd> jump · <kbd>Right mouse</kbd> drag to look · <kbd>Shift</kbd> lock the camera</p>
   <p id="stats" style="font-weight:700"></p>
-  <button class="big" id="play">RACE</button>
+  <button class="big" id="play">START THE SHOW</button>
 </div></div>
-<div id="over" class="ov"><div class="c"><h1 id="oT">1ST PLACE!</h1><table id="resT"></table><p id="oInfo" style="font-weight:800"></p><button class="big" id="again">RACE AGAIN</button></div></div>
+<div id="card" class="ov"><div class="c"><p id="cardR">ROUND 1 OF 3</p><h1 id="cardT">DASH COURSE</h1><p id="cardI" style="font-weight:800;font-size:18px"></p></div></div>
+<div id="over" class="ov"><div class="c"><h1 id="oT">YOU WON THE SHOW!</h1><table id="resT"></table><p id="oInfo" style="font-weight:800"></p><button class="big" id="again">PLAY AGAIN</button><p><button class="b" id="watch" style="display:none">Watch the rest</button></p></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (() => {
@@ -348,165 +351,290 @@ if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, 
 // ---------- end of kit ----------
 
 
-// ================= Block Dash Race =================
+// ================= Block Dash Race: a three-round elimination show =================
 setSky("#f48fb1", "#fff3e0", 0xfff3e0, 90, 280);
 hemi.intensity = 0.9; sun.intensity = 0.85;
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60 }); sun.shadow.camera.updateProjectionMatrix();
 cam.dist = 12; cam.pitch = 0.4;
-const HW2 = 8; // half the track's width
-const floor = (z0, z1, col, y = 0) => addBox(0, y - 0.5, (z0 + z1) / 2, HW2 * 2, 1, z1 - z0, col);
-const sideWalls = (z0, z1, y = 0) => { for (const s of [-1, 1]) addBox(s * (HW2 + 0.4), y + 1, (z0 + z1) / 2, 0.8, 2, z1 - z0, 0xffffff); for (const s of [-1, 1]) addBox(s * (HW2 + 0.4), y + 10, (z0 + z1) / 2, 0.8, 18, z1 - z0, 0).m.visible = false; };
-const sea = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x7c4dff, emissive: 0x311b92, emissiveIntensity: 0.4 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -14; scene.add(sea);
-// 1. start
-floor(-12, 20, 0x90caf9); sideWalls(-12, 20); addBox(0, 2, -12.5, HW2 * 2, 4, 1, 0xffffff);
+const HW2 = 8; // half a course's width
+const floor = (x, z0, z1, col, y = 0, w = HW2 * 2) => addBox(x, y - 0.5, (z0 + z1) / 2, w, 1, z1 - z0, col);
+const sideWalls = (x, z0, z1, y = 0) => { for (const s of [-1, 1]) addBox(x + s * (HW2 + 0.4), y + 1, (z0 + z1) / 2, 0.8, 2, z1 - z0, 0xffffff); for (const s of [-1, 1]) addBox(x + s * (HW2 + 0.4), y + 10, (z0 + z1) / 2, 0.8, 18, z1 - z0, 0).m.visible = false; };
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshStandardMaterial({ color: 0x7c4dff, emissive: 0x311b92, emissiveIntensity: 0.4 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -14; scene.add(sea);
+const stripeTex = (rep) => { const c = document.createElement("canvas"); c.width = 32; c.height = 32; const g = c.getContext("2d"); g.fillStyle = "#37474f"; g.fillRect(0, 0, 32, 32); g.fillStyle = "#ffca28"; g.fillRect(0, 0, 32, 6); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, rep); return t; };
+const movers = [], sweepers = [], pads = [], belts = [], hammers = [];
+function mover(x0, y, z, amp, sp, ph) { const m = addBox(x0, y - 0.4, z, 5, 0.8, 4, 0xff7043, { glow: 0x4a1800 }); movers.push({ s: m, x0, z, amp, sp, ph, x: x0, round: 0 }); return movers[movers.length - 1]; }
+function sweeper(x, y, z, len, sp, col = 0xffeb3b) { const hub = boxMesh(1.4, 1.6, 1.4, 0x212121); hub.position.set(x, y + 0.8, z); scene.add(hub); const bar = boxMesh(len, 0.6, 0.6, col, 0x5c5c00); bar.position.set(x, y + 0.9, z); scene.add(bar); const s = { bar, x, y, z, r: len / 2, sp, a: rr(0, 6.3) }; sweepers.push(s); return s; }
+
+// ---------- Round 1: Dash Course (x = 0) ----------
+floor(0, -12, 20, 0x90caf9); sideWalls(0, -12, 20); addBox(0, 2, -12.5, HW2 * 2, 4, 1, 0xffffff);
 const gate = addBox(0, 1.5, 18, HW2 * 2, 3, 0.6, 0xffeb3b, { glow: 0x5c5c00 });
-// 2. conveyor belts (they push you back) and swinging hammers
-const belts = [];
-floor(20, 62, 0x546e7a); sideWalls(20, 62);
-for (const [x, z0, z1] of [[-4, 24, 58], [4, 24, 58]]) { const b = addBox(x, 0.05, (z0 + z1) / 2, 7.4, 0.3, z1 - z0, 0x37474f); const stripes = new THREE.Mesh(new THREE.PlaneGeometry(7.4, z1 - z0), new THREE.MeshBasicMaterial({ map: (() => { const c = document.createElement("canvas"); c.width = 32; c.height = 32; const g = c.getContext("2d"); g.fillStyle = "#37474f"; g.fillRect(0, 0, 32, 32); g.fillStyle = "#ffca28"; g.fillRect(0, 0, 32, 6); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, (z1 - z0) / 2); return t; })() })); stripes.rotation.x = -Math.PI / 2; stripes.position.set(x, 0.22, (z0 + z1) / 2); scene.add(stripes); belts.push({ s: b, tex: stripes.material.map, speed: x < 0 ? 5 : 7 }); }
-const hammers = [];
-for (const [z, sp, ph] of [[32, 1.6, 0], [42, 2.1, 1.5], [52, 1.8, 3]]) { const h = addBox(0, 1.3, z, 3, 2.6, 1.6, 0xe53935); const arm = boxMesh(0.4, 8, 0.4, 0x5d4037); arm.position.set(0, 5.6, 0); h.m.add(arm); hammers.push({ s: h, z, sp, ph, x: 0 }); }
-// 3. moving platforms over the gap
-floor(62, 66, 0x546e7a); sideWalls(62, 66);
-const movers = [];
-for (const [z, amp, sp, ph] of [[70, 5, 1.1, 0], [76, 5, 1.4, 1.6], [82, 5, 1.2, 3.1], [88, 5, 1.5, 0.8]]) { const m = addBox(0, -0.4, z, 5, 0.8, 4, 0xff7043, { glow: 0x4a1800 }); movers.push({ s: m, z, amp, sp, ph, x: 0 }); }
-floor(92, 124, 0x81c784); sideWalls(92, 124);
-// 4. sweeping bars (jump over them)
-const sweepers = [];
-for (const [z, sp] of [[100, 1.6], [114, -2]]) { const hub = boxMesh(1.4, 1.6, 1.4, 0x212121); hub.position.set(0, 0.8, z); scene.add(hub); const bar = boxMesh(HW2 * 2 - 1, 0.6, 0.6, 0xffeb3b, 0x5c5c00); bar.position.set(0, 0.9, z); scene.add(bar); sweepers.push({ bar, z, sp, a: 0 }); }
-// 5. the door wall: some doors are fake and break, the rest are solid
+floor(0, 20, 62, 0x546e7a); sideWalls(0, 20, 62);
+for (const [x, z0, z1] of [[-4, 24, 58], [4, 24, 58]]) { const b = addBox(x, 0.05, (z0 + z1) / 2, 7.4, 0.3, z1 - z0, 0x37474f); const tex = stripeTex((z1 - z0) / 2); const st = new THREE.Mesh(new THREE.PlaneGeometry(7.4, z1 - z0), new THREE.MeshBasicMaterial({ map: tex })); st.rotation.x = -Math.PI / 2; st.position.set(x, 0.22, (z0 + z1) / 2); scene.add(st); belts.push({ s: b, tex, speed: x < 0 ? 5 : 7 }); }
+for (const [z, sp, ph] of [[32, 1.6, 0], [42, 2.1, 1.5], [52, 1.8, 3]]) { const h = addBox(0, 1.3, z, 3, 2.6, 1.6, 0xe53935); const arm = boxMesh(0.4, 8, 0.4, 0x5d4037); arm.position.set(0, 5.6, 0); h.m.add(arm); hammers.push({ s: h, z, sp, ph }); }
+floor(0, 62, 66, 0x546e7a); sideWalls(0, 62, 66);
+for (const [z, sp, ph] of [[70, 1.1, 0], [76, 1.4, 1.6], [82, 1.2, 3.1], [88, 1.5, 0.8]]) mover(0, 0, z, 5, sp, ph).round = 0;
+floor(0, 92, 124, 0x81c784); sideWalls(0, 92, 124);
+sweeper(0, 0, 100, HW2 * 2 - 1, 1.6).round = 0; sweeper(0, 0, 114, HW2 * 2 - 1, -2).round = 0;
 const doors = [];
 function buildDoors() {
   for (const d of doors) if (d.s && solids.includes(d.s)) removeSolid(d.s); doors.length = 0;
   const real = shuffle([0, 1, 2, 3, 4]).slice(0, 2);
   for (let i = 0; i < 5; i++) { const x = -6.4 + i * 3.2; const s = addBox(x, 1.6, 127, 3, 3.2, 0.6, pick([0x29b6f6, 0xab47bc, 0x66bb6a, 0xffa726, 0xef5350])); doors.push({ s, x, solid: real.includes(i), broken: false }); }
 }
-floor(124, 130, 0x81c784); sideWalls(124, 130); addBox(0, 4.5, 127, HW2 * 2, 2.6, 0.6, 0xffffff);
-// 6. bounce pads up to the finish
-floor(130, 150, 0xce93d8); sideWalls(130, 150);
-const pads = [];
-for (const x of [-4, 0, 4]) { const p = addBox(x, 0.1, 146, 3, 0.3, 3, 0x00e676, { glow: 0x00512a }); pads.push(p); }
-floor(150, 176, 0xffd54f, 6); sideWalls(150, 176, 6); addBox(0, 2.75, 151, HW2 * 2, 5.5, 2, 0xce93d8);
-const finishLine = new THREE.Mesh(new THREE.PlaneGeometry(HW2 * 2, 2), new THREE.MeshBasicMaterial({ map: (() => { const c = document.createElement("canvas"); c.width = 128; c.height = 16; const x = c.getContext("2d"); for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (i + j) % 2 ? "#111" : "#fff"; x.fillRect(i * 8, j * 8, 8, 8); } return new THREE.CanvasTexture(c); })() }));
-finishLine.rotation.x = -Math.PI / 2; finishLine.position.set(0, 6.03, 168); scene.add(finishLine);
-const FINISH_Z = 168;
+floor(0, 124, 130, 0x81c784); sideWalls(0, 124, 130); addBox(0, 4.5, 127, HW2 * 2, 2.6, 0.6, 0xffffff);
+floor(0, 130, 150, 0xce93d8); sideWalls(0, 130, 150);
+for (const x of [-4, 0, 4]) pads.push(addBox(x, 0.1, 146, 3, 0.3, 3, 0x00e676, { glow: 0x00512a }));
+floor(0, 150, 176, 0xffd54f, 6); sideWalls(0, 150, 176, 6); addBox(0, 2.75, 151, HW2 * 2, 5.5, 2, 0xce93d8);
+const checker = () => { const c = document.createElement("canvas"); c.width = 128; c.height = 16; const x = c.getContext("2d"); for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (i + j) % 2 ? "#111" : "#fff"; x.fillRect(i * 8, j * 8, 8, 8); } return new THREE.CanvasTexture(c); };
+const finishLine = new THREE.Mesh(new THREE.PlaneGeometry(HW2 * 2, 2), new THREE.MeshBasicMaterial({ map: checker() })); finishLine.rotation.x = -Math.PI / 2; finishLine.position.set(0, 6.03, 168); scene.add(finishLine);
 const arch = boxMesh(HW2 * 2 + 2, 1.4, 1, 0xec407a); arch.position.set(0, 12, 168); scene.add(arch); for (const s of [-1, 1]) { const p = boxMesh(1, 6, 1, 0xec407a); p.position.set(s * (HW2 + 1), 9, 168); scene.add(p); }
 const sign = makeLabel("FINISH", "#fff", 512, 80); sign.scale.set(8, 2, 1); sign.position.set(0, 14, 168); scene.add(sign);
-const CHECKS = [{ z: 0, y: 0.3 }, { z: 63, y: 0.3 }, { z: 94, y: 0.3 }, { z: 128.5, y: 0.3 }, { z: 132, y: 0.3 }, { z: 155, y: 6.3 }];
-const SECT = (z) => z < 20 ? "Start" : z < 62 ? "Conveyor Hammers" : z < 92 ? "Platform Gap" : z < 124 ? "Sweepers" : z < 130 ? "The Doors" : z < 150 ? "Bounce Up" : "Final Dash";
+
+// ---------- Round 2: Spin Island (x = 170): the edge crumbles, two bars sweep round ----------
+const X2 = 170, ISL = 15, tiles = [];
+for (let i = -ISL; i <= ISL; i += 2) for (let j = -ISL; j <= ISL; j += 2) { const d = Math.hypot(i, j); if (d > ISL) continue; const s = addBox(X2 + i, -0.5, j, 1.96, 1, 1.96, d < 5 ? 0xffd54f : (Math.round(i + j) / 2) % 2 ? 0x4fc3f7 : 0x81d4fa); s.m.material = new THREE.MeshStandardMaterial({ color: s.m.material.color.clone(), roughness: 0.6 }); tiles.push({ s, d, base: s.m.material.color.clone(), gone: false, warn: 0 }); }
+const island2 = { bars: [sweeper(X2, 0, 0, ISL * 2, 1.2, 0xff7043), sweeper(X2, 0, 0, 18, -1.7, 0xffeb3b)] };
+island2.bars.forEach((b) => { b.round = 1; });
+const flag2 = makeLabel("SPIN ISLAND", "#fff", 512, 70); flag2.scale.set(8, 2, 1); flag2.position.set(X2, 9, 0); scene.add(flag2);
+
+// ---------- Round 3: Summit Sprint (x = -170): steps, platforms, a bar, a bounce, the trophy ----------
+const X3 = -170;
+floor(X3, -6, 12, 0x90caf9); sideWalls(X3, -6, 12); addBox(X3, 2, -6.5, HW2 * 2, 4, 1, 0xffffff);
+const gate3 = addBox(X3, 1.5, 10, HW2 * 2, 3, 0.6, 0xffeb3b, { glow: 0x5c5c00 });
+for (let k = 1; k <= 12; k++) addBox(X3, (k * 0.5) / 2, 11.5 + k, HW2 * 2, k * 0.5, 1, k % 2 ? 0xce93d8 : 0xba68c8);
+floor(X3, 24, 36, 0x81c784, 6); sideWalls(X3, 24, 36, 6); addBox(X3, 2.75, 30, HW2 * 2, 5.5, 12, 0x6d4c41);
+for (const [z, sp, ph] of [[40, 1.2, 0.4], [46, 1.5, 2], [52, 1.3, 3.6], [58, 1.6, 1.1], [64, 1.4, 2.7]]) mover(X3, 6, z, 5, sp, ph).round = 2;
+floor(X3, 68, 100, 0xffcc80, 6); sideWalls(X3, 68, 100, 6); addBox(X3, 2.75, 84, HW2 * 2, 5.5, 32, 0x6d4c41);
+sweeper(X3, 6, 76, HW2 * 2 - 1, 1.9, 0xff7043).round = 2; sweeper(X3, 6, 88, HW2 * 2 - 1, -2.3, 0xffeb3b).round = 2;
+const pads3 = [-4, 0, 4].map((x) => addBox(X3 + x, 6.1, 96, 3, 0.3, 3, 0x00e676, { glow: 0x00512a }));
+addBox(X3, 9.5, 100.6, HW2 * 2, 7, 1.2, 0xce93d8);
+floor(X3, 100, 128, 0xffd54f, 13); sideWalls(X3, 100, 128, 13); addBox(X3, 6.5, 114, HW2 * 2, 13, 28, 0x6d4c41);
+// one last conveyor pushing you back from the trophy
+{ const b = addBox(X3, 13.05, 113, HW2 * 2 - 0.4, 0.3, 12, 0x37474f); const tex = stripeTex(6); const st = new THREE.Mesh(new THREE.PlaneGeometry(HW2 * 2 - 0.4, 12), new THREE.MeshBasicMaterial({ map: tex })); st.rotation.x = -Math.PI / 2; st.position.set(X3, 13.22, 113); scene.add(st); belts.push({ s: b, tex, speed: 6 }); }
+const TROPHY_Z = 123;
+const trophy = new THREE.Group(); { const cup = boxMesh(1.6, 1.4, 1.6, 0xffd600, 0x7a5c00); cup.position.y = 2.4; trophy.add(cup); const st = boxMesh(0.5, 1.2, 0.5, 0xffd600, 0x7a5c00); st.position.y = 1.2; trophy.add(st); const base = boxMesh(1.6, 0.6, 1.6, 0x8d6e63); base.position.y = 0.3; trophy.add(base); for (const s of [-1, 1]) { const h = boxMesh(0.3, 0.9, 0.3, 0xffd600, 0x7a5c00); h.position.set(s * 1, 2.5, 0); trophy.add(h); } }
+trophy.position.set(X3, 13, TROPHY_Z); scene.add(trophy);
+const tl = makeLabel("TROPHY", "#ffd600", 512, 70); tl.scale.set(5, 1.4, 1); tl.position.set(X3, 18, TROPHY_Z); scene.add(tl);
+
+// ---------- the rounds ----------
+const ROUNDS = [
+  { name: "DASH COURSE", info: "The first 9 over the line go through to Round 2.", x: 0, keep: 9 },
+  { name: "SPIN ISLAND", info: "Jump the spinning bars while the edge crumbles away. The last 4 on the island go through to the Final.", x: X2, keep: 4 },
+  { name: "SUMMIT SPRINT", info: "The Final! First to grab the trophy at the top wins the show.", x: X3, keep: 1 },
+];
+const CHECKS = [
+  [{ z: 0, y: 0.3 }, { z: 63, y: 0.3 }, { z: 94, y: 0.3 }, { z: 128.5, y: 0.3 }, { z: 132, y: 0.3 }, { z: 155, y: 6.3 }],
+  [],
+  [{ z: 2, y: 0.3 }, { z: 26, y: 6.3 }, { z: 69, y: 6.3 }, { z: 103, y: 13.3 }],
+];
+const SECT = [(z) => z < 20 ? "Start" : z < 62 ? "Conveyor Hammers" : z < 92 ? "Platform Gap" : z < 124 ? "Sweepers" : z < 130 ? "The Doors" : z < 150 ? "Bounce Up" : "Final Dash", () => "Spin Island", (z) => z < 24 ? "The Steps" : z < 56 ? "Sky Platforms" : z < 78 ? "The Sweep" : "The Summit"];
 
 // ---------- runners ----------
 const SAVE = "block-dash-race";
-let S = loadSave(SAVE, { races: 0, wins: 0, best: 0, podiums: 0 });
+let S = loadSave(SAVE, { shows: 0, wins: 0, finals: 0, best: 0 });
 const runners = [P];
-Object.assign(P, { name: ME_NAME, cp: 0, done: false, time: 0 });
+Object.assign(P, { name: ME_NAME, cp: 0, done: false, time: 0, inShow: true });
 const names = shuffle(BOT_NAMES.slice());
-for (let i = 0; i < 11; i++) {
+const N_BOTS = 15;
+for (let i = 0; i < N_BOTS; i++) {
   const body = makeAvatar({ shirt: BOT_COLORS[i % BOT_COLORS.length], pants: pick([0x37474f, 0x263238, 0x4e342e, 0x1a237e]), skin: pick(SKINS), hat: Math.random() < 0.5 ? pick(BOT_COLORS) : null });
-  body.g.add(nameTag(names[i])); scene.add(body.g);
-  runners.push({ name: names[i], body, pos: V(), vel: V(), onGround: false, yaw: 0, cp: 0, done: false, time: 0, lane: rr(-5, 5), skill: rr(0.55, 1), wait: 0, door: -1, doorT: 0, speed: rr(10.5, 12.5), jumpT: 0 });
+  body.g.add(nameTag(names[i % names.length] + (i >= names.length ? "2" : ""))); scene.add(body.g);
+  runners.push({ name: names[i % names.length] + (i >= names.length ? "2" : ""), body, pos: V(), vel: V(), onGround: false, yaw: 0, cp: 0, done: false, time: 0, inShow: true, lane: rr(-5, 5), skill: rr(0.5, 1), door: -1, doorT: 0, speed: rr(10.5, 12.5), jumpT: 0, roam: V(), roamT: 0 });
 }
 const bots = runners.slice(1);
+const inShow = () => runners.filter((r) => r.inShow);
+let round = 0, phase = "menu", countT = 0, raceT = 0, cardT = 0, watching = false, pendingRound = false, winner = null;
 const finishers = [];
-function respawn(r) { const c = CHECKS[r.cp]; r.pos.set(clamp(r.pos.x, -5, 5) * 0.5, c.y + 0.5, c.z); r.vel.set(0, 0, 0); if (r === P) show("Back to the checkpoint!", 1); }
-
-// ---------- the race ----------
-let phase = "menu", countT = 0, raceT = 0;
-function newRace() {
-  buildDoors(); finishers.length = 0; raceT = 0;
-  if (!solids.includes(gate)) { solids.push(gate); scene.add(gate.m); }
-  runners.forEach((r, i) => { r.pos.set(-6 + (i % 6) * 2.4, 0.3, 6 + Math.floor(i / 6) * 3); r.vel.set(0, 0, 0); r.cp = 0; r.done = false; r.time = 0; r.door = -1; });
-  cam.yaw = Math.PI; P.canMove = true; phase = "count"; countT = TEST ? 1 : 3.5; $("over").style.display = "none";
+function respawn(r) {
+  const list = CHECKS[round], c = list[r.cp] || list[0];
+  if (!c) { r.pos.set(ROUNDS[round].x, 1, 0); r.vel.set(0, 0, 0); return; } // Spin Island has no checkpoints
+  r.pos.set(ROUNDS[round].x + clamp(r.pos.x - ROUNDS[round].x, -5, 5) * 0.5, c.y + 0.5, c.z); r.vel.set(0, 0, 0);
+  if (r === P) show("Back to the checkpoint!", 1);
 }
-function finish(r) {
+function out(r) {
+  r.inShow = false; r.body.g.visible = false; r.vel.set(0, 0, 0); r.pos.set(0, -100, -300);
+  if (r === P) { SFX.lose(); P.canMove = false; showOut(); } else if (round === 1) tone(220, 0.2, "triangle", 0.03, -100);
+}
+
+// ---------- the show ----------
+function newShow() {
+  for (const r of runners) { r.inShow = true; r.body.g.visible = true; }
+  round = 0; winner = null; watching = false; pendingRound = false; S.shows++; storeSave(SAVE, S);
+  $("over").style.display = "none"; startRound();
+}
+function startRound() {
+  const R = ROUNDS[round]; finishers.length = 0; raceT = 0;
+  for (const r of runners) { r.cp = 0; r.done = false; r.time = 0; r.door = -1; r.vel.set(0, 0, 0); }
+  const field = inShow();
+  if (round === 0) { buildDoors(); if (!solids.includes(gate)) { solids.push(gate); scene.add(gate.m); } field.forEach((r, i) => r.pos.set(-7 + (i % 8) * 2, 0.3, 4 + Math.floor(i / 8) * 3)); }
+  if (round === 1) { for (const t of tiles) { t.gone = false; t.warn = 0; if (!solids.includes(t.s)) { solids.push(t.s); scene.add(t.s.m); } t.s.m.material.color.copy(t.base); } crumbleT = 9; crumbleR = ISL; field.forEach((r, i) => { const a = (i / field.length) * Math.PI * 2; r.pos.set(X2 + Math.sin(a) * 7, 0.3, Math.cos(a) * 7); }); }
+  if (round === 2) { if (!solids.includes(gate3)) { solids.push(gate3); scene.add(gate3.m); } field.forEach((r, i) => r.pos.set(X3 - 6 + (i % 7) * 2, 0.3, 3 + Math.floor(i / 7) * 3)); }
+  P.canMove = P.inShow; cam.yaw = round === 1 ? Math.atan2(P.pos.x - X2, P.pos.z) : Math.PI;
+  // the title card, then the countdown
+  $("cardR").textContent = round === 2 ? "THE FINAL" : `ROUND ${round + 1} OF 3`; $("cardT").textContent = R.name;
+  $("cardI").textContent = `${R.info} ${field.length} runners left.`;
+  $("card").style.display = "grid"; phase = "card"; cardT = TEST ? 0.6 : 3.2;
+}
+function qualify(r) {
   r.done = true; r.time = raceT; finishers.push(r);
   if (r === P) {
-    const place = finishers.length; S.races++; if (place === 1) S.wins++; if (place <= 3) S.podiums++; const best = !S.best || raceT < S.best; if (best) S.best = +raceT.toFixed(1); storeSave(SAVE, S);
-    sendScore("time", +raceT.toFixed(1)); if (place === 1) SFX.win(); else if (place <= 3) SFX.buy(); else SFX.tick();
-    show(place === 1 ? "YOU WIN!" : `${ord(place)} place!`, 2.2);
-    setTimeout(results, TEST ? 800 : 3500);
+    if (round === 0) { const best = !S.best || raceT < S.best; if (best) S.best = +raceT.toFixed(1); storeSave(SAVE, S); sendScore("time", +raceT.toFixed(1)); }
+    if (round < 2) { SFX.buy(); show("QUALIFIED!", 2); } else { S.wins++; storeSave(SAVE, S); sendScore("wins", S.wins); SFX.win(); show("YOU WON THE SHOW!", 3); }
   }
+  if (finishers.length >= ROUNDS[round].keep) endRound();
 }
-const ord = (n) => n + (n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th");
-const prog = (r) => (r.done ? 1000 - finishers.indexOf(r) : r.pos.z);
-function results() {
-  phase = "over"; const order = finishers.concat(runners.filter((r) => !r.done).sort((a, b) => prog(b) - prog(a)));
-  const place = finishers.indexOf(P) + 1;
-  $("oT").textContent = place === 1 ? "1ST PLACE!" : place ? `${ord(place).toUpperCase()} PLACE` : "OUT OF TIME";
-  $("resT").innerHTML = order.slice(0, 12).map((r, i) => `<tr class="${r === P ? "me" : ""}"><td>${ord(i + 1)}</td><td>${(r === P ? "You" : r.name).replace(/[<>&]/g, "")}</td><td>${r.done ? fmtT(r.time) : SECT(r.pos.z)}</td></tr>`).join("");
-  $("oInfo").textContent = `Wins ${S.wins} · Podiums ${S.podiums} · Best time ${S.best ? fmtT(S.best) : "-"}`;
+let crumbleT = 9, crumbleR = ISL;
+function endRound() {
+  if (phase !== "play") return;
+  phase = "roundEnd";
+  if (round === 1) for (const r of inShow()) if (!r.done) { r.done = true; finishers.push(r); } // everyone still standing goes through
+  if (round < 2) for (const r of inShow()) if (!r.done) out(r); // in the Final the rest are finalists
+  if (round === 2) { winner = finishers[0] || null; if (P.inShow) S.finals++; storeSave(SAVE, S); }
+  setTimeout(() => {
+    if (round === 2) return finalResults();
+    round++;
+    if (!P.inShow && !watching) { pendingRound = true; return; } // the "you're out" screen is up; it carries on if they choose to watch
+    startRound();
+  }, TEST ? 700 : 3200);
+}
+function showOut() {
+  $("oT").textContent = "ELIMINATED";
+  $("resT").innerHTML = "";
+  $("oInfo").textContent = `${round === 0 ? "Only the first 9 over the line went through" : "You fell off Spin Island"}. Watch the rest of the show, or start a new one. Shows won: ${S.wins}`;
+  $("watch").style.display = "inline-block"; $("over").style.display = "grid"; document.exitPointerLock?.();
+}
+function finalResults() {
+  phase = "over"; $("watch").style.display = "none";
+  const order = finishers.slice();
+  $("oT").textContent = winner === P ? "YOU WON THE SHOW!" : winner ? `${winner.name.toUpperCase()} WINS!` : "NOBODY WON";
+  $("resT").innerHTML = inShow().sort((a, b) => (a === winner ? -1 : b === winner ? 1 : 0)).map((r) => `<tr class="${r === P ? "me" : ""}"><td>${r === winner ? "Winner" : "Finalist"}</td><td>${(r === P ? "You" : r.name).replace(/[<>&]/g, "")}</td></tr>`).join("");
+  $("oInfo").textContent = `Shows ${S.shows} · Won ${S.wins} · Finals reached ${S.finals}${S.best ? " · fastest Round 1 " + fmtT(S.best) : ""}`;
   $("over").style.display = "grid"; document.exitPointerLock?.();
 }
 const fmtT = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+const ord = (n) => n + (n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th");
 
 // ---------- computer runners ----------
+function gapLogic(b, list, z, landZ) {
+  const next = list.find((m) => m.z > z + 1.5);
+  if (!next) return { tx: b.pos.x, tz: landZ, sp: b.speed };
+  if (!b.onGround) return { tx: next.x, tz: next.z, sp: b.speed };
+  const dx = Math.abs(next.x - b.pos.x);
+  if (dx < 2.2 + (1 - b.skill) * 1.2) { if (Math.abs(next.z - z) < 4.6 && b.jumpT <= 0) { b.wantJump = true; b.jumpT = 0.6; } return { tx: next.x, tz: next.z, sp: b.speed }; }
+  const ground = list.find((m) => Math.abs(m.z - z) < 2.2 && Math.abs(m.x - b.pos.x) < 2.6);
+  return { tx: ground ? ground.x : b.pos.x + (next.x - b.pos.x) * 0.5, tz: z, sp: 4 };
+}
+function jumpBars(b, list) {
+  for (const s of list) {
+    const dx = b.pos.x - s.x, dz = b.pos.z - s.z, d = Math.hypot(dx, dz); if (d > s.r + 1 || Math.abs(b.pos.y - s.y) > 1.5) continue;
+    const ang = Math.atan2(-dz, dx), ahead = angDiff(ang, s.a) * Math.sign(s.sp); // how far the bar still has to turn to reach you (either end)
+    const a1 = ((ahead % Math.PI) + Math.PI) % Math.PI; // 0..pi
+    // one try per pass of the bar: a careful runner usually makes it, a sloppy one often doesn't
+    if (a1 < 0.55 + Math.abs(s.sp) * 0.12 && a1 > 0.08 && b.onGround && b.jumpT <= 0 && (b.skipT || 0) <= 0) { if (Math.random() < 0.45 + b.skill * 0.45) { b.wantJump = true; b.jumpT = 0.7; } else b.skipT = 0.9; }
+  }
+}
 function botStep(b, dt, T) {
-  if (b.done) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); return; }
-  b.jumpT -= dt;
-  let tx = b.lane, tz = b.pos.z + 6, sp = b.speed;
-  const z = b.pos.z;
-  if (z > 62 && z < 92) {
-    // platform gap: wait on the edge or the platform until the next one is close, then jump
-    const next = movers.find((m) => m.z > z + 1.5);
-    if (next && b.onGround) { const dx = Math.abs(next.x - b.pos.x); if (dx < 2.2 + (1 - b.skill) * 1.2) { tx = next.x; tz = next.z; if (Math.abs(next.z - z) < 4.6 && b.jumpT <= 0) { b.wantJump = true; b.jumpT = 0.6; } } else { tx = b.pos.x + (next.x - b.pos.x) * 0.5; tz = z; sp = 4; const ground = movers.find((m) => Math.abs(m.z - z) < 2.2 && Math.abs(m.x - b.pos.x) < 2.6); if (ground) tx = ground.x; } }
-    else if (!next) tz = 95;
-  } else if (z > 92 && z < 124) {
-    for (const s of sweepers) { if (Math.abs(s.z - z) < 7) { const barAt = Math.atan2(b.pos.x, b.pos.z - s.z); const lead = angDiff(s.a + (s.sp > 0 ? 0.6 : -0.6), Math.atan2(-(b.pos.z - s.z), b.pos.x)); if (Math.abs(lead) < 0.5 && b.onGround && b.jumpT <= 0 && Math.random() < b.skill) { b.wantJump = true; b.jumpT = 0.7; } } }
-  } else if (z > 120 && z < 128) {
-    if (b.door < 0) b.door = ri(0, 4);
-    const d = doors[b.door]; tx = d.x; tz = 130;
-    if (b.bumped && z > 125) { b.doorT += dt; if (b.doorT > 0.6) { b.door = doors.findIndex((o) => o.broken) >= 0 && Math.random() < 0.7 ? doors.findIndex((o) => o.broken) : ri(0, 4); b.doorT = 0; } }
-  } else if (z > 130 && z < 150) { tx = [-4, 0, 4][Math.abs(Math.round(b.lane)) % 3]; tz = 162; }
-  else if (z >= 150) { tx = b.lane * 0.6; tz = 175; }
+  if (!b.inShow) return;
+  if (b.done && round !== 1) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); return; }
+  b.jumpT -= dt; b.skipT = (b.skipT || 0) - dt;
+  const X = ROUNDS[round].x, z = b.pos.z;
+  let tx = X + b.lane, tz = z + 6, sp = b.speed;
+  if (round === 0) {
+    if (z > 62 && z < 92) ({ tx, tz, sp } = gapLogic(b, movers.filter((m) => m.round === 0), z, 95));
+    else if (z > 92 && z < 124) jumpBars(b, sweepers.filter((s) => s.round === 0));
+    else if (z > 120 && z < 128) {
+      if (b.door < 0) b.door = ri(0, 4);
+      tx = doors[b.door].x; tz = 130;
+      if (b.bumped && z > 125) { b.doorT += dt; if (b.doorT > 0.6) { const brk = doors.findIndex((o) => o.broken); b.door = brk >= 0 && Math.random() < 0.7 ? brk : ri(0, 4); b.doorT = 0; } }
+    } else if (z > 130 && z < 150) { tx = [-4, 0, 4][Math.abs(Math.round(b.lane)) % 3]; tz = 162; }
+    else if (z >= 150) { tx = b.lane * 0.6; tz = 175; }
+  } else if (round === 1) {
+    // stay near the middle (the edge is crumbling) and jump the bars
+    b.roamT -= dt; if (b.roamT <= 0) { b.roamT = rr(1, 3); const a = rr(0, 6.3), r = rr(0, Math.min(crumbleR - 4, 7)); b.roam.set(X2 + Math.sin(a) * r, 0, Math.cos(a) * r); }
+    tx = b.roam.x; tz = b.roam.z; sp = b.speed * 0.6;
+    jumpBars(b, island2.bars);
+  } else {
+    if (z < 34) { tx = X + b.lane * 0.7; tz = 38; }
+    else if (z < 68) ({ tx, tz, sp } = gapLogic(b, movers.filter((m) => m.round === 2), z, 72));
+    else if (z < 100 && b.pos.y < 12) { jumpBars(b, sweepers.filter((s) => s.round === 2)); tx = X3 + [-4, 0, 4][Math.abs(Math.round(b.lane)) % 3]; tz = 110; }
+    else { tx = X3 + b.lane * 0.3; tz = TROPHY_Z; }
+  }
   const want = V(tx - b.pos.x, 0, tz - b.pos.z); if (want.lengthSq() > 0.3) want.normalize().multiplyScalar(sp); else want.set(0, 0, 0);
   physics(b, want, dt);
-  if (b.bumped && b.onGround && Math.random() < 0.08 && !(z > 120 && z < 128)) b.wantJump = true;
+  if (b.bumped && b.onGround && Math.random() < 0.08 && !(round === 0 && z > 120 && z < 128)) b.wantJump = true;
   faceMove(b, dt); animate(b.body, Math.hypot(b.vel.x, b.vel.z), b.onGround, T);
 }
 
 // ---------- start ----------
-function showStats() { $("stats").textContent = S.races ? `Races ${S.races} · Wins ${S.wins} · Podiums ${S.podiums}${S.best ? " · best " + fmtT(S.best) : ""}` : ""; }
-showStats(); buildDoors(); runners.forEach((r, i) => { r.pos.set(-6 + (i % 6) * 2.4, 0.3, 6 + Math.floor(i / 6) * 3); }); P.pos.set(0, 0.3, 4); cam.yaw = Math.PI;
+function showStats() { $("stats").textContent = S.shows ? `Shows ${S.shows} · Won ${S.wins} · Finals ${S.finals}${S.best ? " · fastest Round 1 " + fmtT(S.best) : ""}` : ""; }
+showStats(); buildDoors(); runners.forEach((r, i) => r.pos.set(-7 + (i % 8) * 2, 0.3, 4 + Math.floor(i / 8) * 3)); P.pos.set(0, 0.3, 2); cam.yaw = Math.PI;
 touchControls([JUMP_BUTTON]);
+const prog = (r) => (r.done ? 1000 - finishers.indexOf(r) : r.pos.z + r.pos.y);
 onFrame((dt, T) => {
-  // the course moves
+  // everything on the courses moves all the time
   for (const b of belts) { b.s.dz = -b.speed * dt; b.s.dx = 0; b.tex.offset.y += b.speed * dt * 0.5; }
   for (const h of hammers) { const nx = Math.sin(T * h.sp + h.ph) * (HW2 - 2); h.s.dx = nx - h.s.x; h.s.x = nx; h.s.m.position.x = nx; h.s.m.rotation.z = -Math.cos(T * h.sp + h.ph) * 0.5; }
-  for (const m of movers) { const nx = Math.sin(T * m.sp + m.ph) * m.amp; m.s.dx = nx - m.s.x; m.s.x = nx; m.x = nx; m.s.m.position.x = nx; }
-  for (const s of sweepers) { s.a += s.sp * dt; s.bar.rotation.y = s.a; }
-  if (started && phase === "count") { countT -= dt; const n = Math.ceil(countT); $("count").style.display = "block"; $("count").textContent = countT > 0 ? n : "GO!"; if (String(n) !== $("count").dataset.n) { $("count").dataset.n = String(n); tone(countT > 0 ? 440 : 880, 0.2, "square", 0.05); } if (countT <= 0) { phase = "race"; removeSolid(gate); setTimeout(() => { $("count").style.display = "none"; }, 600); } }
-  if (started && (phase === "race" || phase === "count")) {
-    if (phase === "race") raceT += dt;
-    if (!P.done) stepPlayer(dt, T); else { physics(P, V(), dt); P.body.g.position.copy(P.pos); }
+  for (const m of movers) { const nx = m.x0 + Math.sin(T * m.sp + m.ph) * m.amp; m.s.dx = nx - m.s.x; m.s.x = nx; m.x = nx; m.s.m.position.x = nx; }
+  for (const s of sweepers) { s.a += s.sp * dt * (round === 1 && s.round === 1 ? 1 + raceT / 60 : 1); s.bar.rotation.y = s.a; }
+  trophy.rotation.y = T;
+  if (phase === "card" && (started || watching)) { cardT -= dt; if (cardT <= 0) { $("card").style.display = "none"; phase = "count"; countT = TEST ? 0.8 : 3.2; } }
+  if (phase === "count") { countT -= dt; const n = Math.ceil(countT); $("count").style.display = "block"; $("count").textContent = countT > 0 ? n : "GO!"; if (String(n) !== $("count").dataset.n) { $("count").dataset.n = String(n); tone(countT > 0 ? 440 : 880, 0.2, "square", 0.05); } if (countT <= 0) { phase = "play"; if (round === 0) removeSolid(gate); if (round === 2) removeSolid(gate3); setTimeout(() => { $("count").style.display = "none"; }, 600); } }
+  const live = (started || watching) && (phase === "play" || phase === "count" || phase === "roundEnd");
+  if (live) {
+    if (phase === "play") raceT += dt;
+    // a knock from a bar really throws you (steering can't cancel it for a moment)
+    for (const r of runners) if ((r.knockT || 0) > 0.2 && r.kv) { r.vel.x = r.kv.x; r.vel.z = r.kv.z; }
+    if (P.inShow) { if (!P.done || round === 1) stepPlayer(dt, T); else { physics(P, V(), dt); P.body.g.position.copy(P.pos); } }
     for (const b of bots) botStep(b, dt, T);
-    for (const r of runners) {
-      // sweeping bars knock you flying unless you jump them
-      r.knockT = (r.knockT || 0) - dt;
-      for (const s of sweepers) { const dx = r.pos.x, dz = r.pos.z - s.z, dist = Math.hypot(dx, dz); if (dist > HW2 || r.pos.y > 1.1 || r.knockT > 0) continue; const ang = Math.atan2(-dz, dx), off = Math.abs(Math.sin(angDiff(ang, s.a))) * dist; if (off < 0.7) { const tang = V(-Math.sin(s.a), 0, -Math.cos(s.a)).multiplyScalar(Math.sign(s.sp) * (Math.sign(Math.cos(angDiff(ang, s.a))) || 1)); r.vel.addScaledVector(tang, 16); r.vel.y = 9; r.onGround = false; r.knockT = 0.7; if (r === P) SFX.hit(); } }
-      // bounce pads
-      for (const p of pads) if (r.ground === p) { r.vel.y = 24; r.vel.z = Math.max(r.vel.z, 9); r.onGround = false; if (r === P) SFX.jump(); }
-      // fake doors break when you run into them
-      for (const d of doors) if (!d.broken && !d.solid && Math.abs(r.pos.x - d.x) < 1.95 && Math.abs(r.pos.z - 127) < 1.2) { d.broken = true; removeSolid(d.s); tone(150, 0.25, "sawtooth", 0.05, -60); }
-      // checkpoints, falling, the finish
-      for (let k = CHECKS.length - 1; k > r.cp; k--) if (r.pos.z > CHECKS[k].z && r.pos.y > CHECKS[k].y - 1) { r.cp = k; if (r === P) show("Checkpoint!", 0.8); break; }
-      if (r.pos.y < -8) respawn(r);
-      if (!r.done && r.pos.z > FINISH_Z && r.pos.y > 4) finish(r);
+    // Round 2: the island crumbles from the edge in, a ring at a time (it flashes first)
+    if (round === 1 && phase === "play") {
+      crumbleT -= dt;
+      if (crumbleT < 2.5 && crumbleR > 4) for (const t of tiles) if (!t.gone && t.d > crumbleR - 2) t.s.m.material.color.setHex(Math.sin(T * 20) > 0 ? 0xff1744 : 0xffffff);
+      if (crumbleT <= 0 && crumbleR > 4) { for (const t of tiles) if (!t.gone && t.d > crumbleR - 2) { t.gone = true; removeSolid(t.s); } crumbleR -= 2; crumbleT = TEST ? 4 : 8; tone(90, 0.4, "sawtooth", 0.05, -40); }
     }
-    if (phase === "race" && finishers.length && !P.done && raceT - finishers[0].time > (TEST ? 20 : 60)) { phase = "over"; results(); }
-    if (phase === "race" && raceT > (TEST ? 150 : 300) && !P.done) results();
-  } else if (!started || phase === "menu") { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
-  updateCamera(dt);
-  const order = runners.slice().sort((a, b) => prog(b) - prog(a)), place = P.done ? finishers.indexOf(P) + 1 : order.indexOf(P) + 1;
-  $("tPlace").textContent = ord(place); $("tTime").textContent = fmtT(P.done ? P.time : raceT);
-  $("hSect").textContent = SECT(P.pos.z); $("hInfo").textContent = `${finishers.length} of 12 finished`;
+    for (const r of runners) {
+      if (!r.inShow) continue;
+      r.knockT = (r.knockT || 0) - dt;
+      for (const s of sweepers) {
+        if (s.round !== round) continue;
+        const dx = r.pos.x - s.x, dz = r.pos.z - s.z, dist = Math.hypot(dx, dz);
+        if (dist > s.r || r.pos.y > s.y + 1.1 || r.pos.y < s.y - 1 || r.knockT > 0) continue;
+        const ang = Math.atan2(-dz, dx), off = Math.abs(Math.sin(angDiff(ang, s.a))) * dist;
+        if (off < 0.7) { const tang = V(-Math.sin(s.a), 0, -Math.cos(s.a)).multiplyScalar(Math.sign(s.sp) * (Math.sign(Math.cos(angDiff(ang, s.a))) || 1)); r.kv = tang.multiplyScalar(round === 1 ? 19 : 15); r.vel.x = r.kv.x; r.vel.z = r.kv.z; r.vel.y = 9; r.onGround = false; r.knockT = 0.7; if (r === P) SFX.hit(); }
+      }
+      for (const p of pads) if (r.ground === p) { r.vel.y = 24; r.vel.z = Math.max(r.vel.z, 9); r.onGround = false; if (r === P) SFX.jump(); }
+      for (const p of pads3) if (r.ground === p) { r.vel.y = 25; r.vel.z = Math.max(r.vel.z, 8); r.onGround = false; if (r === P) SFX.jump(); }
+      for (const d of doors) if (round === 0 && !d.broken && !d.solid && Math.abs(r.pos.x - d.x) < 1.95 && Math.abs(r.pos.z - 127) < 1.2) { d.broken = true; removeSolid(d.s); tone(150, 0.25, "sawtooth", 0.05, -60); }
+      const list = CHECKS[round];
+      for (let k = list.length - 1; k > r.cp; k--) if (r.pos.z > list[k].z && r.pos.y > list[k].y - 1) { r.cp = k; if (r === P) show("Checkpoint!", 0.8); break; }
+      if (r.pos.y < -8) { if (round === 1) { if (phase === "play" || phase === "count") out(r); else respawn(r); } else respawn(r); }
+      if (phase === "play" && !r.done) {
+        if (round === 0 && r.pos.z > 168 && r.pos.y > 4) qualify(r);
+        if (round === 2 && Math.hypot(r.pos.x - X3, r.pos.z - TROPHY_Z) < 2.2 && r.pos.y > 12) qualify(r);
+      }
+    }
+    if (round === 1 && phase === "play" && (inShow().length <= ROUNDS[1].keep || raceT > (TEST ? 40 : 75))) endRound();
+    if (phase === "play" && round !== 1 && raceT > (TEST ? 150 : 240)) endRound();
+  } else if (!started && !watching) { for (const b of bots) { physics(b, V(), dt); faceMove(b, dt); animate(b.body, 0, b.onGround, T); } stepPlayer(dt, T); }
+  // camera: you, or the leader once you're out
+  let follow = P.pos;
+  if (!P.inShow) { const lead = inShow().sort((a, b) => prog(b) - prog(a))[0]; if (lead) follow = lead.pos; }
+  updateCamera(dt, follow);
+  // HUD
+  const field = inShow(), R = ROUNDS[round];
+  $("tMain").textContent = round === 2 ? "The Final" : `Round ${round + 1} of 3`;
+  $("tSub").textContent = phase === "play" ? fmtT(raceT) : "";
+  $("hSect").textContent = P.inShow ? SECT[round](P.pos.z) : "Watching";
+  $("hInfo").textContent = round === 0 ? `${finishers.length}/${R.keep} qualified` : round === 1 ? `${field.length} left, the last ${R.keep} go through` : "First to the trophy wins";
 });
 
-$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "over") newRace(); };
-$("again").onclick = () => newRace();
+$("play").onclick = () => { $("start").style.display = "none"; started = true; audio(); if (phase === "menu" || phase === "over") newShow(); else if (phase === "card") $("card").style.display = "grid"; };
+$("again").onclick = () => { $("watch").style.display = "none"; newShow(); };
+$("watch").onclick = () => { watching = true; $("over").style.display = "none"; $("watch").style.display = "none"; if (pendingRound) { pendingRound = false; startRound(); } };
 $("menuB").onclick = () => { started = false; showStats(); $("start").style.display = "grid"; document.exitPointerLock?.(); };
 if (TEST) window.__game = {
-  state: () => ({ phase, t: +raceT.toFixed(1), z: +P.pos.z.toFixed(1), y: +P.pos.y.toFixed(1), cp: P.cp, done: P.done, finishers: finishers.length, botZ: bots.map((b) => Math.round(b.pos.z)).join(","), botDone: bots.filter((b) => b.done).length }),
-  tp: (z, y = 0.5) => { P.pos.set(0, y, z); P.vel.set(0, 0, 0); }, doors, runners, movers,
+  state: () => ({ phase, round, t: +raceT.toFixed(1), z: +P.pos.z.toFixed(1), y: +P.pos.y.toFixed(1), meIn: P.inShow, done: P.done, finishers: finishers.length, left: inShow().length, winner: winner && winner.name, crumble: crumbleR }),
+  tp: (x, y, z) => { P.pos.set(x, y, z); P.vel.set(0, 0, 0); }, doors, runners, movers, X2, X3, watch: () => $("watch").click(),
 };
 loop();
 })();
