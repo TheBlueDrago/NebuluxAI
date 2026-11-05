@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles, Smartphone, Globe, ShieldCheck, Gamepad2, Play, Check, ChevronDown, Mail, Phone, MessageCircle, GraduationCap, PenLine, Code2, Image, Mic, UserRoundPen, Layers } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import SiteThumb from "@/components/SiteThumb";
+import { gameThumb } from "@/lib/gameThumbs";
 import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 import PricingCards from "@/components/landing/PricingCards";
 import { SALES_OPEN } from "@/lib/salesOpen";
@@ -101,15 +102,18 @@ const STEPS = [
   ["Make it yours", "Ask follow-ups or changes until it's right, then keep it, copy it, or publish what you made with a link."],
 ];
 
-// Built-in games (src/lib/builtInGames.js), listed by name so their code isn't loaded here.
+// A few of the Arcade's games, listed by name so their code isn't loaded here (the rest are under
+// All games). A screenshot shows when public/game-thumbs has one (src/lib/gameThumbs.js).
 const GAMES = [
-  { name: "fruit-seas", title: "Fruit Seas", text: "Sail between islands, eat fruits with powers and beat the bosses.", color: "from-amber-500 to-rose-500", tag: "New" },
-  { name: "sky-obby", title: "Sky Obby", text: "50 hard stages in the sky and a glass bridge at the end.", color: "from-sky-500 to-emerald-500", tag: "New" },
-  { name: "bed-brawl", title: "Bed Brawl", text: "Protect your bed, build bridges and break the others'.", color: "from-blue-500 to-indigo-500", tag: "New" },
-  { name: "brawl-blitz", title: "Brawl Blitz", text: "3 vs 3 gem grab with five fighters to pick from.", color: "from-fuchsia-500 to-purple-600", tag: "New" },
-  { name: "storm-royale", title: "Storm Royale", text: "Drop in, loot, and be the last one standing.", color: "from-violet-500 to-cyan-500", tag: "New" },
-  { name: "pulse", title: "Pulse Jump", text: "Jump and fly through 7 neon levels.", color: "from-indigo-500 to-fuchsia-500" },
-  { name: "veck", title: "Veck", text: "Fight waves of bots in a zero-gravity arena.", color: "from-fuchsia-500 to-rose-500" },
+  { name: "block-dash-race", title: "Block Dash Race", text: "Twelve runners, one wild obstacle course.", color: "from-pink-500 to-amber-400", tag: "New" },
+  { name: "titan-raid", title: "Titan Raid", text: "Team up with three heroes against a giant stone boss.", color: "from-orange-600 to-stone-700", tag: "New" },
+  { name: "block-kart-racers", title: "Block Kart Racers", text: "Drift, grab items and race seven karts over three laps.", color: "from-sky-500 to-blue-700", tag: "New" },
+  { name: "hide-and-seek-town", title: "Hide and Seek Town", text: "Hide in houses, a hedge maze and a treehouse, or be the seeker.", color: "from-teal-500 to-emerald-700", tag: "New" },
+  { name: "treasure-dive", title: "Treasure Dive", text: "Dive for treasure all the way down to the dark abyss.", color: "from-cyan-500 to-blue-900", tag: "New" },
+  { name: "block-farm-valley", title: "Block Farm Valley", text: "Plant, water and harvest, and grow your farm.", color: "from-lime-500 to-green-700", tag: "New" },
+  { name: "fruit-seas", title: "Fruit Seas", text: "Sail between islands, eat fruits with powers and beat the bosses.", color: "from-amber-500 to-rose-500" },
+  { name: "sky-obby", title: "Sky Obby", text: "50 hard stages in the sky and a glass bridge at the end.", color: "from-sky-500 to-emerald-500" },
+  { name: "storm-royale", title: "Storm Royale", text: "Drop in, loot, and be the last one standing.", color: "from-violet-500 to-cyan-500" },
 ];
 
 const FAQ = [
@@ -378,7 +382,7 @@ export default function Landing() {
               className="group flex items-center gap-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 hover:border-fuchsia-500/50 hover:-translate-y-0.5 transition-all"
             >
               <span className={`shrink-0 w-16 h-14 rounded-xl overflow-hidden bg-gradient-to-br ${g.color} flex items-center justify-center`}>
-                {g.tag ? <img src={`/game-thumbs/${g.name}.jpg`} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Gamepad2 className="w-7 h-7 text-white" />}
+                {gameThumb(g.name) ? <img src={gameThumb(g.name)} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Gamepad2 className="w-7 h-7 text-white" />}
               </span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-2 font-semibold text-white">
