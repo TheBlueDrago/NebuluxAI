@@ -32,6 +32,18 @@ export const rememberRepo = (name, repo) => set(REPO_KEY(name), repo);
 export const savedPath = (name) => get(PATH_KEY(name)) || "index.html";
 export const rememberPath = (name, path) => set(PATH_KEY(name), path === "index.html" ? "" : path);
 
+// What went wrong, in plain words. GitHub also answers 403 for things that aren't about the token (a
+// file over 1 MB read the default way, too many requests), so only real permission answers say "token".
+function ghError(status, data) {
+  const msg = String((data && data.message) || "");
+  if (status === 401) return "GitHub didn't accept that token. It may have expired: make a new one.";
+  if (status === 404 || (status === 403 && /not accessible|permission|must have|forbidden/i.test(msg)))
+    return "This token can't use that repository. Give it \"Contents: Read and write\" for this repo.";
+  if (status === 403 && /rate limit|secondary/i.test(msg)) return "GitHub says there have been too many requests. Wait a minute and try again.";
+  if (status === 409) return "The repository changed while saving. Try again.";
+  if (status === 422 && /too large|size/i.test(msg)) return "That file is too big for GitHub to take this way.";
+  return msg ? `GitHub: ${msg}` : `GitHub error ${status}`;
+}
 async function gh(token, path, init = {}) {
   const res = await fetch(API + path, {
     ...init,
@@ -39,18 +51,15 @@ async function gh(token, path, init = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const e = new Error(
-      res.status === 401
-        ? "GitHub didn't accept that token. It may have expired: make a new one."
-        : res.status === 403 || res.status === 404
-          ? "This token can't use that repository. Give it \"Contents: Read and write\" for this repo."
-          : data.message || `GitHub error ${res.status}`
-    );
+    const e = new Error(ghError(res.status, data));
     e.status = res.status;
+    e.ghMessage = data && data.message;
     throw e;
   }
   return data;
 }
+// "object" answers with a file's details (its sha) for files up to 100 MB; the default answer stops at 1 MB
+const OBJECT = { headers: { Accept: "application/vnd.github.object+json" } };
 
 // Checks a token and remembers it. Returns the GitHub username.
 export async function connect(token) {
@@ -74,7 +83,7 @@ export async function listPages(token, fullName, branch) {
     throw e;
   });
   return (tree.tree || [])
-    .filter((f) => f.type === "blob" && /\.html?$/i.test(f.path) && !/(^|\/)(node_modules|\.git|vendor)\//.test(f.path) && f.size < 1_500_000)
+    .filter((f) => f.type === "blob" && /\.html?$/i.test(f.path) && !/(^|\/)(node_modules|\.git|vendor)\//.test(f.path) && f.size < 20_000_000)
     .map((f) => f.path)
     .sort((a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b))
     .slice(0, 300);
@@ -94,17 +103,20 @@ export async function listFiles(token, fullName, branch) {
     .slice(0, 1000);
 }
 
-// One text file from the repo (UTF-8). Resolves "" when it doesn't exist.
+// One text file from the repo (UTF-8). Resolves "" when it doesn't exist. Asked for "raw", so files
+// over 1 MB come back too.
 export async function readFile(token, fullName, path) {
-  try {
-    const f = await gh(token, `/repos/${fullName}/contents/${path.split("/").map(encodeURIComponent).join("/")}`);
-    if (typeof f.content !== "string") return "";
-    const bin = atob(f.content.replace(/\s/g, ""));
-    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
-  } catch (e) {
-    if (e.status === 404) return "";
+  const res = await fetch(`${API}/repos/${fullName}/contents/${path.split("/").map(encodeURIComponent).join("/")}`, {
+    headers: { Accept: "application/vnd.github.raw+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
+  });
+  if (res.status === 404) return "";
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const e = new Error(ghError(res.status, data));
+    e.status = res.status;
     throw e;
   }
+  return new TextDecoder().decode(new Uint8Array(await res.arrayBuffer()));
 }
 
 // UTF-8 safe base64 for the contents API.
@@ -119,12 +131,24 @@ const b64 = (text) => {
 export async function pushFile(token, fullName, html, message, path = "index.html") {
   if (!/^[\w.-]+\/[\w.-]+$/.test(fullName)) throw new Error("Pick a repository.");
   const url = `/repos/${fullName}/contents/${path.split("/").map(encodeURIComponent).join("/")}`;
-  let sha;
+  // the file's current version (any size up to 100 MB); none yet means this creates it
+  const current = async () => {
+    try {
+      return (await gh(token, url, OBJECT)).sha;
+    } catch (e) {
+      if (e.status === 404) return undefined;
+      throw e;
+    }
+  };
+  const content = b64(html);
+  const put = async (sha) => gh(token, url, { method: "PUT", body: JSON.stringify({ message, content, ...(sha ? { sha } : {}) }) });
+  let out;
   try {
-    sha = (await gh(token, url)).sha;
+    out = await put(await current());
   } catch (e) {
-    if (e.status !== 404) throw e; // 404: the file doesn't exist yet, so this creates it
+    // it changed in between (or GitHub wants the latest version): look again and try once more
+    if (e.status !== 409 && !(e.status === 422 && /sha/i.test(e.ghMessage || ""))) throw e;
+    out = await put(await current());
   }
-  const out = await gh(token, url, { method: "PUT", body: JSON.stringify({ message, content: b64(html), ...(sha ? { sha } : {}) }) });
   return out?.content?.html_url || `https://github.com/${fullName}`;
 }

@@ -108,10 +108,11 @@ assert(out.html.includes('<script data-from="js/app.js" defer>'), "script attrib
 {
   const gh = await import(pathToFileURL(R + "src/lib/githubClient.js").href);
   const tree = ["index.html", "about.htm", "docs/guide.html", "node_modules/pkg/readme.html", "style.css", "a/.git/x.html"].map((path) => ({ type: "blob", path, size: 100 }));
-  globalThis.fetch = async (url) => {
-    const u = String(url);
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url), raw = /raw/.test((init.headers || {}).Accept || "");
     if (u.includes("/git/trees/")) return new Response(JSON.stringify({ tree }));
-    if (u.includes("/contents/docs/my%20page.html")) return new Response(JSON.stringify({ content: Buffer.from("<p>héllo</p>").toString("base64").replace(/(.{8})/g, "$1\n") }));
+    // asked for "raw", GitHub sends the file itself (as bytes); otherwise its details with the text in wrapped base64
+    if (u.includes("/contents/docs/my%20page.html")) return raw ? new Response(Buffer.from("<p>héllo</p>")) : new Response(JSON.stringify({ content: Buffer.from("<p>héllo</p>").toString("base64").replace(/(.{8})/g, "$1\n"), encoding: "base64" }));
     return new Response("{}", { status: 404 });
   };
   const pages = await gh.listPages("t", "me/site", "main");
