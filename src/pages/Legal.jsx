@@ -5,7 +5,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 
 // Public /terms and /privacy pages, linked from sign-up, log-in, billing and the
 // report page. Plain language on purpose; keep them in step with what the app does.
-const UPDATED = "October 31, 2026";
+const UPDATED = "November 6, 2026";
 // Optional: a support address to show instead of the contact form (/contact).
 const CONTACT_EMAIL = "";
 
@@ -31,6 +31,7 @@ function LegalPage({ title, other, children }) {
         <p className="mt-10 pt-4 border-t border-slate-800 text-slate-400">
           See also: <Link to={other.to}>{other.label}</Link>
         </p>
+        <p className="mt-3 text-xs text-slate-500">© {new Date().getFullYear()} Nebulux LLC. Nebulux AI is owned and operated by Nebulux LLC.</p>
       </article>
     </div>
   );
@@ -39,6 +40,9 @@ function LegalPage({ title, other, children }) {
 export function Terms() {
   return (
     <LegalPage title="Terms of Service" other={{ to: "/privacy", label: "Privacy Policy" }}>
+      <p>
+        Nebulux AI is owned and operated by <strong>Nebulux LLC</strong> ("Nebulux LLC", "we", "us" or "our"). These terms are an agreement between you and Nebulux LLC.
+      </p>
       <p>
         These terms cover your use of Nebulux AI at nebuluxai.com, including its AI chat, Nebulux Code,
         the Website and Game Designers and the sites and games people publish with it. By
@@ -146,11 +150,32 @@ export function Terms() {
         the contact page and we'll look at it again.
       </p>
 
+      <h2>If something you paid for doesn't arrive</h2>
+      <p>
+        If you pay for something (a plan, usage credits, an API balance or anything else) and you don't get it in
+        time, or don't get it at all, please contact support through <Contact /> and tell us the email on your
+        account and what you bought. <strong>The best we can do is try to get it to you.</strong> We'll look into it and
+        work to deliver it, but we can't guarantee 100% that you will get it, or that you'll get it by a certain time.
+      </p>
+
       <h2>No warranty</h2>
       <p>
-        Nebulux AI is provided "as is". We work to keep it running, but it may change, have errors or be
-        unavailable, and features, plans and prices can change. To the fullest extent the law allows, we are not
-        liable for any damages or losses of any kind that come from using (or not being able to use) Nebulux AI.
+        Nebulux AI is provided "as is" and "as available", without warranties of any kind. We work to keep it running,
+        but it may change, have errors or be unavailable, and features, plans and prices can change.
+      </p>
+
+      <h2>We are not liable</h2>
+      <p>
+        <strong>To the fullest extent the law allows, Nebulux LLC, and its owners, team members and partners, are not
+        liable for any damages or losses of any kind</strong> that come from using (or not being able to use) Nebulux AI.
+        That includes indirect, incidental, special or consequential damages; lost profits, sales, data or work; mistakes
+        in AI answers; downtime; problems with payments, purchases or deliveries, including something you paid for
+        arriving late or not at all; and anything done by other people or outside services.
+      </p>
+      <p>
+        If we are found liable for anything anyway, our total liability is limited to the amount you paid Nebulux LLC in
+        the 12 months before the claim. Some places don't allow some of these limits, so they may not all apply to you,
+        and nothing in these terms takes away rights you have by law that can't be taken away.
       </p>
 
       <h2>Ending</h2>
@@ -168,7 +193,7 @@ export function Terms() {
 export function Privacy() {
   return (
     <LegalPage title="Privacy Policy" other={{ to: "/terms", label: "Terms of Service" }}>
-      <p>This explains what Nebulux AI collects, why, and who helps us run it.</p>
+      <p>This explains what Nebulux AI collects, why, and who helps us run it. Nebulux AI is owned and operated by <strong>Nebulux LLC</strong> ("we", "us"), which is responsible for the information described here.</p>
       <div className="my-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
         <p className="font-semibold text-white">In short</p>
         <ul>
@@ -280,6 +305,15 @@ export function Privacy() {
         To remove one connected app, open Settings → Connectors, pick the app and press Disconnect: we delete the permission we
         kept for it. You can also remove Nebulux's access from that app's own settings (for Zoom: App Marketplace → Manage →
         Added Apps → Remove).
+      </p>
+
+      <h2>Security, and what we're not liable for</h2>
+      <p>
+        We protect your information with secure (https) connections, scrambled (hashed) passwords and limited team
+        access, but no service can be 100% secure. To the fullest extent the law allows, Nebulux LLC isn't liable for
+        losses caused by access to your information that we couldn't reasonably prevent. If you pay for something and it
+        arrives late or not at all, see the <Link to="/terms">Terms of Service</Link>: contact support through <Contact /> and
+        we'll try to get it to you, though we can't guarantee 100% that you'll get it.
       </p>
 
       <h2>Children</h2>

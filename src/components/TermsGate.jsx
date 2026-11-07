@@ -16,6 +16,7 @@ const seenKey = (id, v) => `nx-terms:${id}:${v}`;
 const FALLBACK_VERSION = "2026-10-21-privacy";
 
 const POINTS = [
+  "Nebulux AI is owned and operated by Nebulux LLC. As far as the law allows, Nebulux LLC isn't liable for losses from using it. If you pay for something and it arrives late or not at all, contact support: we'll try to get it to you, but we can't guarantee 100% that you'll get it.",
   "You're 13 or older. If you're under 18, a parent or guardian agrees to these terms with you.",
   "Be kind and safe: no bullying, hate, threats, adult content, scams or anything illegal, in chats or in websites and games you make.",
   "Never share passwords, card numbers or private details (your address, school or phone number) with the AI or on pages you publish.",

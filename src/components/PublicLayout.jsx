@@ -192,7 +192,7 @@ export default function PublicLayout({ title, children }) {
         </div>
         <div className="max-w-6xl mx-auto px-4 pb-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <span className="flex items-center gap-2">
-            <BlackholeIcon className="w-4 h-4" /> © {new Date().getFullYear()} Nebulux AI
+            <BlackholeIcon className="w-4 h-4" /> © {new Date().getFullYear()} Nebulux LLC
           </span>
           <span>Made for creators, students and small businesses.</span>
         </div>
