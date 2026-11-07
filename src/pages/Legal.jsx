@@ -160,22 +160,9 @@ export function Terms() {
 
       <h2>No warranty</h2>
       <p>
-        Nebulux AI is provided "as is" and "as available", without warranties of any kind. We work to keep it running,
-        but it may change, have errors or be unavailable, and features, plans and prices can change.
-      </p>
-
-      <h2>We are not liable</h2>
-      <p>
-        <strong>To the fullest extent the law allows, Nebulux LLC, and its owners, team members and partners, are not
-        liable for any damages or losses of any kind</strong> that come from using (or not being able to use) Nebulux AI.
-        That includes indirect, incidental, special or consequential damages; lost profits, sales, data or work; mistakes
-        in AI answers; downtime; problems with payments, purchases or deliveries, including something you paid for
-        arriving late or not at all; and anything done by other people or outside services.
-      </p>
-      <p>
-        If we are found liable for anything anyway, our total liability is limited to the amount you paid Nebulux LLC in
-        the 12 months before the claim. Some places don't allow some of these limits, so they may not all apply to you,
-        and nothing in these terms takes away rights you have by law that can't be taken away.
+        Nebulux AI is provided "as is". We work to keep it running, but it may change, have errors or be
+        unavailable, and features, plans and prices can change. To the fullest extent the law allows, we are not
+        liable for any damages or losses of any kind that come from using (or not being able to use) Nebulux AI.
       </p>
 
       <h2>Ending</h2>
@@ -307,11 +294,10 @@ export function Privacy() {
         Added Apps → Remove).
       </p>
 
-      <h2>Security, and what we're not liable for</h2>
+      <h2>Security</h2>
       <p>
         We protect your information with secure (https) connections, scrambled (hashed) passwords and limited team
-        access, but no service can be 100% secure. To the fullest extent the law allows, Nebulux LLC isn't liable for
-        losses caused by access to your information that we couldn't reasonably prevent. If you pay for something and it
+        access, but no service can be 100% secure. If you pay for something and it
         arrives late or not at all, see the <Link to="/terms">Terms of Service</Link>: contact support through <Contact /> and
         we'll try to get it to you, though we can't guarantee 100% that you'll get it.
       </p>
