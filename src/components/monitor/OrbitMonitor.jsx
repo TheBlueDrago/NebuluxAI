@@ -54,7 +54,7 @@ export default function OrbitMonitor({ users }) {
         <p className="flex items-center gap-2 text-white font-semibold text-sm">
           <Orbit className="w-4 h-4 text-sky-300" /> Nebulux Orbit
         </p>
-        <a href={ORBIT} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
+        <a href={ORBIT} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
           Open Orbit <ExternalLink className="w-3 h-3" />
         </a>
       </div>
