@@ -3,6 +3,7 @@
 // address, safe return paths, only signed webhooks give a plan, and bank payments wait until they clear.
 // Run: node scripts/test-stripe-checkout.mjs
 import { pathToFileURL, fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 const R = fileURLToPath(new URL("..", import.meta.url));
 const assert = (c, m) => {
   if (!c) {
@@ -29,13 +30,13 @@ for (const [id, y, m] of [["pro", "$144", "$12"], ["team", "$192", "$16"]]) {
 assert(!P.isPlan("enterprise") && !P.isPlan("constructor") && !P.isPlan("free"), "only Pro and Team can be bought here");
 
 // ---- a fake Stripe, sign-in and database ----
-const DB = new Map(), BAL = new Map(), APIBAL = new Map(), AGREED = new Set(), LEDGER = [];
+const DB = new Map(), BAL = new Map(), APIBAL = new Map(), AGREED = new Set(), LEDGER = [], HAND = new Map();
 const balance = (id) => (BAL.get(id) || 0) / 100000;
 const prepare = (sql) => ({
   run: async () => ({}),
   bind: (...a) => ({
     all: async () => ({ results: /FROM api_balance/.test(sql) ? [...APIBAL].filter(([k]) => k.startsWith(a[0] + "/")).map(([k, v]) => ({ model: k.split("/")[1], balance: v, funded: 1 })) : /FROM api_ledger/.test(sql) ? [] : [...DB.values()].filter((r) => r.entity === a[0]) }),
-    first: async () => (/FROM api_account/.test(sql) ? (AGREED.has(a[0]) ? { use_api: 1, agreed_at: "2026-11-01" } : null) : /usage_credits/.test(sql) ? (BAL.has(a[0]) ? { balance: BAL.get(a[0]), daily_limit: null, day: null, spent_today: 0 } : null) : DB.get(a[0] + "/" + a[1]) || null),
+    first: async () => (/checkout_handoff/.test(sql) ? (() => { const r = HAND.get(a[0]) || null; HAND.delete(a[0]); return r; })() : /FROM api_account/.test(sql) ? (AGREED.has(a[0]) ? { use_api: 1, agreed_at: "2026-11-01" } : null) : /usage_credits/.test(sql) ? (BAL.has(a[0]) ? { balance: BAL.get(a[0]), daily_limit: null, day: null, spent_today: 0 } : null) : DB.get(a[0] + "/" + a[1]) || null),
     run: async () => {
       if (/api_(account|balance|ledger)/.test(sql)) {
         if (/INSERT INTO api_balance/.test(sql)) APIBAL.set(a[0] + "/" + a[1], (APIBAL.get(a[0] + "/" + a[1]) || 0) + a[2]);
@@ -288,4 +289,53 @@ const signed = async (body, secret = "whsec_x", t = Math.floor(Date.now() / 1000
   const P2 = await load("cloudflare-lib/monitorLive.js");
   const sold = P2.purchaseSummary(rows()).sales.find((x) => x.id === "stripe_cs_api_1");
   assert(sold.kind === "api" && sold.plan === null && !P2.purchaseSummary(rows().filter((r) => r.productId === "api-credits")).plans.u1, "API funds: Monitor lists them as API funds, not as a plan");
+}
+
+// ---- API funds started from Nebulux Orbit: a one-time code in the shared database becomes Stripe's checkout ----
+{
+  const { onRequestGet: pay } = await load("functions/v1/pay.js");
+  const mw = readFileSync(R + "functions/_middleware.js", "utf8");
+  assert(/ALLOWED = \[[^\]]*v1\\\/pay/.test(mw), "Orbit: the handoff works during maintenance");
+  cache.clear();
+  AGREED.add("u1");
+  DB.set("User/u1", { entity: "User", id: "u1", created_by_id: "u1", created_date: "2026-01-01T00:00:00Z", updated_date: "2026-01-01T00:00:00Z", data: JSON.stringify({ email: "a@b.co", full_name: "Ann", role: "user" }) });
+  const code = (c) => c.repeat(48);
+  const hand = (c, over = {}) => HAND.set(code(c), { user_id: "u1", model: "orbit", amount: 25, exp: Date.now() + 60000, ...over });
+  const go = async (c, env = ENV, q = "") => {
+    sent = [];
+    const r = await pay({ request: new Request("https://nebuluxai.pages.dev/v1/pay?code=" + (c.length === 1 ? code(c) : c) + q), env });
+    return [r.status, r.headers.get("location"), sent[0] && sent[0].form];
+  };
+  hand("a");
+  const [s, loc, f] = await go("a", ENV, "&amount=1&userId=u9&model=galaxy");
+  assert(s === 303 && loc.startsWith("https://checkout.stripe.com/"), "Orbit: a good code goes straight to Stripe");
+  assert(f["line_items[0][price_data][unit_amount]"] === "2500" && f["line_items[0][price_data][product_data][name]"] === "Nebulux Orbit API Funds", "Orbit: the amount is the saved one, not what's in the address");
+  assert(f["metadata[kind]"] === "api" && f["metadata[model]"] === "orbit" && f["metadata[userId]"] === "u1" && f.client_reference_id === "u1" && f.customer_email === "a@b.co", "Orbit: it's for the person who pressed Add funds, on the Orbit balance");
+  assert(f.billing_address_collection === "required", "Orbit: the full address");
+  assert(f.success_url === "https://nebuluxorbit.thebluedragonstriker.workers.dev/?api_paid=25" && f.cancel_url === "https://nebuluxorbit.thebluedragonstriker.workers.dev/?api_canceled=1", "Orbit: comes back to Orbit");
+  assert((await go("a"))[0] === 410, "Orbit: a code works once");
+  assert((await go("zz"))[0] === 400 && (await go("b"))[0] === 410, "Orbit: a made-up code is refused");
+  hand("c", { exp: Date.now() - 1 });
+  assert((await go("c"))[0] === 410, "Orbit: an old code is refused");
+  hand("d", { model: "nebula" });
+  assert((await go("d"))[0] === 410, "Orbit: only Orbit's balance can be paid this way");
+  hand("e", { amount: 1 });
+  assert((await go("e"))[0] === 410, "Orbit: an amount under the smallest is refused");
+  hand("f");
+  const noStripe = await go("f", { PUBLISHED_HTML: kv, DB: db });
+  assert(noStripe[0] === 503 && !noStripe[2] && HAND.has(code("f")), "Orbit: no Stripe key, nothing is charged and the code isn't used up");
+  hand("1");
+  AGREED.delete("u1");
+  assert((await go("1"))[0] === 403, "Orbit: agreeing comes first");
+  AGREED.add("u1");
+  hand("2");
+  store.set("site-status", JSON.stringify({ paymentsPaused: true }));
+  const paused = await go("2");
+  store.delete("site-status");
+  assert(paused[0] === 403 && !paused[2], "Orbit: the admin pause switch stops it");
+  hand("3");
+  stripeFails = true;
+  const failedStripe = await go("3");
+  stripeFails = false;
+  assert(failedStripe[0] === 502, "Orbit: if Stripe fails it says nothing was charged");
 }

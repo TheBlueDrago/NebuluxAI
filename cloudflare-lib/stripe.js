@@ -97,10 +97,12 @@ export function usageFields({ amount, user, origin, from, back }) {
 }
 
 // API funds for one AI: the same one-time checkout, marked so the webhook adds it to that AI's balance.
-export function apiFields({ model, amount, user, origin, from, back }) {
+// returnTo { success, cancel }: another Nebulux website to come back to (v1/pay.js).
+export function apiFields({ model, amount, user, origin, from, back, returnTo }) {
   return {
     ...usageFields({ amount, user, origin, from, back }),
-    success_url: `${origin}/ThankYou?api=${amount}&model=${encodeURIComponent(model)}&from=${encodeURIComponent(from)}&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: returnTo ? returnTo.success : `${origin}/ThankYou?api=${amount}&model=${encodeURIComponent(model)}&from=${encodeURIComponent(from)}&session_id={CHECKOUT_SESSION_ID}`,
+    ...(returnTo ? { cancel_url: returnTo.cancel } : {}),
     "line_items[0][price_data][product_data][name]": `${API_NAMES[model]} API Funds`,
     "metadata[kind]": "api",
     "metadata[model]": model,
