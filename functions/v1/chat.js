@@ -2,6 +2,8 @@
 //   { model?: "nebulux-ai" | "galaxy" | "space" | "nebula", messages: [{ role: "system"|"user"|"assistant", content }],
 //     effort?: "low" | "medium" | "high" }   (or just { prompt })
 //   -> { id, object: "chat.completion", model, content, cost_usd, balance_usd }
+//   stream: true -> one JSON object a line: { d: "text" } pieces, then { done: true, cost_usd, balance_usd } or { error }
+//   fast: true -> one try and no waiting, for callers with their own backup (Nebulux Orbit)
 // Paid from the key owner's prepaid API balance (the Playground too), only while their
 // "Use API key credits" switch is on (Settings → Usage). See cloudflare-lib/apirun.js.
 import { keyOwner, noteUse, noteSpend, spentThisMonth } from "../../cloudflare-lib/apikeys.js";
@@ -38,9 +40,31 @@ export async function onRequestPost(context) {
   // The key's monthly spending limit (API keys → Limit), if it has one.
   const cap = owner.limit_mc == null ? null : Math.max(0, owner.limit_mc - spentThisMonth(owner));
   if (cap === 0) return fail("This key has reached its monthly spending limit. Raise it on the Nebulux Platform (nebuluxai.com/api) → API keys.", 429, "spend_limit");
-  const r = await billedAI(context, { userId: owner.user_id, model, prompt: p.prompt, question: p.question, effort, note: `API key ${owner.id} · ${model}`, cap });
-  context.waitUntil(noteUse(env.DB, owner.id).catch(() => {}));
-  if (r.cost) context.waitUntil(noteSpend(env.DB, owner.id, r.cost).catch(() => {}));
+  const job = { userId: owner.user_id, model, prompt: p.prompt, question: p.question, effort, note: `API key ${owner.id} · ${model}`, cap, fast: body.fast === true };
+  const note = (r) => {
+    context.waitUntil(noteUse(env.DB, owner.id).catch(() => {}));
+    if (r.cost) context.waitUntil(noteSpend(env.DB, owner.id, r.cost).catch(() => {}));
+  };
+  if (body.stream === true) {
+    const { readable, writable } = new TransformStream(), writer = writable.getWriter(), enc = new TextEncoder();
+    const write = (o) => writer.write(enc.encode(JSON.stringify(o) + "\n")).catch(() => {});
+    context.waitUntil(
+      (async () => {
+        try {
+          const r = await billedAI(context, { ...job, onDelta: (t) => write({ d: t }) });
+          note(r);
+          await write(r.error ? { error: { type: r.type, message: r.error } } : { done: true, model, ...(r.cut ? { cut_off: true } : {}), cost_usd: Number(dollars(r.cost)), balance_usd: Number(dollars(r.balance)) });
+        } catch {
+          await write({ error: { type: "api_error", message: "The AI couldn't answer." } });
+        } finally {
+          await writer.close().catch(() => {});
+        }
+      })()
+    );
+    return new Response(readable, { headers: { "content-type": "application/x-ndjson", "cache-control": "no-store", ...CORS } });
+  }
+  const r = await billedAI(context, job);
+  note(r);
   if (r.error) return fail(r.error, r.status, r.type);
   return out({ id: "nx-" + crypto.randomUUID(), object: "chat.completion", model, content: r.content, ...(r.cut ? { cut_off: true } : {}), cost_usd: Number(dollars(r.cost)), balance_usd: Number(dollars(r.balance)) });
 }

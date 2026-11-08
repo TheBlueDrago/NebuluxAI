@@ -30,9 +30,29 @@ export function toPrompt(messages, fallback) {
   return { error: 'Send messages: [{ role: "user", content: "..." }].' };
 }
 
+// chatCompletion's streamed answer: hands each piece to onDelta and returns what the plain answer would have been.
+async function readStream(body, onDelta) {
+  const reader = body.getReader(), dec = new TextDecoder();
+  let buf = "", content = "", last = {};
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n"); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      let o; try { o = JSON.parse(line); } catch { continue; }
+      if (o.delta) { content += o.delta; onDelta(o.delta); }
+      if (o.done || o.error) last = o;
+    }
+  }
+  return { ...last, content };
+}
+
 // -> { status, content?, cost?, balance?, error?, type? }
 // cap: the most this request may cost (what's left of a key's monthly limit), in millicents.
-export async function billedAI(context, { userId, model, prompt, question, effort = "medium", note, cap }) {
+// fast: one try and no waiting (the caller has its own backup). onDelta: get the reply as it's written.
+export async function billedAI(context, { userId, model, prompt, question, effort = "medium", note, cap, fast = false, onDelta }) {
   const { request, env } = context;
   const acct = await account(env.DB, userId);
   if (!acct.agreedAt || !acct.useApi) return { status: 403, type: "billing_off", error: SETTINGS_HINT };
@@ -49,10 +69,10 @@ export async function billedAI(context, { userId, model, prompt, question, effor
     const inner = new Request(new URL("/api/apps/6a8b5eb7787b8a4d6a18f662/functions/chatCompletion", request.url), {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${session.token}`, "x-nx-api-billing": env.SITE_AUTH_KEY, "cf-connecting-ip": request.headers.get("cf-connecting-ip") || "" },
-      body: JSON.stringify({ prompt, question: String(question || "").slice(0, 2000), model: MODELS[model], effort, apiMaxChars: maxChars }),
+      body: JSON.stringify({ prompt, question: String(question || "").slice(0, 2000), model: MODELS[model], effort, apiMaxChars: maxChars, ...(fast ? { fast: true, noWeb: true } : {}), ...(onDelta ? { stream: true } : {}) }),
     });
     const res = await chatCompletion({ ...context, request: inner });
-    const data = await res.json().catch(() => ({}));
+    const data = onDelta && res.ok && res.body ? await readStream(res.body, onDelta) : await res.json().catch(() => ({}));
     if (!res.ok || data.error) return { status: res.status === 200 ? 400 : res.status, type: data.busy ? "overloaded" : "api_error", error: data.error || "The AI couldn't answer." };
     const content = data.content || "";
     const cost = costOf(model, effort, prompt.length, content.length);

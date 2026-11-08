@@ -6,7 +6,7 @@
 // webhook writes them, after Stripe has signed the event, so coming back to the thank-you page
 // doesn't give anyone a plan.
 import { all, create, update, getRow } from "./db.js";
-import { isPlan, planDollars, planLabel, usageDollars, USAGE_ID, apiDollars, API_ID, API_NAMES } from "./planPrices.js";
+import { isPlan, planDollars, planLabel, usageDollars, USAGE_ID, apiDollars, API_ID, API_NAMES, ORBIT_PLANS, isOrbitPlan } from "./planPrices.js";
 import { addUsageCredits } from "./usageCredits.js";
 import { addFunds, toMc } from "./apibilling.js";
 import { discountedPrice } from "./discounts.js";
@@ -96,6 +96,35 @@ export function usageFields({ amount, user, origin, from, back }) {
   return fields;
 }
 
+// A monthly Nebulux Orbit plan. The price comes from planPrices.js; returnTo is back on Orbit.
+export function orbitPlanFields({ plan, user, returnTo }) {
+  const P = ORBIT_PLANS[plan], meta = { source: "nebulux", kind: "orbit", userId: user.id, plan };
+  const fields = {
+    mode: "subscription",
+    ui_mode: "hosted_page",
+    success_url: returnTo.success,
+    cancel_url: returnTo.cancel,
+    client_reference_id: user.id,
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][product_data][name]": P.name,
+    "line_items[0][price_data][unit_amount]": String(P.cents),
+    "line_items[0][price_data][recurring][interval]": "month",
+    "line_items[0][quantity]": "1",
+    billing_address_collection: "required",
+    payment_method_collection: "always",
+    allow_promotion_codes: "false",
+    submit_type: "auto",
+    integration_identifier: "hosted_web_0001",
+    origin_context: "web",
+  };
+  if (user.email) fields.customer_email = user.email;
+  for (const [k, v] of Object.entries(meta)) {
+    fields[`metadata[${k}]`] = v;
+    fields[`subscription_data[metadata][${k}]`] = v;
+  }
+  return fields;
+}
+
 // API funds for one AI: the same one-time checkout, marked so the webhook adds it to that AI's balance.
 // returnTo { success, cancel }: another Nebulux website to come back to (v1/pay.js).
 export function apiFields({ model, amount, user, origin, from, back, returnTo }) {
@@ -162,6 +191,18 @@ async function recordSession(db, s, status) {
   return status;
 }
 
+async function recordOrbit(db, s, status) {
+  const meta = s.metadata || {}, userId = s.client_reference_id || meta.userId;
+  if (s.mode !== "subscription" || !s.subscription || !userId || !isOrbitPlan(meta.plan) || meta.source !== "nebulux") return "ignored";
+  const id = rowId(s.subscription), found = await getRow(db, "Base44Purchase", id);
+  if (found) {
+    if (found.status !== "canceled" && found.status !== "paid" && found.status !== status) await update(db, "Base44Purchase", SYSTEM, id, { status });
+    return found.status;
+  }
+  await create(db, "Base44Purchase", SYSTEM, { appUserId: userId, productId: meta.plan, productName: ORBIT_PLANS[meta.plan].name, status, provider: "stripe", livemode: s.livemode === true, billing: "monthly", subscriptionId: s.subscription, customerId: s.customer || null, amountCents: s.amount_total ?? null, currency: s.currency || "usd" }, { id, created_by_id: userId });
+  return status;
+}
+
 // One-time purchases (usage credits, API funds): the money is added once, when the payment is really
 // in (a bank payment clears later). add() puts it on the account.
 async function recordOneTime(db, s, status, userId, amount, fields, add) {
@@ -187,7 +228,7 @@ function recordApi(db, s, status) {
 }
 const recordAny = (db, s, status) => {
   const kind = s.metadata && s.metadata.kind;
-  return (kind === "usage" ? recordUsage : kind === "api" ? recordApi : recordSession)(db, s, status);
+  return (kind === "usage" ? recordUsage : kind === "api" ? recordApi : kind === "orbit" ? recordOrbit : recordSession)(db, s, status);
 };
 
 async function subscriptionChanged(db, sub, deleted) {
@@ -213,4 +254,5 @@ export async function handleStripeEvent(db, ev) {
 }
 
 // This person's live Stripe subscription, if they have one.
-export const activeStripeRow = async (db, userId) => (await all(db, "Base44Purchase")).find((p) => p.appUserId === userId && p.provider === "stripe" && p.subscriptionId && (p.status === "paid" || p.status === "processing" || p.status === "unpaid")) || null;
+export const activeOrbitRow = async (db, userId) => (await all(db, "Base44Purchase")).find((p) => p.appUserId === userId && p.provider === "stripe" && p.subscriptionId && isOrbitPlan(p.productId) && (p.status === "paid" || p.status === "processing" || p.status === "unpaid")) || null;
+export const activeStripeRow = async (db, userId) => (await all(db, "Base44Purchase")).find((p) => p.appUserId === userId && p.provider === "stripe" && p.subscriptionId && isPlan(p.productId) && (p.status === "paid" || p.status === "processing" || p.status === "unpaid")) || null;

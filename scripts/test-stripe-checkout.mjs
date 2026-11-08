@@ -339,3 +339,53 @@ const signed = async (body, secret = "whsec_x", t = Math.floor(Date.now() / 1000
   stripeFails = false;
   assert(failedStripe[0] === 502, "Orbit: if Stripe fails it says nothing was charged");
 }
+
+// ---- Nebulux Orbit's plans ----
+{
+  const { onRequestGet: pay } = await load("functions/v1/pay.js");
+  cache.clear();
+  const code = (c) => c.repeat(48);
+  const hand = (c, model) => HAND.set(code(c), { user_id: "u1", model, amount: 0, exp: Date.now() + 60000 });
+  const go = async (c) => {
+    sent = [];
+    const r = await pay({ request: new Request("https://nebuluxai.pages.dev/v1/pay?code=" + code(c)), env: ENV });
+    return [r.status, r.headers.get("location"), sent[0]];
+  };
+  for (const [c, plan, name, cents, back] of [["a", "orbit-starter", "Orbit Starter Plan Monthly", "599", "starter"], ["b", "orbit-expert", "Orbit Expert Plan Monthly", "1499", "expert"]]) {
+    hand(c, plan);
+    const [s, loc, q] = await go(c), f = q.form;
+    assert(s === 303 && loc.startsWith("https://checkout.stripe.com/"), name + ": goes straight to Stripe");
+    assert(f.mode === "subscription" && f["line_items[0][price_data][unit_amount]"] === cents && f["line_items[0][price_data][recurring][interval]"] === "month" && f["line_items[0][price_data][product_data][name]"] === name, name + ": the price and name, monthly");
+    assert(f.billing_address_collection === "required" && !Object.keys(f).some((k) => k.startsWith("payment_method_types")), name + ": the full address and every payment option");
+    assert(f["metadata[kind]"] === "orbit" && f["metadata[plan]"] === plan && f.client_reference_id === "u1" && f.customer_email === "a@b.co", name + ": says whose it is");
+    assert(f.success_url === "https://nebuluxorbit.thebluedragonstriker.workers.dev/?plan_paid=" + back, name + ": comes back to Orbit's thank-you");
+  }
+  const sub = (over = {}) => ({ id: "cs_o1", mode: "subscription", subscription: "sub_o1", customer: "cus_o1", client_reference_id: "u1", payment_status: "paid", amount_total: 1499, currency: "usd", livemode: false, metadata: { source: "nebulux", kind: "orbit", plan: "orbit-expert", userId: "u1" }, ...over });
+  const send = async (type, o) => { const b = event(type, o); return post(b, await signed(b)); };
+  const fake = event("checkout.session.completed", sub());
+  assert((await post(fake, await signed(fake, "whsec_wrong"))) === 400 && !rows().find((r) => r.id === "stripe_sub_o1"), "Orbit plan: an unsigned event gives nothing");
+  await send("checkout.session.completed", sub({ metadata: { source: "nebulux", kind: "orbit", plan: "pro", userId: "u1" }, subscription: "sub_bad" }));
+  assert(!rows().find((r) => r.id === "stripe_sub_bad"), "Orbit plan: a made-up plan is ignored");
+  await send("checkout.session.completed", sub());
+  const row = rows().find((r) => r.id === "stripe_sub_o1");
+  assert(row && row.status === "paid" && row.productId === "orbit-expert" && row.appUserId === "u1" && row.amountCents === 1499 && row.livemode === false, "Orbit plan: a signed payment is recorded");
+  await send("checkout.session.completed", sub());
+  assert(rows().filter((r) => r.id === "stripe_sub_o1").length === 1, "Orbit plan: the same event twice counts once");
+  assert(!(await S.activeStripeRow(db, "u9")) && (await S.activeOrbitRow(db, "u1")).id === "stripe_sub_o1", "Orbit plan: found as an Orbit plan");
+  const P3 = await load("cloudflare-lib/planPrices.js");
+  assert(!P3.isPlan("orbit-expert") && P3.isOrbitPlan("orbit-expert") && !P3.isOrbitPlan("pro") && !P3.isOrbitPlan("constructor"), "Orbit's plans and Nebulux AI's plans are kept apart");
+  hand("c", "orbit-starter");
+  const [s2, , q2] = await go("c");
+  assert(s2 === 409 && !q2, "Orbit plan: someone who has one can't start a second");
+  hand("d", "orbit-portal");
+  const [s3, loc3, q3] = await go("d");
+  assert(s3 === 303 && q3.url.includes("billing_portal/sessions") && q3.form.customer === "cus_o1" && q3.form.return_url === "https://nebuluxorbit.thebluedragonstriker.workers.dev/", "Orbit plan: Manage opens Stripe's page for that customer");
+  await send("customer.subscription.deleted", { id: "sub_o1", status: "canceled" });
+  assert(rows().find((r) => r.id === "stripe_sub_o1").status === "canceled" && !(await S.activeOrbitRow(db, "u1")), "Orbit plan: canceling ends it");
+  hand("e", "orbit-portal");
+  assert((await go("e"))[0] === 404, "Orbit plan: nothing to manage after that");
+  hand("f", "pro");
+  assert((await go("f"))[0] === 410, "only Orbit's own things can be bought through this door");
+  const mw = readFileSync(R + "functions/_middleware.js", "utf8");
+  assert(/ALLOWED = \[[^\]]*v1\\\/chat/.test(mw), "Orbit can reach the API during maintenance");
+}

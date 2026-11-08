@@ -54,7 +54,7 @@ export default function StripeSales({ data, users }) {
         ))}
       </div>
       <p className="mt-2 text-xs text-slate-400">
-        Pro: <b className="text-white">{count("pro")}</b> · Team: <b className="text-white">{count("team")}</b> · Usage credits sold: <b className="text-white">{money(sum(tookMoney.filter((s) => s.kind === "usage")))}</b> · API funds sold: <b className="text-white">{money(sum(tookMoney.filter((s) => s.kind === "api")))}</b>
+        Pro: <b className="text-white">{count("pro")}</b> · Team: <b className="text-white">{count("team")}</b> · Orbit Starter: <b className="text-white">{count("orbit-starter")}</b> · Orbit Expert: <b className="text-white">{count("orbit-expert")}</b> · Usage credits sold: <b className="text-white">{money(sum(tookMoney.filter((s) => s.kind === "usage")))}</b> · API funds sold: <b className="text-white">{money(sum(tookMoney.filter((s) => s.kind === "api")))}</b>
       </p>
       <p className="mt-1 text-[11px] text-slate-500">Counts each first payment. Renewals are in your Stripe dashboard.</p>
       {sales.length === 0 ? (

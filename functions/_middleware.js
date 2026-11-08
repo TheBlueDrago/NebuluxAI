@@ -7,7 +7,7 @@ import { useOwnDb } from "../cloudflare-lib/published.js";
 import { logError } from "../cloudflare-lib/errorlog.js";
 import { hybridKV } from "../cloudflare-lib/hybridkv.js";
 
-const ALLOWED = [/^\/api\/stripe-webhook$/, /^\/v1\/pay$/, /^\/api\/support-reply$/, /^\/api\/apps\/[^/]+\/functions\/get-(site|game)-html$/];
+const ALLOWED = [/^\/api\/stripe-webhook$/, /^\/v1\/pay$/, /^\/v1\/chat$/, /^\/api\/support-reply$/, /^\/api\/apps\/[^/]+\/functions\/get-(site|game)-html$/];
 const MAINTENANCE = true;
 
 const DOWN_PAGE =

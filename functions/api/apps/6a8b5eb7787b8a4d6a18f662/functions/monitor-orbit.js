@@ -4,7 +4,7 @@
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 
-const SESSION_LIMIT = 50, SESSION_MS = 5 * 3600e3; // backend/session.js in nebulux-orbit
+const SESSION_LIMIT = 50, SESSION_MS = 5 * 3600e3, PLAN_LIMITS = { free: 50, "orbit-starter": 150, "orbit-expert": 400 }; // backend/session.js in nebulux-orbit
 const yearsOld = (birth, now) => {
   const d = new Date(birth + "T00:00:00Z"), n = new Date(now);
   let a = n.getUTCFullYear() - d.getUTCFullYear();
@@ -20,7 +20,7 @@ export async function onRequestPost({ request, env }) {
     const now = Date.now();
     // A table Orbit hasn't made yet counts as empty.
     const q = (sql, ...b) => env.DB.prepare(sql).bind(...b).all().then((r) => r.results || []).catch(() => []);
-    const [names, sessions, terms, conns, ages, devices, synced, notes] = await Promise.all([
+    const [names, sessions, terms, conns, ages, devices, synced, notes, paid] = await Promise.all([
       q("SELECT user_id, name, MAX(at) AS at FROM orbit_tokens GROUP BY user_id"),
       q("SELECT user_id, start, used FROM orbit_session_work WHERE start > ?", now - SESSION_MS),
       q("SELECT user_id, version, at FROM orbit_terms"),
@@ -28,9 +28,11 @@ export async function onRequestPost({ request, env }) {
       q("SELECT user_id, birth FROM orbit_ages"),
       q("SELECT COUNT(*) AS n FROM orbit_tokens"),
       q("SELECT user_id, LENGTH(data) AS size, at FROM orbit_data"),
-      q("SELECT k, v, at FROM orbit_kv WHERE k IN ('muse', 'answered')"),
+      q("SELECT k, v, at FROM orbit_kv WHERE k IN ('nebula', 'answered')"),
+      q("SELECT json_extract(data, '$.appUserId') AS user_id, json_extract(data, '$.productId') AS plan FROM rows WHERE entity = 'Base44Purchase' AND json_extract(data, '$.status') = 'paid' AND json_extract(data, '$.productId') LIKE 'orbit-%'"),
     ]);
     const by = (rows) => Object.fromEntries(rows.map((r) => [r.user_id, r]));
+    const planOf = {}; for (const r of paid) if (r.plan === "orbit-expert" || !planOf[r.user_id]) planOf[r.user_id] = r.plan;
     const N = by(names), S = by(sessions), T = by(terms), A = by(ages);
     const apps = {}, C = {};
     for (const c of conns) {
@@ -44,6 +46,8 @@ export async function onRequestPost({ request, env }) {
           id,
           name: (N[id] && N[id].name) || "",
           lastSignIn: (N[id] && N[id].at) || 0,
+          plan: (planOf[id] || "free").replace("orbit-", ""),
+          limit: PLAN_LIMITS[planOf[id] || "free"],
           used: s ? Number(s.used) / 10 : 0,
           resetAt: s ? Number(s.start) + SESSION_MS : 0,
           terms: !t ? "not yet" : t.version === "declined" ? "declined" : "accepted",
@@ -68,7 +72,7 @@ export async function onRequestPost({ request, env }) {
       sessionLimit: SESSION_LIMIT,
       apps,
       people,
-      muse: note.muse || null,
+      nebula: note.nebula || null,
       answered: note.answered || null,
       at: new Date(now).toISOString(),
     });

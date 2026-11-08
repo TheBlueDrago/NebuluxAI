@@ -124,6 +124,7 @@ const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
 // When the whole chain failed, it's tried again after a growing wait (Google's free models are often
 // busy for only a few seconds), as long as less than RETRY_PASS_WITHIN_MS has gone by.
 const RETRY_PASS_WITHIN_MS = 45000;
+const FAST_HEADERS_MS = 6000;
 const RETRY_PASS_WAITS_MS = [2000, 4000, 7000, 10000];
 
 class GeminiError extends Error {
@@ -325,7 +326,7 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
       // the same model is tried with the next key before moving to a weaker model.
       for (let k = 0; k < keys.length; k++) {
         try {
-          const r = await generateWithEffort(keys[k], chain[i], prompt, effort, isLast && k === keys.length - 1 ? 0 : HEADERS_TIMEOUT_MS, maxTokens, { ...opts, onDelta });
+          const r = await generateWithEffort(keys[k], chain[i], prompt, effort, opts.fast ? FAST_HEADERS_MS : isLast && k === keys.length - 1 ? 0 : HEADERS_TIMEOUT_MS, maxTokens, { ...opts, onDelta });
           return { ...r, model: chain[i] };
         } catch (err) {
           lastErr = err;
@@ -335,7 +336,7 @@ async function runChain(apiKey, chain, prompt, effort, maxTokens, opts) {
       }
     }
     // Every model said no (busy or per-minute limits, which usually clear in seconds): wait a moment and go round once more instead of failing.
-    if (pass === RETRY_PASS_WAITS_MS.length || Date.now() - t0 > RETRY_PASS_WITHIN_MS || opts.shouldStop?.()) break;
+    if (opts.fast || pass === RETRY_PASS_WAITS_MS.length || Date.now() - t0 > RETRY_PASS_WITHIN_MS || opts.shouldStop?.()) break;
     await new Promise((r) => setTimeout(r, RETRY_PASS_WAITS_MS[pass]));
   }
   throw lastErr || new GeminiError("No model available");
@@ -357,7 +358,7 @@ async function runWithBackup(env, keys, chain, input, effort, maxTokens, opts) {
     return await runChain(keys, chain, input, effort, maxTokens, { ...opts, onDelta });
   } catch (err) {
     const busy = err instanceof GeminiError && (err.retryable || err.status === 429 || err.status === 403);
-    if (!busy || started || !env.AI || opts.shouldStop?.()) throw err;
+    if (!busy || started || !env.AI || opts.fast || opts.shouldStop?.()) throw err;
     try {
       return await runBackup(env, input, maxTokens, opts.maxChars, onDelta, opts.shouldStop);
     } catch {
@@ -578,7 +579,9 @@ export async function onRequestPost(context) {
     const input = internal ? prompt : promptParts(idNote + apps.text + prompt, body.images);
     if (input && input.error) return json({ error: input.error }, 400);
 
-    const chain = internal ? [DEFAULT_MODEL] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
+    // fast (Nebulux Orbit, through the API): one try at the asked-for model and no waiting. Orbit has its own backup.
+    const fast = apiBill && body.fast === true;
+    const chain = internal ? [DEFAULT_MODEL] : fast ? [requested] : [requested, ...MODELS_BY_STRENGTH.filter((m) => m !== requested)].slice(0, MAX_ATTEMPTS);
     // The reply stops where the limits run out (what's left after the message itself).
     const question = String(body.question || "");
     const forReply = pool ? Math.max(0, room - tokensUsed({ tokens: null, text: "", question, images, effort, tier })) : Infinity;
@@ -613,7 +616,7 @@ export async function onRequestPost(context) {
 
     if (!body.stream) {
       try {
-        const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search });
+        const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, fast });
         counted(context, "ok", r.model);
         return json({ content: r.text, model: r.model, effort, ...readNote, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, false, r.tokens)) });
       } catch (err) {
@@ -644,7 +647,7 @@ export async function onRequestPost(context) {
         // What this answer costs as it's written (the app shows it live).
         if (!internal) await send({ meta: { tokens: true, aiMult: AI_MULT[tier] || 1 } });
         try {
-          const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
+          const r = await runWithBackup(env, geminiKeys(env), chain, input, effort, maxTokens, { maxChars, search, fast, onDelta: (t) => send({ delta: t }), shouldStop: () => gone });
           counted(context, "ok", r.model);
           await send({ done: true, model: r.model, effort, ...readNote, ...(r.more ? { more: true } : {}), ...(await settle(r.text, r.cut, r.stopped, r.tokens)) });
         } catch (err) {

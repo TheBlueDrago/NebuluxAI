@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useMonitorTick } from "@/lib/monitorTick";
 
 const ORBIT = "https://nebuluxorbit.thebluedragonstriker.workers.dev/";
-const AI_NAMES = { muse: "Muse Spark", gemini: "Gemini", "workers-ai": "Workers AI (free backup)" };
+const AI_NAMES = { galaxy: "Galaxy", space: "Space", nebula: "Nebula", gemini: "Gemini", "workers-ai": "Workers AI (free backup)" };
 const whenText = (t) => new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const credits = (n) => (Math.round(n * 10) / 10).toString();
 
@@ -46,7 +46,7 @@ export default function OrbitMonitor({ users }) {
   const needle = q.trim().toLowerCase();
   const found = data.people.filter((p) => !needle || p.name.toLowerCase().includes(needle) || emailOf(p.id).toLowerCase().includes(needle));
   const shown = showAll || needle ? found : found.slice(0, 8);
-  const museBad = data.muse && data.muse.v !== "ok";
+  const aiBad = data.nebula && data.nebula.v !== "ok";
   const apps = Object.entries(data.apps);
   return (
     <div className="w-full max-w-3xl mt-6 bg-slate-900/70 border border-slate-700/50 rounded-2xl p-4">
@@ -70,10 +70,10 @@ export default function OrbitMonitor({ users }) {
         Accepted terms: <b className="text-white">{t.accepted}</b> · Declined: <b className="text-white">{t.declined}</b> · Under 13: <b className="text-white">{t.under13}</b> · Last answer by:{" "}
         <b className="text-white">{data.answered ? `${AI_NAMES[data.answered.v] || data.answered.v}, ${whenText(data.answered.at)}` : "no answers yet"}</b>
       </p>
-      {museBad && (
+      {aiBad && (
         <p className="mt-2 flex items-start gap-2 text-sm text-amber-300">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>{/^40[13]/.test(data.muse.v) ? "Meta refused Orbit's Muse Spark key" : `Muse Spark isn't answering: ${data.muse.v}`} ({whenText(data.muse.at)}). Orbit is using its backup AI.</span>
+          <span>{data.nebula.v === "no key" ? "Orbit's Nebulux AI key isn't set" : `Nebulux AI isn't answering Orbit: ${data.nebula.v}`} ({whenText(data.nebula.at)}). Orbit is using Workers AI.</span>
         </p>
       )}
       {apps.length > 0 && <p className="mt-2 text-xs text-slate-400">Connected apps: {apps.map(([k, n]) => `${k} (${n})`).join(", ")}</p>}
@@ -91,17 +91,17 @@ export default function OrbitMonitor({ users }) {
             <div key={p.id} className="py-2">
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-sm text-white truncate">{p.name || emailOf(p.id) || "Signed out"}</p>
-                <p className="text-xs text-slate-400 shrink-0">{p.resetAt ? `${credits(p.used)} of ${data.sessionLimit} credits` : "No session running"}</p>
+                <p className="text-xs text-slate-400 shrink-0">{p.resetAt ? `${credits(p.used)} of ${p.limit || data.sessionLimit} credits` : "No session running"}</p>
               </div>
               <p className="text-xs text-slate-400 break-words">
                 {emailOf(p.id) && p.name ? `${emailOf(p.id)} · ` : ""}
-                {p.lastSignIn ? `signed in ${ago(p.lastSignIn)}` : "not signed in"} · terms {p.terms}
+                {p.plan && p.plan !== "free" ? `${p.plan} plan · ` : ""}{p.lastSignIn ? `signed in ${ago(p.lastSignIn)}` : "not signed in"} · terms {p.terms}
                 {p.termsVersion ? ` (${p.termsVersion})` : ""} · age {p.age}
                 {p.apps.length ? ` · ${p.apps.join(", ")}` : ""}
               </p>
               {p.resetAt > 0 && (
                 <div className="mt-1 h-1 rounded bg-slate-800 overflow-hidden">
-                  <div className="h-full bg-sky-400" style={{ width: `${Math.max(1, Math.min(100, (p.used / data.sessionLimit) * 100))}%` }} />
+                  <div className="h-full bg-sky-400" style={{ width: `${Math.max(1, Math.min(100, (p.used / (p.limit || data.sessionLimit)) * 100))}%` }} />
                 </div>
               )}
             </div>

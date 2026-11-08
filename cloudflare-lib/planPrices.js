@@ -20,6 +20,10 @@ export function usageDollars(v) {
   return Number.isInteger(n) && n >= USAGE_MIN && n <= USAGE_MAX ? n : null;
 }
 
+// Nebulux Orbit's plans, monthly: sold through this site's Stripe account, started from Orbit (functions/v1/pay.js).
+export const ORBIT_PLANS = { "orbit-starter": { name: "Orbit Starter Plan Monthly", cents: 599, back: "starter" }, "orbit-expert": { name: "Orbit Expert Plan Monthly", cents: 1499, back: "expert" } };
+export const isOrbitPlan = (id) => Object.prototype.hasOwnProperty.call(ORBIT_PLANS, id);
+
 // API funds (the Nebulux Platform): each AI has its own balance and its own smallest amount.
 // orbit: Nebulux Orbit's API (its keys are made in Orbit's Settings). apiDollars -> the amount, or null.
 export const API_ID = "api-credits";

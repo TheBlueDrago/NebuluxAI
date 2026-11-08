@@ -56,7 +56,7 @@ const TABLES = {
   ],
   orbit_data: [{ user_id: "o1", size: 40, at: 3 }],
   orbit_kv: [
-    { k: "muse", v: "401 invalid_api_key", at: 1000 },
+    { k: "nebula", v: "402 out_of_credit", at: 1000 },
     { k: "answered", v: "workers-ai", at: 1001 },
   ],
 };
@@ -92,14 +92,14 @@ assert(ann.age === "13+" && bo.age === "under 13" && o.data.totals.under13 === 1
 assert(!JSON.stringify(o.data).includes("-01-01"), "birthdays are not sent, only the age group");
 assert(o.data.apps.google === 2 && o.data.apps.slack === 1 && bo.apps.length === 2, "connected apps");
 assert(o.data.people[0].id === "o2", "newest sign-in first");
-assert(o.data.muse.v === "401 invalid_api_key" && o.data.answered.v === "workers-ai", "how Muse last answered, and which AI answered");
+assert(o.data.nebula.v === "402 out_of_credit" && o.data.answered.v === "workers-ai", "how Nebulux AI last answered Orbit, and which AI answered");
 const missing = await call(orbitFn, { DB: db(true) });
-assert(missing.status === 200 && missing.data.totals.declined === 0 && missing.data.muse === null, "a table Orbit hasn't made yet just counts as empty");
+assert(missing.status === 200 && missing.data.totals.declined === 0 && missing.data.nebula === null, "a table Orbit hasn't made yet just counts as empty");
 assert(wrote === 0, "Monitor only reads");
 me = { id: "u1", role: "user" };
 assert((await call(liveFn, { DB: db() })).status === 403 && (await call(orbitFn, { DB: db() })).status === 403, "only admins can see either");
 const stripeSrc = readFileSync(new URL("../cloudflare-lib/stripe.js", import.meta.url), "utf8");
-assert((stripeSrc.match(/livemode: s\.livemode === true/g) || []).length === 2, "plans and usage credits both save whether the payment was real");
+assert((stripeSrc.match(/livemode: s\.livemode === true/g) || []).length === 3, "plans, Orbit plans and one-time purchases all save whether the payment was real");
 
 if (failed) {
   console.log(`\n${failed} failed`);
