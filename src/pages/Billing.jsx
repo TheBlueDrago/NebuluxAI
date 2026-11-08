@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, ShieldCheck, Users, Gift, Lock, CalendarClock } fro
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { paymentError } from "@/lib/paymentError";
+import { startCheckout as goToCheckout } from "@/lib/startCheckout";
 import { discountedPrice } from "../../cloudflare-lib/discounts.js";
 import { savedDiscount, saveDiscount, promoPctFor } from "@/lib/promoDiscount";
 import MotionPrefs from "@/components/MotionPrefs";
@@ -107,10 +108,7 @@ function Billing() {
     setError("");
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("create-checkout", { productId, billing: yearPrice && yearly ? "yearly" : "monthly", ...(usingPromo ? { promoCode: promo.code } : {}) });
-      const redirectUrl = res.data?.redirectUrl;
-      if (!redirectUrl) throw new Error("No checkout URL");
-      window.location.href = redirectUrl;
+      await goToCheckout(productId, !!(yearPrice && yearly), usingPromo ? promo.code : undefined);
     } catch (e) {
       setError(paymentError(e));
       setLoading(false);
@@ -158,7 +156,7 @@ function Billing() {
                   , yours for as long as you stay subscribed
                 </>
               ) : yearPrice && yearly ? (
-                <>{yearPrice.price} / year · {yearPrice.perMonth} a month, save {YEARLY_OFF}%</>
+                <>{yearPrice.perMonth} per month · {yearPrice.price} billed yearly, {YEARLY_OFF}% off</>
               ) : (
                 plan.price
               )}
@@ -167,7 +165,7 @@ function Billing() {
         </div>
         {yearPrice && (
           <div className="mt-4 inline-flex rounded-full bg-slate-800/80 p-1" role="group" aria-label="Billing">
-            {[[false, "Monthly"], [true, `Yearly · save ${YEARLY_OFF}%`]].map(([v, label]) => (
+            {[[false, "Monthly"], [true, `Yearly · ${YEARLY_OFF}% off`]].map(([v, label]) => (
               <button key={label} type="button" onClick={() => setYearly(v)} aria-pressed={yearly === v} className={`tap-area px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${yearly === v ? "bg-white text-slate-900" : "text-slate-300 hover:text-white"}`}>
                 {label}
               </button>
@@ -234,7 +232,7 @@ function Billing() {
           />
           <span className="text-xs text-slate-300 leading-relaxed">
             I agree to the <Link to="/terms" className="underline hover:text-white">Terms</Link> and understand that{" "}
-            this plan is billed every month until I stop it. I'm allowed to make this
+            this plan is billed every {yearPrice && yearly ? "year" : "month"} until I stop it. I'm allowed to make this
             purchase (if I'm under 18, a parent or guardian said yes).
           </span>
         </label>

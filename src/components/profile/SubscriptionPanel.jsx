@@ -1,3 +1,4 @@
+import { base44 } from "@/api/base44Client";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CreditCard, Sparkles, Users, Clock, ArrowRight } from "lucide-react";
@@ -30,10 +31,20 @@ export default function SubscriptionPanel({ onBack, onManagePeople }) {
   const navigate = useNavigate();
   const plan = PLAN[credits.plan] || PLAN.free;
   const { planSource: source, planEndsAt: endsAt, offer, seats } = credits;
+  // Stripe's own page for the card and canceling; plans from before Stripe still go through support.
+  const manage = async () => {
+    try {
+      const r = await base44.functions.invoke("billing-portal", { from: window.location.pathname + window.location.search });
+      if (!r.data?.url) throw new Error("no page");
+      window.location.href = r.data.url;
+    } catch {
+      navigate("/contact?topic=billing");
+    }
+  };
 
   let status;
   if (source === "trial") status = `Free trial of Pro until ${fmtDate(endsAt)} (${timeLeft(endsAt)}). After that you're back on Free unless you choose a plan.`;
-  else if (source === "paid") status = "Paid monthly. To cancel or change how you pay, contact us.";
+  else if (source === "paid") status = "Paid. You can change your card or cancel any time.";
   else if (source === "grant") status = endsAt ? `Given to you by Nebulux AI until ${fmtDate(endsAt)}.` : "Given to you by Nebulux AI, with no end date.";
   else if (source === "member") status = credits.plan === "enterprise" ? "Through your organization's Enterprise plan." : "Through your team's plan.";
   else if (source === "admin") status = "Admin account: every feature, free.";
@@ -64,8 +75,8 @@ export default function SubscriptionPanel({ onBack, onManagePeople }) {
           {status}
         </p>
         {source === "paid" && (
-          <button onClick={() => navigate("/contact?topic=billing")} className="mt-2 text-sm text-indigo-300 hover:text-indigo-200">
-            Cancel or ask about your subscription →
+          <button onClick={manage} className="mt-2 text-sm text-indigo-300 hover:text-indigo-200">
+            Manage or cancel your subscription →
           </button>
         )}
       </div>

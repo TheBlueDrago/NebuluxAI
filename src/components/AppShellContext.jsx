@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useConversations } from "@/hooks/useConversations";
 import { useCredits } from "@/hooks/useCredits";
 import WelcomeTour from "@/components/WelcomeTour";
+import { rememberPage } from "@/lib/startCheckout";
 import PlansDialog from "@/components/PlansDialog";
 import HelpChat from "@/components/HelpChat";
 import TermsGate from "@/components/TermsGate";
@@ -46,6 +47,7 @@ export const useAppShell = () => useContext(AppShellContext);
 export function AppShellProvider({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  useEffect(() => rememberPage(location.pathname + location.search), [location.pathname, location.search]);
   const conv = useConversations();
   const credits = useCredits();
   const [currentUser, setCurrentUser] = useState(null);
@@ -207,7 +209,7 @@ export function AppShellProvider({ children }) {
       )}
       <HelpChat open={helpOpen} onClose={() => setHelpOpen(false)} />
       <PlansDialog open={plansOpen} onClose={() => setPlansOpen(false)} plan={credits.plan} onEnterprise={() => navigate("/enterprise")} />
-      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || isBanned || isBlocked || isUnverified} />
+      <WelcomeTour user={currentUser} shell={value} blocked={!termsOk || !nameOk || isBanned || isBlocked || isUnverified || /^\/chat\/(shop|plans)/.test(location.pathname)} />
     </AppShellContext.Provider>
   );
 }

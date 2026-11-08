@@ -8,8 +8,8 @@
 // /\evil.com parses same-origin but normalizes to a protocol-relative
 // //evil.com when assigned to location.href — an open redirect. So require the
 // resolved path to be exactly one leading slash (no "//" prefix, no backslash).
-export function safeReturnTo() {
-  const raw = new URLSearchParams(window.location.search).get("returnTo");
+export function safeReturnTo(param = "returnTo") {
+  const raw = new URLSearchParams(window.location.search).get(param);
   if (!raw) return "/";
   try {
     const url = new URL(raw, window.location.origin);

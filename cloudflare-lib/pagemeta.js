@@ -2,7 +2,7 @@
 // apps and search engines would show the home page's title and text for every link; these
 // small functions (functions/<page>.js) serve it with the page's own title, description and
 // address instead. Game pages do the same with the game's name (playmeta.js).
-import { SALES_OPEN } from "../src/lib/salesOpen.js";
+import { PLANS_OPEN } from "../src/lib/salesOpen.js";
 
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const ORIGIN = "https://nebuluxai.com";
@@ -63,7 +63,7 @@ export const PAGES = {
   arcade: { title: "Free games made with AI", description: "Play free games in your browser on any phone or computer. No download, no account. Every one was made by describing it to Nebulux AI.", path: "/arcade" },
   templates: { title: "Free website templates", description: "Pick a free template and change anything by telling the AI what you want. Publish it free at yourname.nebuluxai.com.", path: "/templates" },
   // Search results say what the page says: while plans can't be bought, they're coming soon.
-  pricing: { title: "Pricing", description: SALES_OPEN ? "Free to start. Pro is $15 a month, Team is $20 a month for up to 3 people, and Enterprise is priced per seat." : "Free to start: 100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI. Paid plans are coming soon: Pro at $15 a month and Team at $20 a month.", path: "/pricing" },
+  pricing: { title: "Pricing", description: PLANS_OPEN ? "Free to start. Pro is $15 a month, Team is $20 a month for up to 3 people, and Enterprise is priced per seat." : "Free to start: 100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI. Paid plans are coming soon: Pro at $15 a month and Team at $20 a month.", path: "/pricing" },
   business: { title: "Websites for your business", description: "Describe your business and get a website in minutes. Sell from your site, work as a team and keep your code.", path: "/business" },
   enterprise: { title: "Enterprise", description: "Nebulux AI for your whole organization: a seat for everyone, with usage limits for every seat. For registered businesses.", path: "/enterprise" },
   about: { title: "About us", description: "We help people make websites and games just by describing them, on any phone or computer.", path: "/about" },

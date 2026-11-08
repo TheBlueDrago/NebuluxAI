@@ -6,16 +6,15 @@ import { siteUrl } from "@/lib/blackholeDomain";
 import MotionPrefs from "@/components/MotionPrefs";
 import usePageTitle from "@/hooks/usePageTitle";
 import { addNotification } from "@/lib/notifications";
+import Subscribed from "@/pages/Subscribed";
+import { isPlan } from "../../cloudflare-lib/planPrices.js";
 
 // After paying. Plans come back here from create-checkout; purchases on a
 // site someone made come back with ?site=<name> from site-checkout (older checkouts without
 // it get the wording that covers both).
 export default function ThankYouPage() {
-  return (
-    <MotionPrefs>
-      <ThankYou />
-    </MotionPrefs>
-  );
+  const plan = new URLSearchParams(window.location.search).get("plan");
+  return <MotionPrefs>{isPlan(plan) ? <Subscribed plan={plan} /> : <ThankYou />}</MotionPrefs>;
 }
 
 function ThankYou() {

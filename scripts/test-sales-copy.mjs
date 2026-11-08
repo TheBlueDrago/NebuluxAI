@@ -12,9 +12,9 @@ const assert = (c, m) => {
 const read = (p) => readFileSync(new URL("../src/" + p, import.meta.url), "utf8");
 const open = /export const SALES_OPEN = true/.test(read("lib/salesOpen.js"));
 const cards = read("components/landing/PricingCards.jsx"), pricing = read("pages/Pricing.jsx"), landing = read("pages/Landing.jsx");
-assert(/import \{ SALES_OPEN \} from "@\/lib\/salesOpen"/.test(cards) && /!SALES_OPEN && \(p\.id === "pro" \|\| p\.id === "team"\)[\s\S]{0,300}Coming soon/.test(cards), "the Pro and Team cards say Coming soon while sales are closed");
-assert(/SALES_OPEN\s*\?\s*"Start free\. Pro is[^"]*"\s*:\s*"Start free\. Paid plans are coming soon/.test(pricing), "the pricing page's first line says paid plans are coming soon while sales are closed");
-assert(/SALES_OPEN \? ", and paid plans get higher limits\." : "\. Paid plans with higher limits are coming soon\."/.test(pricing), "the usage limits answer says paid plans are coming soon while sales are closed");
+assert(/import \{ PLANS_OPEN \} from "@\/lib\/salesOpen"/.test(cards) && /!PLANS_OPEN && \(p\.id === "pro" \|\| p\.id === "team"\)[\s\S]{0,300}Coming soon/.test(cards), "the Pro and Team cards say Coming soon while sales are closed");
+assert(/PLANS_OPEN\s*\?\s*"Start free\. Pro is[^"]*"\s*:\s*"Start free\. Paid plans are coming soon/.test(pricing), "the pricing page's first line says paid plans are coming soon while sales are closed");
+assert(/PLANS_OPEN \? ", and paid plans get higher limits\." : "\. Paid plans with higher limits are coming soon\."/.test(pricing), "the usage limits answer says paid plans are coming soon while sales are closed");
 assert(/SALES_OPEN \? "Hit your 5-hour limit\?[^"]*" : "Usage credits[^"]*coming soon too\."/.test(landing), "the home page says usage credits are coming soon too while sales are closed");
 // No credit packs or referrals any more (owner, 2026-11-03): usage credits instead.
 const all2 = cards + pricing + landing + read("pages/Billing.jsx") + read("components/Subscriptions.jsx");
@@ -25,4 +25,4 @@ assert(!/to="\/pricing#/.test(all) || /id="packs"/.test(pricing), "no link to a 
 console.log(open ? "(sales are open now)" : "(sales are closed now)");
 // What search engines and link previews show for /pricing says the same.
 const { PAGES } = await import("../cloudflare-lib/pagemeta.js");
-assert(open ? /credit packs start/.test(PAGES.pricing.description) : /coming soon/i.test(PAGES.pricing.description) && !/packs start at/.test(PAGES.pricing.description), "the pricing page's search description follows SALES_OPEN too");
+assert(/Pro is \$15 a month/.test(PAGES.pricing.description) && !/packs start at/.test(PAGES.pricing.description), "the pricing page's search description follows SALES_OPEN too");

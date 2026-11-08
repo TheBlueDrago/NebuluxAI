@@ -1,6 +1,9 @@
 import React, { Suspense, lazy, useState } from "react";
 import PaymentsNotice from "@/components/PaymentsNotice";
-import { SALES_OPEN, COMING_SOON } from "@/lib/salesOpen";
+import { SALES_OPEN, PLANS_OPEN, COMING_SOON } from "@/lib/salesOpen";
+import { YEARLY_OFF, yearlyTotal, yearlyPerMonth } from "../../cloudflare-lib/planPrices.js";
+import { startCheckout } from "@/lib/startCheckout";
+import { paymentError } from "@/lib/paymentError";
 import { motion } from "framer-motion";
 import { Check, ArrowRight, Loader2, Lock, X } from "lucide-react";
 
@@ -49,25 +52,35 @@ function FreeCard({ onFree }) {
 // A price chip, with the new-member discount or a promo code when one applies ("$1/mo" -> "$1 $0.70/mo").
 // $15, $10.50: cents only when there are some.
 const usd = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
-function PriceTag({ amount, pct }) {
-  if (!pct) return <>${usd(amount)}/mo</>;
+// What a plan costs with the Monthly / Yearly switch and any promo code. The main number is always
+// per month; yearly says underneath what's charged today.
+function planPrice(amount, yearly, pct) {
+  if (!yearly) return { top: discountedPrice(amount, pct), old: pct ? amount : null, sub: "Billed monthly" };
+  const paid = discountedPrice(yearlyTotal(amount), pct);
+  return { top: Math.round(paid / 12), old: pct ? yearlyPerMonth(amount) : null, sub: `$${usd(paid)} billed yearly` };
+}
+function PriceTag({ amount, yearly, pct }) {
+  const p = planPrice(amount, yearly, pct);
   return (
     <>
-      <s className="opacity-60 mr-1">${usd(amount)}</s>${discountedPrice(amount, pct).toFixed(2)}/mo
+      {p.old ? <s className="opacity-60 mr-1">${usd(p.old)}</s> : null}${usd(p.top)} per month
     </>
   );
 }
+const Sub = ({ amount, yearly, pct }) => <p className="mt-1 text-right text-xs text-slate-400">{planPrice(amount, yearly, pct).sub}</p>;
+const Go = ({ busy }) => (busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continue <ArrowRight className="w-4 h-4" /></>);
 
-function Plan2Card({ onPro, pct }) {
+function Plan2Card({ onPro, yearly, busy, pct }) {
   const features = ["4 AI's (incl. Space and Nebula in Website Designer)", "Higher usage limits than Free, shared by every AI", "Two-way GitHub sync allowed", "Download a ZIP of your website or game in the designers"];
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-emerald-500/60 rounded-3xl p-6 shadow-2xl shadow-emerald-500/10 flex flex-col">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-white">Pro</h3>
         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-          <PriceTag amount={15} pct={pct} />
+          <PriceTag amount={15} yearly={yearly} pct={pct} />
         </span>
       </div>
+      <Sub amount={15} yearly={yearly} pct={pct} />
       <div className="h-px bg-slate-700/60 my-4" />
       <ul className="space-y-3 flex-1">
         {features.map((f) => (
@@ -84,16 +97,16 @@ function Plan2Card({ onPro, pct }) {
       </div>
       <button
         onClick={onPro}
+        disabled={busy}
         className="mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-br from-emerald-700 to-teal-700 text-[#fff] font-medium hover:opacity-90 transition-opacity"
       >
-        Continue
-        <ArrowRight className="w-4 h-4" />
+        <Go busy={busy} />
       </button>
     </div>
   );
 }
 
-function TeamCard({ onTeam, pct }) {
+function TeamCard({ onTeam, yearly, busy, pct }) {
   const features = [
     "4 AI's (incl. Space and Nebula in Website Designer)",
     "Higher usage limits than Pro, shared by every AI",
@@ -106,9 +119,10 @@ function TeamCard({ onTeam, pct }) {
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-white">Team</h3>
         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40">
-          <PriceTag amount={20} pct={pct} />
+          <PriceTag amount={20} yearly={yearly} pct={pct} />
         </span>
       </div>
+      <Sub amount={20} yearly={yearly} pct={pct} />
       <div className="h-px bg-slate-700/60 my-4" />
       <ul className="space-y-3 flex-1">
         {features.map((f) => (
@@ -126,10 +140,10 @@ function TeamCard({ onTeam, pct }) {
       </div>
       <button
         onClick={onTeam}
+        disabled={busy}
         className="mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-br from-sky-700 to-indigo-600 text-[#fff] font-medium hover:opacity-90 transition-opacity"
       >
-        Continue
-        <ArrowRight className="w-4 h-4" />
+        <Go busy={busy} />
       </button>
     </div>
   );
@@ -185,8 +199,8 @@ function SectionTitle({ title, sub }) {
 // The Shop: the plans, then usage credits (money that extends the 5-hour limit, like Claude's extra usage).
 // offer: the signed-in user's new-member offer (from the credit status), if any.
 // Greyed out and unclickable while plans are "coming soon" (lib/salesOpen.js).
-function Soon({ children }) {
-  if (SALES_OPEN) return children;
+function Soon({ children, open = SALES_OPEN }) {
+  if (open) return children;
   return (
     <div className="relative">
       <div aria-hidden="true" className="opacity-40 grayscale pointer-events-none select-none h-full">
@@ -197,13 +211,28 @@ function Soon({ children }) {
   );
 }
 
-export default function Subscriptions({ onFree, onPro, onTeam, offer }) {
+export default function Subscriptions({ onFree, offer }) {
   const pct = offer?.discountAvailable ? offer.discountPct : 0;
   const navigate = useNavigate();
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
   // A discount code entered on Billing: prices below show it too.
   const [discount] = useState(savedDiscount);
   const planPct = (id) => Math.max(pct, promoPctFor(discount, id));
+  // Monthly or yearly, chosen at the top (the pricing page's switch carries over).
+  const [yearly, setYearly] = useState(() => new URLSearchParams(window.location.search).get("billing") === "yearly");
+  const [buying, setBuying] = useState("");
+  const [buyError, setBuyError] = useState("");
+  const buy = async (plan) => {
+    setBuyError("");
+    setBuying(plan);
+    try {
+      await startCheckout(plan, yearly, promoPctFor(discount, plan) ? discount.code : undefined);
+    } catch (e) {
+      if (e?.response?.status === 401) return navigate("/register?returnTo=" + encodeURIComponent("/chat/shop" + (yearly ? "?billing=yearly" : "")));
+      setBuyError(paymentError(e));
+      setBuying("");
+    }
+  };
 
   return (
     <motion.div
@@ -221,7 +250,7 @@ export default function Subscriptions({ onFree, onPro, onTeam, offer }) {
         <span className="inline-flex items-center gap-1.5">
           <Lock className="w-3.5 h-3.5 text-emerald-400" /> Secure checkout, we never see your card
         </span>
-        <span>Plans are monthly</span>
+        <span>Pay monthly or yearly</span>
         <span>Prices in US dollars</span>
         <Link to="/safety" className="inline-block py-2 underline hover:text-slate-200">Trust &amp; safety</Link>
       </p>
@@ -229,7 +258,16 @@ export default function Subscriptions({ onFree, onPro, onTeam, offer }) {
       <div className="mt-10">
         <SectionTitle title="Plans" sub="Higher usage limits for every AI, plus more features" />
       </div>
-      {!SALES_OPEN && (
+      {PLANS_OPEN && (
+        <div className="mt-5 inline-flex rounded-full bg-slate-900/70 border border-slate-700/60 p-1" role="group" aria-label="Billing">
+          {[[false, "Monthly"], [true, `Yearly · ${YEARLY_OFF}% off`]].map(([v, label]) => (
+            <button key={label} type="button" onClick={() => setYearly(v)} aria-pressed={yearly === v} className={`tap-area px-4 py-2 rounded-full text-sm font-semibold transition-colors ${yearly === v ? "bg-white text-slate-900" : "text-slate-300 hover:text-white"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {!PLANS_OPEN && (
         <p className="mt-4 px-4 py-2 rounded-full bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-sm text-center">{COMING_SOON} For now, everyone gets the Free plan.</p>
       )}
       {pct > 0 && (
@@ -240,11 +278,11 @@ export default function Subscriptions({ onFree, onPro, onTeam, offer }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-8 max-w-7xl w-full">
         <FreeCard onFree={onFree} />
-        <Soon>
-          <Plan2Card onPro={onPro} pct={planPct("pro")} />
+        <Soon open={PLANS_OPEN}>
+          <Plan2Card onPro={() => buy("pro")} yearly={yearly} busy={buying === "pro"} pct={planPct("pro")} />
         </Soon>
-        <Soon>
-          <TeamCard onTeam={onTeam} pct={planPct("team")} />
+        <Soon open={PLANS_OPEN}>
+          <TeamCard onTeam={() => buy("team")} yearly={yearly} busy={buying === "team"} pct={planPct("team")} />
         </Soon>
         <Soon>
           <EnterpriseCard onEnterprise={() => setEnterpriseOpen(true)} />
@@ -262,6 +300,13 @@ export default function Subscriptions({ onFree, onPro, onTeam, offer }) {
           </div>
         )}
       </div>
+
+      {buyError && <p className="mt-4 text-sm text-red-400 text-center">{buyError}</p>}
+      {PLANS_OPEN && (
+        <p className="mt-5 max-w-xl text-center text-xs leading-relaxed text-slate-400">
+          By choosing a plan you agree to the <Link to="/terms" className="underline hover:text-slate-200">Terms</Link>. Plans renew until you cancel, which you can do any time in Settings. If you're under 18, a parent or guardian needs to say yes first.
+        </p>
+      )}
 
       <div className="mt-10 w-full max-w-3xl">
         <SectionTitle title="Usage credits" sub="Keep going when you hit your 5-hour limit" />

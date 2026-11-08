@@ -6,11 +6,9 @@
 // Free's limits (owner, 2026-11-03). The paid plans' limits are for the owner to set; until then their
 // cards just say they're higher.
 export const FREE_USAGE = "100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI";
-export const YEARLY_OFF = 10; // percent
-const yearly = (monthly) => {
-  const year = Math.round(monthly * 12 * (1 - YEARLY_OFF / 100));
-  return { price: "$" + year, period: "/year", perMonth: "$" + (year / 12).toFixed(2) };
-};
+import { YEARLY_OFF, yearlyTotal, yearlyPerMonth } from "../../cloudflare-lib/planPrices.js";
+export { YEARLY_OFF };
+const yearly = (monthly) => ({ price: "$" + yearlyTotal(monthly), period: "/year", perMonth: "$" + yearlyPerMonth(monthly) });
 
 export const PUBLIC_PLANS = [
   {
@@ -27,7 +25,7 @@ export const PUBLIC_PLANS = [
     price: "$15",
     period: "/month",
     yearly: yearly(15),
-    blurb: "Higher usage limits, all 4 AI models and your code to keep. Coming soon in a later update.",
+    blurb: "Higher usage limits, all 4 AI models and your code to keep.",
     features: [
       "Higher usage limits than Free, shared by every AI",
       "10 published websites",

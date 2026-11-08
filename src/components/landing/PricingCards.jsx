@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { PUBLIC_PLANS, YEARLY_OFF } from "@/lib/publicPlans";
-import { SALES_OPEN } from "@/lib/salesOpen";
+import { PLANS_OPEN } from "@/lib/salesOpen";
+import { startCheckout } from "@/lib/startCheckout";
+import { paymentError } from "@/lib/paymentError";
 
 // Free / Pro / Team / Enterprise cards for the public pages. Paid plans are bought from the
 // app's Shop, so new people sign up first and land there; Enterprise goes to the
@@ -12,6 +14,19 @@ import { SALES_OPEN } from "@/lib/salesOpen";
 export default function PricingCards() {
   const { isAuthenticated } = useAuth();
   const [yearlyOn, setYearlyOn] = useState(false);
+  const [buying, setBuying] = useState("");
+  const [buyError, setBuyError] = useState("");
+  // Signed in: Pro and Team go straight to checkout.
+  const buy = async (id) => {
+    setBuyError("");
+    setBuying(id);
+    try {
+      await startCheckout(id, yearlyOn);
+    } catch (e) {
+      setBuyError(paymentError(e));
+      setBuying("");
+    }
+  };
   const shop = "/chat/shop" + (yearlyOn ? "?billing=yearly" : "");
   const go = (id) =>
     id === "enterprise"
@@ -26,7 +41,7 @@ export default function PricingCards() {
         <div className="inline-flex rounded-full bg-slate-900/70 border border-slate-700/60 p-1" role="group" aria-label="Billing">
           {[
             [false, "Monthly"],
-            [true, `Yearly · save ${YEARLY_OFF}%`],
+            [true, `Yearly · ${YEARLY_OFF}% off`],
           ].map(([v, label]) => (
             <button
               key={label}
@@ -55,10 +70,10 @@ export default function PricingCards() {
               )}
               <p className="text-lg font-semibold text-white">{p.name}</p>
               <p className="mt-2">
-                <span className="text-4xl font-bold text-white">{y ? y.price : p.price}</span>
-                <span className="text-slate-400">{y ? y.period : p.period}</span>
+                <span className="text-4xl font-bold text-white">{y ? y.perMonth : p.price}</span>
+                <span className="text-slate-400">{y ? "/month" : p.period}</span>
               </p>
-              {y && <p className="mt-1 text-xs font-semibold text-emerald-300">{y.perMonth} a month, billed yearly · save {YEARLY_OFF}% · credits still refill every month</p>}
+              {y && <p className="mt-1 text-xs font-semibold text-emerald-300">{y.price} billed yearly · {YEARLY_OFF}% off</p>}
               <p className="mt-2 text-sm text-slate-400">{p.blurb}</p>
               <ul className="mt-5 space-y-2.5 flex-1">
                 {p.features.map((f) => (
@@ -67,8 +82,17 @@ export default function PricingCards() {
                   </li>
                 ))}
               </ul>
-              {!SALES_OPEN && (p.id === "pro" || p.id === "team") ? (
+              {!PLANS_OPEN && (p.id === "pro" || p.id === "team") ? (
                 <span aria-disabled="true" className="mt-6 py-3 rounded-full text-center font-semibold bg-slate-800/60 text-slate-400 cursor-default">Coming soon</span>
+              ) : isAuthenticated && (p.id === "pro" || p.id === "team") ? (
+                <button
+                  type="button"
+                  onClick={() => buy(p.id)}
+                  disabled={!!buying}
+                  className={`mt-6 py-3 rounded-full text-center font-semibold ${p.highlight ? "bg-white text-slate-900 hover:bg-slate-200" : "bg-slate-800 text-white hover:bg-slate-700"}`}
+                >
+                  {buying === p.id ? "One moment..." : `Choose ${p.name}${y ? " yearly" : ""}`}
+                </button>
               ) : (
               <Link
                 to={go(p.id)}
@@ -83,6 +107,7 @@ export default function PricingCards() {
           );
         })}
       </div>
+      {buyError && <p className="mt-4 text-sm text-red-400 text-center">{buyError}</p>}
     </>
   );
 }
