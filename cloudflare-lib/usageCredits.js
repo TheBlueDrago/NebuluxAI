@@ -5,8 +5,7 @@
 // much of them may be spent per day.
 //
 // The rate: $1 for every 10,000 tokens past the 5-hour limit (the same tokens the limits count). The app
-// shows money, not tokens. Not on sale yet (src/lib/usageCredits.js USAGE_CREDITS_ON_SALE): balances are
-// $0 until the payment provider is connected and its checkout adds to them (addUsageCredits).
+// shows money, not tokens. Bought through Stripe (create-checkout); its signed webhook adds them (addUsageCredits).
 //
 // D1 (usage_credits), in millicents (1/100,000 of a dollar) like the API balance (apibilling.js).
 export const DAILY_LIMIT_MIN = 1;
@@ -79,7 +78,7 @@ export async function spendUsageCredits(db, userId, tokens, now = Date.now()) {
   return dollars(take);
 }
 
-// Adds bought usage credits (for the checkout, once there is one; amounts in dollars).
+// Adds bought usage credits (from the Stripe webhook, cloudflare-lib/stripe.js; amounts in dollars).
 export async function addUsageCredits(db, userId, amount) {
   const mc = Math.round(Math.max(0, Number(amount) || 0) * MC);
   await ensure(db);

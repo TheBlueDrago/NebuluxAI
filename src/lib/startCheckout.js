@@ -23,6 +23,14 @@ function pageBefore(here) {
   }
 }
 
+export async function startUsageCheckout(amount) {
+  const here = window.location.pathname + window.location.search;
+  const res = await base44.functions.invoke("create-checkout", { productId: "usage-credits", amount, from: pageBefore(here), back: here });
+  const url = res.data?.redirectUrl;
+  if (!url) throw new Error("No checkout URL");
+  window.location.href = url;
+}
+
 export async function startCheckout(plan, yearly, promoCode) {
   const here = window.location.pathname + window.location.search;
   const res = await base44.functions.invoke("create-checkout", { productId: plan, billing: yearly ? "yearly" : "monthly", from: pageBefore(here), back: here, ...(promoCode ? { promoCode } : {}) });

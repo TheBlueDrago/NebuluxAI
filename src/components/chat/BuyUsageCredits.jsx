@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { X, Zap } from "lucide-react";
 import { USAGE_MIN, USAGE_MAX, USAGE_RECOMMENDED, USAGE_PRESETS, USAGE_CREDITS_ON_SALE, usageAmount, BUY_USAGE_EVENT } from "@/lib/usageCredits";
+import { startUsageCheckout } from "@/lib/startCheckout";
+import { paymentError } from "@/lib/paymentError";
 
 // "Buy usage credits", like Claude's extra usage: pick how much money to add ($5 to $500, $100
 // recommended). They extend the 5-hour limit once it runs out (never the weekly one, and what they pay
@@ -9,6 +11,18 @@ import { USAGE_MIN, USAGE_MAX, USAGE_RECOMMENDED, USAGE_PRESETS, USAGE_CREDITS_O
 export default function BuyUsageCredits() {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(USAGE_RECOMMENDED));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const buy = async (n) => {
+    setError("");
+    setBusy(true);
+    try {
+      await startUsageCheckout(n);
+    } catch (e) {
+      setError(paymentError(e));
+      setBusy(false);
+    }
+  };
   useEffect(() => {
     const show = () => {
       setAmount(String(USAGE_RECOMMENDED));
@@ -73,11 +87,13 @@ export default function BuyUsageCredits() {
         </p>
         <button
           type="button"
-          disabled={!USAGE_CREDITS_ON_SALE || n === null}
+          onClick={() => buy(n)}
+          disabled={!USAGE_CREDITS_ON_SALE || n === null || busy}
           className="mt-4 w-full rounded-xl bg-[var(--cl-text)] text-[var(--cl-bg)] py-2.5 text-[14px] font-semibold disabled:opacity-50"
         >
-          {USAGE_CREDITS_ON_SALE ? (n === null ? "Choose an amount" : `Add $${n}`) : "Coming soon"}
+          {USAGE_CREDITS_ON_SALE ? (busy ? "One moment..." : n === null ? "Choose an amount" : `Add $${n}`) : "Coming soon"}
         </button>
+        {error && <p className="mt-2 text-center text-[12.5px] text-red-400">{error}</p>}
         {!USAGE_CREDITS_ON_SALE && <p className="mt-2 text-center text-[12.5px] text-[var(--cl-muted)]">Buying usage credits is coming soon. Set how much they can spend a day in Settings, Usage.</p>}
       </div>
     </div>

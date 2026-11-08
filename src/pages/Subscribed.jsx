@@ -87,12 +87,15 @@ const Tick = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#b06bff" fillOpacity=".22" /><path d="M5 9.4l2.7 2.7L13 6.6" stroke="#d7b8ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
-export default function Subscribed({ plan }) {
-  usePageTitle("Thanks for subscribing");
+const USAGE_PERKS = ["Keeps every AI going after your 5-hour limit runs out", "They don't extend your weekly limit", "Set how much they can spend a day in Settings, Usage"];
+
+export default function Subscribed({ plan, usage }) {
+  const title = plan ? "Thanks for subscribing" : "Thanks for your purchase";
+  usePageTitle(title);
   const { user, isLoadingAuth } = useAuth();
   const q = new URLSearchParams(window.location.search);
   const yearly = q.get("billing") === "yearly", sessionId = q.get("session_id") || "";
-  const info = PUBLIC_PLANS.find((p) => p.id === plan), name = info.name, monthly = MONTHLY[plan];
+  const info = PUBLIC_PLANS.find((p) => p.id === plan), name = plan ? info.name : "Usage credits", monthly = plan ? MONTHLY[plan] : 0, perks = plan ? info.features : USAGE_PERKS;
   const [status, setStatus] = useState("paid");
   const [left, setLeft] = useState(SECONDS);
   const [stay, setStay] = useState(false);
@@ -103,8 +106,8 @@ export default function Subscribed({ plan }) {
   const next = home ? "/chat" : from;
 
   useEffect(() => {
-    addNotification({ kind: "purchase", text: `Thanks for subscribing! Your ${name} plan is being added.`, link: "/chat/plans" });
-  }, [name]);
+    addNotification({ kind: "purchase", text: plan ? `Thanks for subscribing! Your ${name} plan is being added.` : `Thanks for your purchase! Your $${usage} of usage credits is being added.`, link: "/chat/plans" });
+  }, [name, plan, usage]);
   // A bank payment takes a few days: say so instead of "ready".
   useEffect(() => {
     if (!sessionId || !user) return;
@@ -120,7 +123,7 @@ export default function Subscribed({ plan }) {
     return () => clearTimeout(t);
   }, [left, stay, isLoadingAuth, next]);
 
-  const lead = status === "processing" ? `Your bank is confirming the payment, which usually takes a few days. Your ${name} plan starts as soon as it clears.` : plan === "team" ? "Your Team plan is ready. Build with up to 2 friends or coworkers." : "Your Pro plan is ready. Higher limits and all 4 AI models are yours.";
+  const lead = status === "processing" ? `Your bank is confirming the payment, which usually takes a few days. ${plan ? `Your ${name} plan starts` : "Your usage credits are added"} as soon as it clears.` : !plan ? "Your usage credits are ready. They'll keep you going when you hit your 5-hour limit." : plan === "team" ? "Your Team plan is ready. Build with up to 2 friends or coworkers." : "Your Pro plan is ready. Higher limits and all 4 AI models are yours.";
   return (
     <div className="nxs">
       <style>{CSS}</style>
@@ -137,16 +140,16 @@ export default function Subscribed({ plan }) {
           <div className="nxs-tick"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" stroke="#0b2a1c" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg></div>
         </div>
         <p className="nxs-eye">Nebulux AI {name}</p>
-        <h1>Thanks for subscribing</h1>
+        <h1>{title}</h1>
         <p className="nxs-lead">{lead}</p>
         <div className="nxs-plan">
-          <b>{name} plan</b>
+          <b>{plan ? `${name} plan` : name}</b>
           <div className="nxs-amt">
-            <span>${yearly ? yearlyPerMonth(monthly) : monthly} <i>per month</i></span>
-            <small>{yearly ? `$${yearlyTotal(monthly)} billed yearly` : "Billed monthly"}</small>
+            {plan ? <span>${yearly ? yearlyPerMonth(monthly) : monthly} <i>per month</i></span> : <span>${usage}</span>}
+            <small>{!plan ? "One-time payment" : yearly ? `$${yearlyTotal(monthly)} billed yearly` : "Billed monthly"}</small>
           </div>
         </div>
-        <ul>{info.features.map((f) => <li key={f}><Tick /><span>{f}</span></li>)}</ul>
+        <ul>{perks.map((f) => <li key={f}><Tick /><span>{f}</span></li>)}</ul>
         <a className="nxs-go" href={next}>{home ? "Go to your home page" : "Back to where you were"}</a>
         {!stay && (
           <p className="nxs-soon">Taking you to {home ? "your home page" : "where you were"} in <b>{left}</b>s &middot; <button type="button" onClick={() => setStay(true)}>Stay here</button></p>

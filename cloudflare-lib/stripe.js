@@ -6,7 +6,8 @@
 // webhook writes them, after Stripe has signed the event, so coming back to the thank-you page
 // doesn't give anyone a plan.
 import { all, create, update, getRow } from "./db.js";
-import { isPlan, planDollars, planLabel } from "./planPrices.js";
+import { isPlan, planDollars, planLabel, usageDollars, USAGE_ID } from "./planPrices.js";
+import { addUsageCredits } from "./usageCredits.js";
 import { discountedPrice } from "./discounts.js";
 
 export const stripeReady = (env) => !!(env && env.STRIPE_SECRET_KEY);
@@ -68,6 +69,32 @@ export function checkoutFields({ plan, billing, user, origin, from, back, pct = 
   return fields;
 }
 
+// A one-time Checkout Session for usage credits. The amount was checked on the server (usageDollars).
+export function usageFields({ amount, user, origin, from, back }) {
+  const fields = {
+    mode: "payment",
+    ui_mode: "hosted_page",
+    success_url: `${origin}/ThankYou?usage=${amount}&from=${encodeURIComponent(from)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: origin + back,
+    client_reference_id: user.id,
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][product_data][name]": "Usage Credits",
+    "line_items[0][price_data][unit_amount]": String(amount * 100),
+    "line_items[0][quantity]": "1",
+    billing_address_collection: "required",
+    allow_promotion_codes: "false",
+    submit_type: "auto",
+    integration_identifier: "hosted_web_0001",
+    origin_context: "web",
+    "metadata[source]": "nebulux",
+    "metadata[kind]": "usage",
+    "metadata[userId]": user.id,
+    "metadata[amount]": String(amount),
+  };
+  if (user.email) fields.customer_email = user.email;
+  return fields;
+}
+
 // Stripe signs each webhook: header "t=<seconds>,v1=<hex>[,v1=...]", HMAC-SHA256 of "<t>.<body>".
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 export async function signStripe(body, secret, t) {
@@ -120,6 +147,22 @@ async function recordSession(db, s, status) {
   return status;
 }
 
+// Usage credits: the money is added once, when the payment is really in (a bank payment clears later).
+async function recordUsage(db, s, status) {
+  const meta = s.metadata || {}, userId = s.client_reference_id || meta.userId, amount = usageDollars(meta.amount);
+  if (s.mode !== "payment" || !s.id || !userId || amount === null || meta.source !== "nebulux") return "ignored";
+  if (status === "paid" && s.amount_total !== amount * 100) return "ignored";
+  const id = `stripe_${s.id}`;
+  let row = await getRow(db, "Base44Purchase", id);
+  if (!row) row = await create(db, "Base44Purchase", SYSTEM, { appUserId: userId, productId: USAGE_ID, productName: `$${amount} usage credits`, status, provider: "stripe", customerId: s.customer || null, amountCents: amount * 100, currency: s.currency || "usd", credited: false }, { id, created_by_id: userId });
+  else if (row.status !== status && row.status !== "paid") row = await update(db, "Base44Purchase", SYSTEM, id, { status });
+  if (row.status !== "paid" || row.credited) return row.status;
+  await addUsageCredits(db, userId, amount);
+  await update(db, "Base44Purchase", SYSTEM, id, { credited: true });
+  return "paid";
+}
+const recordAny = (db, s, status) => (s.metadata && s.metadata.kind === "usage" ? recordUsage(db, s, status) : recordSession(db, s, status));
+
 async function subscriptionChanged(db, sub, deleted) {
   const row = await getRow(db, "Base44Purchase", rowId(sub.id));
   if (!row || row.status === "canceled") return "ignored";
@@ -134,13 +177,13 @@ async function subscriptionChanged(db, sub, deleted) {
 export async function handleStripeEvent(db, ev) {
   const o = ev && ev.data && ev.data.object;
   if (!o) return "ignored";
-  if (ev.type === "checkout.session.completed") return recordSession(db, o, o.payment_status === "paid" || o.payment_status === "no_payment_required" ? "paid" : "processing");
-  if (ev.type === "checkout.session.async_payment_succeeded") return recordSession(db, o, "paid");
-  if (ev.type === "checkout.session.async_payment_failed") return recordSession(db, o, "failed");
+  if (ev.type === "checkout.session.completed") return recordAny(db, o, o.payment_status === "paid" || o.payment_status === "no_payment_required" ? "paid" : "processing");
+  if (ev.type === "checkout.session.async_payment_succeeded") return recordAny(db, o, "paid");
+  if (ev.type === "checkout.session.async_payment_failed") return recordAny(db, o, "failed");
   if (ev.type === "customer.subscription.deleted") return subscriptionChanged(db, o, true);
   if (ev.type === "customer.subscription.updated") return subscriptionChanged(db, o, false);
   return "ignored";
 }
 
 // This person's live Stripe subscription, if they have one.
-export const activeStripeRow = async (db, userId) => (await all(db, "Base44Purchase")).find((p) => p.appUserId === userId && p.provider === "stripe" && (p.status === "paid" || p.status === "processing" || p.status === "unpaid")) || null;
+export const activeStripeRow = async (db, userId) => (await all(db, "Base44Purchase")).find((p) => p.appUserId === userId && p.provider === "stripe" && p.subscriptionId && (p.status === "paid" || p.status === "processing" || p.status === "unpaid")) || null;

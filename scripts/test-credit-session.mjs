@@ -193,7 +193,7 @@ assert(st === 200 && b.credits.usageCredits && b.credits.usageCredits.dailyLimit
 const ua = await import(R + "src/lib/usageCredits.js");
 assert(ua.USAGE_MIN === 5 && ua.USAGE_MAX === 500 && ua.USAGE_RECOMMENDED === 100 && ua.USAGE_PRESETS.includes(100), "buying usage credits: $5 to $500, $100 recommended");
 assert(ua.usageAmount("5") === 5 && ua.usageAmount("$500") === 500 && ua.usageAmount("4") === null && ua.usageAmount("501") === null && ua.usageAmount("7.5") === null, "an amount typed in has to be whole dollars from $5 to $500");
-assert(ua.USAGE_CREDITS_ON_SALE === false, "usage credits stay coming soon until there's a checkout for them");
+assert(ua.USAGE_CREDITS_ON_SALE === true, "usage credits are on sale, through the Stripe checkout");
 
 // ---- spending usage credits past the 5-hour limit ($1 for every 10,000 tokens) ----
 assert(U.TOKENS_PER_DOLLAR === 10000 && U.costOf(10000) === 1 && U.costOf(2300) === 0.23, "usage credits: $1 for every 10,000 tokens (an everyday reply is about $0.23)");

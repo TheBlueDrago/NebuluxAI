@@ -1,14 +1,11 @@
 // Usage credits, like Claude's extra usage (owner, 2026-11-03): money you add that keeps every AI going
 // after you hit your 5-hour or weekly limit (cloudflare-lib/creditSession.js). You pick a dollar amount
-// (no packs, no per-AI credits): at least $5, at most $500, $100 recommended. They can't be bought yet
-// (lib/salesOpen.js); the checkout for them comes with the payment provider.
-export const USAGE_MIN = 5;
-export const USAGE_MAX = 500;
+// (no packs, no per-AI credits): at least $5, at most $500, $100 recommended, paid through Stripe.
+import { USAGE_MIN, USAGE_MAX } from "../../cloudflare-lib/planPrices.js";
+export { USAGE_MIN, USAGE_MAX };
 export const USAGE_RECOMMENDED = 100;
 export const USAGE_PRESETS = [10, 25, 50, 100, 250];
-// Their own switch: there's no checkout for them yet, so they stay "coming soon" even once plans can be
-// bought (lib/salesOpen.js). Turn on when create-checkout sells them and chatCompletion spends them.
-export const USAGE_CREDITS_ON_SALE = false;
+export const USAGE_CREDITS_ON_SALE = true;
 
 // A typed amount -> whole dollars, or null when it isn't between the minimum and maximum.
 export function usageAmount(v) {

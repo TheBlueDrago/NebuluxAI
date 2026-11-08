@@ -21,7 +21,7 @@ export default function Pricing() {
       <section className="text-center pt-10 pb-12">
         <h1 className="text-4xl sm:text-6xl font-bold text-white">Simple prices</h1>
         <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">{PLANS_OPEN
-            ? "Start free. Pro is $15 a month, Team is $20 a month for up to 3 people, or pay yearly and save 20%. Usage credits, to keep going past your 5-hour limit, are coming soon."
+            ? "Start free. Pro is $15 a month, Team is $20 a month for up to 3 people, or pay yearly and save 20%. Usage credits keep you going when you hit your 5-hour limit."
             : "Start free. Paid plans are coming soon: Pro will be $15 a month and Team $20 a month for up to 3 people (or pay yearly and save 20%), and usage credits to keep going past your 5-hour limit are coming too."}</p>
       </section>
       <PricingCards />

@@ -29,13 +29,17 @@ for (const [id, y, m] of [["pro", "$144", "$12"], ["team", "$192", "$16"]]) {
 assert(!P.isPlan("enterprise") && !P.isPlan("constructor") && !P.isPlan("free"), "only Pro and Team can be bought here");
 
 // ---- a fake Stripe, sign-in and database ----
-const DB = new Map();
+const DB = new Map(), BAL = new Map();
+const balance = (id) => (BAL.get(id) || 0) / 100000;
 const prepare = (sql) => ({
+  run: async () => ({}),
   bind: (...a) => ({
     all: async () => ({ results: [...DB.values()].filter((r) => r.entity === a[0]) }),
-    first: async () => DB.get(a[0] + "/" + a[1]) || null,
+    first: async () => (/usage_credits/.test(sql) ? (BAL.has(a[0]) ? { balance: BAL.get(a[0]), daily_limit: null, day: null, spent_today: 0 } : null) : DB.get(a[0] + "/" + a[1]) || null),
     run: async () => {
-      if (/^INSERT/.test(sql)) {
+      if (/usage_credits/.test(sql)) {
+        if (/^INSERT/.test(sql)) BAL.set(a[0], (BAL.get(a[0]) || 0) + a[1]);
+      } else if (/^INSERT/.test(sql)) {
         const k = a[0] + "/" + a[1];
         if (DB.has(k)) throw new Error("UNIQUE constraint failed");
         DB.set(k, { entity: a[0], id: a[1], created_by_id: a[2], created_date: a[3], updated_date: a[4], data: a[5] });
@@ -168,4 +172,50 @@ const signed = async (body, secret = "whsec_x", t = Math.floor(Date.now() / 1000
     await post(e, await signed(e));
   }
   assert(rows().length === n, "other payments on the Stripe account give no plan");
+}
+
+// ---- usage credits ----
+{
+  const [s1, b1, f1] = await call({ productId: "usage-credits", amount: 25, from: "/chat", back: "/chat/shop" });
+  assert(s1 === 200 && b1.redirectUrl && f1.mode === "payment", "usage credits: a one-time checkout");
+  assert(f1["line_items[0][price_data][unit_amount]"] === "2500" && f1["line_items[0][price_data][product_data][name]"] === "Usage Credits" && !("line_items[0][price_data][recurring][interval]" in f1), "usage credits: $25 is charged once");
+  assert(f1.billing_address_collection === "required" && f1.success_url.includes("/ThankYou?usage=25&from=%2Fchat&"), "usage credits: full address, and back to the right page");
+  for (const bad of [4, 501, 2.5, "lots", null, -5]) {
+    const [st, , fb] = await call({ productId: "usage-credits", amount: bad });
+    assert(st === 400 && !fb, `usage credits: an amount of ${bad} is refused`);
+  }
+  const [s2] = await call({ productId: "usage-credits", amount: 500 });
+  assert(s2 === 200, "usage credits: $500 is allowed");
+  const [s3, b3] = await call({ productId: "usage-credits", amount: 25 }, { PUBLISHED_HTML: kv });
+  assert(s3 === 403 && /isn't connected/.test(b3.error), "usage credits: with no Stripe key, nothing starts");
+  const [s4] = await call({ productId: "usage-credits", amount: 25 });
+  assert(s4 === 200, "someone with a subscription can still buy usage credits");
+
+  const pay = (id, over = {}) => ({ id, mode: "payment", customer: "cus_9", client_reference_id: "u9", payment_status: "paid", amount_total: 2500, currency: "usd", metadata: { source: "nebulux", kind: "usage", userId: "u9", amount: "25" }, ...over });
+  const b = event("checkout.session.completed", pay("cs_a"));
+  assert((await post(b, "t=1,v1=abc")) === 400 && balance("u9") === 0, "usage credits: a made-up signature adds nothing");
+  assert((await post(b, await signed(b))) === 200 && balance("u9") === 25, "usage credits: a signed payment adds $25");
+  await post(b, await signed(b));
+  assert(balance("u9") === 25, "usage credits: the same event twice adds it once");
+  const row = rows().find((r) => r.id === "stripe_cs_a");
+  assert(row.productId === "usage-credits" && row.status === "paid" && row.credited === true, "usage credits: the purchase is recorded");
+  const low = event("checkout.session.completed", pay("cs_b", { amount_total: 100 }));
+  await post(low, await signed(low));
+  assert(balance("u9") === 25, "usage credits: a total that doesn't match adds nothing");
+  const bank = event("checkout.session.completed", pay("cs_c", { payment_status: "unpaid" }));
+  await post(bank, await signed(bank));
+  assert(balance("u9") === 25, "usage credits: a bank payment adds nothing until it clears");
+  const clear = event("checkout.session.async_payment_succeeded", pay("cs_c"));
+  await post(clear, await signed(clear));
+  await post(clear, await signed(clear));
+  assert(balance("u9") === 50, "usage credits: when it clears they're added, once");
+  const bank2 = event("checkout.session.completed", pay("cs_d", { payment_status: "unpaid" }));
+  await post(bank2, await signed(bank2));
+  const fail = event("checkout.session.async_payment_failed", pay("cs_d", { payment_status: "unpaid" }));
+  await post(fail, await signed(fail));
+  assert(balance("u9") === 50 && rows().find((r) => r.id === "stripe_cs_d").status === "failed", "usage credits: a failed bank payment adds nothing");
+  const forged = event("checkout.session.completed", pay("cs_e", { metadata: { kind: "usage", userId: "u9", amount: "25" } }));
+  await post(forged, await signed(forged));
+  assert(balance("u9") === 50, "usage credits: other payments on the Stripe account add nothing");
+  assert(!(await S.activeStripeRow(db, "u9")), "buying usage credits doesn't count as having a subscription");
 }

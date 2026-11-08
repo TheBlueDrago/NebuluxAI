@@ -15,7 +15,7 @@ const cards = read("components/landing/PricingCards.jsx"), pricing = read("pages
 assert(/import \{ PLANS_OPEN \} from "@\/lib\/salesOpen"/.test(cards) && /!PLANS_OPEN && \(p\.id === "pro" \|\| p\.id === "team"\)[\s\S]{0,300}Coming soon/.test(cards), "the Pro and Team cards say Coming soon while sales are closed");
 assert(/PLANS_OPEN\s*\?\s*"Start free\. Pro is[^"]*"\s*:\s*"Start free\. Paid plans are coming soon/.test(pricing), "the pricing page's first line says paid plans are coming soon while sales are closed");
 assert(/PLANS_OPEN \? ", and paid plans get higher limits\." : "\. Paid plans with higher limits are coming soon\."/.test(pricing), "the usage limits answer says paid plans are coming soon while sales are closed");
-assert(/SALES_OPEN \? "Hit your 5-hour limit\?[^"]*" : "Usage credits[^"]*coming soon too\."/.test(landing), "the home page says usage credits are coming soon too while sales are closed");
+assert(/USAGE_CREDITS_ON_SALE \? "Hit your 5-hour limit\?[^"]*" : "Usage credits[^"]*coming soon too\."/.test(landing), "the home page says usage credits are coming soon too while sales are closed");
 // No credit packs or referrals any more (owner, 2026-11-03): usage credits instead.
 const all2 = cards + pricing + landing + read("pages/Billing.jsx") + read("components/Subscriptions.jsx");
 assert(!/credit packs?|one-time packs?|refer (a )?friend/i.test(all2), "no page offers credit packs or referrals");
@@ -26,3 +26,10 @@ console.log(open ? "(sales are open now)" : "(sales are closed now)");
 // What search engines and link previews show for /pricing says the same.
 const { PAGES } = await import("../cloudflare-lib/pagemeta.js");
 assert(/Pro is \$15 a month/.test(PAGES.pricing.description) && !/packs start at/.test(PAGES.pricing.description), "the pricing page's search description follows SALES_OPEN too");
+
+// The Upgrade popup is the main way to buy: it has real buttons and says the plans are here.
+{
+  const d = read("components/PlansDialog.jsx");
+  assert(/The plans are here!/.test(d) && !/aren't open yet/.test(d) && /startCheckout\(id, yearly\)/.test(d), "the Upgrade popup sells Pro and Team");
+  assert(!/Paid plans[^"]*coming soon/.test(landing.split("\n").filter((l) => !l.includes("SALES_OPEN")).join("\n")), "the home page doesn't say paid plans are coming soon");
+}

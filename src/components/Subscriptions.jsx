@@ -244,7 +244,7 @@ export default function Subscriptions({ onFree, offer }) {
       <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center">
         <span className="bh-wordmark bg-gradient-to-r from-white via-indigo-200 to-fuchsia-200 bg-clip-text text-transparent">Plans</span>
       </h1>
-      <p className="text-slate-400 mt-3 text-center">Plans and usage credits</p>
+      <p className="text-slate-400 mt-3 text-center">The plans are here! Pick the one that fits you.</p>
       <PaymentsNotice className="mt-4" />
       <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
         <span className="inline-flex items-center gap-1.5">

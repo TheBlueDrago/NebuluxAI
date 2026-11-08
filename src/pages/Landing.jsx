@@ -6,7 +6,7 @@ import SiteThumb from "@/components/SiteThumb";
 import { gameThumb } from "@/lib/gameThumbs";
 import PublicLayout, { START_FREE } from "@/components/PublicLayout";
 import PricingCards from "@/components/landing/PricingCards";
-import { SALES_OPEN } from "@/lib/salesOpen";
+import { USAGE_CREDITS_ON_SALE } from "@/lib/usageCredits";
 import { HeroCollage, ChatShot, SiteShot, GameShot, ShopShot, TeamShot, SafetyShot, EnterpriseShot } from "@/components/landing/ProductShots";
 import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company";
 import { siteUrl } from "@/lib/blackholeDomain";
@@ -92,7 +92,7 @@ const WHY = [
   { icon: Code2, title: "No coding, no hosting bills", text: "Describe a website or game and it's live in minutes at its own free web address. Building it yourself takes months and costs money." },
   { icon: GraduationCap, title: "Made for learning", text: "Study mode tutors you step by step, math shows like a textbook, and it makes quizzes and reads answers aloud." },
   { icon: ShieldCheck, title: "Safe for kids", text: "Every website and game is checked before it goes live, scams and adult content are blocked, and every page has a Report button." },
-  { icon: Sparkles, title: "Free to start, cheap after", text: "The Free plan gives you credits for all 4 AIs every month, 3 websites and unlimited games. Paid plans are coming soon." },
+  { icon: Sparkles, title: "Free to start, cheap after", text: "The Free plan gives you credits for all 4 AIs every month, 3 websites and unlimited games. And the paid plans are here." },
   { icon: Globe, title: "Always getting better", text: "New features almost every week, many from ideas people send us. See What's new." },
 ];
 
@@ -120,7 +120,7 @@ const FAQ = [
   ["Why use Nebulux AI instead of another site?", "Because it does everything in one place: the same AI helps with questions, homework, writing and code, and builds real websites and games for you, with no coding and no hosting bills. It's made for learning (Study mode, quizzes, math that looks like a textbook), everything published is safety-checked, and it's free to start."],
   ["What can the AI help me with?", "Almost anything you'd ask a smart friend: homework explained step by step, practice quizzes, essays, emails and stories, code, questions about a photo you send, and building websites and games. You can type or just talk to it.", ["/guides", "See the guides"]],
   ["Can I use it for school?", "Yes. It's built to help you understand, not just hand you answers: ask it to explain step by step or quiz you. Always follow your teacher's rules about AI.", ["/guides/ai-homework-help", "Using AI for homework the right way"]],
-  ["Is Nebulux AI free?", "Yes. The Free plan gives you 100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI, plus 3 websites and unlimited games. Paid plans (Pro $15 a month and Team $20 a month) are coming soon in a later update."],
+  ["Is Nebulux AI free?", "Yes. The Free plan gives you 100,000 tokens every 5 hours and 1,000,000 a week, shared by every AI, plus 3 websites and unlimited games. The paid plans are here too: Pro is $15 a month and Team is $20 a month, or 20% off if you pay yearly."],
   ["Do I need to know how to code?", "No. You describe what you want in your own words. If you do know code, you can edit it by hand, and on Pro you can download it or push it to GitHub."],
   ["Does it work on my phone?", "Yes. Everything works on phones, tablets and computers, and you can install it like an app from your profile."],
   ["What are credits?", "Credits are what the AI uses up when it works for you. Bigger jobs use more. Your plan gives you a fresh allowance every month."],
@@ -474,7 +474,7 @@ export default function Landing() {
         </Reveal>
         <PricingCards />
         <p className="mt-6 text-center text-slate-400">
-          {SALES_OPEN ? "Hit your 5-hour limit? Usage credits keep you going until it resets." : "Usage credits, to keep going when you hit your 5-hour limit, are coming soon too."}{" "}
+          {USAGE_CREDITS_ON_SALE ? "Hit your 5-hour limit? Usage credits keep you going until it resets." : "Usage credits, to keep going when you hit your 5-hour limit, are coming soon too."}{" "}
           <Link to="/pricing" className="text-indigo-300 hover:text-indigo-200">See all prices</Link>
         </p>
       </section>
