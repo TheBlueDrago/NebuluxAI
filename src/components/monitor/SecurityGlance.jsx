@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ShieldCheck, Flag, ScrollText, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 import { adminCountries } from "../../../cloudflare-lib/audit.js";
 
 const DAY = 86400000;
@@ -28,11 +29,12 @@ export default function SecurityGlance({ unconfirmed, removed, held }) {
     }
   };
   const [log, setLog] = useState(null);
+  const { slow } = useMonitorTick();
 
   useEffect(() => {
     base44.functions.invoke("admin-reports", { action: "count" }).then((r) => setReports(r.data?.open ?? 0)).catch(() => setReports("?"));
-    base44.functions.invoke("admin-log", {}).then((r) => setLog(r.data?.entries || [])).catch(() => setLog([]));
-  }, []);
+    base44.functions.invoke("admin-log", {}).then((r) => setLog(r.data?.entries || [])).catch(() => setLog((l) => l || []));
+  }, [slow]);
 
   const recent = (log || []).filter((e) => Date.now() - Date.parse(e.at) < DAY);
   const last = (log || [])[0];

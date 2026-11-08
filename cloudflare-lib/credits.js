@@ -31,7 +31,7 @@ import { TIERS, PLAN_TOTALS } from "./planTotals.js";
 import { blockedBy, unverified, emailRemoved, removedEmailKey } from "./bans.js";
 import { readPool, poolView, limitsFor, sessionExempt } from "./creditSession.js";
 import { usageCreditsView } from "./usageCredits.js";
-const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4, admin: 5 };
+export const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4, admin: 5 };
 
 // Whole credits: 1 per started 10,000 characters of reply, times the effort level.
 export const CHARS_PER_CREDIT = 10000;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Download, Mail, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 // Monitor → Waitlist: emails left on the maintenance page (cloudflare-lib/waitlist.js), to tell
 // people when Nebulux AI opens. Shown partly hidden; Download gets the full list as a CSV for an
@@ -13,9 +14,11 @@ export default function Waitlist() {
   const [all, setAll] = useState(false);
   const [note, setNote] = useState("");
   const call = (body) => base44.functions.invoke("waitlist", body).then((r) => setPeople(r.data?.people || [])).catch(() => setPeople((p) => p || []));
+  const { live } = useMonitorTick();
   useEffect(() => {
     call({ action: "list" });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
   if (people === null) return null;
   const download = async () => {
     setNote("");

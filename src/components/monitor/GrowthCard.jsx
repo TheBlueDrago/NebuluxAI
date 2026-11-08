@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 import { OFFER_START, TRIAL_DAYS, DISCOUNT_HOURS } from "../../../cloudflare-lib/offers.js";
 
 const DAY = 86400000;
@@ -16,12 +17,13 @@ export default function GrowthCard({ users, complete }) {
   // start of each account's latest questions.
   const [activity, setActivity] = useState(null);
   const [openDay, setOpenDay] = useState(null);
+  const { slow } = useMonitorTick();
   useEffect(() => {
     base44.functions
       .invoke("monitor-activity", {})
       .then((r) => setActivity(r.data || null))
-      .catch(() => setActivity(null));
-  }, []);
+      .catch(() => setActivity((a) => a));
+  }, [slow]);
   const emailOf = (id) => users.find((u) => u.id === id)?.email || "an account";
   const msgsOn = (from) => (activity?.days || {})[new Date(from + DAY / 2).toISOString().slice(0, 10)] || 0;
   const times = users.map((u) => when(u.created_date)).filter(Number.isFinite);

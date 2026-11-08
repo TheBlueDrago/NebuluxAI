@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Mail, Check, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 const TOPIC = { account: "Account", billing: "Billing", bug: "Bug", ai: "AI reply", security: "Security", parent: "Parent / teacher", idea: "Idea", business: "Business", partnership: "Partnership / investor", other: "Other" };
 
@@ -24,9 +25,11 @@ export default function Messages() {
     }
   };
 
+  const { slow } = useMonitorTick();
   useEffect(() => {
     call({ action: "list" });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slow]);
 
   const done = async (id) => {
     setBusy(id);

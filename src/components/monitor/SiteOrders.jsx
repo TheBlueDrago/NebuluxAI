@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Globe, ExternalLink } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 // Monitor → Nebulux Sites orders (functions/site-orders.js). New ones from the last day are marked New.
 const ADMIN = "https://nebuluxsites.thebluedragonstriker.workers.dev/admin.html";
 
 export default function SiteOrders() {
   const [orders, setOrders] = useState(null);
+  const { live } = useMonitorTick();
   useEffect(() => {
-    base44.functions.invoke("site-orders", {}).then((r) => setOrders(r.data?.orders || [])).catch(() => setOrders([]));
-  }, []);
+    base44.functions.invoke("site-orders", {}).then((r) => setOrders(r.data?.orders || [])).catch(() => setOrders((o) => o || []));
+  }, [live]);
   if (orders === null) return null;
   const fresh = (o) => Date.now() - new Date(o.created_at) < 86400000;
   const newCount = orders.filter(fresh).length;

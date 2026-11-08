@@ -1,4 +1,4 @@
-# Stripe setup (Pro, Team and usage credits)
+# Stripe setup (Pro, Team, usage credits and API funds)
 
 Checkout is built, but it does nothing until the two secrets below are in Cloudflare. Without them, the buttons say "Checkout isn't connected yet" and nothing can be charged.
 

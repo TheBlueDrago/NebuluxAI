@@ -6,7 +6,7 @@ import { addNotification } from "@/lib/notifications";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { shouldOfferTour } from "@/lib/welcomeTour";
 import { PUBLIC_PLANS } from "@/lib/publicPlans";
-import { MONTHLY, yearlyTotal, yearlyPerMonth } from "../../cloudflare-lib/planPrices.js";
+import { MONTHLY, yearlyTotal, yearlyPerMonth, API_NAMES } from "../../cloudflare-lib/planPrices.js";
 
 // After subscribing to Pro or Team. This page doesn't give the plan: Stripe's signed webhook does
 // (cloudflare-lib/stripe.js). After a moment people go back to the page they were on, or, if they
@@ -87,15 +87,17 @@ const Tick = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#b06bff" fillOpacity=".22" /><path d="M5 9.4l2.7 2.7L13 6.6" stroke="#d7b8ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
+const API_PERKS = ["Each request takes its cost from this balance", "Money added to one AI only pays for that AI", "Set a monthly limit on any key under API keys"];
 const USAGE_PERKS = ["Keeps every AI going after your 5-hour limit runs out", "They don't extend your weekly limit", "Set how much they can spend a day in Settings, Usage"];
 
-export default function Subscribed({ plan, usage }) {
+export default function Subscribed({ plan, usage, api, model }) {
   const title = plan ? "Thanks for subscribing" : "Thanks for your purchase";
   usePageTitle(title);
   const { user, isLoadingAuth } = useAuth();
   const q = new URLSearchParams(window.location.search);
   const yearly = q.get("billing") === "yearly", sessionId = q.get("session_id") || "";
-  const info = PUBLIC_PLANS.find((p) => p.id === plan), name = plan ? info.name : "Usage credits", monthly = plan ? MONTHLY[plan] : 0, perks = plan ? info.features : USAGE_PERKS;
+  const info = PUBLIC_PLANS.find((p) => p.id === plan), name = plan ? info.name : api ? `${API_NAMES[model]} API funds` : "Usage credits", monthly = plan ? MONTHLY[plan] : 0, perks = plan ? info.features : api ? API_PERKS : USAGE_PERKS;
+  const paid = api || usage;
   const [status, setStatus] = useState("paid");
   const [left, setLeft] = useState(SECONDS);
   const [stay, setStay] = useState(false);
@@ -106,8 +108,8 @@ export default function Subscribed({ plan, usage }) {
   const next = home ? "/chat" : from;
 
   useEffect(() => {
-    addNotification({ kind: "purchase", text: plan ? `Thanks for subscribing! Your ${name} plan is being added.` : `Thanks for your purchase! Your $${usage} of usage credits is being added.`, link: "/chat/plans" });
-  }, [name, plan, usage]);
+    addNotification({ kind: "purchase", text: plan ? `Thanks for subscribing! Your ${name} plan is being added.` : api ? `Thanks for your purchase! Your $${api} of ${name} is being added.` : `Thanks for your purchase! Your $${usage} of usage credits is being added.`, link: api ? "/api" : "/chat/plans" });
+  }, [name, plan, usage, api]);
   // A bank payment takes a few days: say so instead of "ready".
   useEffect(() => {
     if (!sessionId || !user) return;
@@ -123,7 +125,7 @@ export default function Subscribed({ plan, usage }) {
     return () => clearTimeout(t);
   }, [left, stay, isLoadingAuth, next]);
 
-  const lead = status === "processing" ? `Your bank is confirming the payment, which usually takes a few days. ${plan ? `Your ${name} plan starts` : "Your usage credits are added"} as soon as it clears.` : !plan ? "Your usage credits are ready. They'll keep you going when you hit your 5-hour limit." : plan === "team" ? "Your Team plan is ready. Build with up to 2 friends or coworkers." : "Your Pro plan is ready. Higher limits and all 4 AI models are yours.";
+  const lead = status === "processing" ? `Your bank is confirming the payment, which usually takes a few days. ${plan ? `Your ${name} plan starts` : api ? "Your API funds are added" : "Your usage credits are added"} as soon as it clears.` : api ? "Your API funds are ready. Every request made with your keys is paid from this balance." : !plan ? "Your usage credits are ready. They'll keep you going when you hit your 5-hour limit." : plan === "team" ? "Your Team plan is ready. Build with up to 2 friends or coworkers." : "Your Pro plan is ready. Higher limits and all 4 AI models are yours.";
   return (
     <div className="nxs">
       <style>{CSS}</style>
@@ -145,7 +147,7 @@ export default function Subscribed({ plan, usage }) {
         <div className="nxs-plan">
           <b>{plan ? `${name} plan` : name}</b>
           <div className="nxs-amt">
-            {plan ? <span>${yearly ? yearlyPerMonth(monthly) : monthly} <i>per month</i></span> : <span>${usage}</span>}
+            {plan ? <span>${yearly ? yearlyPerMonth(monthly) : monthly} <i>per month</i></span> : <span>${paid}</span>}
             <small>{!plan ? "One-time payment" : yearly ? `$${yearlyTotal(monthly)} billed yearly` : "Billed monthly"}</small>
           </div>
         </div>

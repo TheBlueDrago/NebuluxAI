@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Loader2, TrendingUp, Globe, ShieldAlert } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 import { payoutWarnings, payoutSummary, HOLD_DAYS } from "@/lib/payoutChecks";
 
 const money = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
@@ -9,16 +10,17 @@ export default function RevenueAnalytics() {
   const [sales, setSales] = useState(null);
   // Sites an admin took down: their sales are held (see payoutWarnings).
   const [takenDown, setTakenDown] = useState(() => new Set());
+  const { slow } = useMonitorTick();
 
   useEffect(() => {
     base44.entities.SiteSale.filter({ status: "paid" }, "-paidAt", 500)
       .then((rows) => setSales(rows || []))
-      .catch(() => setSales([]));
+      .catch(() => setSales((s) => s || []));
     base44.functions
       .invoke("admin-reports", { action: "list" })
       .then((r) => setTakenDown(new Set((r.data?.hidden || []).filter((h) => h.kind === "site").map((h) => h.name))))
       .catch(() => {});
-  }, []);
+  }, [slow]);
 
   if (!sales) {
     return (

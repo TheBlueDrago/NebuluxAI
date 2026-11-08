@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 // Monitor → AI health: replies that worked vs. hit "busy" or failed, per day, from the free
 // Gemini tier (functions/.../ai-health.js). Lots of "busy" means the free limits are being
@@ -8,10 +9,17 @@ import { base44 } from "@/api/base44Client";
 export default function AiHealth() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const { live } = useMonitorTick();
   useEffect(() => {
-    base44.functions.invoke("ai-health", {}).then((r) => setData(r.data)).catch(() => setErr("Couldn't load AI health."));
-  }, []);
-  if (err) return <p className="w-full max-w-3xl mt-6 text-sm text-slate-400">{err}</p>;
+    base44.functions
+      .invoke("ai-health", {})
+      .then((r) => {
+        setData(r.data);
+        setErr("");
+      })
+      .catch(() => setErr("Couldn't load AI health."));
+  }, [live]);
+  if (err && !data) return <p className="w-full max-w-3xl mt-6 text-sm text-slate-400">{err}</p>;
   if (!data) return null;
   const days = data.days || [];
   const total = days.reduce((a, d) => a + d.ok + d.busy + d.fail, 0);

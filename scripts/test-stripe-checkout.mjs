@@ -29,15 +29,19 @@ for (const [id, y, m] of [["pro", "$144", "$12"], ["team", "$192", "$16"]]) {
 assert(!P.isPlan("enterprise") && !P.isPlan("constructor") && !P.isPlan("free"), "only Pro and Team can be bought here");
 
 // ---- a fake Stripe, sign-in and database ----
-const DB = new Map(), BAL = new Map();
+const DB = new Map(), BAL = new Map(), APIBAL = new Map(), AGREED = new Set(), LEDGER = [];
 const balance = (id) => (BAL.get(id) || 0) / 100000;
 const prepare = (sql) => ({
   run: async () => ({}),
   bind: (...a) => ({
-    all: async () => ({ results: [...DB.values()].filter((r) => r.entity === a[0]) }),
-    first: async () => (/usage_credits/.test(sql) ? (BAL.has(a[0]) ? { balance: BAL.get(a[0]), daily_limit: null, day: null, spent_today: 0 } : null) : DB.get(a[0] + "/" + a[1]) || null),
+    all: async () => ({ results: /FROM api_balance/.test(sql) ? [...APIBAL].filter(([k]) => k.startsWith(a[0] + "/")).map(([k, v]) => ({ model: k.split("/")[1], balance: v, funded: 1 })) : /FROM api_ledger/.test(sql) ? [] : [...DB.values()].filter((r) => r.entity === a[0]) }),
+    first: async () => (/FROM api_account/.test(sql) ? (AGREED.has(a[0]) ? { use_api: 1, agreed_at: "2026-11-01" } : null) : /usage_credits/.test(sql) ? (BAL.has(a[0]) ? { balance: BAL.get(a[0]), daily_limit: null, day: null, spent_today: 0 } : null) : DB.get(a[0] + "/" + a[1]) || null),
     run: async () => {
-      if (/usage_credits/.test(sql)) {
+      if (/api_(account|balance|ledger)/.test(sql)) {
+        if (/INSERT INTO api_balance/.test(sql)) APIBAL.set(a[0] + "/" + a[1], (APIBAL.get(a[0] + "/" + a[1]) || 0) + a[2]);
+        if (/INSERT INTO api_ledger/.test(sql)) LEDGER.push(a);
+        if (/UPDATE api_account SET agreed_at/.test(sql)) AGREED.add(a[1]);
+      } else if (/usage_credits/.test(sql)) {
         if (/^INSERT/.test(sql)) BAL.set(a[0], (BAL.get(a[0]) || 0) + a[1]);
       } else if (/^INSERT/.test(sql)) {
         const k = a[0] + "/" + a[1];
@@ -218,4 +222,70 @@ const signed = async (body, secret = "whsec_x", t = Math.floor(Date.now() / 1000
   await post(forged, await signed(forged));
   assert(balance("u9") === 50, "usage credits: other payments on the Stripe account add nothing");
   assert(!(await S.activeStripeRow(db, "u9")), "buying usage credits doesn't count as having a subscription");
+}
+
+// ---- API funds (the Nebulux Platform's Billing, Nebulux Orbit's API too) ----
+{
+  const { onRequestPost: billing } = await load(FN + "api-billing.js");
+  const bill = async (body, env = ENV) => {
+    sent = [];
+    const r = await billing({ request: new Request("https://nebuluxai.com/x", { method: "POST", headers: { authorization: "Bearer t", "content-type": "application/json" }, body: JSON.stringify(body) }), env });
+    return [r.status, await r.json().catch(() => ({})), sent[0] && sent[0].form];
+  };
+  cache.clear(); // the hourly checkout limit, used up by the tests above
+  const apiUser = (m) => APIBAL.get("u1/" + m) || 0;
+  const [a0, b0, f0] = await bill({ action: "topup", model: "galaxy", dollars: 10 });
+  assert(a0 === 400 && /Agree/.test(b0.error) && !f0, "API funds: agreeing to API billing comes first");
+  await bill({ action: "agree" });
+  for (const [model, name, cents] of [["nebulux-ai", "Nebulux AI API Funds", "1000"], ["galaxy", "Galaxy API Funds", "1000"], ["space", "Space API Funds", "1000"], ["nebula", "Nebula API Funds", "1000"], ["orbit", "Nebulux Orbit API Funds", "1000"]]) {
+    const [s, b, f] = await bill({ action: "topup", model, dollars: 10, from: "/api?tab=billing", back: "/api?tab=billing", price: 1, unit_amount: 1 });
+    assert(s === 200 && b.redirectUrl.startsWith("https://checkout.stripe.com/"), `${name}: sends you to Stripe`);
+    assert(f.mode === "payment" && f["line_items[0][price_data][unit_amount]"] === cents && f["line_items[0][price_data][product_data][name]"] === name, `${name}: the amount and the name, whatever the browser sends`);
+    assert(f["metadata[kind]"] === "api" && f["metadata[model]"] === model && f["metadata[amount]"] === "10" && f.client_reference_id === "u1", `${name}: says whose it is and which balance`);
+    assert(f.billing_address_collection === "required" && !Object.keys(f).some((k) => k.startsWith("payment_method_types")), `${name}: the full address, and every payment option Stripe offers`);
+    assert(f.success_url === `https://nebuluxai.com/ThankYou?api=10&model=${model}&from=%2Fapi%3Ftab%3Dbilling&session_id={CHECKOUT_SESSION_ID}` && f.cancel_url === "https://nebuluxai.com/api?tab=billing", `${name}: comes back to the page they were on`);
+  }
+  for (const [model, dollars, why] of [["galaxy", 2, "under that AI's smallest amount"], ["nebulux-ai", 501, "over $500"], ["nebulux-ai", 2.5, "not whole dollars"], ["constructor", 10, "not an AI"], ["orbit", 1, "under Orbit's smallest amount"]]) {
+    const [s, , f] = await bill({ action: "topup", model, dollars });
+    assert(s === 400 && !f, `API funds: refused when ${why}`);
+  }
+  const [s1, b1, f1] = await bill({ action: "topup", model: "galaxy", dollars: 10, from: "//evil.com", back: "https://evil.com" });
+  assert(s1 === 200 && f1.success_url.includes("from=%2Fapi&") && f1.cancel_url === "https://nebuluxai.com/api", "API funds: a return path can't leave the site");
+  const [s2, b2, f2] = await bill({ action: "topup", model: "galaxy", dollars: 10 }, { PUBLISHED_HTML: kv, DB: db });
+  assert(s2 === 503 && b2.soon === true && !f2, "API funds: no Stripe key, nothing is charged");
+  store.set("site-status", JSON.stringify({ paymentsPaused: true }));
+  const [s3, b3] = await bill({ action: "topup", model: "galaxy", dollars: 10 });
+  store.delete("site-status");
+  assert(s3 === 403 && /paused/.test(b3.error), "API funds: the admin pause switch stops buying");
+  stripeFails = true;
+  const [s4, b4] = await bill({ action: "topup", model: "galaxy", dollars: 10 });
+  stripeFails = false;
+  assert(s4 === 502 && /Nothing was charged/.test(b4.error), "API funds: if Stripe fails it says nothing was charged");
+
+  const pay = (over = {}) => ({ id: "cs_api_1", mode: "payment", customer: "cus_1", client_reference_id: "u1", payment_status: "paid", amount_total: 2500, currency: "usd", livemode: false, metadata: { source: "nebulux", kind: "api", model: "galaxy", amount: "25", userId: "u1" }, ...over });
+  const send = async (type, o) => { const b = event(type, o); return post(b, await signed(b)); };
+  const fake = event("checkout.session.completed", pay({ id: "cs_api_x" }));
+  assert((await post(fake, await signed(fake, "whsec_wrong"))) === 400 && apiUser("galaxy") === 0, "API funds: an unsigned event adds nothing");
+  assert((await send("checkout.session.completed", pay({ amount_total: 100, id: "cs_api_low" }))) === 200 && apiUser("galaxy") === 0, "API funds: a payment for less than it says adds nothing");
+  assert((await send("checkout.session.completed", pay())) === 200 && apiUser("galaxy") === 2500000, "API funds: a signed payment adds $25 to that AI's balance");
+  assert(apiUser("space") === 0 && apiUser("nebulux-ai") === 0, "API funds: and only that AI's");
+  await send("checkout.session.completed", pay());
+  assert(apiUser("galaxy") === 2500000, "API funds: the same event twice adds it once");
+  const row = rows().find((r) => r.id === "stripe_cs_api_1");
+  assert(row.productId === "api-credits" && row.productName === "$25 Galaxy API funds" && row.apiModel === "galaxy" && row.credited === true && row.livemode === false && row.amountCents === 2500, "API funds: the purchase is on record");
+  assert(LEDGER.some((l) => l[0] === "u1" && l[2] === "topup" && l[3] === "galaxy" && l[4] === 2500000), "API funds: it's in the account's history");
+  const bank = pay({ id: "cs_api_bank", payment_status: "unpaid", metadata: { source: "nebulux", kind: "api", model: "orbit", amount: "25", userId: "u1" } });
+  await send("checkout.session.completed", bank);
+  assert(apiUser("orbit") === 0 && rows().find((r) => r.id === "stripe_cs_api_bank").status === "processing", "API funds: a bank payment adds nothing until it clears");
+  await send("checkout.session.async_payment_succeeded", { ...bank, payment_status: "paid" });
+  assert(apiUser("orbit") === 2500000, "API funds: then it's added");
+  const failed = pay({ id: "cs_api_fail", payment_status: "unpaid", metadata: { source: "nebulux", kind: "api", model: "space", amount: "25", userId: "u1" } });
+  await send("checkout.session.completed", failed);
+  await send("checkout.session.async_payment_failed", failed);
+  assert(apiUser("space") === 0 && rows().find((r) => r.id === "stripe_cs_api_fail").status === "failed", "API funds: a bank payment that fails adds nothing");
+  const wrong = pay({ id: "cs_api_bad", metadata: { source: "nebulux", kind: "api", model: "constructor", amount: "25", userId: "u1" } });
+  assert((await send("checkout.session.completed", wrong)) === 200 && !rows().find((r) => r.id === "stripe_cs_api_bad"), "API funds: a made-up AI is ignored");
+  const P2 = await load("cloudflare-lib/monitorLive.js");
+  const sold = P2.purchaseSummary(rows()).sales.find((x) => x.id === "stripe_cs_api_1");
+  assert(sold.kind === "api" && sold.plan === null && !P2.purchaseSummary(rows().filter((r) => r.productId === "api-credits")).plans.u1, "API funds: Monitor lists them as API funds, not as a plan");
 }

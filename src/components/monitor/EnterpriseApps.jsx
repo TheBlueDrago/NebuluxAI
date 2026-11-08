@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { askConfirm, askText } from "@/lib/dialogs";
 import { Building2, Loader2, AlertTriangle, ExternalLink, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 const STATUS = {
   new: { label: "New", cls: "bg-amber-500/20 text-amber-200 border-amber-400/40" },
@@ -30,9 +31,11 @@ export default function EnterpriseApps() {
     }
   };
 
+  const { slow } = useMonitorTick();
   useEffect(() => {
     call({ action: "list" });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slow]);
 
   const act = async (a, body, confirmText) => {
     if (confirmText && !await askConfirm(confirmText)) return;

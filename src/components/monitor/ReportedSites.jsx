@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { askConfirm } from "@/lib/dialogs";
 import { Flag, Loader2, EyeOff, Eye, Check, ExternalLink } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 import { siteUrl } from "@/lib/blackholeDomain";
 
 const pageUrl = (p) =>
@@ -18,7 +19,8 @@ export default function ReportedSites() {
   const [manual, setManual] = useState({ kind: "site", name: "" });
 
   const call = async (body, key) => {
-    setBusy(key || "load");
+    const quiet = key === "quiet"; // a timed refresh: no spinner, and the buttons stay usable
+    if (!quiet) setBusy(key || "load");
     setError("");
     try {
       const r = await base44.functions.invoke("admin-reports", body);
@@ -27,13 +29,15 @@ export default function ReportedSites() {
     } catch (e) {
       setError(e?.response?.data?.error || e?.message || "Could not load reports.");
     } finally {
-      setBusy("");
+      if (!quiet) setBusy("");
     }
   };
 
+  const { slow } = useMonitorTick();
   useEffect(() => {
-    call({ action: "list" });
-  }, []);
+    call({ action: "list" }, slow ? "quiet" : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slow]);
 
   const act = async (action, p) => {
     const ask = {

@@ -13,6 +13,11 @@ function PlanBadge({ plan }) {
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.cls}`}>{m.label}</span>;
 }
 
+// A Stripe purchase doesn't change the plan field on the account, so it comes in as `paid`
+// (cloudflare-lib/monitorLive.js). The higher one is what the person really has.
+const RANK = { free: 0, pro: 1, team: 2, secret: 3, enterprise: 4 };
+const planShown = (u) => (u.paid && (RANK[u.paid.plan] || 0) > (RANK[u.plan] || 0) ? u.paid.plan : u.plan);
+
 function StatusBadge({ user }) {
   if (user.banned)
     return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-600/30 text-red-200 border border-red-500/40">Banned</span>;
@@ -32,13 +37,14 @@ export default function UserCard({ user, onApply, onOpenDetail }) {
         >
           {user.full_name || "Unnamed"}
         </button>
-        <PlanBadge plan={user.plan} />
+        <PlanBadge plan={planShown(user)} />
         <StatusBadge user={user} />
       </div>
       <p className="text-slate-400 text-sm truncate">{user.email}</p>
       <p className="text-slate-600 text-xs mb-3">
         Joined {user.created_date ? new Date(user.created_date).toLocaleDateString() : "—"}
         {user.planExpiresAt ? ` · plan expires ${new Date(user.planExpiresAt).toLocaleDateString()}` : ""}
+        {user.paid ? ` · bought ${user.paid.name}${user.paid.test ? " (test payment)" : ""}` : ""}
       </p>
       <UserActions user={user} onApply={onApply} />
     </div>

@@ -17,6 +17,9 @@ const MODELS = [
   ["space", "Space", "Stronger reasoning.", 3],
   ["nebula", "Nebula", "The strongest model.", 5],
 ];
+// Who a balance can be for: every API AI, plus Nebulux Orbit (its keys are made in Orbit's Settings).
+const FUNDABLE = [...MODELS, ["orbit", "Nebulux Orbit", "Orbit's API.", 1]];
+const fundName = (m) => FUNDABLE.find((x) => x[0] === m)?.[1] || m;
 const NAV = [
   ["overview", "Overview", Home],
   ["keys", "API keys", KeyRound],
@@ -89,7 +92,9 @@ print(r.json()["content"])`;
 
 export default function ApiPlatform() {
   const { isAuthenticated, user } = useAuth();
-  const [tab, setTab] = useState("overview");
+  // /api?tab=billing&model=orbit: Orbit's Settings sends people straight to the right balance.
+  const urlQ = new URLSearchParams(window.location.search);
+  const [tab, setTab] = useState(() => (NAV.some((n) => n[0] === urlQ.get("tab")) ? urlQ.get("tab") : "overview"));
   const [keys, setKeys] = useState(null);
   const [newKey, setNewKey] = useState(""); // the "Save your API key" window (shown once)
   const [name, setName] = useState("");
@@ -100,7 +105,7 @@ export default function ApiPlatform() {
   const [bill, setBill] = useState(null); // API balance, agreement, history
   const [agreeTick, setAgreeTick] = useState(false);
   const [amount, setAmount] = useState(5);
-  const [fundModel, setFundModel] = useState("nebulux-ai"); // which AI to add funds to
+  const [fundModel, setFundModel] = useState(() => (FUNDABLE.some((x) => x[0] === urlQ.get("model")) ? urlQ.get("model") : "nebulux-ai")); // which AI to add funds to
   const [grantAmt, setGrantAmt] = useState(5);
   const loadBill = () => base44.functions.invoke("api-billing", { action: "status" }).then((r) => setBill(r.data)).catch(() => setBill({}));
   const billCall = async (body, tag) => {
@@ -108,6 +113,20 @@ export default function ApiPlatform() {
     try { const d = (await base44.functions.invoke("api-billing", body)).data; setBill(d); return d; }
     catch (e) { setErr(e?.response?.data?.error || "Something went wrong. Please try again."); return null; }
     finally { setBusy(""); }
+  };
+  // Stripe's checkout; the money is added when Stripe confirms the payment (cloudflare-lib/stripe.js).
+  const addFunds = async () => {
+    if (!bill?.agreed) { setErr("Agree to API billing below first."); return; }
+    setBusy("topup"); setErr("");
+    try {
+      const here = window.location.pathname + window.location.search;
+      const r = await base44.functions.invoke("api-billing", { action: "topup", model: fundModel, dollars: amount, from: here, back: here });
+      if (!r.data?.redirectUrl) throw new Error("No checkout URL");
+      window.location.href = r.data.redirectUrl;
+    } catch (e) {
+      setErr(e?.response?.data?.error || "Checkout couldn't start. Nothing was charged. Please try again.");
+      setBusy("");
+    }
   };
   // playground
   const [pgKey, setPgKey] = useState("");
@@ -413,8 +432,8 @@ export default function ApiPlatform() {
         <H sub="Prepaid: add money, and every API request, Playground message and website AI answer takes its cost from it.">Billing</H>
         {err && <p className="mb-3 text-[13px] text-amber-300">{err}</p>}
         <p className="text-[13px] text-[var(--cl-muted)] mb-2">Each AI has its own balance: money added to one AI only pays for that AI. {bill?.useApi ? "API key credits are on." : "API key credits are off: turn them on in Nebulux AI → Settings → Usage."}</p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          {MODELS.map(([id, n, , m]) => (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+          {FUNDABLE.map(([id, n, , m]) => (
             <button key={id} onClick={() => { setFundModel(id); setAmount(minOf(id)); }} className={`text-left rounded-xl border bg-[var(--cl-card)] p-4 ${fundModel === id ? "border-[var(--cl-text)]" : "border-[var(--cl-border)]"}`}>
               <p className="text-[13px] text-[var(--cl-muted)]">{n}</p>
               <p className="text-[24px] font-semibold mt-0.5">{balOf(id)}</p>
@@ -423,14 +442,17 @@ export default function ApiPlatform() {
           ))}
         </div>
         <div className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-5 mb-4">
-          <p className="text-[14px] font-medium">Add funds to {MODELS.find((x) => x[0] === fundModel)?.[1]}</p>
+          <p className="text-[14px] font-medium">Add funds to {fundName(fundModel)}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {[minOf(fundModel), 10, 25, 50].filter((d, i, arr) => arr.indexOf(d) === i && d >= minOf(fundModel)).map((d) => (
+            {[minOf(fundModel), 10, 25, 50, 100].filter((d, i, arr) => arr.indexOf(d) === i && d >= minOf(fundModel)).map((d) => (
               <button key={d} onClick={() => setAmount(d)} className={`rounded-lg border px-3 py-1.5 text-[14px] ${amount === d ? "border-[var(--cl-text)] bg-[var(--cl-hover)]" : "border-[var(--cl-border)] text-[var(--cl-muted)]"}`}>${d}</button>
             ))}
           </div>
-          <button onClick={() => (bill?.agreed ? billCall({ action: "topup", model: fundModel, dollars: amount }, "topup") : setErr("Agree to API billing below first."))} disabled={busy === "topup"} className="mt-3 w-full sm:w-auto rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-5 py-2 text-[14px] font-medium disabled:opacity-50">Add ${amount} with a card</button>
-          <p className="text-[11.5px] text-[var(--cl-faint)] mt-2">Smallest amount: Nebulux AI ${minOf("nebulux-ai")}, Galaxy ${minOf("galaxy")}, Space ${minOf("space")}, Nebula ${minOf("nebula")}. A real card is needed: cards that can't pay, or with no money, are refused.</p>
+          <label className="mt-3 flex items-center gap-2 text-[13px] text-[var(--cl-muted)]">Other amount: $
+            <input aria-label="Amount in dollars" type="number" min={minOf(fundModel)} max="500" step="1" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-24 rounded-lg border border-[var(--cl-border)] bg-transparent px-2 py-1 text-[14px] text-[var(--cl-text)]" />
+          </label>
+          <button onClick={addFunds} disabled={busy === "topup"} className="mt-3 w-full sm:w-auto rounded-lg bg-[var(--cl-text)] text-[var(--cl-bg)] px-5 py-2 text-[14px] font-medium disabled:opacity-50">{busy === "topup" ? "Opening checkout…" : `Add $${amount}`}</button>
+          <p className="text-[11.5px] text-[var(--cl-faint)] mt-2">Smallest amount: Nebulux AI ${minOf("nebulux-ai")}, Galaxy ${minOf("galaxy")}, Space ${minOf("space")}, Nebula ${minOf("nebula")}, Nebulux Orbit ${minOf("orbit")}. Up to $500 at a time, in whole dollars. You pay on Stripe's secure page.</p>
         </div>
 
         <div className="rounded-xl border border-[var(--cl-border)] bg-[var(--cl-card)] p-5 mb-4">
@@ -467,7 +489,7 @@ export default function ApiPlatform() {
           ) : (
             bill.ledger.map((l, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="flex-1 min-w-0 truncate">{l.kind === "charge" ? l.note || "API request" : l.kind === "grant" ? `Balance added · ${MODELS.find((x) => x[0] === l.model)?.[1] || l.model}` : `Funds added · ${MODELS.find((x) => x[0] === l.model)?.[1] || l.model}`}</span>
+                <span className="flex-1 min-w-0 truncate">{l.kind === "charge" ? l.note || "API request" : l.kind === "grant" ? `Balance added · ${fundName(l.model)}` : `Funds added · ${fundName(l.model)}`}</span>
                 <span className="text-[var(--cl-faint)] text-[12px] whitespace-nowrap">{new Date(l.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</span>
                 <span className={`w-24 text-right tabular-nums ${l.amount < 0 ? "text-[var(--cl-muted)]" : "text-emerald-400"}`}>{l.amount < 0 ? "-" : "+"}${(Math.abs(l.amount) / 100000).toFixed(2)}</span>
               </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Search, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Search, Loader2, ShieldCheck, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { askConfirm, showNotice } from "@/lib/dialogs";
 import UserCard from "@/components/monitor/UserCard";
@@ -18,6 +18,26 @@ import AiHealth from "@/components/monitor/AiHealth";
 import ErrorReports from "@/components/monitor/ErrorReports";
 import Waitlist from "@/components/monitor/Waitlist";
 import SiteOrders from "@/components/monitor/SiteOrders";
+import StripeSales from "@/components/monitor/StripeSales";
+import OrbitMonitor from "@/components/monitor/OrbitMonitor";
+import { MonitorTick } from "@/lib/monitorTick";
+
+const LIVE_MS = 30000; // accounts, purchases and everything else that only reads the database
+const SLOW_MS = 300000; // cards that read or list KV (free KV allows 1,000 lists a day)
+const BACK_GAP_MS = 15000; // coming back to the tab refreshes, at most this often
+
+function UpdatedLine({ at, failed }) {
+  const [, setClock] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setClock((n) => n + 1), 5000);
+    return () => clearInterval(id);
+  }, []);
+  if (failed) return <p role="status" className="w-full max-w-3xl mt-2 text-xs text-amber-300">Couldn't update just now. Trying again soon.</p>;
+  if (!at) return null;
+  const s = Math.round((Date.now() - at) / 1000);
+  const text = s < 10 ? "just now" : s < 60 ? `${s} seconds ago` : `${Math.round(s / 60)} min ago`;
+  return <p className="w-full max-w-3xl mt-2 text-xs text-slate-400">Updates by itself every 30 seconds · Updated {text}</p>;
+}
 
 export default function Monitor({ onBack }) {
   const [users, setUsers] = useState([]);
@@ -34,28 +54,88 @@ export default function Monitor({ onBack }) {
   const [allLoaded, setAllLoaded] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  // Who bought which plan, and the sales (functions/monitor-live.js).
+  const [live, setLive] = useState(null);
+  const [tick, setTick] = useState({ live: 0, slow: 0, manual: 0 });
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const lastSlow = useRef(Date.now());
+  const lastRun = useRef(Date.now());
+  const running = useRef(false);
+
+  // quiet: a timed refresh. No spinner, and accounts already loaded by searching stay loaded.
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
-      const list = await base44.entities.User.list("-created_date", 200);
-      setUsers(list ?? []);
-      setAllLoaded((list ?? []).length < 200);
+      const list = (await base44.entities.User.list("-created_date", 200)) ?? [];
+      const complete = list.length < 200;
+      setUsers((old) => {
+        if (!quiet || complete) return list;
+        const ids = new Set(list.map((u) => u.id));
+        return [...list, ...old.filter((u) => !ids.has(u.id))];
+      });
+      if (!quiet || complete) setAllLoaded(complete);
+      return true;
     } catch (e) {
       console.error("Monitor load failed", e);
+      return false;
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
-
-  useEffect(() => {
-    load();
+  const loadRemoved = () =>
     base44.functions
       .invoke("admin-grant", { action: "removed" })
       .then((r) => {
         setRemoved(r.data?.removed || []);
         setHeld(r.data?.held || []);
+        return true;
       })
-      .catch(() => {});
+      .catch(() => false);
+  const loadLive = () =>
+    base44.functions
+      .invoke("monitor-live", {})
+      .then((r) => {
+        setLive(r.data || null);
+        return true;
+      })
+      .catch(() => false);
+  const finish = (results) => {
+    const ok = !results.includes(false);
+    setFailed(!ok);
+    if (ok) setUpdatedAt(Date.now());
+  };
+
+  const refresh = async (kind) => {
+    if (running.current) return;
+    running.current = true;
+    setRefreshing(true);
+    lastRun.current = Date.now();
+    const manual = kind === "manual", slow = manual || Date.now() - lastSlow.current >= SLOW_MS;
+    if (slow) lastSlow.current = Date.now();
+    setTick((t) => ({ live: t.live + 1, slow: t.slow + (slow ? 1 : 0), manual: t.manual + (manual ? 1 : 0) }));
+    finish(await Promise.all([load(true), loadRemoved(), loadLive()]));
+    running.current = false;
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    Promise.all([load(), loadRemoved(), loadLive()]).then(finish);
+    const timer = setInterval(() => {
+      if (!document.hidden) refresh("auto");
+    }, LIVE_MS);
+    const back = () => {
+      if (!document.hidden && Date.now() - lastRun.current >= BACK_GAP_MS) refresh("auto");
+    };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("focus", back);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("focus", back);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const apply = async (id, patch) => {
@@ -89,7 +169,10 @@ export default function Monitor({ onBack }) {
   };
   const removedIds = new Set(removed.map((r) => r.userId));
   const heldIds = new Set(held.map((r) => r.userId));
-  const withHold = (u) => (heldIds.has(u.id) ? { ...u, networkHold: true } : u);
+  const withHold = (u) => {
+    const paid = live?.plans?.[u.id];
+    return { ...u, ...(heldIds.has(u.id) ? { networkHold: true } : {}), ...(paid ? { paid } : {}) };
+  };
   // Accounts that never confirmed their email and are over 3 days old (a made-up or someone
   // else's address): they can't use anything, so they're tucked away unless asked for.
   const [showStale, setShowStale] = useState(false);
@@ -144,6 +227,7 @@ export default function Monitor({ onBack }) {
   const removedUsers = removed.map((r) => users.find((u) => u.id === r.userId) || { id: r.userId, email: r.email });
 
   return (
+    <MonitorTick.Provider value={tick}>
     <motion.div
       className="relative z-10 min-h-screen flex flex-col items-center px-4 py-10"
       initial={{ opacity: 0 }}
@@ -157,8 +241,11 @@ export default function Monitor({ onBack }) {
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
           <ShieldCheck className="w-6 h-6 text-sky-300" /> Monitor
         </h1>
-        <div className="w-16" />
+        <button onClick={() => refresh("manual")} disabled={refreshing} className="inline-flex items-center gap-1.5 text-slate-300 hover:text-white text-sm disabled:opacity-60">
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+        </button>
       </div>
+      <UpdatedLine at={updatedAt} failed={failed} />
 
       <SecurityGlance
         unconfirmed={users.filter((u) => u.is_verified === false && !removedIds.has(u.id)).length}
@@ -167,6 +254,8 @@ export default function Monitor({ onBack }) {
       />
 
       {!loading && <GrowthCard users={users} complete={allLoaded} />}
+      <StripeSales data={live} users={users} />
+      <OrbitMonitor users={users} />
       <AiHealth />
       <ErrorReports />
       <SiteOrders />
@@ -257,5 +346,6 @@ export default function Monitor({ onBack }) {
 
       {detailUser && <UserDetail user={detailUser} onClose={() => setDetailUser(null)} />}
     </motion.div>
+    </MonitorTick.Provider>
   );
 }

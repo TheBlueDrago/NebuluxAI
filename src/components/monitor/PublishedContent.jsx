@@ -3,6 +3,7 @@ import { askConfirm } from "@/lib/dialogs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Loader2, Globe, Gamepad2, Sparkles, EyeOff, Eye, ExternalLink, ArrowLeft, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 import { siteUrl } from "@/lib/blackholeDomain";
 
 const FLAGS = {
@@ -66,9 +67,11 @@ export default function PublishedContent() {
     }
   };
 
+  const { manual } = useMonitorTick();
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manual]);
 
   const replaceItem = (it, next) => setItems((list) => list.map((x) => (x.kind === it.kind && x.name === it.name ? next : x)));
 

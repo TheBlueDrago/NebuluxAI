@@ -7,14 +7,14 @@ import MotionPrefs from "@/components/MotionPrefs";
 import usePageTitle from "@/hooks/usePageTitle";
 import { addNotification } from "@/lib/notifications";
 import Subscribed from "@/pages/Subscribed";
-import { isPlan, usageDollars } from "../../cloudflare-lib/planPrices.js";
+import { isPlan, usageDollars, apiDollars } from "../../cloudflare-lib/planPrices.js";
 
 // After paying. Plans come back here from create-checkout; purchases on a
 // site someone made come back with ?site=<name> from site-checkout (older checkouts without
 // it get the wording that covers both).
 export default function ThankYouPage() {
-  const q = new URLSearchParams(window.location.search), plan = q.get("plan"), usage = usageDollars(q.get("usage"));
-  return <MotionPrefs>{isPlan(plan) ? <Subscribed plan={plan} /> : usage ? <Subscribed usage={usage} /> : <ThankYou />}</MotionPrefs>;
+  const q = new URLSearchParams(window.location.search), plan = q.get("plan"), usage = usageDollars(q.get("usage")), model = q.get("model"), api = apiDollars(model, q.get("api"));
+  return <MotionPrefs>{isPlan(plan) ? <Subscribed plan={plan} /> : usage ? <Subscribed usage={usage} /> : api ? <Subscribed api={api} model={model} /> : <ThankYou />}</MotionPrefs>;
 }
 
 function ThankYou() {

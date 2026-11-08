@@ -3,19 +3,20 @@
 // for Galaxy requests, and so on. An account also has a switch, "Use API key credits" (Settings →
 // Usage), that must be on for its API keys and website AI to work, and the API billing agreement.
 // Every request takes its cost from that model's balance; when it runs out, requests to that model
-// stop until more is added. Money only goes in through a verified payment (payment provider:
-// "later") or an admin grant.
+// stop until more is added. Money only goes in through a payment Stripe has signed (stripe.js) or
+// an admin grant.
 //
 // Prices (owner, 2026-10-07): Nebulux AI costs $0.10 per request (the input) plus $0.10 per credit
 // of reply (the output: 1 credit per started 10,000 characters, times the effort level, the same
 // credits as chatting). Galaxy is 2x, Space 3x, Nebula 5x (Nebula: $0.50 in, $0.50 per credit out).
 import { CHARS_PER_CREDIT, EFFORT_MULT } from "./credits.js";
 import { sendEmail } from "./mail.js";
+import { API_MIN, API_NAMES } from "./planPrices.js";
 
 export const BASE = 10000; // $0.10 in millicents
-export const PRICES = { "nebulux-ai": 1, galaxy: 2, space: 3, nebula: 5 }; // multipliers
+export const PRICES = { "nebulux-ai": 1, galaxy: 2, space: 3, nebula: 5, orbit: 1 }; // multipliers
 export const MODEL_IDS = Object.keys(PRICES);
-export const MIN_TOPUP = { "nebulux-ai": 2, galaxy: 3, space: 4, nebula: 5 }; // dollars
+export const MIN_TOPUP = API_MIN; // dollars
 export const EFFORT_X = EFFORT_MULT;
 export const toMc = (dollars) => Math.round(dollars * 100000);
 
@@ -87,7 +88,7 @@ export const dollars = (millicents) => (millicents / 100000).toFixed(2);
 
 // When a balance drops under $1 (only on the request that crosses it), its owner gets one email.
 export const LOW_BALANCE = 100000; // $1 in millicents
-const NAMES = { "nebulux-ai": "Nebulux AI", galaxy: "Galaxy", space: "Space", nebula: "Nebula" };
+const NAMES = API_NAMES;
 export async function lowBalanceEmail(env, userId, model, before, after) {
   if (!(before >= LOW_BALANCE && after < LOW_BALANCE) || !env.RESEND_API_KEY) return false;
   const row = await env.DB.prepare("SELECT data FROM rows WHERE entity = 'User' AND id = ?").bind(userId).first();

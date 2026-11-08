@@ -6,8 +6,9 @@
 // webhook writes them, after Stripe has signed the event, so coming back to the thank-you page
 // doesn't give anyone a plan.
 import { all, create, update, getRow } from "./db.js";
-import { isPlan, planDollars, planLabel, usageDollars, USAGE_ID } from "./planPrices.js";
+import { isPlan, planDollars, planLabel, usageDollars, USAGE_ID, apiDollars, API_ID, API_NAMES } from "./planPrices.js";
 import { addUsageCredits } from "./usageCredits.js";
+import { addFunds, toMc } from "./apibilling.js";
 import { discountedPrice } from "./discounts.js";
 
 export const stripeReady = (env) => !!(env && env.STRIPE_SECRET_KEY);
@@ -95,6 +96,17 @@ export function usageFields({ amount, user, origin, from, back }) {
   return fields;
 }
 
+// API funds for one AI: the same one-time checkout, marked so the webhook adds it to that AI's balance.
+export function apiFields({ model, amount, user, origin, from, back }) {
+  return {
+    ...usageFields({ amount, user, origin, from, back }),
+    success_url: `${origin}/ThankYou?api=${amount}&model=${encodeURIComponent(model)}&from=${encodeURIComponent(from)}&session_id={CHECKOUT_SESSION_ID}`,
+    "line_items[0][price_data][product_data][name]": `${API_NAMES[model]} API Funds`,
+    "metadata[kind]": "api",
+    "metadata[model]": model,
+  };
+}
+
 // Stripe signs each webhook: header "t=<seconds>,v1=<hex>[,v1=...]", HMAC-SHA256 of "<t>.<body>".
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 export async function signStripe(body, secret, t) {
@@ -136,6 +148,7 @@ async function recordSession(db, s, status) {
       productName: `${planLabel(meta.plan, billing)}${meta.tag ? ` (${meta.tag})` : ""}`,
       status,
       provider: "stripe",
+      livemode: s.livemode === true,
       billing,
       subscriptionId: s.subscription,
       customerId: s.customer || null,
@@ -147,21 +160,33 @@ async function recordSession(db, s, status) {
   return status;
 }
 
-// Usage credits: the money is added once, when the payment is really in (a bank payment clears later).
-async function recordUsage(db, s, status) {
-  const meta = s.metadata || {}, userId = s.client_reference_id || meta.userId, amount = usageDollars(meta.amount);
-  if (s.mode !== "payment" || !s.id || !userId || amount === null || meta.source !== "nebulux") return "ignored";
+// One-time purchases (usage credits, API funds): the money is added once, when the payment is really
+// in (a bank payment clears later). add() puts it on the account.
+async function recordOneTime(db, s, status, userId, amount, fields, add) {
   if (status === "paid" && s.amount_total !== amount * 100) return "ignored";
   const id = `stripe_${s.id}`;
   let row = await getRow(db, "Base44Purchase", id);
-  if (!row) row = await create(db, "Base44Purchase", SYSTEM, { appUserId: userId, productId: USAGE_ID, productName: `$${amount} usage credits`, status, provider: "stripe", customerId: s.customer || null, amountCents: amount * 100, currency: s.currency || "usd", credited: false }, { id, created_by_id: userId });
+  if (!row) row = await create(db, "Base44Purchase", SYSTEM, { appUserId: userId, ...fields, status, provider: "stripe", livemode: s.livemode === true, customerId: s.customer || null, amountCents: amount * 100, currency: s.currency || "usd" }, { id, created_by_id: userId });
   else if (row.status !== status && row.status !== "paid") row = await update(db, "Base44Purchase", SYSTEM, id, { status });
   if (row.status !== "paid" || row.credited) return row.status;
-  await addUsageCredits(db, userId, amount);
+  await add();
   await update(db, "Base44Purchase", SYSTEM, id, { credited: true });
   return "paid";
 }
-const recordAny = (db, s, status) => (s.metadata && s.metadata.kind === "usage" ? recordUsage(db, s, status) : recordSession(db, s, status));
+function recordUsage(db, s, status) {
+  const meta = s.metadata || {}, userId = s.client_reference_id || meta.userId, amount = usageDollars(meta.amount);
+  if (s.mode !== "payment" || !s.id || !userId || amount === null || meta.source !== "nebulux") return "ignored";
+  return recordOneTime(db, s, status, userId, amount, { productId: USAGE_ID, productName: `$${amount} usage credits` }, () => addUsageCredits(db, userId, amount));
+}
+function recordApi(db, s, status) {
+  const meta = s.metadata || {}, userId = s.client_reference_id || meta.userId, model = String(meta.model || ""), amount = apiDollars(model, meta.amount);
+  if (s.mode !== "payment" || !s.id || !userId || amount === null || meta.source !== "nebulux") return "ignored";
+  return recordOneTime(db, s, status, userId, amount, { productId: API_ID, productName: `$${amount} ${API_NAMES[model]} API funds`, apiModel: model }, () => addFunds(db, userId, model, toMc(amount), "topup", "Stripe payment"));
+}
+const recordAny = (db, s, status) => {
+  const kind = s.metadata && s.metadata.kind;
+  return (kind === "usage" ? recordUsage : kind === "api" ? recordApi : recordSession)(db, s, status);
+};
 
 async function subscriptionChanged(db, sub, deleted) {
   const row = await getRow(db, "Base44Purchase", rowId(sub.id));

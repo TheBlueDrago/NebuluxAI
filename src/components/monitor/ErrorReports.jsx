@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Bug, Check, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 // Monitor → Errors: crashes in people's browsers, the server code and the site router
 // (cloudflare-lib/errorlog.js). The same error is one row with a count. "Fixed" removes it;
@@ -26,9 +27,11 @@ export default function ErrorReports() {
       .catch(() => setErrors((e) => e || []))
       .finally(() => setBusy(""));
   };
+  const { live } = useMonitorTick();
   useEffect(() => {
     call({ action: "list" });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
   if (errors === null) return null;
   return (
     <div className="w-full max-w-3xl mt-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4">

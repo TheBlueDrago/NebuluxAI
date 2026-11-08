@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ScrollText, Loader2, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useMonitorTick } from "@/lib/monitorTick";
 
 const TIER = { ai: "Nebulux AI", aiCode: "Galaxy", galaxy5: "Space", space5: "Nebula" };
 
@@ -60,9 +61,11 @@ export default function AdminLog() {
     }
   };
 
+  const { slow } = useMonitorTick();
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slow]);
 
   const shown = entries ? (showAll ? entries : entries.slice(0, 10)) : [];
   return (

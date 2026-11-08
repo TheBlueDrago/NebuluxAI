@@ -3,13 +3,17 @@
 //   { action: "status" }                   -> { balances: { model: millicents }, balanceTexts, total, useApi, agreed, funded, ledger, prices, minTopup }
 //   { action: "set-mode", useApi }         -> status   ("Use API key credits" on/off)
 //   { action: "agree" }                    -> status   (the API billing agreement)
-//   { action: "topup", model, dollars }    -> card payments aren't connected yet: nothing is charged
+//   { action: "topup", model, dollars, from, back } -> { redirectUrl }   Stripe's checkout; the webhook adds the money
 //   admins: { action: "grant", model, dollars, email? } -> status   (test balance; their own account unless email)
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { all } from "../../../../../cloudflare-lib/db.js";
 import { account, setUseApi, agree, addFunds, ledger, PRICES, MIN_TOPUP, dollars, toMc } from "../../../../../cloudflare-lib/apibilling.js";
 import { logAdmin } from "../../../../../cloudflare-lib/audit.js";
+import { apiDollars, API_MAX } from "../../../../../cloudflare-lib/planPrices.js";
+import { stripeReady, stripePost, safePath, apiFields } from "../../../../../cloudflare-lib/stripe.js";
+import { accountBlocked, BLOCKED_MESSAGE } from "../../../../../cloudflare-lib/bans.js";
+import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 
 async function status(db, userId) {
   const a = await account(db, userId);
@@ -48,9 +52,24 @@ export async function onRequestPost(context) {
     await agree(db, user.id);
   } else if (action === "topup") {
     if (!(model in PRICES)) return json({ error: "Pick which AI to add funds to." }, 400);
-    const d = Number(body.dollars);
-    if (!(d >= MIN_TOPUP[model])) return json({ error: `The smallest amount for this AI is $${MIN_TOPUP[model]}.` }, 400);
-    return json({ error: "Card payments are coming soon. Nothing was charged.", soon: true }, 503);
+    const amount = apiDollars(model, body.dollars);
+    if (amount === null) return json({ error: `Choose a whole-dollar amount from $${MIN_TOPUP[model]} to $${API_MAX}.` }, 400);
+    if (!(await account(db, user.id)).agreedAt) return json({ error: "Agree to API billing first." }, 400);
+    if (!stripeReady(env)) return json({ error: "Checkout isn't connected yet. Nothing was charged.", soon: true }, 503);
+    const kv = env.PUBLISHED_HTML;
+    if (await accountBlocked(kv, user)) return json({ error: BLOCKED_MESSAGE }, 403);
+    if (!(await allow(`create-checkout:${user.id}`, 20, 3600))) return json({ error: TOO_MANY }, 429);
+    const site = await kv.get("site-status", "json").catch(() => null);
+    if (site && site.paymentsPaused) return json({ error: "Buying is paused for now. Nothing was charged." }, 403);
+    const origin = new URL(request.url).origin;
+    try {
+      const session = await stripePost(env, "checkout/sessions", apiFields({ model, amount, user, origin, from: safePath(body.from, origin, "/api"), back: safePath(body.back, origin, "/api") }));
+      if (!session.url) throw new Error("no checkout address");
+      return json({ redirectUrl: session.url });
+    } catch (err) {
+      console.error("api-billing:", (err && err.message) || err);
+      return json({ error: "Checkout couldn't start. Nothing was charged. Please try again." }, 502);
+    }
   } else if (action === "grant") {
     if (user.role !== "admin") return json({ error: "Admins only." }, 403);
     if (!(model in PRICES)) return json({ error: "Pick which AI." }, 400);
