@@ -10,7 +10,6 @@ import PreviewFrame from "@/components/PreviewFrame";
 import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
-import { GAME_THUMBS } from "@/lib/gameThumbs";
 
 export default function GameView() {
   const { name } = useParams();
@@ -68,7 +67,7 @@ export default function GameView() {
           {genre && <span className="text-xs text-slate-400 capitalize shrink-0">· {genre}</span>}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {(findBuiltInGame(name) || (GAME_THUMBS.has(name) && html)) && (
+          {(findBuiltInGame(name) || html) && (
             <button
               onClick={() => navigate("/chat/game-designer", { state: findBuiltInGame(name) ? { fresh: true, remix: name } : { fresh: true, remixGame: { name, title, genre, html } } })}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-fuchsia-600/80 text-white text-xs font-medium hover:bg-fuchsia-500 transition-colors"

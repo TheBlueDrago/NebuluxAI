@@ -12,6 +12,7 @@ import { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_LINK } from "@/lib/company"
 import { siteUrl } from "@/lib/blackholeDomain";
 import { SITE_TEMPLATES } from "@/lib/siteTemplates";
 import Starfield from "@/components/landing/Starfield";
+import TryGame from "@/components/landing/TryGame";
 import "./landing-lux.css";
 
 const HOME_TEMPLATES = ["business", "event", "restaurant", "resume"].map((id) => SITE_TEMPLATES.find((t) => t.id === id)).filter(Boolean);
@@ -365,6 +366,8 @@ export default function Landing() {
         </ol>
       </section>
 
+      <TryGame />
+
       {/* Play now */}
       <section className="mt-28 sm:mt-36">
         <div className="flex items-end justify-between gap-3">
@@ -427,7 +430,7 @@ export default function Landing() {
         <section className="mt-20">
           <div className="flex items-end justify-between gap-3">
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Made by people like you</h2>
-            <Link to="/showcase" className="shrink-0 text-sm text-indigo-300 hover:text-indigo-200">See all</Link>
+            <Link to="/showcase" className="tap-area shrink-0 text-sm text-indigo-300 hover:text-indigo-200">See all</Link>
           </div>
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {sites.map((s) => (
@@ -487,7 +490,7 @@ export default function Landing() {
             <Question key={q} q={q}>
               <p>{a}</p>
               {link && (
-                <Link to={link[0]} className="mt-2 inline-block text-indigo-300 hover:text-indigo-200">
+                <Link to={link[0]} className="mt-1 inline-flex items-center min-h-[44px] text-indigo-300 hover:text-indigo-200">
                   {link[1]} →
                 </Link>
               )}
@@ -495,13 +498,13 @@ export default function Landing() {
           ))}
           <Question q="How do I contact you?">
             <div className="space-y-2">
-              <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-2 hover:text-white break-all">
+              <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-2 min-h-[44px] hover:text-white break-all">
                 <Mail className="w-4 h-4 shrink-0" /> {CONTACT_EMAIL}
               </a>
-              <a href={CONTACT_PHONE_LINK} className="flex items-center gap-2 hover:text-white">
+              <a href={CONTACT_PHONE_LINK} className="flex items-center gap-2 min-h-[44px] hover:text-white">
                 <Phone className="w-4 h-4 shrink-0" /> {CONTACT_PHONE}
               </a>
-              <Link to="/contact" className="inline-block text-indigo-300 hover:text-indigo-200">Or send us a message →</Link>
+              <Link to="/contact" className="inline-flex items-center min-h-[44px] text-indigo-300 hover:text-indigo-200">Or send us a message →</Link>
             </div>
           </Question>
         </div>

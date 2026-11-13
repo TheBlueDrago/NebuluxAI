@@ -1005,7 +1005,7 @@ export default function WebsiteDesigner({ onToggleSidebar, onOpenProfile, onUpgr
                 ))}
               </div>
             )}
-            <SessionMeter />
+            <SessionMeter estimate={{ text: input, tier: TIER_OF_AI[selectedAi], kind: "build" }} />
             {sendExhausted && !loading && <OutOfCredits tier={TIER_OF_AI[selectedAi]} />}
             <div className="flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-sky-500/50 transition-colors">
               <textarea aria-label="Message the website designer"

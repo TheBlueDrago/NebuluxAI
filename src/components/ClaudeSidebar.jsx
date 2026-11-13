@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { shareChat } from "@/lib/shareChat";
-import { Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2, Download, MoreHorizontal } from "lucide-react";
+import { openFeedback } from "@/components/Feedback";
+import { Bug, Code2, Plus, Code, Globe, Gamepad2, MessageSquare, PanelLeft, Search, Pin, PinOff, Pen, X, Check, Activity, ChevronUp, Sun, Moon, Settings, HelpCircle, LogOut, Ticket, Gauge, Languages, ArrowUpCircle, LayoutGrid, History, Info, ChevronRight, KeyRound, ExternalLink, Share2, Download, MoreHorizontal } from "lucide-react";
 import { useInstallApp } from "@/lib/installPrompt";
 import { showNotice } from "@/lib/dialogs";
 import { signOut } from "@/lib/signOut";
@@ -243,6 +244,10 @@ export default function ClaudeSidebar({ shell, collapsed, onToggle, mobile, onCl
             <button onClick={() => { setMenu(false); setMore(false); shell.openHelp(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
               <HelpCircle className="w-4 h-4 text-[var(--cl-muted)]" />
               <span className="flex-1">Get help</span>
+            </button>
+            <button onClick={() => { setMenu(false); setMore(false); openFeedback("bug"); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">
+              <Bug className="w-4 h-4 text-[var(--cl-muted)]" />
+              <span className="flex-1">Report a bug / request a feature</span>
             </button>
             <div className="my-1 h-px bg-[var(--cl-border)]" />
             <button onClick={() => { setMenu(false); setMore(false); shell.goPlans(); if (mobile) onClose?.(); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[var(--cl-text)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_70%,transparent)]">

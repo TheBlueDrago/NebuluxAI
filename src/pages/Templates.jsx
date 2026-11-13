@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Eye } from "lucide-react";
+import { ArrowRight, Eye, Gamepad2, Play } from "lucide-react";
+import { BUILT_IN_GAMES } from "@/lib/builtInGames";
 import { useAuth } from "@/lib/AuthContext";
 import { SITE_TEMPLATES } from "@/lib/siteTemplates";
 import { loadDesignerHtmlIntoProject } from "@/lib/designerStore";
@@ -91,6 +92,29 @@ export default function Templates() {
           </div>
         ))}
       </div>
+      <section className="mt-14" id="games">
+        <h2 className="text-2xl sm:text-3xl font-bold text-white text-center">Game starters</h2>
+        <p className="mt-2 text-slate-400 max-w-xl mx-auto text-center">Start from a working game and change it by chatting: new levels, new enemies, new colors. Any game in the Arcade can be remixed the same way.</p>
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {BUILT_IN_GAMES.map((g) => (
+            <div key={g.name} className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4 flex items-center gap-4">
+              <span className="shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center"><Gamepad2 className="w-7 h-7 text-white" aria-hidden /></span>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white truncate">{g.title}</h3>
+                <p className="text-xs text-slate-400 capitalize">{g.genre} game</p>
+              </div>
+              <Link to={`/play/${g.name}`} className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-slate-700 text-slate-200 text-sm font-medium hover:bg-slate-800"><Play className="w-4 h-4" /> Play</Link>
+              <button
+                onClick={() => (isAuthenticated ? navigate("/chat/game-designer", { state: { fresh: true, remix: g.name } }) : navigate("/register?returnTo=" + encodeURIComponent(`/play/${g.name}`)))}
+                className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-sm font-semibold hover:opacity-90"
+              >
+                Use it <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-center"><Link to="/arcade" className="tap-area text-sm text-indigo-300 hover:text-indigo-200">Pick any game in the Arcade and press Remix</Link></p>
+      </section>
       <p className="text-center text-slate-500 text-sm mt-10">
         Want something else? Describe any website in a sentence and the AI builds it from scratch.
       </p>

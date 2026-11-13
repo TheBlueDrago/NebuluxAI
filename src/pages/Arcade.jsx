@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { builtInGameEntities } from "@/lib/builtInGames";
 import PublicLayout from "@/components/PublicLayout";
 import { GAME_THUMBS } from "@/lib/gameThumbs";
+import { featuredGame } from "@/lib/examples";
 
 const GENRES = ["io", "shooting", "horror", "action", "arcade", "puzzle", "racing", "sports", "adventure", "strategy"];
 const GENRE_LABEL = { io: ".io" };
@@ -52,6 +53,11 @@ export default function Arcade() {
       (g) => (genre === "all" || g.genre === genre) && (!s || `${g.title || ""} ${g.name}`.toLowerCase().includes(s))
     );
   }, [games, genre, q]);
+  // Today's featured game (lib/examples.js): one of the games with a picture, a new one each day.
+  const featured = useMemo(() => {
+    const pick = featuredGame((games || []).filter((g) => GAME_THUMBS.has(g.name)).map((g) => g.name));
+    return (games || []).find((g) => g.name === pick) || null;
+  }, [games]);
   const genresInUse = useMemo(() => GENRES.filter((id) => (games || []).some((g) => g.genre === id)), [games]);
 
   const make = isAuthenticated ? "/chat/games" : "/register?returnTo=" + encodeURIComponent("/chat/game-designer");
@@ -64,6 +70,21 @@ export default function Arcade() {
           Play in your browser on a phone or computer. No download, no account. Every game here was made by describing it to Nebulux AI.
         </p>
       </section>
+
+      {/* The box keeps its height while the list loads, so the page doesn't jump. */}
+      <div className="mb-6 min-h-[7.5rem]" data-featured>
+        {featured && (
+          <Link to={`/play/${featured.name}`} className="group flex items-center gap-4 rounded-2xl border border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500/15 to-indigo-500/15 p-3 sm:p-4 hover:border-fuchsia-400/70 transition-colors">
+            <img src={`/game-thumbs/${featured.name}.jpg`} alt="" width="160" height="120" className="w-28 sm:w-40 aspect-[4/3] rounded-xl object-cover shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-fuchsia-300">Today's featured game</span>
+              <span className="block text-lg sm:text-2xl font-bold text-white truncate">{featured.title || featured.name}</span>
+              <span className="block text-sm text-slate-400">A new one every day. Sign in to save your progress and get on its leaderboard.</span>
+            </span>
+            <span className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-white text-slate-900 text-sm font-semibold"><Play className="w-4 h-4" /> Play</span>
+          </Link>
+        )}
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/70 border border-slate-700/60 focus-within:border-indigo-400/70 transition-colors">

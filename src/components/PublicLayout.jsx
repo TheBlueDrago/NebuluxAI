@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { FeedbackButton } from "@/components/Feedback";
 import { Menu, X, Mail, Phone } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import BlackholeIcon from "@/components/BlackholeIcon";
@@ -110,7 +111,7 @@ export default function PublicLayout({ title, children }) {
       </a>
       <header className="sticky top-0 z-30 bg-[#020617]/80 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 font-bold tracking-tight shrink-0">
+          <Link to="/" className="flex items-center gap-2 min-h-[44px] font-bold tracking-tight shrink-0">
             <span className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
               <BlackholeIcon className="w-full h-full" />
             </span>
@@ -165,10 +166,10 @@ export default function PublicLayout({ title, children }) {
           {FOOTER.map((col) => (
             <div key={col.title}>
               <p className="font-semibold text-white">{col.title}</p>
-              <ul className="mt-3 space-y-2">
+              <ul className="mt-1">
                 {col.links.map(([to, label]) => (
                   <li key={to}>
-                    <Link to={to} className="text-slate-400 hover:text-white">{label}</Link>
+                    <Link to={to} className="inline-flex items-center min-h-[40px] text-slate-400 hover:text-white">{label}</Link>
                   </li>
                 ))}
               </ul>
@@ -176,14 +177,14 @@ export default function PublicLayout({ title, children }) {
           ))}
           <div className="col-span-2 md:col-span-1">
             <p className="font-semibold text-white">Contact us</p>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-1">
               <li>
-                <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex items-center gap-2 text-slate-400 hover:text-white break-all">
+                <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex items-center gap-2 min-h-[40px] text-slate-400 hover:text-white break-all">
                   <Mail className="w-4 h-4 shrink-0" /> {CONTACT_EMAIL}
                 </a>
               </li>
               <li>
-                <a href={CONTACT_PHONE_LINK} className="inline-flex items-center gap-2 text-slate-400 hover:text-white">
+                <a href={CONTACT_PHONE_LINK} className="inline-flex items-center gap-2 min-h-[40px] text-slate-400 hover:text-white">
                   <Phone className="w-4 h-4 shrink-0" /> {CONTACT_PHONE}
                 </a>
               </li>
@@ -194,6 +195,7 @@ export default function PublicLayout({ title, children }) {
           <span className="flex items-center gap-2">
             <BlackholeIcon className="w-4 h-4" /> © {new Date().getFullYear()} Nebulux LLC
           </span>
+          <FeedbackButton className="tap-area min-h-[44px] px-3 text-slate-300 hover:text-white underline underline-offset-4" />
           <span>Made for creators, students and small businesses.</span>
         </div>
       </footer>

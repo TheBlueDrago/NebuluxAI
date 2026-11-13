@@ -10,7 +10,6 @@ import PreviewFrame from "@/components/PreviewFrame";
 import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
-import { GAME_THUMBS } from "@/lib/gameThumbs";
 
 // Public page for a shared game: anyone can play without an account, then make their own.
 export default function Play() {
@@ -19,9 +18,10 @@ export default function Play() {
   const [game, setGame] = useState(null); // { html, title, genre } | { missing: "why" }
   const [resetKey, setResetKey] = useState(0);
   const navigate = useNavigate();
-  // Built-in games and Nebulux's own 3D games can be copied into the Games Designer and changed.
-  const canRemix = isAuthenticated && game && !game.missing && (findBuiltInGame(name) || GAME_THUMBS.has(name));
-  const remix = () => navigate("/chat/game-designer", { state: findBuiltInGame(name) ? { fresh: true, remix: name } : { fresh: true, remixGame: { name, title: game.title || name, genre: game.genre, html: game.html } } });
+  // Any public game can be copied into the Games Designer and changed (the copy is yours; the original stays as it is).
+  // Signed out, Remix goes to sign-up first and comes back here.
+  const canRemix = game && !game.missing;
+  const remix = () => !isAuthenticated ? navigate("/register?returnTo=" + encodeURIComponent(`/play/${name}`)) : navigate("/chat/game-designer", { state: findBuiltInGame(name) ? { fresh: true, remix: name } : { fresh: true, remixGame: { name, title: game.title || name, genre: game.genre, html: game.html } } });
 
   // Progress is kept with the account (components/PreviewFrame.jsx); only this deletes it.
   const deleteProgress = async () => {

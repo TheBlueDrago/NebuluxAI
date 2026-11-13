@@ -747,7 +747,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
               ))}
             </div>
           )}
-          <SessionMeter />
+          <SessionMeter estimate={{ text: input, tier: TIER_OF_AI[selectedAi], effort: effortFor(effort, input, {}), kind: selectedAi === "code" ? "code" : "chat", images: files.filter((f) => String(f.type || "").startsWith("image/")).length }} />
           {isExhausted && !loading && <OutOfCredits tier={TIER_OF_AI[selectedAi]} />}
           <div className={claude ? "claude-composer bg-[var(--cl-card)] border border-[var(--cl-border)] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,.25)] focus-within:border-[var(--cl-focus)] transition-colors" : ""}>
           <div className={claude ? "flex items-end gap-2" : "flex items-end gap-2 bg-slate-800/70 rounded-2xl border border-slate-700/50 focus-within:border-indigo-500/50 transition-colors"}>
