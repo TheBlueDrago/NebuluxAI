@@ -255,8 +255,8 @@ export default function DesignerDashboard() {
     base44.functions.invoke("showcase", { action: "list" }).then((r) => showGallery(r.data?.sites)).catch(() => {});
   }, []);
 
-  const setInGallery = async (s, on, title) => {
-    const r = await base44.functions.invoke("showcase", { action: "set", name: s.name, on, ...(title ? { title } : {}) });
+  const setInGallery = async (s, on, title, remix) => {
+    const r = await base44.functions.invoke("showcase", { action: "set", name: s.name, on, ...(title ? { title } : {}), ...(remix === false ? { remix: false } : {}) });
     if (r.data?.error) throw new Error(r.data.error);
     showGallery(r.data?.sites);
   };
@@ -267,7 +267,9 @@ export default function DesignerDashboard() {
       if (gallery.has(s.name)) return await setInGallery(s, false);
       const title = await askText("Show it in the public gallery as (optional title, up to 60 characters):", { maxLength: 60 });
       if (title === null) return; // cancelled
-      await setInGallery(s, true, title.trim().slice(0, 60));
+      // People can copy a gallery site into their own designer to change it ("Remix"); the owner can say no.
+      const remix = await askConfirm("Let other people remix it? They get their own copy to change. Your site stays exactly as it is.", { confirmLabel: "Yes, allow remixes", cancelLabel: "No, just show it" });
+      await setInGallery(s, true, title.trim().slice(0, 60), remix);
     } catch (e) {
       setErr(e?.response?.data?.error || e?.message || "Could not update the gallery");
     }

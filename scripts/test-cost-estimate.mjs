@@ -52,4 +52,11 @@ ok(!/target="_blank"(?![^>]*rel="noopener)/.test(show), "new-tab links have rel=
 ok(src("src/pages/Landing.jsx").includes("<TryGame />") && src("src/components/landing/TryGame.jsx").includes("no account"), "the homepage has a game to play with no account");
 ok(src("src/App.jsx").includes("<Feedback />") && src("src/components/ClaudeSidebar.jsx").includes("Report a bug / request a feature") && src("src/components/PublicLayout.jsx").includes("FeedbackButton"), "Report a bug / request a feature is in the app and on public pages");
 ok(/topic: kind/.test(src("src/components/Feedback.jsx")) && real && Object.keys((await import("../cloudflare-lib/contact.js")).TOPICS).includes("bug") && Object.keys((await import("../cloudflare-lib/contact.js")).TOPICS).includes("idea"), "feedback goes through the contact topics the server knows");
+// owners can opt out of remixes
+{
+  const fn = src("functions/api/apps/6a8b5eb7787b8a4d6a18f662/functions/showcase.js");
+  ok(fn.includes("remix: !e.noRemix") && fn.includes("body.remix === false ? { noRemix: true }"), "the gallery remembers when an owner says no to remixes");
+  ok(show.includes("s.remix !== false &&"), "and the Remix button is hidden on those sites");
+  ok(src("src/pages/chat/DesignerDashboard.jsx").includes("Let other people remix it?"), "owners are asked when they add a site to the gallery");
+}
 console.log(`cost estimate, featured game, gallery, feedback: ${n} ok`);

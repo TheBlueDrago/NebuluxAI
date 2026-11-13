@@ -129,9 +129,9 @@ export default function Showcase() {
               >
                 <Flag className="w-3 h-3" /> Report
               </Link>
-              <button type="button" onClick={() => remix(s)} disabled={remixing === s.name} className="tap-area mt-2 ml-3 inline-flex items-center gap-1 text-[11px] text-indigo-300 hover:text-indigo-200 disabled:opacity-60" aria-label={`Remix ${s.title || s.name}`}>
+              {s.remix !== false && <button type="button" onClick={() => remix(s)} disabled={remixing === s.name} className="tap-area mt-2 ml-3 inline-flex items-center gap-1 text-[11px] text-indigo-300 hover:text-indigo-200 disabled:opacity-60" aria-label={`Remix ${s.title || s.name}`}>
                 {remixing === s.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Remix
-              </button>
+              </button>}
             </div>
           ))}
         </div>
