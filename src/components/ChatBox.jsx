@@ -59,6 +59,7 @@ import useReplyAnnouncer from "@/hooks/useReplyAnnouncer";
 import LiveCost from "@/components/chat/LiveCost";
 import { setViewing, clearOut, elapsedText, tokenText } from "@/lib/aiActivity";
 import { waitText, nextRefresh, limitsState } from "@/lib/creditRefresh";
+import { mark } from "@/lib/visits";
 
 // "Continue this answer when my credits come back": { [conversationId]: { ai, resetsAt } }.
 const CONTINUE_KEY = "nx-continue-later";
@@ -344,6 +345,7 @@ export default function ChatBox({ conversation, createConversation, addMessage, 
     // stays in the box if not).
     const risky = privateInfoIn(text);
     if (risky && !await askConfirm(`This looks like it has ${risky} in it. It's safer not to share that with the AI (or anyone online). Send it anyway?`)) return;
+    mark("first-message", true);
     // Sent while it's still answering: it stops where it is (what it wrote stays) and answers this right
     // away, told what it had written so it can carry on. Nothing waits in a queue (owner, 2026-11-02).
     if (loading) {

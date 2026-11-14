@@ -260,6 +260,20 @@ async function ownerPasswordOk(request, env) {
   return !!(r && r.ok);
 }
 
+// Search engines and link-preview bots (Google, Bing, Discord, Facebook and Instagram, X, WhatsApp...) read the
+// public pages while the site is down for people, so the site is in search and shared links show a card on
+// launch day. Only pages anyone will be able to read, and the files those pages load: never the app, an
+// account page or anything under /api/. Someone pretending to be a crawler gets the same public pages and
+// nothing that works: every /api/ call still answers "down".
+var CRAWLER = /googlebot|google-inspectiontool|googleother|storebot-google|adsbot-google|bingbot|duckduckbot|yahoo! slurp|yandexbot|baiduspider|applebot|facebookexternalhit|facebot|meta-externalagent|twitterbot|discordbot|slackbot|linkedinbot|whatsapp\/|telegrambot|pinterestbot|redditbot|embedly|iframely|skypeuripreview|mastodon|bluesky/i;
+var CRAWL_PAGES = /^\/(|arcade|templates|business|pricing|enterprise|about|status|showcase|guides(\/[\w-]+)?|whats-new|ideas|safety|terms|privacy|contact|play\/[\w-]+)\/?$/;
+var CRAWL_FILES = /^\/(assets\/|game-thumbs\/|logos\/)[\w./-]+$|^\/[\w-]+\.(png|jpg|ico|svg|json)$/;
+function crawlerMayRead(request, url) {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  if (url.hostname !== "nebuluxai.com" && url.hostname !== "www.nebuluxai.com") return false;
+  if (!CRAWLER.test(request.headers.get("user-agent") || "")) return false;
+  return CRAWL_PAGES.test(url.pathname) || CRAWL_FILES.test(url.pathname);
+}
 async function maintenance(request, env, url) {
   if (!env || env.MAINTENANCE !== "on") return null;
   var key = (env && env.OWNER_KEY) || "";
@@ -315,6 +329,7 @@ async function maintenance(request, env, url) {
   // Keep working while the site is down (they serve people's own websites and code, not the app):
   // "Sign in with Google" on published websites, and the Nebulux API (/v1/, API keys only).
   if ((path.indexOf("/site-auth/") === 0 || path.indexOf("/v1/") === 0) && (url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com")) return null;
+  if (crawlerMayRead(request, url)) return null;
   var main = url.hostname === "nebuluxai.com" || url.hostname === "www.nebuluxai.com";
   var page = DOWN_PAGE;
   if (main && path === "/__waitlist" && request.method === "POST") page = await waitlistPost(request, env);

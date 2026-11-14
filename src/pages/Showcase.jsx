@@ -10,6 +10,7 @@ import { SITE_TEMPLATES } from "@/lib/siteTemplates";
 import { siteUrl } from "@/lib/blackholeDomain";
 import { gameThumb } from "@/lib/gameThumbs";
 import { BEST_GAMES, ORBIT_USES, ORBIT_URL, SITES_URL, orbitLink } from "@/lib/examples";
+import Reviews from "@/components/Reviews";
 
 // The examples gallery: the best games (each plays with no account), websites people built with
 // Nebulux AI (owners opt in from the Website Designer) and what people use Nebulux Orbit for.
@@ -129,6 +130,7 @@ export default function Showcase() {
               >
                 <Flag className="w-3 h-3" /> Report
               </Link>
+              <Reviews kind="site" item={s.name} title={s.title || s.name} className="mt-2 ml-3 text-[11px] !text-slate-400 hover:!text-slate-200" />
               {s.remix !== false && <button type="button" onClick={() => remix(s)} disabled={remixing === s.name} className="tap-area mt-2 ml-3 inline-flex items-center gap-1 text-[11px] text-indigo-300 hover:text-indigo-200 disabled:opacity-60" aria-label={`Remix ${s.title || s.name}`}>
                 {remixing === s.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Remix
               </button>}

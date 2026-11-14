@@ -58,6 +58,25 @@ async function markFull(env, why) {
   }
 }
 
+// Account notices: the few emails someone needs even though they didn't ask for one just now, because
+// something important changed on their account. Never news or offers. A notice that can't be sent
+// (no key, the day's emails used up) never stops the change itself.
+export const NOTICES = {
+  password: {
+    subject: "Your Nebulux AI password was changed",
+    text: "Your Nebulux AI password was just changed.\n\nIf that was you, there's nothing to do.\n\nIf it wasn't you, reset your password right away at https://nebuluxai.com/forgot-password and then write to support@nebuluxai.com.",
+  },
+  deleted: {
+    subject: "Your Nebulux AI account was deleted",
+    text: "Your Nebulux AI account and everything in it was deleted, as you asked. You won't get any more emails from us.\n\nIf you didn't ask for this, write to support@nebuluxai.com right away.",
+  },
+};
+export async function accountNotice(env, to, what) {
+  const n = NOTICES[what];
+  if (!n || !to) return { ok: false };
+  return sendEmail(env, { to, subject: n.subject, text: n.text, kind: "notice" }).catch(() => ({ ok: false }));
+}
+
 export async function sendEmail(env, { to, subject, text, html, kind = "code" }) {
   if (!env || !env.RESEND_API_KEY) return { ok: false, unset: true };
   const list = (Array.isArray(to) ? to : [to]).filter(Boolean);

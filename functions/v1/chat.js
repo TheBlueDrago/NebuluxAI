@@ -30,8 +30,10 @@ export async function onRequestPost(context) {
   if (!(await allow(`apikey:${owner.id}`, 20, 60))) return fail("Too many requests: up to 20 a minute per key.", 429, "rate_limit");
   const body = await request.json().catch(() => null);
   if (!body) return fail("Send a JSON body.", 400);
-  const model = String(body.model || "nebulux-ai").toLowerCase();
+  // A single-AI key uses its own AI when none is named, and no other.
+  const model = String(body.model || owner.model || "nebulux-ai").toLowerCase();
   if (!MODELS[model]) return fail(`Unknown model "${model}". Use one of: ${Object.keys(MODELS).join(", ")}.`, 400);
+  if (owner.model && model !== owner.model) return fail(`This key can only use "${owner.model}". Use your all-AIs key, or make a key for "${model}" on the Nebulux Platform (nebuluxai.com/api).`, 403, "permission");
   const p = toPrompt(body.messages, body.prompt);
   if (p.error) return fail(p.error, 400);
   if (p.prompt.length > 200000) return fail("That request is too long (200,000 characters at most).", 413);

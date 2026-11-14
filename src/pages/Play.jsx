@@ -10,6 +10,7 @@ import PreviewFrame from "@/components/PreviewFrame";
 import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
+import Reviews from "@/components/Reviews";
 
 // Public page for a shared game: anyone can play without an account, then make their own.
 export default function Play() {
@@ -69,6 +70,7 @@ export default function Play() {
           </button>
         )}
         {game && !game.missing && <GameBoards name={name} />}
+        {game && !game.missing && <Reviews kind="game" item={name} title={game.title || name} className="p-2" />}
         {game && !game.missing && (
           <ShareLink url={window.location.href} title={game.title || name} className="tap-area bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" />
         )}

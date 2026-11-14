@@ -148,8 +148,12 @@ export default function ApiPlatform() {
     catch (e) { setErr(e?.response?.data?.error || "Something went wrong. Please try again."); return null; }
     finally { setBusy(""); }
   };
+  // One key can use every AI; up to ten more each use a single AI.
+  const hasAll = (keys || []).some((k) => !k.model);
+  const [keyModel, setKeyModel] = useState("all");
+  useEffect(() => { if (creating) setKeyModel(hasAll ? "nebulux-ai" : "all"); }, [creating, hasAll]);
   const create = async () => {
-    const d = await call({ action: "create", name: name.trim() || "My key" }, "create");
+    const d = await call({ action: "create", name: name.trim() || "My key", model: keyModel }, "create");
     if (d) { setKeys(d.keys); setNewKey(d.key); setPgKey(d.key); setName(""); setCreating(false); }
     else if (/agree|funds/i.test(err || "")) setCreating(false);
   };
@@ -288,7 +292,7 @@ export default function ApiPlatform() {
               ) : (
                 keys.map((k) => (
                   <tr key={k.id} className="border-b last:border-0 border-[var(--cl-border)] hover:bg-[color-mix(in_srgb,var(--cl-hover)_40%,transparent)]">
-                    <td className="px-4 py-3 font-medium">{k.name}</td>
+                    <td className="px-4 py-3 font-medium">{k.name}<span className="block text-[12px] font-normal text-[var(--cl-muted)]">{k.model ? `Only ${MODELS.find((x) => x[0] === k.model)?.[1] || k.model}` : "Every AI"}</span></td>
                     <td className="px-4 py-3"><code className="text-[12.5px] text-[var(--cl-muted)]">{k.prefix}…</code></td>
                     <td className="px-4 py-3 text-[var(--cl-muted)] truncate max-w-[12rem]">{user?.email || "You"}</td>
                     <td className="px-4 py-3 text-[var(--cl-muted)] whitespace-nowrap">{k.created_at ? new Date(k.created_at).toLocaleDateString(undefined, { dateStyle: "medium" }) : ""}</td>
@@ -325,6 +329,12 @@ export default function ApiPlatform() {
               </div>
               <label className="block text-[13px] text-[var(--cl-muted)] mb-1">Name your key</label>
               <input aria-label="Key name" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="my-website-key" maxLength={60} className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-3 py-2 outline-none focus:border-[var(--cl-focus)] text-[14px]" />
+              <label htmlFor="key-model" className="block text-[13px] text-[var(--cl-muted)] mt-4 mb-1">Which AI can it use?</label>
+              <select id="key-model" value={keyModel} onChange={(e) => setKeyModel(e.target.value)} className="w-full rounded-lg bg-[var(--cl-bg)] border border-[var(--cl-border)] px-3 py-2 outline-none focus:border-[var(--cl-focus)] text-[14px]">
+                <option value="all" disabled={hasAll}>Every AI{hasAll ? " (you already have this key)" : ""}</option>
+                {MODELS.map(([id, n]) => <option key={id} value={id}>Only {n}</option>)}
+              </select>
+              <p className="mt-1.5 text-[12px] text-[var(--cl-faint)]">You can have one key that uses every AI, and up to 10 more that each use one AI.</p>
               {err && <p className="mt-2 text-[13px] text-amber-300">{err}</p>}
               <div className="mt-5 flex justify-end gap-2">
                 <button onClick={() => setCreating(false)} className="rounded-lg border border-[var(--cl-border)] px-4 py-2 text-[14px] text-[var(--cl-muted)]">Cancel</button>

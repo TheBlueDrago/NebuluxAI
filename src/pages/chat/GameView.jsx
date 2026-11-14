@@ -10,6 +10,7 @@ import PreviewFrame from "@/components/PreviewFrame";
 import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
+import Reviews from "@/components/Reviews";
 
 export default function GameView() {
   const { name } = useParams();
@@ -77,6 +78,7 @@ export default function GameView() {
             </button>
           )}
           {!loading && !notFound && <GameBoards name={name} />}
+          {!loading && !notFound && <Reviews kind="game" item={name} title={title} className="p-2" />}
           {!loading && !notFound && (
             <ShareLink url={`${window.location.origin}/play/${name}`} title={title} className="bg-white/10 hover:bg-white/20 text-slate-200 py-1.5" iconOnlyOnPhone />
           )}

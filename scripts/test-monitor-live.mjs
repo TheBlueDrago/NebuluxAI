@@ -55,6 +55,7 @@ const TABLES = {
     { user_id: "o2", birth: `${new Date().getUTCFullYear() - 10}-01-01` },
   ],
   orbit_data: [{ user_id: "o1", size: 40, at: 3 }],
+  orbit_feedback: [{ id: 7, user_id: "o1", name: "Ann", kind: "feature", text: "Please add a dark calendar", at: 5000 }],
   orbit_kv: [
     { k: "nebula", v: "402 out_of_credit", at: 1000 },
     { k: "answered", v: "workers-ai", at: 1001 },
@@ -92,6 +93,7 @@ assert(ann.age === "13+" && bo.age === "under 13" && o.data.totals.under13 === 1
 assert(!JSON.stringify(o.data).includes("-01-01"), "birthdays are not sent, only the age group");
 assert(o.data.apps.google === 2 && o.data.apps.slack === 1 && bo.apps.length === 2, "connected apps");
 assert(o.data.people[0].id === "o2", "newest sign-in first");
+assert(o.data.feedback.length === 1 && o.data.feedback[0].kind === "idea" && /dark calendar/.test(o.data.feedback[0].text) && o.data.feedback[0].userId === "o1", "bug reports and ideas sent from Orbit show in Monitor");
 assert(o.data.nebula.v === "402 out_of_credit" && o.data.answered.v === "workers-ai", "how Nebulux AI last answered Orbit, and which AI answered");
 const missing = await call(orbitFn, { DB: db(true) });
 assert(missing.status === 200 && missing.data.totals.declined === 0 && missing.data.nebula === null, "a table Orbit hasn't made yet just counts as empty");

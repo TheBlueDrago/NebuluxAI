@@ -93,5 +93,12 @@ const plain = r.lines[0];
 assert(r.status === 200 && plain.content === "Hello from Nebula" && plain.object === "chat.completion", "without stream the API works as before");
 r = await call("nx-sk-" + "0".repeat(48), { prompt: "hi", stream: true });
 assert(r.status === 401, "a wrong key is refused");
+// a key made for one AI uses that AI and no other
+const single = (await createKey(db, "u1", "Only Nebula", "nebula")).key;
+google = [];
+r = await call(single, { model: "galaxy", prompt: "hi" });
+assert(r.status === 403 && /only use "nebula"/.test(r.lines[0].error.message) && google.length === 0, "a single-AI key is refused on another AI, and nothing is asked or charged");
+r = await call(single, { prompt: "hi" });
+assert(r.status === 200 && r.lines[0].model === "nebula", "with no AI named, a single-AI key uses its own");
 
 if (failed) { console.log(`\n${failed} failed`); process.exit(1); }

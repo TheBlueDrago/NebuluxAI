@@ -1,5 +1,5 @@
 import { playSplashAfterLogin } from "@/components/Splash";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,10 @@ import { markSessionOnly } from "@/lib/sessionOnly";
 import EmailTypoHint, { useEmailTypo } from "@/components/EmailTypoHint";
 import usePageTitle from "@/hooks/usePageTitle";
 import Turnstile, { useTurnstileOn } from "@/components/Turnstile";
+import { mark } from "@/lib/visits";
 
 export default function Register() {
+  useEffect(() => { mark("signup-open"); }, []);
   usePageTitle("Create your account");
   // ?verify=<email>: an account that signed up but never entered its code, sent here instead of
   // into the site (lib/AuthContext.jsx). It goes straight to the code screen.
@@ -92,6 +94,7 @@ export default function Register() {
     setLoading(true);
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode });
+      mark("signup-done");
       if (result?.access_token) {
         base44.auth.setToken(result.access_token);
         markSessionOnly(false); // a new account stays signed in, like "Remember me"

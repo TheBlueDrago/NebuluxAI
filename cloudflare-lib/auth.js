@@ -14,7 +14,7 @@ import { create, getRow, all } from "./db.js";
 import { passwordProblem } from "../src/lib/passwordCheck.js";
 import { turnstileOk, TURNSTILE_FAILED } from "./turnstile.js";
 import { alertOwner, placeOf, rudeText } from "./ownerAlerts.js";
-import { sendEmail, FULL_MESSAGE } from "./mail.js";
+import { sendEmail, FULL_MESSAGE, accountNotice } from "./mail.js";
 
 const SESSION_DAYS = 60;
 const enc = new TextEncoder();
@@ -253,7 +253,7 @@ async function verifyOtp(db, env, body, request) {
   return { access_token: await newSession(db, row.user_id), user: await getRow(db, "User", row.user_id) };
 }
 
-async function resetPassword(db, body) {
+async function resetPassword(db, body, env) {
   checkPassword(body.new_password);
   const h = await sha(String(body.reset_token || ""));
   const c = await db.prepare("SELECT * FROM codes WHERE purpose = 'reset' AND code_hash = ?").bind(h).first();
@@ -270,10 +270,11 @@ async function resetPassword(db, body) {
   await db.prepare("DELETE FROM codes WHERE email = ? AND purpose = 'reset'").bind(email).run();
   // Every other device is signed out after a reset.
   await db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
+  await accountNotice(env, email, "password"); // so a change someone else made is noticed
   return { success: true };
 }
 
-async function changePassword(db, request, body) {
+async function changePassword(db, request, body, env) {
   const user = await sessionUser(db, request);
   if (!user) throw new AuthError(401, "Please sign in.");
   checkPassword(body.new_password);
@@ -281,6 +282,7 @@ async function changePassword(db, request, body) {
   if (!row || !sameHex(await hashPassword(String(body.current_password || ""), row.pw_salt), row.pw_hash)) throw new AuthError(400, "Your current password isn't right.");
   const salt = randomHex(16);
   await db.prepare("UPDATE logins SET pw_hash = ?, pw_salt = ? WHERE email = ?").bind(await hashPassword(body.new_password, salt), salt, row.email).run();
+  await accountNotice(env, row.email, "password");
   return { success: true };
 }
 
@@ -307,8 +309,8 @@ export async function handleAuth(db, env, request, path, body) {
       const known = (await db.prepare("SELECT 1 FROM logins WHERE email = ?").bind(email).first()) || (await userByEmail(db, email));
       if (known) await sendResetLink(env, db, email, origin, false);
       out = { success: true }; // same answer either way, so it can't be used to find accounts
-    } else if (action === "reset-password") out = await resetPassword(db, body);
-    else if (action === "change-password") out = await changePassword(db, request, body);
+    } else if (action === "reset-password") out = await resetPassword(db, body, env);
+    else if (action === "change-password") out = await changePassword(db, request, body, env);
     // Signing out (src/lib/signOut.js): this device's sign-in stops working on the server too.
     else if (action === "logout") {
       await logout(db, request);

@@ -33,6 +33,7 @@ export default function OrbitMonitor({ users }) {
       })
       .catch(() => setFailed(true));
   }, [live]);
+  const feedbackDone = (id) => base44.functions.invoke("monitor-orbit", { action: "feedback_done", id }).then((r) => setData(r.data)).catch(() => {});
   if (failed && !data) return <p className="w-full max-w-3xl mt-6 text-sm text-slate-400">Couldn't load Nebulux Orbit.</p>;
   if (!data) return null;
   const t = data.totals;
@@ -75,6 +76,24 @@ export default function OrbitMonitor({ users }) {
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{data.nebula.v === "no key" ? "Orbit's Nebulux AI key isn't set" : `Nebulux AI isn't answering Orbit: ${data.nebula.v}`} ({whenText(data.nebula.at)}). Orbit is using Workers AI.</span>
         </p>
+      )}
+      {(data.feedback || []).length > 0 && (
+        <div className="mt-3 rounded-xl bg-slate-800/60 border border-slate-700/50 p-3">
+          <p className="text-xs font-semibold text-slate-300 mb-1">Bug reports and ideas from Orbit ({data.feedback.length})</p>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {data.feedback.map((f) => (
+              <div key={f.id} className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white whitespace-pre-wrap break-words">{f.text}</p>
+                  <p className="text-[11px] text-slate-400 break-words">
+                    {f.kind === "idea" ? "Feature idea" : "Bug"} · {emailOf(f.userId) || f.name || "an Orbit account"} · {whenText(f.at)}
+                  </p>
+                </div>
+                <button onClick={() => feedbackDone(f.id)} className="shrink-0 rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700">Done</button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
       {apps.length > 0 && <p className="mt-2 text-xs text-slate-400">Connected apps: {apps.map(([k, n]) => `${k} (${n})`).join(", ")}</p>}
       {data.people.length > 8 && (

@@ -20,7 +20,10 @@ export async function onRequestPost({ request, env }) {
     const now = Date.now();
     // A table Orbit hasn't made yet counts as empty.
     const q = (sql, ...b) => env.DB.prepare(sql).bind(...b).all().then((r) => r.results || []).catch(() => []);
-    const [names, sessions, terms, conns, ages, devices, synced, notes, paid] = await Promise.all([
+    // { action: "feedback_done", id }: a bug report or idea from Orbit was dealt with (it leaves the list).
+    const body = await request.clone().json().catch(() => ({}));
+    if (body && body.action === "feedback_done") await env.DB.prepare("DELETE FROM orbit_feedback WHERE id = ?").bind(Number(body.id) || 0).run().catch(() => {});
+    const [names, sessions, terms, conns, ages, devices, synced, notes, paid, reports] = await Promise.all([
       q("SELECT user_id, name, MAX(at) AS at FROM orbit_tokens GROUP BY user_id"),
       q("SELECT user_id, start, used FROM orbit_session_work WHERE start > ?", now - SESSION_MS),
       q("SELECT user_id, version, at FROM orbit_terms"),
@@ -30,6 +33,8 @@ export async function onRequestPost({ request, env }) {
       q("SELECT user_id, LENGTH(data) AS size, at FROM orbit_data"),
       q("SELECT k, v, at FROM orbit_kv WHERE k IN ('nebula', 'answered')"),
       q("SELECT json_extract(data, '$.appUserId') AS user_id, json_extract(data, '$.productId') AS plan FROM rows WHERE entity = 'Base44Purchase' AND json_extract(data, '$.status') = 'paid' AND json_extract(data, '$.productId') LIKE 'orbit-%'"),
+      // "Report a bug / request a feature" in Orbit's Settings (Orbit's backend/proactive.js saves them).
+      q("SELECT id, user_id, name, kind, text, at FROM orbit_feedback ORDER BY at DESC LIMIT 50"),
     ]);
     const by = (rows) => Object.fromEntries(rows.map((r) => [r.user_id, r]));
     const planOf = {}; for (const r of paid) if (r.plan === "orbit-expert" || !planOf[r.user_id]) planOf[r.user_id] = r.plan;
@@ -72,6 +77,7 @@ export async function onRequestPost({ request, env }) {
       sessionLimit: SESSION_LIMIT,
       apps,
       people,
+      feedback: reports.map((r) => ({ id: r.id, userId: r.user_id, name: r.name || "", kind: r.kind === "feature" ? "idea" : "bug", text: String(r.text || ""), at: Number(r.at) || 0 })),
       nebula: note.nebula || null,
       answered: note.answered || null,
       at: new Date(now).toISOString(),

@@ -24,6 +24,19 @@ const DB = {
 };
 
 const { key, id } = await createKey(DB, "u1", "test");
+// one key for every AI, and up to ten that each use one AI
+assert(/already have/.test((await createKey(DB, "u1", "second all")).error || ""), "a second every-AI key is refused");
+assert(/Choose/.test((await createKey(DB, "u1", "x", "gpt")).error || ""), "an unknown AI is refused");
+{
+  const made = [];
+  for (let i = 0; i < 10; i++) made.push(await createKey(DB, "u2", "s" + i, i % 2 ? "space" : "galaxy"));
+  assert(made.every((m) => m.key), "ten single-AI keys can be made");
+  assert(/up to 10/.test((await createKey(DB, "u2", "s11", "nebula")).error || ""), "the eleventh single-AI key is refused");
+  assert((await createKey(DB, "u2", "all", "all")).key, "the every-AI key is counted apart from the ten");
+  const o = await keyOwner(DB, new Request("https://x/", { headers: { authorization: `Bearer ${made[1].key}` } }));
+  assert(o.model === "space", "a single-AI key knows its AI");
+  assert((await listKeys(DB, "u2")).filter((k) => k.model).length === 10, "the list says which AI each key uses");
+}
 let k = (await listKeys(DB, "u1"))[0];
 assert(k.limit_mc == null && k.spent_mc === 0, "a new key has no limit and has spent nothing");
 await setLimit(DB, "u1", id, 5);

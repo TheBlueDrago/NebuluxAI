@@ -16,8 +16,8 @@ const PERSONAL = [
   /(\d[\s.\-()]*){5,}/,
   /\b(discord|snap(chat)?|insta(gram)?|tiktok|whats ?app|telegram|kik|facebook|fb|twitter|youtube|roblox|phone|number|address|password|where do you live|how old|ur age|your age)\b/i,
 ];
-export function cleanChat(raw) {
-  let t = String(raw || "").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, CHAT_MAX);
+export function cleanChat(raw, max = CHAT_MAX) {
+  let t = String(raw || "").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
   if (!t) return { ok: false };
   if (PERSONAL.some((re) => re.test(t))) return { ok: false, why: "No links, numbers, accounts or personal info in chat." };
   // Whole phrases ("kill yourself") and letters spaced out to sneak a word through ("f u c k") aren't sent.

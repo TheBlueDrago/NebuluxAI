@@ -9,6 +9,11 @@ const UPDATES = [
   {
     date: "November 2026",
     items: [
+      { icon: Gamepad2, text: "Rate games and leave comments: give any game 1 to 5 stars, and comment on games and on sites in the Gallery. Every comment is filtered to keep it friendly, and has a Report button." },
+      { icon: Gamepad2, text: "Try before you sign up: play a game right on the home page, and browse a bigger Gallery with the best games, sites and Nebulux Orbit uses. Any game or Gallery site can be remixed into your own." },
+      { icon: Zap, text: "See what you have left before you send: the usage meter always shows what remains, with an estimate of what a message will use." },
+      { icon: Zap, text: "API keys: one key can use every AI, and you can make up to 10 more that each use a single AI." },
+      { icon: Zap, text: "A Report a bug / Request a feature button on every page, and an email whenever your password changes." },
       { icon: Gift, text: "The plans are here! Pro is $15 a month and Team is $20 a month, or pay yearly and get 20% off. You can also add usage credits to keep going when you hit your 5-hour limit." },
       { icon: Zap, text: "Usage limits like Claude: every AI now shares one pool instead of separate credits for each. Free gives you 100,000 tokens every 5 hours and 1,000,000 a week (the week resets every Thursday at 8:00 AM Central time), and upgrading resets both straight away. Only your message, the reply and the AI's thinking count (not your earlier chat), and thinking counts lightly, so a reply on Medium uses far less than before. Stronger AIs use more: Galaxy 1.5 times as much, Space twice and Nebula three times. See how much you've used, and when it resets, in Settings, Usage." },
       { icon: Zap, text: "Send a message while the AI is still writing and it goes out right away: the AI stops, reads it and does what it says." },

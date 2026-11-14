@@ -3,14 +3,17 @@
 // API (functions/v1/chat.js) run as the key's owner and use their normal credits.
 import { sha } from "./auth.js";
 
+// An account has one key that can use every AI, and up to ten more that each use a single AI
+// (api_keys.model: null = every AI, otherwise that AI's name). Keys made before this rule keep working.
 export const MAX_KEYS = 10;
+export const KEY_MODELS = ["nebulux-ai", "galaxy", "space", "nebula"];
 let ready = false;
 async function ensure(db) {
   if (ready) return;
   await db.prepare("CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT, prefix TEXT, hash TEXT UNIQUE NOT NULL, created_at TEXT, last_used TEXT, uses INTEGER DEFAULT 0, revoked INTEGER DEFAULT 0)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS api_keys_user ON api_keys (user_id)").run();
   // A monthly spending limit per key (millicents, null = none) and what it spent this month.
-  for (const col of ["limit_mc INTEGER", "spent_mc INTEGER DEFAULT 0", "spent_month TEXT"]) {
+  for (const col of ["limit_mc INTEGER", "spent_mc INTEGER DEFAULT 0", "spent_month TEXT", "model TEXT"]) {
     await db.prepare(`ALTER TABLE api_keys ADD COLUMN ${col}`).run().catch(() => {}); // already there
   }
   ready = true;
@@ -22,18 +25,25 @@ const hex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.t
 
 export async function listKeys(db, userId) {
   await ensure(db);
-  const r = await db.prepare("SELECT id, name, prefix, created_at, last_used, uses, limit_mc, spent_mc, spent_month FROM api_keys WHERE user_id = ? AND revoked = 0 ORDER BY created_at DESC").bind(userId).all();
+  const r = await db.prepare("SELECT id, name, prefix, created_at, last_used, uses, limit_mc, spent_mc, spent_month, model FROM api_keys WHERE user_id = ? AND revoked = 0 ORDER BY created_at DESC").bind(userId).all();
   return (r.results || []).map(({ spent_mc, spent_month, ...k }) => ({ ...k, spent_mc: spentThisMonth({ spent_mc, spent_month }) }));
 }
-export async function createKey(db, userId, name) {
+export async function createKey(db, userId, name, model) {
   await ensure(db);
-  const n = await db.prepare("SELECT COUNT(*) AS n FROM api_keys WHERE user_id = ? AND revoked = 0").bind(userId).first();
-  if ((n && n.n) >= MAX_KEYS) return { error: `You can have up to ${MAX_KEYS} keys. Delete one first.` };
+  const one = model == null || model === "" || model === "all" ? null : String(model).toLowerCase();
+  if (one && !KEY_MODELS.includes(one)) return { error: "Choose which AI this key uses." };
+  if (one) {
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM api_keys WHERE user_id = ? AND revoked = 0 AND model IS NOT NULL").bind(userId).first();
+    if ((n && n.n) >= MAX_KEYS) return { error: `You can have up to ${MAX_KEYS} single-AI keys. Delete one first.` };
+  } else {
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM api_keys WHERE user_id = ? AND revoked = 0 AND model IS NULL").bind(userId).first();
+    if ((n && n.n) >= 1) return { error: "You already have your one key that can use every AI. Delete it first, or make a key for a single AI." };
+  }
   const key = "nx-sk-" + hex(24);
   const id = hex(8);
   await db
-    .prepare("INSERT INTO api_keys (id, user_id, name, prefix, hash, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(id, userId, String(name || "My key").slice(0, 60), key.slice(0, 12), await sha(key), new Date().toISOString())
+    .prepare("INSERT INTO api_keys (id, user_id, name, prefix, hash, created_at, model) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, userId, String(name || "My key").slice(0, 60), key.slice(0, 12), await sha(key), new Date().toISOString(), one)
     .run();
   return { key, id };
 }
@@ -58,7 +68,7 @@ export async function keyOwner(db, request) {
   const m = (request.headers.get("authorization") || "").match(/^Bearer\s+(nx-sk-[0-9a-f]{48})$/i);
   if (!m || !db) return null;
   await ensure(db);
-  const row = await db.prepare("SELECT id, user_id, limit_mc, spent_mc, spent_month FROM api_keys WHERE hash = ? AND revoked = 0").bind(await sha(m[1].toLowerCase())).first();
+  const row = await db.prepare("SELECT id, user_id, limit_mc, spent_mc, spent_month, model FROM api_keys WHERE hash = ? AND revoked = 0").bind(await sha(m[1].toLowerCase())).first();
   return row || null;
 }
 export async function noteUse(db, id) {

@@ -96,6 +96,15 @@ assert(res.status === 404, "deeper addresses aren't sites");
   assert(r.status !== 503 && asked.includes("https://nebuluxai.com/favicon-64.png"), "and the icon itself gets through while the site is down");
   r = await worker.fetch(new Request("https://nova.nebuluxai.com/"), env);
   assert(r.status === 503, "maintenance: published sites are down too");
+  // crawlers and link-preview bots read the public pages; nothing else
+  const bot = (path, ua = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", init = {}) => worker.fetch(new Request("https://nebuluxai.com" + path, { ...init, headers: { "user-agent": ua } }), env);
+  for (const p of ["/", "/pricing", "/arcade", "/play/neon-drift", "/guides/make-a-game", "/whats-new", "/og-image.jpg", "/assets/index-abc123.js"]) assert((await bot(p)).status !== 503, "maintenance: Googlebot can read " + p);
+  assert((await bot("/pricing", "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)")).status !== 503, "and Discord can make a share card");
+  assert((await bot("/pricing", "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)")).status !== 503, "and Facebook and Instagram can");
+  for (const p of ["/chat", "/api/apps/x/functions/monitor", "/billing", "/login", "/monitor", "/published/x"]) assert((await bot(p)).status === 503, "maintenance: a crawler still can't open " + p);
+  assert((await bot("/pricing", undefined, { method: "POST" })).status === 503, "a crawler can only read");
+  assert((await bot("/pricing", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36")).status === 503, "a person's browser still gets the down page");
+  assert((await worker.fetch(new Request("https://nova.nebuluxai.com/", { headers: { "user-agent": "Googlebot/2.1" } }), env)).status === 503, "published sites stay down for crawlers too");
   r = await worker.fetch(new Request("https://nebuluxai.com/__owner/wrong"), env);
   assert(r.status === 503, "a wrong unlock link doesn't get in");
   r = await worker.fetch(new Request("https://nebuluxai.com/__owner/owner-secret-123"), env);

@@ -1,6 +1,6 @@
 // The Nebulux Platform page (/chat/platform): your API keys (cloudflare-lib/apikeys.js).
 //   { action: "list" }               -> { keys: [{ id, name, prefix, created_at, last_used, uses }] }
-//   { action: "create", name }       -> { key, keys }   (the full key, shown once)
+//   { action: "create", name, model } -> { key, keys }   (the full key, shown once; model "all" or one AI's name)
 //   { action: "revoke", id }         -> { keys }
 import { json } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
@@ -20,7 +20,7 @@ export async function onRequestPost({ request, env }) {
     const a = await account(env.DB, user.id);
     if (!a.agreedAt) return json({ error: "Agree to API billing first.", needs: "agree" }, 400);
     if (!a.funded || !Object.values(a.balances).some((v) => v > 0)) return json({ error: "Add funds to at least one AI's balance first. Every request is paid from it.", needs: "funds" }, 400);
-    const r = await createKey(env.DB, user.id, body.name);
+    const r = await createKey(env.DB, user.id, body.name, body.model);
     if (r.error) return json(r, 400);
     return json({ key: r.key, keys: await listKeys(env.DB, user.id) });
   }

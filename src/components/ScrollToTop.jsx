@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useNavigationType } from "react-router-dom";
+import { hit } from "@/lib/visits";
 
 const getHashId = (hash) => {
   const rawId = hash.slice(1);
@@ -14,6 +15,8 @@ const getHashId = (hash) => {
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation();
   const navigationType = useNavigationType();
+  // one count per page opened (numbers only: src/lib/visits.js)
+  useEffect(() => { hit(pathname); }, [pathname]);
 
   useEffect(() => {
     if (navigationType === "POP") return;

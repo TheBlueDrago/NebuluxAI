@@ -6,6 +6,8 @@ import { json, base44 } from "../../../../../cloudflare-lib/published.js";
 import { currentUser } from "../../../../../cloudflare-lib/credits.js";
 import { allow, TOO_MANY } from "../../../../../cloudflare-lib/ratelimit.js";
 import { removeFromBoards } from "./game-board.js";
+import { forgetReviewer } from "../../../../../cloudflare-lib/reviews.js";
+import { accountNotice } from "../../../../../cloudflare-lib/mail.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -25,6 +27,10 @@ export async function onRequestPost(context) {
       for (const sql of ["DELETE FROM avatars WHERE user_id = ?", "DELETE FROM presence WHERE user_id = ?", "DELETE FROM wallets WHERE user_id = ?", "DELETE FROM dms WHERE a = ?1 OR b = ?1", "DELETE FROM friends WHERE a = ?1 OR b = ?1"]) await env.DB.prepare(sql).bind(user.id).run().catch(() => {});
     }
     // Connected apps (Settings → Connectors, shared with Orbit): the kept permissions go too.
+    // one last email, so a deletion someone else did is noticed
+    if (user.email) await accountNotice(env, user.email, "deleted");
+    // their ratings and comments on games and gallery creations
+    if (env.DB) await forgetReviewer(env.DB, user.id).catch(() => {});
     if (env.DB) await env.DB.prepare("DELETE FROM orbit_connections WHERE user_id = ?").bind(user.id).run().catch(() => {});
     if (env.DB) await env.DB.prepare("DELETE FROM whatsapp_links WHERE user_id = ?").bind(user.id).run().catch(() => {});
     // Saved game progress (game-save.js), one key per game.

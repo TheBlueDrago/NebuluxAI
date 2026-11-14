@@ -7,6 +7,7 @@ import UserCard from "@/components/monitor/UserCard";
 import UserDetail from "@/components/monitor/UserDetail";
 import RevenueAnalytics from "@/components/monitor/RevenueAnalytics";
 import ReportedSites from "@/components/monitor/ReportedSites";
+import ReportedComments from "@/components/monitor/ReportedComments";
 import Messages from "@/components/monitor/Messages";
 import EnterpriseApps from "@/components/monitor/EnterpriseApps";
 import GrowthCard from "@/components/monitor/GrowthCard";
@@ -19,6 +20,7 @@ import ErrorReports from "@/components/monitor/ErrorReports";
 import Waitlist from "@/components/monitor/Waitlist";
 import SiteOrders from "@/components/monitor/SiteOrders";
 import StripeSales from "@/components/monitor/StripeSales";
+import VisitsCard from "@/components/monitor/VisitsCard";
 import OrbitMonitor from "@/components/monitor/OrbitMonitor";
 import { MonitorTick } from "@/lib/monitorTick";
 
@@ -255,6 +257,7 @@ export default function Monitor({ onBack }) {
 
       {!loading && <GrowthCard users={users} complete={allLoaded} />}
       <StripeSales data={live} users={users} />
+      <VisitsCard />
       <OrbitMonitor users={users} />
       <AiHealth />
       <ErrorReports />
@@ -339,6 +342,7 @@ export default function Monitor({ onBack }) {
       )}
 
       {!loading && !q && <ReportedSites />}
+      {!loading && !q && <ReportedComments />}
       {!loading && !q && <EnterpriseApps />}
       {!loading && !q && <Messages />}
       {!loading && !q && <RevenueAnalytics />}
