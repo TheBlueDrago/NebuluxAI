@@ -6473,11 +6473,14 @@ function botThink(e) {
   if (e.boss) { const H = e.home; if (tg && Math.hypot(tg.x - H.x, tg.z - H.z) < 60) { A.mode = "fight"; e.sel = botBestSlot(e, bd); } else { A.tg = null; A.mode = "wander"; if (!A.goal || Math.hypot(A.goal.x - e.x, A.goal.z - e.z) < 3) A.goal = { x: H.x + rnd(-8, 8), z: H.z + rnd(-8, 8), kind: "walk" }; } return; }
   const hasGun = e.inv.some((x) => x && x.t == "w"), heal = e.inv.findIndex((x) => x && x.t == "c" && ((CI[x.id].hp && e.hp < CI[x.id].cap) || (CI[x.id].sh && e.sh < CI[x.id].cap)));
   A.mode = "wander";
+  if (A.fireRest && (e.hp >= 92 || e.dmgT > G.t - 0.5)) A.fireRest = 0;
   if (!inZone(e.x, e.z, 6) && (G.pt > WAITS[Math.min(5, G.ph)] * 0.4 || inStorm(e))) { const c = G.circ[Math.min(6, G.ph + 1)], a = Math.atan2(e.z - c.z, e.x - c.x); A.goal = { x: c.x + Math.cos(a) * c.r * 0.5, z: c.z + Math.sin(a) * c.r * 0.5 }; A.mode = "rotate"; }
   if (!G.net && e.st == "play" && !e.car && !tg && A.goal && G.cars.length) { roverSeek(e); if (e.car) return; }
   if (tg && hasGun && A.mode != "rotate") { A.mode = "fight"; e.sel = botBestSlot(e, bd); if (bd > 10 && bd < 42 && A.vis && e.mats.w + e.mats.s + e.mats.m >= 60 && G.t > (A.rushCd || 0) && Math.random() < 0.16 * A.lvl) { A.rushT = rnd(1.8, 3.2); A.rushCd = G.t + rnd(9, 16); A.rushL = null; A.rushD = null; } }
   else if (tg && !hasGun && bd < 5) { const bl = e.inv.findIndex((x) => x && x.t == "u" && x.id == "blade"); A.mode = "fight"; e.sel = bl >= 0 ? bl + 1 : 0; }
   else if (heal >= 0 && e.hp + e.sh < 140 && (!tg || bd > 40)) { A.mode = "heal"; e.sel = heal + 1; }
+  // hurt with nothing to heal with and nobody close: go and rest by a Glow Fire (fires.js) if one is near
+  else if (heal < 0 && e.hp < (A.fireRest ? 92 : 60) && (!tg || bd > 50) && (G.glows || []).length) { let gf = null, gd = 75; for (const f of G.glows) { const d = Math.hypot(f.x - e.x, f.z - e.z); if (d < gd) { gd = d; gf = f; } } if (gf) { if (gd < 2.4) { A.mode = "heal"; A.goal = null; A.fireRest = 1; } else { A.goal = { x: gf.x + (e.x > gf.x ? 1.6 : -1.6), z: gf.z, y: gf.y, kind: "fire" }; A.mode = "rotate"; } } }
   else if (A.mode != "rotate") {
     // loot: a chest or something better on the floor nearby
     const rg = rallyGoal(e); if (rg) { A.goal = rg; A.mode = "rotate"; return; }
