@@ -7,6 +7,8 @@ export const BEST_GAMES = [
   { name: "block-dash-race", title: "Block Dash Race", text: "Twelve runners, one wild obstacle course." },
   { name: "titan-raid", title: "Titan Raid", text: "Team up with three heroes against a giant stone boss." },
   { name: "block-kart-racers", title: "Block Kart Racers", text: "Drift, grab items and race seven karts over three laps." },
+  { name: "nebula-royale", title: "Nebula Royale", text: "Drop in with 100 players, build forts, ride Tuskers and take the crown." },
+  { name: "nebula-brawl", title: "Nebula Brawl", text: "Fast 3v3 fights in eight modes, with 107 fighters to unlock." },
   { name: "fruit-seas", title: "Fruit Seas", text: "Sail between islands, eat fruits with powers and beat the bosses." },
   { name: "sky-obby", title: "Sky Obby", text: "50 hard stages in the sky and a glass bridge at the end." },
   { name: "storm-royale", title: "Storm Royale", text: "Drop in, loot, and be the last one standing." },
