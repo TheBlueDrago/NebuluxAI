@@ -119,7 +119,7 @@ export default function Play() {
           <div className="flex flex-col items-center justify-center h-full text-slate-400 px-6 text-center">
             <Gamepad2 className="w-10 h-10 mb-2" />
             <p>{game.missing}</p>
-            <Link to="/" className="mt-4 text-sm text-indigo-300 hover:text-indigo-200">Make your own game with Nebulux AI</Link>
+            <Link to="/" className="tap-area mt-4 inline-flex min-h-[44px] items-center text-sm text-indigo-300 hover:text-indigo-200">Make your own game with Nebulux AI</Link>
           </div>
         ) : (
           <PreviewFrame key={resetKey} html={game.html} title={game.title || name} saveName={name} />

@@ -2608,7 +2608,7 @@ function emotePose(g, d, t) {
 
 /* ===== lobby.js ===== */
 // Lobby: Play, Locker, Item Shop, Battle Pass and Quests, with a live 3D preview of your character.
-var NEWS = [{ t: "Glow Fires", d: "Rest beside one near any town and your health mends", g: "linear-gradient(135deg,#ff9a3c,#5a2f1e)" }, { t: "Ride a Tusker", d: "Let one charge, dodge it, then hop on", g: "linear-gradient(135deg,#ff4fd8,#5a3a52)" }, { t: "Two new guns", d: "The Comet Marksman and the Pulse Drum", g: "linear-gradient(135deg,#ffb23e,#23262f)" }, { t: "Hot Spots", d: "One town each match is packed with loot. So everyone goes", g: "linear-gradient(135deg,#ff6a3a,#7a1f5a)" }, { t: "Grind Rails", d: "Hop on beside the roads and fly", g: "linear-gradient(135deg,#e8edf7,#3a7bff)" }, { t: "Mounted Turrets", d: "Hold the town. Don't let it overheat", g: "linear-gradient(135deg,#ff6a4a,#2b2f4a)" }, { t: "Glimmerlings", d: "Catch one of these and it bursts into loot", g: "linear-gradient(135deg,#ffe07a,#b06bff)" }, { t: "The Crown", d: "Win a match and wear it into the next", g: "linear-gradient(135deg,#ffd23a,#b06bff)" }, { t: "Comet Blade", d: "A rare blade that lunges at your enemies", g: "linear-gradient(135deg,#7fe3ff,#14205a)" }, { t: "Smoke and Shields", d: "Three new things to throw", g: "linear-gradient(135deg,#b8c0d0,#3a7bff)" }, { t: "Pocket Fort", d: "Throw it and a metal tower springs up", g: "linear-gradient(135deg,#ffb04f,#2b2f4a)" }, { t: "Twisters", d: "They'll throw you sky high. Your wings do the rest", g: "linear-gradient(135deg,#e8e4ff,#5a55a8)" }, { t: "Sky Rifts", d: "Step through and you're diving from the clouds", g: "linear-gradient(135deg,#c98aff,#2a1a5a)" }, { t: "Wildlife", d: "Puffbirds to carry, Tuskers to run from", g: "linear-gradient(135deg,#7fdcff,#5a3a52)" }, { t: "Star Perks", d: "Choose a perk each time the storm closes", g: "linear-gradient(135deg,#ffd23a,#b45cff)" }, { t: "Spring Caps", d: "Giant mushrooms that bounce you sky high", g: "linear-gradient(135deg,#ff4fa3,#52c8ff)" }, { t: "Six new emotes", d: "Hold T anywhere, even on the waiting island", g: "linear-gradient(135deg,#ff4fd8,#3a7bff)" }, { t: "Into the sunset", d: "Day matches now turn to dusk as the storm closes", g: "linear-gradient(135deg,#ffb070,#b04a8a)" }, { t: "Fishing and upgrades", d: "Fish the shallows, upgrade at the benches", g: "linear-gradient(135deg,#1fbfd0,#ffd23a)" }, { t: "Rocket Pack", d: "Hold fire and fly", g: "linear-gradient(135deg,#ffb04f,#7a1f5a)" }, { t: "Rain showers", d: "The weather can turn mid-match", g: "linear-gradient(135deg,#7a8cc8,#1a2040)" }, { t: "Zero Build", d: "No building, and your shield grows back", g: "linear-gradient(135deg,#52e0ff,#14205a)" }, { t: "Moon Jump", d: "Low gravity, huge jumps", g: "linear-gradient(135deg,#c9b6ff,#14103a)" }, { t: "Hunt contracts", d: "Take out your target for loot and stars", g: "linear-gradient(135deg,#ffd23a,#8a3bd0)" }, { t: "Storm Repeater", d: "A heavy new gun, and the Pulse Charge", g: "linear-gradient(135deg,#3a7bff,#1b1050)" }, { t: "Controllers work", d: "Plug one in and press any button", g: "linear-gradient(135deg,#1fbf7a,#3a1c6e)" }, { t: "Meteor showers", d: "Watch the sky and the red rings", g: "linear-gradient(135deg,#ff7a2f,#3a1c6e)" }, { t: "The Warden", d: "Beat the boss for a Mythic weapon", g: "linear-gradient(135deg,#ff4fd8,#5a2bbf)" }, { t: "Rovers", d: "Drive four-seat buggies round the island", g: "linear-gradient(135deg,#ff7a2f,#8a1f7a)" }, { t: "Edit your builds", d: "Doors, windows, half walls, roofs", g: "linear-gradient(135deg,#2b7be0,#6a3df0)" }, { t: "Rally Beacons", d: "Bring your squad back into the match", g: "linear-gradient(135deg,#1fbf7a,#0b3a5c)" }, { t: "Season 1 pass", d: "Reach level 6 to unlock Astra", g: "linear-gradient(135deg,#ff4fa3,#ffb23e)" }, { t: "Ranked is open", d: "Win matches to reach Diamond", g: "linear-gradient(135deg,#22b8a0,#0b3a5c)" }], newsI = 0, sq = "solo", rked = 0;
+var NEWS = [{ t: "Comet Caches", d: "Twice a match a comet crashes in the safe zone. It opens with top loot", g: "linear-gradient(135deg,#ff7a3d,#3a1d5a)" }, { t: "Weekly pass", d: "A new battle pass every week, with three bonus outfits", g: "linear-gradient(135deg,#d6246e,#2b1a5a)" }, { t: "Glow Fires", d: "Rest beside one near any town and your health mends", g: "linear-gradient(135deg,#ff9a3c,#5a2f1e)" }, { t: "Ride a Tusker", d: "Let one charge, dodge it, then hop on", g: "linear-gradient(135deg,#ff4fd8,#5a3a52)" }, { t: "Two new guns", d: "The Comet Marksman and the Pulse Drum", g: "linear-gradient(135deg,#ffb23e,#23262f)" }, { t: "Hot Spots", d: "One town each match is packed with loot. So everyone goes", g: "linear-gradient(135deg,#ff6a3a,#7a1f5a)" }, { t: "Grind Rails", d: "Hop on beside the roads and fly", g: "linear-gradient(135deg,#e8edf7,#3a7bff)" }, { t: "Mounted Turrets", d: "Hold the town. Don't let it overheat", g: "linear-gradient(135deg,#ff6a4a,#2b2f4a)" }, { t: "Glimmerlings", d: "Catch one of these and it bursts into loot", g: "linear-gradient(135deg,#ffe07a,#b06bff)" }, { t: "The Crown", d: "Win a match and wear it into the next", g: "linear-gradient(135deg,#ffd23a,#b06bff)" }, { t: "Comet Blade", d: "A rare blade that lunges at your enemies", g: "linear-gradient(135deg,#7fe3ff,#14205a)" }, { t: "Smoke and Shields", d: "Three new things to throw", g: "linear-gradient(135deg,#b8c0d0,#3a7bff)" }, { t: "Pocket Fort", d: "Throw it and a metal tower springs up", g: "linear-gradient(135deg,#ffb04f,#2b2f4a)" }, { t: "Twisters", d: "They'll throw you sky high. Your wings do the rest", g: "linear-gradient(135deg,#e8e4ff,#5a55a8)" }, { t: "Sky Rifts", d: "Step through and you're diving from the clouds", g: "linear-gradient(135deg,#c98aff,#2a1a5a)" }, { t: "Wildlife", d: "Puffbirds to carry, Tuskers to run from", g: "linear-gradient(135deg,#7fdcff,#5a3a52)" }, { t: "Star Perks", d: "Choose a perk each time the storm closes", g: "linear-gradient(135deg,#ffd23a,#b45cff)" }, { t: "Spring Caps", d: "Giant mushrooms that bounce you sky high", g: "linear-gradient(135deg,#ff4fa3,#52c8ff)" }, { t: "Six new emotes", d: "Hold T anywhere, even on the waiting island", g: "linear-gradient(135deg,#ff4fd8,#3a7bff)" }, { t: "Into the sunset", d: "Day matches now turn to dusk as the storm closes", g: "linear-gradient(135deg,#ffb070,#b04a8a)" }, { t: "Fishing and upgrades", d: "Fish the shallows, upgrade at the benches", g: "linear-gradient(135deg,#1fbfd0,#ffd23a)" }, { t: "Rocket Pack", d: "Hold fire and fly", g: "linear-gradient(135deg,#ffb04f,#7a1f5a)" }, { t: "Rain showers", d: "The weather can turn mid-match", g: "linear-gradient(135deg,#7a8cc8,#1a2040)" }, { t: "Zero Build", d: "No building, and your shield grows back", g: "linear-gradient(135deg,#52e0ff,#14205a)" }, { t: "Moon Jump", d: "Low gravity, huge jumps", g: "linear-gradient(135deg,#c9b6ff,#14103a)" }, { t: "Hunt contracts", d: "Take out your target for loot and stars", g: "linear-gradient(135deg,#ffd23a,#8a3bd0)" }, { t: "Storm Repeater", d: "A heavy new gun, and the Pulse Charge", g: "linear-gradient(135deg,#3a7bff,#1b1050)" }, { t: "Controllers work", d: "Plug one in and press any button", g: "linear-gradient(135deg,#1fbf7a,#3a1c6e)" }, { t: "Meteor showers", d: "Watch the sky and the red rings", g: "linear-gradient(135deg,#ff7a2f,#3a1c6e)" }, { t: "The Warden", d: "Beat the boss for a Mythic weapon", g: "linear-gradient(135deg,#ff4fd8,#5a2bbf)" }, { t: "Rovers", d: "Drive four-seat buggies round the island", g: "linear-gradient(135deg,#ff7a2f,#8a1f7a)" }, { t: "Edit your builds", d: "Doors, windows, half walls, roofs", g: "linear-gradient(135deg,#2b7be0,#6a3df0)" }, { t: "Rally Beacons", d: "Bring your squad back into the match", g: "linear-gradient(135deg,#1fbf7a,#0b3a5c)" }, { t: "Season 1 pass", d: "Reach level 6 to unlock Astra", g: "linear-gradient(135deg,#ff4fa3,#ffb23e)" }, { t: "Ranked is open", d: "Win matches to reach Diamond", g: "linear-gradient(135deg,#22b8a0,#0b3a5c)" }], newsI = 0, sq = "solo", rked = 0;
 const ART = { twister: "linear-gradient(150deg,#e8e4ff,#6a60c8 60%,#1a1450)", perkup: "linear-gradient(150deg,#ffe07a,#c86bff 60%,#2a1460)", blades: "linear-gradient(150deg,#9feaff,#2a7bd0 60%,#10183a)", zero: "linear-gradient(150deg,#52e0ff,#1f5fd0 60%,#14205a)", moon: "linear-gradient(150deg,#c9b6ff,#5a3bd0 60%,#14103a)", playground: "linear-gradient(150deg,#7dff9a,#2b6cff 60%,#b06bff)", solo: "linear-gradient(150deg,#ffb23e,#ff4fa3)", duos: "linear-gradient(150deg,#52e0ff,#6a3df0)", squads: "linear-gradient(150deg,#7dff9a,#1f8a8a)", rankedSquads: "linear-gradient(150deg,#ffd23a,#2b6cff)", ranked: "linear-gradient(150deg,#59e07a,#0b6e8a)", rankedDuos: "linear-gradient(150deg,#2fd6a8,#3a3aa8)", box: "linear-gradient(150deg,#ff6b4a,#8a1f7a)", zone: "linear-gradient(150deg,#b06bff,#2b1a6a)", rumble: "linear-gradient(150deg,#ffd23a,#e0612b)", snipers: "linear-gradient(150deg,#7fa8c8,#1a2a4a)", x: "linear-gradient(150deg,#6b7fa8,#2b2540)" };
 const views = {};
 
@@ -3793,7 +3793,7 @@ function newMatch() {
   $("#end").hidden = true; $("#ps").hidden = coarse; $("#tc").hidden = !coarse; $("#game").classList.add("stg"); $("#spd").hidden = true; $("#bigmap").hidden = true; $("#kf").innerHTML = ""; $("#elim").innerHTML = "";
   if (G.type != "box" && !G.net) spawnBoards();
   G.cars = []; if (G.type == "br" || G.type == "pg") spawnRovers();
-  spawnRally(); spawnKiosks(); spawnForage(); spawnFishing(); spawnCaps(); spawnWild(); spawnRifts(); spawnRails(); spawnFires(); hotPick(); perkReset(); kbLoad(); G.smokes = []; G.domes = []; G.slashes = []; crownsDeal();
+  spawnRally(); spawnKiosks(); spawnForage(); spawnFishing(); spawnCaps(); spawnWild(); spawnRifts(); spawnRails(); spawnFires(); cacheReset(); G.cachePh = -1; hotPick(); perkReset(); kbLoad(); G.smokes = []; G.domes = []; G.slashes = []; crownsDeal();
   if (G.net) netSetup();
   hudReset(); if (G.type != "br") startMode(); last = performance.now(); raf = requestAnimationFrame(loop);
   if (TEST) window.__G = G;
@@ -6281,6 +6281,7 @@ function stepSky(dt) { stepTwisters(dt); stepRifts(dt); }
 function skyMarks(c, X, Z) {
   if (G.hot) { const t = 1 + Math.sin(performance.now() / 260) * 0.12; c.strokeStyle = "#ff6a3a"; c.lineWidth = 3; c.beginPath(); c.arc(X(G.hot.x), Z(G.hot.z), 11 * t, 0, 6.3); c.stroke(); c.fillStyle = "#ff6a3a88"; c.beginPath(); c.arc(X(G.hot.x), Z(G.hot.z), 6, 0, 6.3); c.fill(); }
   c.strokeStyle = "#ffffffaa"; c.lineWidth = 2; for (const r of G.rails || []) { c.beginPath(); r.pts.forEach((q, i) => { if (i % 12 == 0 || i == r.pts.length - 1) (i ? c.lineTo(X(q.x), Z(q.z)) : c.moveTo(X(q.x), Z(q.z))); }); c.stroke(); }
+  cacheMark(c, X, Z);
   for (const f of G.glows || []) { c.fillStyle = "#ffb347"; c.strokeStyle = "#0008"; c.lineWidth = 1; c.beginPath(); c.moveTo(X(f.x), Z(f.z) - 4.5); c.lineTo(X(f.x) + 3.5, Z(f.z) + 3); c.lineTo(X(f.x) - 3.5, Z(f.z) + 3); c.closePath(); c.fill(); c.stroke(); }
   for (const r of G.rifts || []) if (r.on) { c.fillStyle = "#c98aff"; c.beginPath(); c.arc(X(r.x), Z(r.z), 3.5, 0, 6.3); c.fill(); }
   for (const w of G.twisters || []) { c.fillStyle = "#e8e4ff"; c.strokeStyle = "#0009"; c.lineWidth = 1.5; c.beginPath(); c.arc(X(w.x), Z(w.z), 6, 0, 6.3); c.fill(); c.stroke(); }
@@ -6437,6 +6438,65 @@ function stepFires(dt) {
   }
 }
 
+/* ===== cache.js ===== */
+// Comet Caches: after the second and fourth storm circles settle, a comet crashes inside the next safe zone.
+// Everyone sees it on the map and hears it. It cools for 25 seconds behind a glowing ring, then bursts open
+// with top-tier loot, so there is always one place worth fighting over. Offline matches only (like supply pods).
+const CACHE_COOL = 25, CACHE_PH = [2, 4];
+function mkCache() {
+  const g = new TH.Group(), rock = toon(0x4a3b5e), hot = toon(0xff7a3d, 1, 0.9), core = toon(0x9ae8ff, 1, 1.1);
+  part(g, cyl(2.2, 2.8, 0.5, 12), toon(0x2b2238), 0, 0.1, 0);
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * 6.283, m = part(g, cone(0.55, 1.4, 5), rock, Math.cos(a) * 1.9, 0.6, Math.sin(a) * 1.9); m.rotation.z = Math.cos(a) * 0.5; m.rotation.x = -Math.sin(a) * 0.5; }
+  const c = pivot(g, 0, 1.3, 0); g.core = c;
+  part(c, bx(1.1, 1.1, 1.1), hot, 0, 0, 0).rotation.set(0.6, 0.4, 0.2);
+  part(c, bx(0.7, 0.7, 0.7), core, 0, 0, 0).rotation.set(0.2, 0.9, 0.5);
+  const ring = new TH.Mesh(new TH.TorusGeometry(3.4, 0.08, 6, 40), new TH.MeshBasicMaterial({ color: 0xffb36b, transparent: true, opacity: 0.85 }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.2; g.add(ring); g.ring = ring;
+  return g;
+}
+function cacheReset() { if (G.cache && G.cache.m) sc.remove(G.cache.m); G.cache = null; G.cacheN = 0; }
+function spawnCache() {
+  if (G.type != "br" || G.net) return;
+  const c = G.circ[Math.min(6, G.ph + 1)];
+  let spot = null;
+  for (let k = 0; k < 400 && !spot; k++) { const a = rnd(0, 6.28), d = rnd(0, c.r * 0.6), x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d, h = terrH(x, z); if (h > 1.6 && h < 26 && !blockedAt(x, z, 3.5)) spot = { x, z, y: h }; }
+  if (!spot) return;
+  if (G.cache && G.cache.m) sc.remove(G.cache.m);
+  const m = mkCache(); m.position.set(spot.x, spot.y, spot.z); sc.add(m);
+  G.cache = { ...spot, m, t: CACHE_COOL, open: 0 }; G.cacheN = (G.cacheN || 0) + 1;
+  for (let i = 0; i < 24 && G.fx.length < 220; i++) puff(V3(spot.x + rnd(-2, 2), spot.y + rnd(0, 2), spot.z + rnd(-2, 2)), i % 2 ? 0xff9a4a : 0xffe27a, 1);
+  if (Math.hypot(spot.x - G.p.x, spot.z - G.p.z) < 260) { noise(0.5, 0.25, 500); tone(160, 0.6, "sawtooth", 0.06, -120); }
+  toast("A Comet Cache crashed! It opens in " + CACHE_COOL + " seconds. Look for the orange mark on the map.");
+}
+function openCache(C) {
+  C.open = 1;
+  const items = [rollWeapon(60), rollWeapon(45), { t: "c", id: "med", n: 1 }, { t: "c", id: "orb", n: 1 }, { t: "m", id: "m", n: 60 }];
+  const w = items[0]; items.push({ t: "a", id: W[w.id].am, n: AMMO[W[w.id].am].give * 2 });
+  spill(items, C.x, C.y + 1, C.z, rnd(0, 6.28));
+  C.m.core.visible = false; C.m.ring.visible = false;
+  if (dist3(C, G.p) < 120) { tone(523, 0.15, "triangle", 0.06); tone(784, 0.2, "triangle", 0.06, 0, 0.12); tone(1046, 0.3, "triangle", 0.06, 0, 0.24); }
+  if (dist3(C, G.p) < 60) chestBurst({ x: C.x, y: C.y, z: C.z });
+  if (dist3(C, G.p) < 200) toast("The Comet Cache is open!");
+}
+function stepCache(dt) {
+  if (G.type == "br" && !G.net && CACHE_PH.includes(G.ph) && G.cachePh !== G.ph) { G.cachePh = G.ph; spawnCache(); }
+  const C = G.cache; if (!C) return;
+  if (!C.open) {
+    C.t -= dt;
+    C.m.core.rotation.y += dt * 2; C.m.core.position.y = 1.3 + Math.sin(G.t * 3) * 0.15;
+    C.m.ring.scale.setScalar(0.6 + 0.4 * Math.max(0, C.t / CACHE_COOL));
+    if (Math.random() < dt * 8 && dist3(C, G.p) < 90) puff(V3(C.x + rnd(-1, 1), C.y + 1.6, C.z + rnd(-1, 1)), 0xffa060, 1);
+    if (C.t <= 0) openCache(C);
+  }
+}
+// a mark on the minimap and the big map
+function cacheMark(c, X, Z) {
+  const C = G.cache; if (!C) return;
+  const x = X(C.x), z = Z(C.z), t = performance.now() / 300;
+  c.fillStyle = C.open ? "#ffd36b" : "#ff7a3d"; c.strokeStyle = "#000a"; c.lineWidth = 1.5;
+  c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 3.5 : 8 + Math.sin(t) * 1.2, a = -Math.PI / 2 + (i * Math.PI) / 5; c.lineTo(x + Math.cos(a) * r, z + Math.sin(a) * r); } c.closePath(); c.fill(); c.stroke();
+}
+
 /* ===== bots.js ===== */
 // Computer players and the main loop. Bots land somewhere, loot chests and floor items, pick better weapons,
 // heal, build a wall when shot at, rotate out of the storm and fight at the range their weapon likes.
@@ -6484,6 +6544,8 @@ function botThink(e) {
   else if (A.mode != "rotate") {
     // loot: a chest or something better on the floor nearby
     const rg = rallyGoal(e); if (rg) { A.goal = rg; A.mode = "rotate"; return; }
+    // a Comet Cache that is open or about to open (cache.js) beats ordinary loot, until its loot is gone
+    { const C = G.cache; if (C && (C.t < 8 && !C.open || C.open && G.loot.some((l) => Math.abs(l.x - C.x) < 8 && Math.abs(l.z - C.z) < 8))) { const d = Math.hypot(C.x - e.x, C.z - e.z); if (d < 140 && d > 6) { if (!(A.goal && A.goal.kind == "cache")) A.goal = { x: C.x + rnd(-2, 2), z: C.z + rnd(-2, 2), y: C.y, kind: "cache" }; A.mode = "rotate"; return; } } }
     if ((!A.goal || A.goal.kind != "loot" || A.goal.done) && !(A.goal && A.goal.kind == "mark" && G.t < (A.markT || 0))) {
       let best = null, bs = G.type != "br" ? 14 : e.inv.filter(Boolean).length >= 4 && hasGun ? 18 : 48;
       for (const pd of G.pods) { if (pd.o || pd.st != "land") continue; const d = Math.hypot(pd.x - e.x, pd.z - e.z); if (d < 90 && d * 0.35 < bs) { bs = d * 0.35; best = { x: pd.x, z: pd.z, y: pd.gy, kind: "loot", pod: pd }; } }
@@ -6647,7 +6709,7 @@ function step(dt) {
   NET.bctx = 0; if (G.net) netStep(dt);
   // characters near you don't stand inside each other
   for (const a of G.E) { if (!a.alive || a.st != "play" || Math.abs(a.x - p.x) > 30 || Math.abs(a.z - p.z) > 30) continue; for (const b of G.E) { if (b === a || !b.alive || b.st != "play") continue; const dx = b.x - a.x, dz = b.z - a.z; if (Math.abs(dx) > 1 || Math.abs(dz) > 1 || Math.abs(a.y - b.y) > 1.6) continue; const d = Math.hypot(dx, dz); if (d < 0.8 && d > 0.001) { const k = (0.8 - d) / 2; a.x -= (dx / d) * k; a.z -= (dz / d) * k; b.x += (dx / d) * k; b.z += (dz / d) * k; } } }
-  stepLoot(dt); stepBuilds(dt); stepRockets(dt); stepGrens(dt); stepPads(dt); stepBoards(dt); stepRovers(dt); stepRally(dt); stepForage(); stepShockRings(dt); stepHunt(dt); stepZero(dt); stepSwim(dt); stepJet(); stepToys(dt); stepWild(dt); stepPerks(dt); stepSky(dt); stepThrows(dt); stepRails(dt); stepFires(dt); stepRain(dt); medalPlaces(); stepDayCycle(); stepFishing(dt); stepMeteors(dt); stepTraps(dt); stepWeak(dt); stepHum(dt); stepPods(dt); stepLightning(dt); ambient(dt); stepFx(dt);
+  stepLoot(dt); stepBuilds(dt); stepRockets(dt); stepGrens(dt); stepPads(dt); stepBoards(dt); stepRovers(dt); stepRally(dt); stepForage(); stepShockRings(dt); stepHunt(dt); stepZero(dt); stepSwim(dt); stepJet(); stepToys(dt); stepWild(dt); stepPerks(dt); stepSky(dt); stepThrows(dt); stepRails(dt); stepFires(dt); stepCache(dt); stepRain(dt); medalPlaces(); stepDayCycle(); stepFishing(dt); stepMeteors(dt); stepTraps(dt); stepWeak(dt); stepHum(dt); stepPods(dt); stepLightning(dt); ambient(dt); stepFx(dt);
   if (WD.spire) { WD.spire.rotation.y += dt * 0.35; WD.spire.position.y = WD.spire.userData.y + Math.sin(G.t * 0.8) * 0.6; }
   { const it = curItem(p); drawArc(!!(p.alive && p.st == "play" && !p.board && it && it.t == "u" && (it.id == "gren" || it.id == "shock"))); }
   for (const c of WD.chests) if (c.o && c.lt < 1) { c.lt = Math.min(1, c.lt + dt * 4); setLid(c, c.lt * 1.9); }

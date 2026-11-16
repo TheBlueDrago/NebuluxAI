@@ -275,7 +275,8 @@ const TIPS=[
  "A hurt rival is worth chasing: bots will try to finish you the same way, so back off when your health is low.",
  "In Vault Raid, one fighter who stays home can stop a sneaky raid.",
  "Sharpshooter shots pierce: line rivals up and hit them all. Wardens can shield the whole crew with their Super.",
- "At level 3 every fighter gets a gadget: three uses a match. Tap Gadget (or press E) to use it."
+ "At level 3 every fighter gets a gadget: three uses a match. Tap Gadget (or press E) to use it.",
+ "At level 5 you unlock Hyper Surge. Land hits to fill it, then tap Hyper (or press Q): 5 seconds of extra speed, damage and toughness, and your Super fills twice as fast."
 ];
 const RANKS=[{name:"Rookie",at:0},{name:"Star Cadet",at:50},{name:"Nebula Knight",at:150},{name:"Comet Ace",at:300},{name:"Galaxy Legend",at:600}];
 function rankFor(trophies){
@@ -696,6 +697,7 @@ const GADGETS={
   barrier:{name:"Star Barrier",desc:"Blocks the next 1,400 damage for 3 seconds."},
   mine:{name:"Shock Mine",desc:"Drops a mine that zaps a rival who steps near it."}
 };
+const HYPER_TIME=5, HYPER_HITS=22, HYPER_LEVEL=5;
 const GADGET_KEYS=Object.keys(GADGETS), GADGET_USES=3, GADGET_CD=5, GADGET_LEVEL=3;
 const gadgetOf=(def)=>GADGET_KEYS[hashCode(def.id+"g")%GADGET_KEYS.length];
 const GEM_TARGET=10, COUNTDOWN_TIME=15, MATCH_TIME=150, BALL_TIME=150, SHOWDOWN_TIME=180, ARENA_TIME=120;
@@ -707,7 +709,7 @@ function makeFighter(id,def,team,name,isPlayer,spawn,level){
     level:Math.max(1,level||1), baseMul:mul, dmgMul:mul, cores:0, shieldT:0, guardT:0, gad:(Math.max(1,level||1)>=GADGET_LEVEL?gadgetOf(def):null), gadN:GADGET_USES, gadCd:0, jetT:0, barrier:0, barrierT:0, bounty:2, showBounty:false, dealt:0, kills:0, lobDist:null,
     hp:hp0, maxHp:hp0, radius:def.radius,
     facing:team===0?-Math.PI/2:Math.PI/2, aimDir:null,
-    ammo:def.maxAmmo, reloadT:0, fireCd:0, superCharge:0, superReady:false,
+    ammo:def.maxAmmo, reloadT:0, fireCd:0, superCharge:0, superReady:false, hyper:0, hyperT:0, hyperOk:Math.max(1,level||1)>=HYPER_LEVEL,
     gems:0, alive:true, respawnT:0, lastDamageT:-99, regenDelay:4, hitFlash:0,
     walkPhase:Math.random()*6,
     ai:{ targetPos:{...spawn}, repath:0, strafeDir:1, strafeT:0, holdFire:0 } };
@@ -798,6 +800,7 @@ class Match{
       if(input.firing&&input.aim)this.tryFire(p,input.aim);
       if(input.useSuper)this.useSuper(p);
       if(input.useGadget)this.useGadget(p);
+      if(input.useHyper)this.useHyper(p);
     }
     for(const f of this.fighters){
       if(!f.isPlayer)this.botThink(f,dt,boxes);
@@ -1132,6 +1135,16 @@ class Match{
     if(dist(pos,this.player.pos)<420)this.shake=Math.max(this.shake,fromSuper?14:6);
     this.sfx("boom",pos);
   }
+  useHyper(f){
+    if(!f.alive||!f.hyperOk||f.hyper<1||f.hyperT>0||this.finished)return false;
+    f.hyper=0; f.hyperT=HYPER_TIME;
+    this.burst(f.pos,26,"#f472b6",240);
+    this.particles.push({pos:{...f.pos},vel:{x:0,y:0},life:0.4,maxLife:0.4,size:120,color:"rgba(244,114,182,0.2)",ring:true});
+    this.float({x:f.pos.x,y:f.pos.y-f.radius-40},"HYPER SURGE!","#f472b6");
+    if(f.isPlayer)this.shake=Math.max(this.shake,10);
+    this.sfx("super",f.pos);
+    return true;
+  }
   useGadget(f){
     if(!f.alive||!f.gad||f.gadN<=0||f.gadCd>0||this.finished)return false;
     f.gadN-=1; f.gadCd=GADGET_CD;
@@ -1154,7 +1167,7 @@ class Match{
   }
   speedOf(f){
     const slowed=this.slowZones.some(z=>z.team!==f.team&&this.time<z.until&&dist(z.pos,f.pos)<120);
-    return f.def.speed*(slowed?0.55:1)*(f.jetT>0?1.6:1);
+    return f.def.speed*(slowed?0.55:1)*(f.jetT>0?1.6:1)*(f.hyperT>0?1.25:1);
   }
   hiddenFrom(f,viewerTeam){
     if(f.team===viewerTeam)return false;
@@ -1176,7 +1189,7 @@ class Match{
     }
     f.hitFlash=Math.max(0,f.hitFlash-dt*6);
     f.shieldT=Math.max(0,f.shieldT-dt); f.guardT=Math.max(0,f.guardT-dt);
-    f.gadCd=Math.max(0,f.gadCd-dt); f.jetT=Math.max(0,f.jetT-dt); f.barrierT=Math.max(0,f.barrierT-dt); if(f.barrierT<=0)f.barrier=0;
+    f.gadCd=Math.max(0,f.gadCd-dt); if(f.hyperT>0){ f.hyperT=Math.max(0,f.hyperT-dt); } f.jetT=Math.max(0,f.jetT-dt); f.barrierT=Math.max(0,f.barrierT-dt); if(f.barrierT<=0)f.barrier=0;
     f.fireCd-=dt;
     if(f.ammo<f.def.maxAmmo){ f.reloadT-=dt; if(f.reloadT<=0){ f.ammo+=1; f.reloadT=f.def.reloadTime; } }
     else{ f.reloadT=f.def.reloadTime; }
@@ -1209,7 +1222,7 @@ class Match{
     f.ammo-=1; f.shieldT=0;
     if(f.ammo===f.def.maxAmmo-1)f.reloadT=f.def.reloadTime;
     f.fireCd=1/f.def.fireRate;
-    const dmg=Math.round(f.def.damage*f.dmgMul);
+    const dmg=Math.round(f.def.damage*f.dmgMul*(f.hyperT>0?1.15:1));
     if(f.def.atk==="lob"){
       const a0=Math.atan2(dir.y,dir.x), d=clamp(f.lobDist||f.def.range*0.85,90,f.def.range);
       const to={x:clamp(f.pos.x+Math.cos(a0)*d,24,WORLD_W-24),y:clamp(f.pos.y+Math.sin(a0)*d,24,WORLD_H-24)};
@@ -1289,6 +1302,7 @@ class Match{
     if(!f.alive||this.finished)return;
     if(f.shieldT>0){ this.burst(f.pos,3,"#a5f3fc",80); return; }
     if(f.guardT>0)damage=Math.round(damage*0.4);
+    if(f.hyperT>0)damage=Math.round(damage*0.8);
     if(f.barrier>0){ const took=Math.min(f.barrier,damage); f.barrier-=took; damage-=took; this.burst(f.pos,3,"#c4b5fd",90); if(damage<=0)return; }
     f.hp-=damage; f.lastDamageT=this.time; f.hitFlash=1;
     const src=this.fighters[ownerId];
@@ -1298,7 +1312,8 @@ class Match{
     this.float({x:f.pos.x,y:f.pos.y-f.radius-8},String(Math.round(damage)),fromSuper?"#fde047":"#ffffff");
     this.burst(f.pos,fromSuper?8:4,"#fda4af",110);
     const owner=this.fighters[ownerId];
-    if(owner&&!fromSuper){ owner.superCharge=Math.min(1,owner.superCharge+1/owner.def.superChargeHits); owner.superReady=owner.superCharge>=1; }
+    if(owner&&!fromSuper){ owner.superCharge=Math.min(1,owner.superCharge+(owner.hyperT>0?2:1)/owner.def.superChargeHits); owner.superReady=owner.superCharge>=1; }
+    if(owner&&owner.hyperOk&&owner.hyperT<=0&&owner.team!==f.team){ const was=owner.hyper; owner.hyper=Math.min(1,owner.hyper+(fromSuper?3:1)/HYPER_HITS+1e-9); if(owner.isPlayer&&was<1&&owner.hyper>=1)this.float({x:owner.pos.x,y:owner.pos.y-owner.radius-50},"HYPER READY!","#f472b6"); }
     if(f.hp<=0){
       f.alive=false; f.respawnT=RESPAWN_TIME; f.hp=0;
       if(this.mode==="ball"&&this.ballCarrier===f.id){
@@ -1474,6 +1489,7 @@ class Match{
         const a0=f.ammo; this.tryFire(f,dir);
         if(f.team===1&&f.ammo<a0)ai.holdFire=this.time+(1-this.skill)*0.55;
       }
+      if(f.hyperOk&&f.hyper>=1&&enemyD<f.def.range*1.1&&(f.superReady||f.hp/f.maxHp<0.6))this.useHyper(f);
       if(f.gad&&f.gadN>0&&f.gadCd<=0){
         const g=f.gad, hpF=f.hp/f.maxHp;
         if((g==="patch"&&hpF<0.45)||(g==="barrier"&&hpF<0.7&&enemyD<f.def.range)||(g==="jet"&&(hpF<0.3||(enemy.hp/enemy.maxHp<0.4&&enemyD>f.def.range*0.8)))||(g==="mine"&&enemyD<200))this.useGadget(f);
@@ -1497,7 +1513,7 @@ class Match{
       playerHp:Math.max(0,Math.round(p.hp)), playerMaxHp:p.maxHp,
       playerAmmo:p.ammo, playerMaxAmmo:p.def.maxAmmo,
       playerReloadFrac:p.ammo>=p.def.maxAmmo?1:1-Math.max(0,p.reloadT)/p.def.reloadTime,
-      playerSuperFrac:p.superCharge, playerSuperReady:p.superReady, playerGad:p.gad, playerGadN:p.gadN, playerGadCd:p.gadCd,
+      playerSuperFrac:p.superCharge, playerSuperReady:p.superReady, playerGad:p.gad, playerGadN:p.gadN, playerGadCd:p.gadCd, playerHyperOk:p.hyperOk, playerHyper:p.hyper, playerHyperT:p.hyperT,
       playerGems:p.gems, playerHasBall:this.mode==="ball"&&this.ballCarrier===p.id,
       playerAlive:p.alive, playerRespawnT:Math.max(0,p.respawnT) };
   }
@@ -1668,6 +1684,10 @@ function renderMatch(ctx,match,cam,viewW,viewH,time){
       ctx.beginPath(); ctx.arc(f.pos.x,f.pos.y,f.radius+10+Math.sin(time*10)*2,0,Math.PI*2);
       ctx.strokeStyle="rgba(165,243,252,0.9)"; ctx.lineWidth=4; ctx.stroke();
       ctx.fillStyle="rgba(165,243,252,0.14)"; ctx.fill();
+    }
+    if(f.hyperT>0&&!hiddenToPlayer){
+      ctx.beginPath(); ctx.arc(f.pos.x,f.pos.y,f.radius+16+Math.sin(time*14)*3,0,Math.PI*2); ctx.strokeStyle="rgba(244,114,182,0.9)"; ctx.lineWidth=5; ctx.setLineDash([6,5]); ctx.lineDashOffset=-time*60; ctx.stroke(); ctx.setLineDash([]);
+      if(Math.random()<0.5)match.particles.push({pos:{x:f.pos.x+(Math.random()-0.5)*30,y:f.pos.y+(Math.random()-0.5)*30},vel:{x:0,y:-40},life:0.35,maxLife:0.35,size:3.5,color:"#f9a8d4"});
     }
     if(f.barrier>0&&!hiddenToPlayer){ ctx.beginPath(); ctx.arc(f.pos.x,f.pos.y,f.radius+12,0,Math.PI*2); ctx.strokeStyle="rgba(196,181,253,0.85)"; ctx.lineWidth=6; ctx.stroke(); }
     if(f.jetT>0&&!hiddenToPlayer&&Math.random()<0.6)match.particles.push({pos:{x:f.pos.x+(Math.random()-0.5)*14,y:f.pos.y+f.radius*0.6},vel:{x:-f.vel.x*0.2,y:-f.vel.y*0.2},life:0.3,maxLife:0.3,size:4,color:"#67e8f9"});
@@ -2083,6 +2103,7 @@ function showLobby(){
            '<span class="stat-pill"><span class="lab">Range </span>'+rangeLabel(selected.range)+'</span>'+
            '<span class="stat-pill"><span class="lab">Speed </span>'+speedLabel(selected.speed)+'</span>'+
            '<span class="stat-pill accent"><span class="lab">Super </span>'+selected.superName+'</span>'+
+           '<span class="stat-pill"><span class="lab">Hyper </span>'+(lv>=HYPER_LEVEL?"Unlocked":"at level "+HYPER_LEVEL)+'</span>'+
            '<span class="stat-pill"><span class="lab">Gadget </span>'+(lv>=GADGET_LEVEL?GADGETS[gadgetOf(selected)].name:"at level "+GADGET_LEVEL)+'</span></div>')+
          '<button type="button" id="btn-upgrade" class="btn-chunk font-display" '+(upCost===null||profile.coins<upCost?'aria-disabled="true" ':"")+'style="margin-top:.625rem;border-radius:1rem;padding:.5rem 1rem;font-size:.8rem;min-height:44px;'+(upCost!==null&&profile.coins>=upCost?"background:linear-gradient(180deg,#86efac,#22c55e);color:#052e16;box-shadow:inset 0 0 0 3px #bbf7d0, 0 7px 0 rgba(10,6,32,.55)":"background:linear-gradient(180deg,#3b2a7d,#241a52);color:#c4b5fd;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), 0 7px 0 rgba(10,6,32,.55)")+'">'+(upCost===null?"MAX LEVEL":"UPGRADE TO LEVEL "+(lv+1)+" · "+upCost+" COINS")+'</button>'+
          (tiny?"":'<div style="width:16rem;max-width:70vw;margin-top:.75rem">'+
@@ -2580,6 +2601,7 @@ function showGame(){
      '<div style="position:relative;margin:0 .5rem .75rem 0;display:flex;align-items:flex-end;gap:.75rem">'+
        '<button type="button" id="btn-auto" aria-label="Auto-fire at the nearest rival when you let go" aria-pressed="false" class="btn-chunk round-btn" style="margin-bottom:2.5rem;height:3.5rem;width:3.5rem;flex-direction:column;background:linear-gradient(180deg,#53419f,#2a1e63);box-shadow:inset 0 0 0 4px rgba(255,255,255,.3), 0 7px 0 rgba(10,6,32,.55)">'+
          '<svg viewBox="0 0 24 24" style="width:24px;height:24px" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fda4af" stroke-width="2.2"/><circle cx="12" cy="12" r="2" fill="#fda4af"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="#fda4af" stroke-width="2.2" stroke-linecap="round"/></svg><span style="font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em">Auto</span></button>'+
+       '<button type="button" id="btn-hyper" aria-label="Use Hyper Surge" class="btn-chunk round-btn" style="position:relative;margin-bottom:6.5rem;height:3.25rem;width:3.25rem;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#831843,#500724);box-shadow:inset 0 0 0 3px rgba(249,168,212,.5), 0 6px 0 rgba(10,6,32,.55)"><span id="hyper-fill" aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:0%;background:rgba(244,114,182,.55)"></span><span style="position:relative;font-size:15px;line-height:1;font-weight:900">&#9889;</span><span style="position:relative;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em">Hyper</span></button>'+
        '<button type="button" id="btn-gadget" aria-label="Use gadget" class="btn-chunk round-btn" style="position:relative;margin-bottom:6.5rem;height:3.25rem;width:3.25rem;flex-direction:column;background:linear-gradient(180deg,#0e7490,#164e63);box-shadow:inset 0 0 0 3px rgba(165,243,252,.5), 0 6px 0 rgba(10,6,32,.55)"><span id="gad-n" class="font-display" style="font-size:1rem;line-height:1">3</span><span style="font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em">Gadget</span></button>'+
        '<button type="button" id="btn-super" aria-label="Use super" class="btn-chunk round-btn" style="position:relative;margin-bottom:2.5rem;height:4.5rem;width:4.5rem;flex-direction:column;background:linear-gradient(180deg,#3d2f7a,#241a52);box-shadow:inset 0 0 0 4px rgba(255,255,255,.25), 0 7px 0 rgba(10,6,32,.55)">'+
          '<span id="super-ping" class="hidden" aria-hidden="true" style="position:absolute;inset:0;border-radius:999px;background:rgba(253,224,71,.4)"></span>'+
@@ -2590,7 +2612,7 @@ function showGame(){
        '<div id="ammo-pips" style="pointer-events:none;position:absolute;top:-.25rem;left:50%;transform:translateX(-50%);display:flex;gap:.375rem"></div></div>'+
      '</div>'+
    '</div>'+
-   '<div style="pointer-events:none;position:absolute;bottom:.25rem;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:600;color:rgba(255,255,255,.5)" id="desktop-hint">WASD move · hold mouse to aim, let go to fire · click or J = auto-aim · Space = Super · E = gadget · M = full map · no pause — keep brawling!</div>'+
+   '<div style="pointer-events:none;position:absolute;bottom:.25rem;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:600;color:rgba(255,255,255,.5)" id="desktop-hint">WASD move · hold mouse to aim, let go to fire · click or J = auto-aim · Space = Super · E = gadget · Q = Hyper · M = full map · no pause — keep brawling!</div>'+
    // Rotate prompt
    '<div id="rotate-prompt" class="hidden" style="position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(20,16,51,.92);padding:0 1.5rem;text-align:center;backdrop-filter:blur(2px)">'+
      '<div class="animate-phone-turn" aria-hidden="true"><svg viewBox="0 0 64 64" style="width:7rem;height:7rem"><rect x="21" y="5" width="22" height="54" rx="5" fill="#241a52" stroke="#e0e7ff" stroke-width="2.5"/><rect x="24.5" y="12" width="15" height="38" rx="2" fill="#38bdf8" opacity="0.85"/><circle cx="32" cy="54.5" r="1.8" fill="#e0e7ff"/></svg></div>'+
@@ -2656,7 +2678,16 @@ function showGame(){
   };
   fullMapBtn.addEventListener("click",()=>setFullMap(!fullMap));
   const superBtn=$("#btn-super",root);
-  superBtn.addEventListener("pointerdown",(e)=>{ e.preventDefault(); input.superQueued=true; });
+  superBtn.addEventListener("pointerdown",(e)=>{ e.preventDefault(); e.stopPropagation(); input.superQueued=true; });
+  if(!window.matchMedia("(pointer: coarse)").matches){
+    // on a computer: a key badge on each button, and the buttons sit where the mouse can reach them easily
+    const badge=(btn,k)=>{ btn.appendChild(el('<span aria-hidden="true" style="position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:6px;background:#f5f3ff;color:#1e1b4b;font-size:11px;font-weight:900;line-height:20px;text-align:center;box-shadow:0 2px 0 rgba(10,6,32,.5)">'+k+'</span>')); btn.style.overflow="visible"; if(getComputedStyle(btn).position==="static")btn.style.position="relative"; btn.title=(btn.getAttribute("aria-label")||"")+" ("+k+")"; };
+    badge(superBtn,"Space"); badge($("#btn-gadget",root),"E"); badge($("#btn-hyper",root),"Q"); badge($("#btn-auto",root),"J");
+    for(const b of [superBtn,$("#btn-gadget",root),$("#btn-hyper",root),$("#btn-auto",root)]){ b.style.cursor="pointer"; b.addEventListener("pointerup",(e)=>e.stopPropagation()); }
+  }
+  const hypBtn=$("#btn-hyper",root), hypFill=$("#hyper-fill",root);
+  if(!match.player.hyperOk)hypBtn.style.display="none";
+  hypBtn.addEventListener("pointerdown",(e)=>{ e.preventDefault(); e.stopPropagation(); input.hypQueued=true; });
   const gadBtn=$("#btn-gadget",root), gadN=$("#gad-n",root);
   if(!match.player.gad)gadBtn.style.display="none";
   else gadBtn.setAttribute("aria-label","Use gadget: "+GADGETS[match.player.gad].name);
@@ -2715,6 +2746,7 @@ function showGame(){
     input.keys.add(e.key.toLowerCase());
     if(e.key===" ")input.superQueued=true;
     if(e.key==="e"||e.key==="E")input.gadQueued=true;
+    if(e.key==="q"||e.key==="Q")input.hypQueued=true;
     if(e.key==="m"||e.key==="M")setFullMap(!fullMap);
   };
   const keyup=(e)=>{
@@ -2743,7 +2775,7 @@ function showGame(){
     superPing=$("#super-ping",root), superStar=$("#super-star",root), superLabel=$("#super-label",root),
     superCharge=$("#super-charge",root), superChargeFill=$("#super-charge-fill",root),
     banner=$("#game-banner",root), bannerText=$("#game-banner-text",root);
-  let lastPipsKey="", lastFeedKey="", wasSuperReady=false, lastTick=-1;
+  let lastPipsKey="", lastFeedKey="", wasSuperReady=false, lastTick=-1, wasHyper=false;
   const cdTickFor=(h)=>{
     const cd=h.countdownTeam==="blue"||h.countdownTeam==="red";
     const n=cd?Math.ceil(h.countdownT):(h.timeLeft<=10&&h.timeLeft>0?Math.ceil(h.timeLeft):-1);
@@ -2800,6 +2832,12 @@ function showGame(){
         html+='<span class="ammo-pip" style="background:'+bg+'"></span>';
       }
       pips.innerHTML=html;
+    }
+    if(h.playerHyperOk){
+      const on=h.playerHyperT>0, full=h.playerHyper>=1;
+      hypFill.style.height=(on?100*h.playerHyperT/HYPER_TIME:100*h.playerHyper)+"%";
+      hypBtn.style.boxShadow=full||on?"inset 0 0 0 3px #fbcfe8, 0 0 22px rgba(244,114,182,.9), 0 6px 0 rgba(10,6,32,.55)":"inset 0 0 0 3px rgba(249,168,212,.5), 0 6px 0 rgba(10,6,32,.55)";
+      if(full&&!wasHyper)SFX.play("ready"); wasHyper=full;
     }
     if(h.playerGad){ gadN.textContent=String(h.playerGadN); gadBtn.style.opacity=h.playerGadN>0&&h.playerGadCd<=0?"1":".45"; }
     if(h.playerSuperReady){
@@ -2868,8 +2906,8 @@ function showGame(){
     const step=1/60;
     while(acc>=step){
       const liveDist=input.aim?match.player.def.range*clamp((Math.hypot(input.aim.x,input.aim.y)-0.5)/0.5,0.3,1):(input.mouseDown?input.mouseDist:null);
-      match.update(step,{move:moveVec,aim:shotAim||aim,aimDist:shotAim?shotDist:liveDist,firing,useSuper:input.superQueued,useGadget:input.gadQueued});
-      input.superQueued=false; input.gadQueued=false;
+      match.update(step,{move:moveVec,aim:shotAim||aim,aimDist:shotAim?shotDist:liveDist,firing,useSuper:input.superQueued,useGadget:input.gadQueued,useHyper:input.hypQueued});
+      input.superQueued=false; input.gadQueued=false; input.hypQueued=false;
       if(firing){ firing=false; shotAim=null; input.pendingShot=null; input.pendingAuto=false; input.pendingDist=null; }
       acc-=step;
       if(match.finished)break;

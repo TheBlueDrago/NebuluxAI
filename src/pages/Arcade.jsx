@@ -87,13 +87,14 @@ export default function Arcade() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/70 border border-slate-700/60 focus-within:border-indigo-400/70 transition-colors">
+        <label className="flex-1 flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl bg-slate-900/70 border border-slate-700/60 focus-within:border-indigo-400/70 transition-colors">
           <Search className="w-4 h-4 text-slate-500" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search games"
-            className="flex-1 bg-transparent outline-none text-sm text-slate-100 placeholder:text-slate-500"
+            aria-label="Search games"
+            className="flex-1 min-h-[28px] bg-transparent outline-none text-sm text-slate-100 placeholder:text-slate-500"
           />
         </label>
         <div className="flex gap-2 overflow-x-auto py-1.5 -my-1.5">
