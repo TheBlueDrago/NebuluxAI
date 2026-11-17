@@ -217,6 +217,9 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 .kbs summary{cursor:pointer;font-weight:700}.kbs #kbl{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0}
 .kbr{display:flex;justify-content:space-between;gap:6px;align-items:center;font:inherit;font-size:12px;background:#ffffff14;color:inherit;border:1px solid #ffffff22;border-radius:6px;padding:5px 7px;cursor:pointer}.kbr:hover{border-color:#7fe3ff}.kbr b{color:#7fe3ff;white-space:nowrap}
 
+/* daily reward */
+#dly{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#05040fb0;padding:16px}#dly .dbx{background:linear-gradient(160deg,#3a1d6a,#1a1240);border-radius:18px;padding:20px 22px;max-width:min(560px,94vw);text-align:center;box-shadow:0 30px 80px #000a,inset 0 0 0 2px #ffffff22}#dly small{color:#ffd45a;font-weight:700;letter-spacing:.06em;text-transform:uppercase}#dly h2{margin:4px 0 12px;font-style:italic;font-size:28px}#dly .drow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}#dly .dd{background:#ffffff12;border-radius:10px;padding:8px 2px;display:flex;flex-direction:column;gap:2px;font-size:12px}#dly .dd b{font-size:11px;opacity:.8}#dly .dd span{font-weight:800;color:#ffd45a}#dly .dd em{font-style:normal;font-size:10px;color:#9ae8ff}#dly .dd.got{opacity:.45}#dly .dd.now{background:#ffd45a;color:#2a1400;box-shadow:0 0 0 3px #fff6}#dly .dd.now span{color:#2a1400}#dly p{font-size:13px;opacity:.85;margin:12px 0}#dly .yb{border:0;border-radius:12px;padding:12px 28px;font-weight:800;font-style:italic;font-size:18px;min-height:48px;cursor:pointer}
+
 /* ===== v3 HUD ===== */
 #game{font-family:'Chakra Petch',system-ui,sans-serif}
 #tint{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,#a050ff22 30%,#7a2aff88);opacity:0;transition:opacity .4s}
@@ -504,6 +507,12 @@ body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #bossb{top:calc(122px + env(safe-area-inset-top,0px))!important;width:min(300px,40vw)!important}
   #ft{top:calc(150px + env(safe-area-inset-top,0px))!important;font-size:12px!important;max-width:46vw;white-space:normal}
 }
+
+/* phones: smaller loot name tags (only the nearest four are shown) */
+@media (pointer:coarse){.lb{font-size:11px!important;padding:1px 6px!important}.lb.f{font-size:12px!important}}
+
+/* upright phones: all six lobby tabs fit without scrolling */
+@media (orientation:portrait) and (max-width:480px){#lobby header nav{gap:0!important}#lobby header nav button{padding-left:7px!important;padding-right:7px!important;font-size:13.5px!important}}
 
 </style></head><body>
 <div id="rot"><div>Turn your phone sideways to play<br><small>Nebula Royale only runs in landscape.</small></div></div>
@@ -1556,6 +1565,8 @@ const MODES = {
   twister: { n: "Twister Alley", d: "Twisters touch down every few seconds. Keep your wings ready.", tm: 1, dm: 0.55, acc: 0.45, type: "br", tw: 1 },
   perkup: { n: "Perk Party", d: "Two Star Perks to start, and another each time the storm moves.", tm: 1, dm: 0.55, acc: 0.45, type: "br", pk: 1 },
   blades: { n: "Blade Party", d: "Everyone drops in with a Comet Blade.", tm: 1, dm: 0.55, acc: 0.45, type: "br", bl: 1 },
+  lava: { n: "Rising Lava", d: "A minute in, the sea turns to lava and climbs. Get high or build up.", tm: 1, dm: 0.55, acc: 0.45, type: "br", lv: 1 },
+  gold: { n: "Golden Loot", d: "Every weapon you find is Epic or better. Fights end fast.", tm: 1, dm: 0.6, acc: 0.5, type: "br", gl: 1 },
   snipers: { n: "Sniper Showdown", d: "Battle royale with only snipers and rockets.", tm: 1, dm: 0.6, acc: 0.5, type: "br", only: ["sniper", "sniper", "sniper", "launcher", "pistol"] },
 };
 let tab = "play", mode = "solo";
@@ -1589,6 +1600,8 @@ const W = {
   tac: { n: "Tac Shotgun", d: 8, r: 0.42, s: 0.07, rg: 30, pl: 8, mag: 8, rl: 3.8, am: "shells", hs: 1.6, auto: 0, lo: 0 },
   marksman: { n: "Comet Marksman", d: 44, r: 0.38, s: 0.006, rg: 220, pl: 1, mag: 8, rl: 2.6, am: "medium", hs: 1.8, auto: 0, lo: 0 },
   drum: { n: "Pulse Drum", d: 15, r: 0.1, s: 0.05, rg: 70, pl: 1, mag: 50, rl: 3.4, am: "light", hs: 1.4, auto: 1, lo: 0 },
+  // the Arc Caster: short range lightning; a hit jumps to up to two more rivals close by (game.js shoot)
+  arc: { n: "Arc Caster", d: 24, r: 0.16, s: 0.012, rg: 34, pl: 1, mag: 16, rl: 2.6, am: "light", hs: 1.2, auto: 1, lo: 0, chain: 2 },
   turret: { n: "Mounted Turret", d: 19, r: 0.11, s: 0.02, rg: 130, pl: 1, mag: 999, rl: 1, am: "medium", hs: 1.5, auto: 1, lo: 0, fixed: 1 },
   repeater: { n: "Storm Repeater", d: 19, r: 0.085, s: 0.045, rg: 130, pl: 1, mag: 60, rl: 5.2, am: "medium", hs: 1.35, auto: 1, lo: 0, spin: 0.42 },
 };
@@ -1645,6 +1658,7 @@ const SND = {
     else if (w == "repeater") { noise(0.06, 0.2 * k, 3000); tone(140, 0.05, "sawtooth", 0.04 * k, -40); }
     else if (w == "marksman") { noise(0.22, 0.4 * k, 2000); tone(120, 0.16, "square", 0.07 * k, -60); }
     else if (w == "drum") { noise(0.07, 0.22 * k, 3000); tone(220, 0.05, "square", 0.035 * k, -110); }
+    else if (w == "arc") { noise(0.05, 0.16 * k, 5200, 0, "highpass", 2); tone(880, 0.07, "sawtooth", 0.03 * k, 1400); }
     else if (w == "turret") { noise(0.09, 0.3 * k, 1800); tone(120, 0.07, "square", 0.06 * k, -60); }
     else if (w == "tac") { noise(0.28, 0.36 * k, 1800); tone(110, 0.18, "sawtooth", 0.07 * k, -50); }
     else { noise(0.6, 0.3 * k, 700); tone(180, 0.5, "sawtooth", 0.05 * k, 300); }
@@ -2426,6 +2440,9 @@ function mkGun(id, r) {
     p(rbox(0.1, 0.16, 0.56, 0.03), mL, 0, 0.05, 0.14); tube(0.022, 0.5, mB, 0, 0.07, 0.42); p(rbox(0.06, 0.06, 0.09, 0.02), mB, 0, 0.07, 0.94);
     tube(0.04, 0.26, mB, 0, 0.2, 0.0); p(cyl(0.046, 0.046, 0.03, 10), mC, 0, 0.2, 0.26, Math.PI / 2); p(rbox(0.04, 0.05, 0.1, 0.01), mB, 0, 0.15, 0.1);
     p(rbox(0.07, 0.19, 0.09, 0.02), mB, 0, -0.1, 0.22, 0.15); p(rbox(0.07, 0.15, 0.08, 0.02), mB, 0, -0.07, -0.02, -0.3); p(rbox(0.09, 0.15, 0.3, 0.05), mW, 0, 0.02, -0.27); p(rbox(0.105, 0.025, 0.4, 0.008), mT, 0, 0.0, 0.16);
+  } else if (id == "arc") {
+    p(rbox(0.1, 0.13, 0.34, 0.03), mL, 0, 0.05, 0.06); tube(0.03, 0.16, mB, 0, 0.07, 0.26); for (let k = 0; k < 3; k++) p(cyl(0.055, 0.055, 0.02, 10), mC, 0, 0.07, 0.2 + k * 0.06, Math.PI / 2);
+    p(rbox(0.04, 0.04, 0.05, 0.01), mC, 0, 0.07, 0.38); p(rbox(0.07, 0.15, 0.08, 0.02), mB, 0, -0.08, -0.05, -0.3); p(rbox(0.09, 0.11, 0.16, 0.04), mL, 0, 0.03, -0.18); p(rbox(0.105, 0.025, 0.28, 0.008), mT, 0, 0.0, 0.06);
   } else if (id == "drum") {
     p(rbox(0.1, 0.15, 0.4, 0.03), mL, 0, 0.05, 0.08); tube(0.024, 0.2, mB, 0, 0.07, 0.28); p(rbox(0.05, 0.05, 0.08, 0.02), mB, 0, 0.07, 0.5);
     p(cyl(0.15, 0.15, 0.09, 16), mB, 0, -0.14, 0.14, 0, 0, Math.PI / 2); p(cyl(0.06, 0.06, 0.1, 10), mC, 0, -0.14, 0.14, 0, 0, Math.PI / 2);
@@ -2608,8 +2625,8 @@ function emotePose(g, d, t) {
 
 /* ===== lobby.js ===== */
 // Lobby: Play, Locker, Item Shop, Battle Pass and Quests, with a live 3D preview of your character.
-var NEWS = [{ t: "Comet Caches", d: "Twice a match a comet crashes in the safe zone. It opens with top loot", g: "linear-gradient(135deg,#ff7a3d,#3a1d5a)" }, { t: "Weekly pass", d: "A new battle pass every week, with three bonus outfits", g: "linear-gradient(135deg,#d6246e,#2b1a5a)" }, { t: "Glow Fires", d: "Rest beside one near any town and your health mends", g: "linear-gradient(135deg,#ff9a3c,#5a2f1e)" }, { t: "Ride a Tusker", d: "Let one charge, dodge it, then hop on", g: "linear-gradient(135deg,#ff4fd8,#5a3a52)" }, { t: "Two new guns", d: "The Comet Marksman and the Pulse Drum", g: "linear-gradient(135deg,#ffb23e,#23262f)" }, { t: "Hot Spots", d: "One town each match is packed with loot. So everyone goes", g: "linear-gradient(135deg,#ff6a3a,#7a1f5a)" }, { t: "Grind Rails", d: "Hop on beside the roads and fly", g: "linear-gradient(135deg,#e8edf7,#3a7bff)" }, { t: "Mounted Turrets", d: "Hold the town. Don't let it overheat", g: "linear-gradient(135deg,#ff6a4a,#2b2f4a)" }, { t: "Glimmerlings", d: "Catch one of these and it bursts into loot", g: "linear-gradient(135deg,#ffe07a,#b06bff)" }, { t: "The Crown", d: "Win a match and wear it into the next", g: "linear-gradient(135deg,#ffd23a,#b06bff)" }, { t: "Comet Blade", d: "A rare blade that lunges at your enemies", g: "linear-gradient(135deg,#7fe3ff,#14205a)" }, { t: "Smoke and Shields", d: "Three new things to throw", g: "linear-gradient(135deg,#b8c0d0,#3a7bff)" }, { t: "Pocket Fort", d: "Throw it and a metal tower springs up", g: "linear-gradient(135deg,#ffb04f,#2b2f4a)" }, { t: "Twisters", d: "They'll throw you sky high. Your wings do the rest", g: "linear-gradient(135deg,#e8e4ff,#5a55a8)" }, { t: "Sky Rifts", d: "Step through and you're diving from the clouds", g: "linear-gradient(135deg,#c98aff,#2a1a5a)" }, { t: "Wildlife", d: "Puffbirds to carry, Tuskers to run from", g: "linear-gradient(135deg,#7fdcff,#5a3a52)" }, { t: "Star Perks", d: "Choose a perk each time the storm closes", g: "linear-gradient(135deg,#ffd23a,#b45cff)" }, { t: "Spring Caps", d: "Giant mushrooms that bounce you sky high", g: "linear-gradient(135deg,#ff4fa3,#52c8ff)" }, { t: "Six new emotes", d: "Hold T anywhere, even on the waiting island", g: "linear-gradient(135deg,#ff4fd8,#3a7bff)" }, { t: "Into the sunset", d: "Day matches now turn to dusk as the storm closes", g: "linear-gradient(135deg,#ffb070,#b04a8a)" }, { t: "Fishing and upgrades", d: "Fish the shallows, upgrade at the benches", g: "linear-gradient(135deg,#1fbfd0,#ffd23a)" }, { t: "Rocket Pack", d: "Hold fire and fly", g: "linear-gradient(135deg,#ffb04f,#7a1f5a)" }, { t: "Rain showers", d: "The weather can turn mid-match", g: "linear-gradient(135deg,#7a8cc8,#1a2040)" }, { t: "Zero Build", d: "No building, and your shield grows back", g: "linear-gradient(135deg,#52e0ff,#14205a)" }, { t: "Moon Jump", d: "Low gravity, huge jumps", g: "linear-gradient(135deg,#c9b6ff,#14103a)" }, { t: "Hunt contracts", d: "Take out your target for loot and stars", g: "linear-gradient(135deg,#ffd23a,#8a3bd0)" }, { t: "Storm Repeater", d: "A heavy new gun, and the Pulse Charge", g: "linear-gradient(135deg,#3a7bff,#1b1050)" }, { t: "Controllers work", d: "Plug one in and press any button", g: "linear-gradient(135deg,#1fbf7a,#3a1c6e)" }, { t: "Meteor showers", d: "Watch the sky and the red rings", g: "linear-gradient(135deg,#ff7a2f,#3a1c6e)" }, { t: "The Warden", d: "Beat the boss for a Mythic weapon", g: "linear-gradient(135deg,#ff4fd8,#5a2bbf)" }, { t: "Rovers", d: "Drive four-seat buggies round the island", g: "linear-gradient(135deg,#ff7a2f,#8a1f7a)" }, { t: "Edit your builds", d: "Doors, windows, half walls, roofs", g: "linear-gradient(135deg,#2b7be0,#6a3df0)" }, { t: "Rally Beacons", d: "Bring your squad back into the match", g: "linear-gradient(135deg,#1fbf7a,#0b3a5c)" }, { t: "Season 1 pass", d: "Reach level 6 to unlock Astra", g: "linear-gradient(135deg,#ff4fa3,#ffb23e)" }, { t: "Ranked is open", d: "Win matches to reach Diamond", g: "linear-gradient(135deg,#22b8a0,#0b3a5c)" }], newsI = 0, sq = "solo", rked = 0;
-const ART = { twister: "linear-gradient(150deg,#e8e4ff,#6a60c8 60%,#1a1450)", perkup: "linear-gradient(150deg,#ffe07a,#c86bff 60%,#2a1460)", blades: "linear-gradient(150deg,#9feaff,#2a7bd0 60%,#10183a)", zero: "linear-gradient(150deg,#52e0ff,#1f5fd0 60%,#14205a)", moon: "linear-gradient(150deg,#c9b6ff,#5a3bd0 60%,#14103a)", playground: "linear-gradient(150deg,#7dff9a,#2b6cff 60%,#b06bff)", solo: "linear-gradient(150deg,#ffb23e,#ff4fa3)", duos: "linear-gradient(150deg,#52e0ff,#6a3df0)", squads: "linear-gradient(150deg,#7dff9a,#1f8a8a)", rankedSquads: "linear-gradient(150deg,#ffd23a,#2b6cff)", ranked: "linear-gradient(150deg,#59e07a,#0b6e8a)", rankedDuos: "linear-gradient(150deg,#2fd6a8,#3a3aa8)", box: "linear-gradient(150deg,#ff6b4a,#8a1f7a)", zone: "linear-gradient(150deg,#b06bff,#2b1a6a)", rumble: "linear-gradient(150deg,#ffd23a,#e0612b)", snipers: "linear-gradient(150deg,#7fa8c8,#1a2a4a)", x: "linear-gradient(150deg,#6b7fa8,#2b2540)" };
+var NEWS = [{ t: "Arc Caster", d: "A new lightning gun: every hit jumps to two more rivals nearby", g: "linear-gradient(135deg,#7ff0ff,#1a2a6a)" }, { t: "Rising Lava", d: "New party mode: the sea turns to lava and climbs. Get high or build up", g: "linear-gradient(135deg,#ff5a1f,#3a0a10)" }, { t: "Daily rewards", d: "Play seven days in a row for 400 stars and 100 XP", g: "linear-gradient(135deg,#ffd45a,#6a1468)" }, { t: "Phoenix Feather", d: "A rare find that saves you once from being eliminated", g: "linear-gradient(135deg,#ffc23a,#8a1f3a)" }, { t: "Comet Caches", d: "Twice a match a comet crashes in the safe zone. It opens with top loot", g: "linear-gradient(135deg,#ff7a3d,#3a1d5a)" }, { t: "Weekly pass", d: "A new battle pass every week, with three bonus outfits", g: "linear-gradient(135deg,#d6246e,#2b1a5a)" }, { t: "Glow Fires", d: "Rest beside one near any town and your health mends", g: "linear-gradient(135deg,#ff9a3c,#5a2f1e)" }, { t: "Ride a Tusker", d: "Let one charge, dodge it, then hop on", g: "linear-gradient(135deg,#ff4fd8,#5a3a52)" }, { t: "Two new guns", d: "The Comet Marksman and the Pulse Drum", g: "linear-gradient(135deg,#ffb23e,#23262f)" }, { t: "Hot Spots", d: "One town each match is packed with loot. So everyone goes", g: "linear-gradient(135deg,#ff6a3a,#7a1f5a)" }, { t: "Grind Rails", d: "Hop on beside the roads and fly", g: "linear-gradient(135deg,#e8edf7,#3a7bff)" }, { t: "Mounted Turrets", d: "Hold the town. Don't let it overheat", g: "linear-gradient(135deg,#ff6a4a,#2b2f4a)" }, { t: "Glimmerlings", d: "Catch one of these and it bursts into loot", g: "linear-gradient(135deg,#ffe07a,#b06bff)" }, { t: "The Crown", d: "Win a match and wear it into the next", g: "linear-gradient(135deg,#ffd23a,#b06bff)" }, { t: "Comet Blade", d: "A rare blade that lunges at your enemies", g: "linear-gradient(135deg,#7fe3ff,#14205a)" }, { t: "Smoke and Shields", d: "Three new things to throw", g: "linear-gradient(135deg,#b8c0d0,#3a7bff)" }, { t: "Pocket Fort", d: "Throw it and a metal tower springs up", g: "linear-gradient(135deg,#ffb04f,#2b2f4a)" }, { t: "Twisters", d: "They'll throw you sky high. Your wings do the rest", g: "linear-gradient(135deg,#e8e4ff,#5a55a8)" }, { t: "Sky Rifts", d: "Step through and you're diving from the clouds", g: "linear-gradient(135deg,#c98aff,#2a1a5a)" }, { t: "Wildlife", d: "Puffbirds to carry, Tuskers to run from", g: "linear-gradient(135deg,#7fdcff,#5a3a52)" }, { t: "Star Perks", d: "Choose a perk each time the storm closes", g: "linear-gradient(135deg,#ffd23a,#b45cff)" }, { t: "Spring Caps", d: "Giant mushrooms that bounce you sky high", g: "linear-gradient(135deg,#ff4fa3,#52c8ff)" }, { t: "Six new emotes", d: "Hold T anywhere, even on the waiting island", g: "linear-gradient(135deg,#ff4fd8,#3a7bff)" }, { t: "Into the sunset", d: "Day matches now turn to dusk as the storm closes", g: "linear-gradient(135deg,#ffb070,#b04a8a)" }, { t: "Fishing and upgrades", d: "Fish the shallows, upgrade at the benches", g: "linear-gradient(135deg,#1fbfd0,#ffd23a)" }, { t: "Rocket Pack", d: "Hold fire and fly", g: "linear-gradient(135deg,#ffb04f,#7a1f5a)" }, { t: "Rain showers", d: "The weather can turn mid-match", g: "linear-gradient(135deg,#7a8cc8,#1a2040)" }, { t: "Zero Build", d: "No building, and your shield grows back", g: "linear-gradient(135deg,#52e0ff,#14205a)" }, { t: "Moon Jump", d: "Low gravity, huge jumps", g: "linear-gradient(135deg,#c9b6ff,#14103a)" }, { t: "Hunt contracts", d: "Take out your target for loot and stars", g: "linear-gradient(135deg,#ffd23a,#8a3bd0)" }, { t: "Storm Repeater", d: "A heavy new gun, and the Pulse Charge", g: "linear-gradient(135deg,#3a7bff,#1b1050)" }, { t: "Controllers work", d: "Plug one in and press any button", g: "linear-gradient(135deg,#1fbf7a,#3a1c6e)" }, { t: "Meteor showers", d: "Watch the sky and the red rings", g: "linear-gradient(135deg,#ff7a2f,#3a1c6e)" }, { t: "The Warden", d: "Beat the boss for a Mythic weapon", g: "linear-gradient(135deg,#ff4fd8,#5a2bbf)" }, { t: "Rovers", d: "Drive four-seat buggies round the island", g: "linear-gradient(135deg,#ff7a2f,#8a1f7a)" }, { t: "Edit your builds", d: "Doors, windows, half walls, roofs", g: "linear-gradient(135deg,#2b7be0,#6a3df0)" }, { t: "Rally Beacons", d: "Bring your squad back into the match", g: "linear-gradient(135deg,#1fbf7a,#0b3a5c)" }, { t: "Season 1 pass", d: "Reach level 6 to unlock Astra", g: "linear-gradient(135deg,#ff4fa3,#ffb23e)" }, { t: "Ranked is open", d: "Win matches to reach Diamond", g: "linear-gradient(135deg,#22b8a0,#0b3a5c)" }], newsI = 0, sq = "solo", rked = 0;
+const ART = { gold: "linear-gradient(150deg,#fff2a8,#ffb23e 55%,#6a3a08)", lava: "linear-gradient(150deg,#ffc23a,#ff4a1a 55%,#3a0a10)", twister: "linear-gradient(150deg,#e8e4ff,#6a60c8 60%,#1a1450)", perkup: "linear-gradient(150deg,#ffe07a,#c86bff 60%,#2a1460)", blades: "linear-gradient(150deg,#9feaff,#2a7bd0 60%,#10183a)", zero: "linear-gradient(150deg,#52e0ff,#1f5fd0 60%,#14205a)", moon: "linear-gradient(150deg,#c9b6ff,#5a3bd0 60%,#14103a)", playground: "linear-gradient(150deg,#7dff9a,#2b6cff 60%,#b06bff)", solo: "linear-gradient(150deg,#ffb23e,#ff4fa3)", duos: "linear-gradient(150deg,#52e0ff,#6a3df0)", squads: "linear-gradient(150deg,#7dff9a,#1f8a8a)", rankedSquads: "linear-gradient(150deg,#ffd23a,#2b6cff)", ranked: "linear-gradient(150deg,#59e07a,#0b6e8a)", rankedDuos: "linear-gradient(150deg,#2fd6a8,#3a3aa8)", box: "linear-gradient(150deg,#ff6b4a,#8a1f7a)", zone: "linear-gradient(150deg,#b06bff,#2b1a6a)", rumble: "linear-gradient(150deg,#ffd23a,#e0612b)", snipers: "linear-gradient(150deg,#7fa8c8,#1a2a4a)", x: "linear-gradient(150deg,#6b7fa8,#2b2540)" };
 const views = {};
 
 NEWS.length = Math.min(NEWS.length, 7);
@@ -2793,9 +2810,9 @@ views.pass = () => {
 function lobby() {
   ini(); ownFree(); if (S.auto) autoC();
   const r0 = $("#rail"), sl = r0 ? r0.scrollLeft : 0, dt = dots(); $("#lobby").className = tab;
-  $("#lobby").innerHTML = `<header><h1>Nebula Royale</h1><nav>${[["play", "Play"], ["locker", "Locker"], ["shop", "Item Shop"], ["pass", "Battle Pass"], ["quests", "Quests"], ["career", "Career"]].map(([k, n]) => `<button class='${tab == k ? "on" : ""}' data-t=${k} onclick=go(this.dataset.t)>${n}${dt[k] ? "<i class=dot></i>" : ""}</button>`).join("")}</nav><span class=stars>★ ${S.stars}</span><button class=ic onclick=openSet() aria-label=Settings>⚙</button></header>${views[tab]()}`;
+  $("#lobby").innerHTML = `<header><h1>Nebula Royale</h1><nav>${[["play", "Play"], ["locker", "Locker"], ["shop", innerWidth < 480 ? "Shop" : "Item Shop"], ["pass", innerWidth < 480 ? "Pass" : "Battle Pass"], ["quests", "Quests"], ["career", "Career"]].map(([k, n]) => `<button class='${tab == k ? "on" : ""}' data-t=${k} onclick=go(this.dataset.t)>${n}${dt[k] ? "<i class=dot></i>" : ""}</button>`).join("")}</nav><span class=stars>★ ${S.stars}</span><button class=ic onclick=openSet() aria-label=Settings>⚙</button></header>${views[tab]()}`;
   const r = $("#rail"); if (r) r.scrollLeft = sl; try { pvInit(); } catch (e) { console.error(e); }
-  netOnline(); netLobbyPres();
+  netOnline(); netLobbyPres(); if (tab == "play") setTimeout(dailyCheck, 700);
 }
 function openSet() {
   const d = document.createElement("div"); d.id = "set";
@@ -3788,12 +3805,14 @@ function newMatch() {
   for (const f of WD.floor) if (Math.random() < 0.7) { const it = rollFloor(); dropItem(it, f.x + rnd(-0.6, 0.6), f.y + 0.05, f.z + rnd(-0.6, 0.6), 0, 0); if (it.t == "w") dropItem({ t: "a", id: W[it.id].am, n: AMMO[W[it.id].am].give }, f.x + rnd(-0.8, 0.8), f.y + 0.05, f.z + rnd(-0.8, 0.8), 0, 0); }
   for (const l of G.loot) { l.vy = 0; l.settled = 1; }
   });
+  // a new player's first matches are gentler: bots aim worse and hit softer, building to normal by match 5 (never in ranked)
+  { const played = (S.car && S.car.m) || 0; if (!m.rk && played < 5 && !(typeof TEST != "undefined" && TEST)) { const k = 0.6 + played * 0.08; G.acc *= k; G.dm *= k; G.newbie = k; } }
   G.type = m.type || "br"; G.waits = WAITS; G.shrinks = SHRINK; G.dmgs = DMG; G.tk = [0, 0];
   yaw = 0; pit = 0.1; fire = false; ads = false;
   $("#end").hidden = true; $("#ps").hidden = coarse; $("#tc").hidden = !coarse; $("#game").classList.add("stg"); $("#spd").hidden = true; $("#bigmap").hidden = true; $("#kf").innerHTML = ""; $("#elim").innerHTML = "";
   if (G.type != "box" && !G.net) spawnBoards();
   G.cars = []; if (G.type == "br" || G.type == "pg") spawnRovers();
-  spawnRally(); spawnKiosks(); spawnForage(); spawnFishing(); spawnCaps(); spawnWild(); spawnRifts(); spawnRails(); spawnFires(); cacheReset(); G.cachePh = -1; hotPick(); perkReset(); kbLoad(); G.smokes = []; G.domes = []; G.slashes = []; crownsDeal();
+  spawnRally(); spawnKiosks(); spawnForage(); spawnFishing(); spawnCaps(); spawnWild(); spawnRifts(); spawnRails(); spawnFires(); lavaReset(); cacheReset(); G.cachePh = -1; hotPick(); perkReset(); kbLoad(); G.smokes = []; G.domes = []; G.slashes = []; crownsDeal();
   if (G.net) netSetup();
   hudReset(); if (G.type != "br") startMode(); last = performance.now(); raf = requestAnimationFrame(loop);
   if (TEST) window.__G = G;
@@ -3807,9 +3826,9 @@ function toast(t) { const f = $("#ft"); f.innerHTML = t + "<br>" + (f.dataset.p 
 
 // ---------- loot ----------
 function rollTier(bias = 0) { const r = Math.random() * 100 - bias; return r < 4 ? 4 : r < 15 ? 3 : r < 35 ? 2 : r < 65 ? 1 : 0; }
-function rollWeapon(bias) { const r = rollTier(bias); const only = G && G.m && G.m.only; if (only) { const id = pick(only); return { t: "w", id, r: Math.max(r, id == "sniper" ? 1 : 0), m: W[id].mag }; } let id = pick(["pistol", "pistol", "revolver", "smg", "smg", "shotgun", "shotgun", "tac", "rifle", "rifle", "rifle", "burst", "burst", "sniper", "marksman", "drum"]); if (r >= 3 && Math.random() < 0.18) id = "launcher"; else if (r >= 2 && Math.random() < 0.14) id = "repeater"; if (id == "sniper" && r < 2) id = "rifle"; return { t: "w", id, r, m: W[id].mag }; }
+function rollWeapon(bias) { let r = rollTier(bias); if (G && G.m && G.m.gl) r = Math.max(3, r); const only = G && G.m && G.m.only; if (only) { const id = pick(only); return { t: "w", id, r: Math.max(r, id == "sniper" ? 1 : 0), m: W[id].mag }; } let id = pick(["pistol", "pistol", "revolver", "smg", "smg", "shotgun", "shotgun", "tac", "rifle", "rifle", "rifle", "burst", "burst", "sniper", "marksman", "drum", "arc"]); if (r >= 3 && Math.random() < 0.18) id = "launcher"; else if (r >= 2 && Math.random() < 0.14) id = "repeater"; if (id == "sniper" && r < 2) id = "rifle"; return { t: "w", id, r, m: W[id].mag }; }
 function rollHeal() { const id = pick(["cell", "cell", "cell", "band", "band", "orb", "med", "fizz"]); return { t: "c", id, n: id == "cell" ? 3 : id == "band" ? 5 : id == "fizz" ? 2 : 1 }; }
-function rollUtil() { const r = Math.random(); if (Math.random() < 0.015) return { t: "u", id: "blade", n: 1 }; if (!G.m.zb && Math.random() < 0.06) return { t: "u", id: "fort", n: 1 }; const r2 = Math.random(); if (r2 < 0.21) return r2 < 0.09 ? { t: "u", id: "smoke", n: 2 } : r2 < 0.15 ? { t: "u", id: "dome", n: 1 } : { t: "u", id: "splash", n: 2 }; return r < 0.05 ? { t: "u", id: "jet", n: 1, fuel: 100 } : r < 0.12 ? { t: "u", id: "moon", n: 1 } : r < 0.19 ? { t: "u", id: "bush", n: 1 } : r < 0.27 ? { t: "u", id: "shock", n: 2 } : r < 0.45 ? { t: "u", id: "gren", n: 2 } : r < 0.58 ? { t: "u", id: "pad", n: 1 } : r < 0.72 ? { t: "u", id: "trap", n: 1 } : r < 0.86 ? { t: "u", id: "grap", n: 4 } : { t: "u", id: "fire", n: 1 }; }
+function rollUtil() { const r = Math.random(); if (Math.random() < 0.015) return { t: "u", id: "blade", n: 1 }; if (G.type == "br" && Math.random() < 0.012) return { t: "u", id: "feather", n: 1 }; if (Math.random() < 0.035) return { t: "u", id: "rift", n: 1 }; if (!G.m.zb && Math.random() < 0.06) return { t: "u", id: "fort", n: 1 }; const r2 = Math.random(); if (r2 < 0.21) return r2 < 0.09 ? { t: "u", id: "smoke", n: 2 } : r2 < 0.15 ? { t: "u", id: "dome", n: 1 } : { t: "u", id: "splash", n: 2 }; return r < 0.05 ? { t: "u", id: "jet", n: 1, fuel: 100 } : r < 0.12 ? { t: "u", id: "moon", n: 1 } : r < 0.19 ? { t: "u", id: "bush", n: 1 } : r < 0.27 ? { t: "u", id: "shock", n: 2 } : r < 0.45 ? { t: "u", id: "gren", n: 2 } : r < 0.58 ? { t: "u", id: "pad", n: 1 } : r < 0.72 ? { t: "u", id: "trap", n: 1 } : r < 0.86 ? { t: "u", id: "grap", n: 4 } : { t: "u", id: "fire", n: 1 }; }
 function rollFloor() { const r = Math.random(); if (r < 0.46) return rollWeapon(-10); if (r < 0.74) return rollHeal(); if (r < 0.85) return rollUtil(); const id = pick(Object.keys(AMMO).filter((a) => a != "rockets")); return { t: "a", id, n: AMMO[id].give }; }
 function lootMesh(l) {
   const it = l.it, g = new TH.Group();
@@ -4149,6 +4168,16 @@ function decal(p, n, s) {
 function boxNormal(s, h) { const d = [[h.x - s.x0, -1, 0, 0], [s.x1 - h.x, 1, 0, 0], [h.y - s.y0, 0, -1, 0], [s.y1 - h.y, 0, 1, 0], [h.z - s.z0, 0, 0, -1], [s.z1 - h.z, 0, 0, 1]].map((q) => [Math.abs(q[0]), q[1], q[2], q[3]]).sort((a, b) => a[0] - b[0])[0]; return V3(d[1], d[2], d[3]); }
 function terrNormal(x, z) { return V3(terrH(x - 0.5, z) - terrH(x + 0.5, z), 1, terrH(x, z - 0.5) - terrH(x, z + 0.5)).normalize(); }
 const CASE_G = new TH.CylinderGeometry(0.02, 0.02, 0.075, 6), CASE_M = new TH.MeshBasicMaterial({ color: 0xe0b040 }), SHELL_M = new TH.MeshBasicMaterial({ color: 0xc8402e });
+// lightning that jumps from a hit rival to the nearest others close by
+function arcChain(e, from, dmg, n, wid) {
+  const hit = new Set([from]); let cur = from;
+  for (let k = 0; k < n; k++) {
+    let nx = null, nd = 9; for (const q of G.E) { if (!q.alive || hit.has(q) || q === e || q.team === e.team || q.st != "play") continue; const d = dist3(q, cur); if (d < nd) { nd = d; nx = q; } }
+    if (!nx) break; hit.add(nx);
+    if (dist3(cur, G.p) < 70) { const a = V3(cur.x, cur.y + 1.2, cur.z), b = V3(nx.x, nx.y + 1.2, nx.z), mid = a.clone().lerp(b, 0.5).add(V3(rnd(-0.4, 0.4), rnd(0.2, 0.8), rnd(-0.4, 0.4))); tracer(a, mid, 0x9ae8ff); tracer(mid, b, 0x9ae8ff); const m2 = a.clone().lerp(b, 0.25).add(V3(rnd(-0.3, 0.3), rnd(0, 0.5), rnd(-0.3, 0.3))); tracer(a, m2, 0xffffff); tracer(m2, mid, 0xffffff); for (let k2 = G.tr.length - 4; k2 < G.tr.length; k2++) if (G.tr[k2]) G.tr[k2].t = 0.16; puff(b, 0x9ae8ff, 4); }
+    damage(nx, dmg * (e.isP ? 1 : nx.isP ? G.dm : 0.6), e, false, wid); cur = nx;
+  }
+}
 function tracer(a, b, c = 0xfff2a0) { const m = new TH.Line(new TH.BufferGeometry().setFromPoints([a, b]), new TH.LineBasicMaterial({ color: c, transparent: true, opacity: 0.9 })); sc.add(m); G.tr.push({ m, t: 0.06 }); }
 function stepFx(dt) {
   if (WD.flash && WD.flash.intensity > 0) WD.flash.intensity = Math.max(0, WD.flash.intensity - dt * (WD.flashF || 8) * Math.max(1, WD.flash.intensity));
@@ -4171,16 +4200,18 @@ function rayChar(o, d, q, max) {
 }
 function damage(q, n, by, head, w) {
   if (!q.alive || q.st == "bus" || q.st == "wait") return;
+  if (q.phx && G.t < q.phx) return; // just saved by a Phoenix Feather
   if (by && by !== q && q.team === by.team) return;
   if (q.boss) n *= 0.22;
   // a real player, or a computer player someone else runs: send them the hit instead
   if (G.net && !netAuth(q)) { if (!NET.rx && by && netAuth(by)) { netEv("hit", q.nid, Math.round(n * 10), head ? 1 : 0, w || "", by.nid || ""); if (by.isP) { hitFx(q, n, head, false); if (q.sh > 0 && n >= q.sh) shieldBreak(q); } flashChar(q); } return; }
   let dealt = n, onShield = 0; if (q.sh > 0) { onShield = Math.min(q.sh, n); q.sh -= onShield; n -= onShield; } q.hp -= n; q.dmgT = G.t; q.lastBy = by; q.lastHead = !!head; if (q.bush) bushEnd(q); if (q.bird) birdLet(q);
-  if (q.isP) { G.hurt = 0.35; if (by) G.hurtFrom = Math.atan2(by.x - q.x, by.z - q.z); SND.hurt(); buzz(35); const tk = (G.taken = G.taken || {}), who = by && by !== q ? by.name : w == "fall" ? "the fall" : w == "meteor" ? "a meteor" : w == "tusker" ? "a Tusker" : "the storm"; tk[who] = (tk[who] || 0) + dealt + Math.min(0, q.hp); }
+  if (q.isP) { G.hurt = 0.35; if (by) G.hurtFrom = Math.atan2(by.x - q.x, by.z - q.z); SND.hurt(); buzz(35); const tk = (G.taken = G.taken || {}), who = by && by !== q ? by.name : w == "fall" ? "the fall" : w == "meteor" ? "a meteor" : w == "tusker" ? "a Tusker" : w == "lava" ? "the lava" : "the storm"; tk[who] = (tk[who] || 0) + dealt + Math.min(0, q.hp); }
   if (by && by.isP && q !== by) { hitFx(q, dealt, head, onShield > 0 && q.sh > 0); }
   if (onShield > 0 && q.sh <= 0 && ((by && by.isP) || q.isP)) shieldBreak(q);
   flashChar(q);
   if (!q.isP && by && by !== q) q.ai.threat = by;
+  if (q.hp <= 0 && phoenix(q)) return;
   if (q.hp <= 0) { if (!q.kn && canKnock(q)) knock(q, by, w); else eliminate(q, by, w); }
 }
 const standing = (team, not) => G.E.some((e) => e !== not && e.alive && !e.kn && e.team === team && e.st != "bus" && e.st != "ship");
@@ -4188,7 +4219,7 @@ const canKnock = (q) => (G.m.tm || 1) > 1 && G.type == "br" && standing(q.team, 
 function knock(q, by, w) {
   if (G.net && !NET.rx) netEv("kn", q.nid, by && by !== q ? by.nid || "" : "", w || "");
   if (q.board) leaveBoard(q); if (q.car) roverOut(q); if (q.grap) grapEnd(q); q.kn = 1; q.hp = 100; q.sh = 0; q.use = null; q.rl = 0; q.sl = 0; q.knBy = by && by !== q ? by : null; q.knW = w; q.rvBy = null;
-  killFeed(by && by !== q ? by.name : "The storm", q.name, by && by !== q ? "knocked" : "", by && by.isP, q.isP, "was knocked down by the storm");
+  killFeed(by && by !== q ? by.name : "The storm", q.name, by && by !== q ? "knocked" : "", by && by.isP, q.isP, w == "lava" ? "was knocked down by the lava" : "was knocked down by the storm");
   if (by && by.isP && q !== by) { SND.hit && SND.hit(true); toast("Knocked " + q.name + ". Finish them!"); buzz(30); }
   if (q.isP) { G.bmode = null; ads = false; toast("You're knocked down! Crawl to cover. A squadmate can revive you."); }
   if (q.mate && !q.isP) toast(q.name + " is knocked down. Hold " + useKey() + " next to them to revive.");
@@ -4221,6 +4252,15 @@ function stepRevive(dt) {
   if (!G.rv || G.rv.q !== q) G.rv = { q, t: 0 };
   G.rv.t += dt; if (G.rv.t >= 4) { reviveMate(q, p); G.rv = null; }
 }
+// a Phoenix Feather in the backpack saves you once: back on your feet with half health and 2.5 s of safety
+function phoenix(q) {
+  if (q.kn || G.type != "br") return false;
+  const i = q.inv.findIndex((x) => x && x.t == "u" && x.id == "feather"); if (i < 0) return false;
+  q.inv[i] = null; if (q.sel == i + 1) { q.held = null; q.sel = 0; } q.hp = 50; q.sh = 0; q.phx = G.t + 2.5; q.use = null;
+  if (dist3(q, G.p) < 60) { for (let k = 0; k < 22 && G.fx.length < 220; k++) puff(V3(q.x + rnd(-0.8, 0.8), q.y + rnd(0.2, 2.2), q.z + rnd(-0.8, 0.8)), k % 2 ? 0xffc23a : 0xff6a3a, 1); tone(392, 0.2, "triangle", 0.07, 400); tone(784, 0.35, "triangle", 0.07, 200, 0.15); }
+  if (q.isP) { toast("The Phoenix Feather saved you! Get to cover."); G.hurt = 0; buzz(60); }
+  return true;
+}
 function eliminate(q, by, w) {
   if (G.net && !NET.rx) netEv("el", q.nid, by && by !== q ? by.nid || "" : "", w || "");
   if (q.board) leaveBoard(q); if (q.car) roverOut(q, 1); if (q.grap) grapEnd(q); q.launched = 0;
@@ -4231,9 +4271,9 @@ function eliminate(q, by, w) {
   if (by && by.isP && q !== by && !q.boss && (G.type == "br" || G.type == "zone")) { const left = new Set(G.E.filter((e) => e.alive && !e.boss && e.st != "bus").map((e) => e.team)); if (left.size <= 1) { G.slowT = 1.3; G.shake = Math.max(G.shake || 0, 0.25); tone(82, 1.1, "sine", 0.12, -30); noise(0.5, 0.1, 500, 0, "lowpass", 1); } }
   if (q.boss && by && by.isP) { toast("You beat The Warden! Grab the Mythic weapon."); [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, "triangle", 0.06, 0, i * 0.1)); }
   const wn = w ? (W[w] ? W[w].n : UT[w] ? UT[w].n : w) : by ? "pickaxe" : "the storm";
-  killFeed(by && by !== q ? by.name : "The storm", q.name, by && by !== q ? wn : "", by && by.isP, q.isP, !by && G.type == "box" ? "fell off the arena" : !by && w == "fall" ? "fell too far" : !by && w == "meteor" ? "was hit by a meteor" : !by && w == "tusker" ? "was run down by a Tusker" : "");
+  killFeed(by && by !== q ? by.name : "The storm", q.name, by && by !== q ? wn : "", by && by.isP, q.isP, !by && G.type == "box" ? "fell off the arena" : !by && w == "fall" ? "fell too far" : !by && w == "meteor" ? "was hit by a meteor" : !by && w == "lava" ? "fell in the lava" : !by && w == "tusker" ? "was run down by a Tusker" : "");
   if (by && by.isP && q !== by) { if (perk("second")) perkHeal(by); SND.elim(); elimBanner(q.name, by.k); buzz([40, 30, 60]); G.stk = G.t - (G.stkT == null ? -99 : G.stkT) < 9 ? (G.stk || 1) + 1 : 1; G.stkT = G.t; if (G.stk >= 2) streakCall(G.stk); }
-  if (q.isP) { const it = by && by !== q && by.inv ? curItem(by) : null; G.ko = by && by !== q ? { by: by.name, w: it && it.t == "w" && it.id == w ? itemName(it) : wn, d: Math.round(dist3(q, by)), hp: Math.max(0, Math.ceil(by.hp)), sh: Math.max(0, Math.ceil(by.sh || 0)) } : { why: G.type == "box" ? "You fell off the arena" : w == "fall" ? "You fell too far" : w == "meteor" ? "A meteor got you" : w == "tusker" ? "A Tusker got you" : "The storm got you" }; }
+  if (q.isP) { const it = by && by !== q && by.inv ? curItem(by) : null; G.ko = by && by !== q ? { by: by.name, w: it && it.t == "w" && it.id == w ? itemName(it) : wn, d: Math.round(dist3(q, by)), hp: Math.max(0, Math.ceil(by.hp)), sh: Math.max(0, Math.ceil(by.sh || 0)) } : { why: G.type == "box" ? "You fell off the arena" : w == "fall" ? "You fell too far" : w == "meteor" ? "A meteor got you" : w == "tusker" ? "A Tusker got you" : w == "lava" ? "The lava got you" : "The storm got you" }; }
   huntCheck(q, by); medalElim(q, by); if (q.crown && by && by.isP && !q.isP) medal("crown");
   const dropped = rallyDrop(q);
   if (modeElim(q, by)) return;
@@ -4261,7 +4301,7 @@ function shoot(e, it, o, d, err = 0) {
     if (dome) { dome.hit = 1; if (dist3(hit, G.p) < 60) puff(hit, 0x7fdcff, 3); }
     else if (beast) { hurtWild(beast, w.d * dm, e); puff(hit, beast.kind == "tusk" ? 0xff8aa0 : 0xffffff, 3); }
     else if (car) { hurtRover(car, w.d * dm * (w.pl > 1 ? 0.6 : 1), e); if (dist3(hit, G.p) < 60) puff(hit, 0xffc060, 3); if (e.isP) tone(1500, 0.04, "square", 0.03); }
-    else if (tg) { const fall = w.pl > 1 ? cl(1.25 - best / 28, 0.3, 1) : best > w.rg * 0.6 ? 0.85 : 1; damage(tg, w.d * dm * (head ? w.hs : 1) * fall * (e.isP ? 1 : tg.isP ? G.dm : 0.6), e, head, it.id); }
+    else if (tg) { const fall = w.pl > 1 ? cl(1.25 - best / 28, 0.3, 1) : best > w.rg * 0.6 ? 0.85 : 1; damage(tg, w.d * dm * (head ? w.hs : 1) * fall * (e.isP ? 1 : tg.isP ? G.dm : 0.6), e, head, it.id); if (w.chain) arcChain(e, tg, w.d * dm * 0.6, w.chain, it.id); }
     else if (hw.s && hw.s.build) hurtBuild(hw.s.build, w.d * dm * (w.pl > 1 ? 0.6 : 1));
     if (car || beast || dome) { /* sparks above */ }
     else if (hw.s && !tg && dist3(hit, G.p) < 60) { puff(hit, hw.s.build ? MATS[hw.s.build.mk].c : 0xd8d0c0, 2); if (!hw.s.build && !hw.s.prop) decal(hit, boxNormal(hw.s, hit)); }
@@ -4685,11 +4725,12 @@ function modeHud() {
 /* ===== gear.js ===== */
 // Throwables and toys: plasma grenades (arc, bounce, boom), launch pads (send you up so your wings open),
 // and hoverboards parked along the roads (E to ride; Shift boosts, Space jumps, they float over water).
-const UT = { gren: { n: "Plasma Grenade", max: 6, c: "#ff6bd0", r: 2 }, pad: { n: "Launch Pad", max: 2, c: "#52e0ff", r: 3 }, trap: { n: "Snap Trap", max: 3, c: "#ff9a3c", r: 2 }, fire: { n: "Ember Camp", max: 2, c: "#ffb04f", r: 3 }, grap: { n: "Grapple", max: 6, c: "#7dffea", r: 3 }, shock: { n: "Pulse Charge", max: 4, c: "#8ab4ff", r: 3 }, jet: { n: "Rocket Pack", max: 1, c: "#ffb04f", r: 4 }, moon: { n: "Moon Rock", max: 3, c: "#c9b6ff", r: 2 }, bush: { n: "Leaf Cloak", max: 2, c: "#54d65e", r: 2 }, fort: { n: "Pocket Fort", max: 2, c: "#ffb04f", r: 4 }, smoke: { n: "Smoke Canister", max: 3, c: "#b8c0d0", r: 2 }, dome: { n: "Shield Dome", max: 2, c: "#7fdcff", r: 3 }, splash: { n: "Splash Fizz", max: 3, c: "#ff7ad9", r: 3 }, blade: { n: "Comet Blade", max: 1, c: "#7fe3ff", r: 5 } };
+const UT = { gren: { n: "Plasma Grenade", max: 6, c: "#ff6bd0", r: 2 }, pad: { n: "Launch Pad", max: 2, c: "#52e0ff", r: 3 }, trap: { n: "Snap Trap", max: 3, c: "#ff9a3c", r: 2 }, fire: { n: "Ember Camp", max: 2, c: "#ffb04f", r: 3 }, grap: { n: "Grapple", max: 6, c: "#7dffea", r: 3 }, shock: { n: "Pulse Charge", max: 4, c: "#8ab4ff", r: 3 }, jet: { n: "Rocket Pack", max: 1, c: "#ffb04f", r: 4 }, moon: { n: "Moon Rock", max: 3, c: "#c9b6ff", r: 2 }, bush: { n: "Leaf Cloak", max: 2, c: "#54d65e", r: 2 }, fort: { n: "Pocket Fort", max: 2, c: "#ffb04f", r: 4 }, smoke: { n: "Smoke Canister", max: 3, c: "#b8c0d0", r: 2 }, dome: { n: "Shield Dome", max: 2, c: "#7fdcff", r: 3 }, splash: { n: "Splash Fizz", max: 3, c: "#ff7ad9", r: 3 }, blade: { n: "Comet Blade", max: 1, c: "#7fe3ff", r: 5 }, feather: { n: "Phoenix Feather", max: 1, c: "#ffc23a", r: 4 }, rift: { n: "Rift Orb", max: 2, c: "#c47bff", r: 4 } };
 function mkUtil(id) {
   const g = new TH.Group(), P = (geo, m, x, y, z, rx = 0) => { const o = part(g, geo, m, x, y, z); o.rotation.x = rx; return o; };
   if (id == "gren") { P(sph(0.13, 14, 10), toon(0xff6bd0, 1, 0.9), 0, 0.15, 0); P(torus(0.13, 0.025, 16), toon(0x3a3a4a), 0, 0.15, 0, Math.PI / 2); P(cyl(0.04, 0.04, 0.06, 8), toon(0x9aa0b0), 0, 0.3, 0); P(torus(0.035, 0.008, 8), toon(0xffd23a), 0.04, 0.33, 0); P(sph(0.18, 12, 8), ADD(0xff6bd0, 0.18), 0, 0.15, 0); }
   else if (id == "blade") { P(cyl(0.035, 0.04, 0.3, 8), toon(0x2b2f4a), 0, 0.02, 0); P(bx(0.26, 0.05, 0.08), toon(0xffd23a, 1, 0.7), 0, 0.18, 0); P(bx(0.055, 1.25, 0.025), toon(0x9feaff, 1, 1.2), 0, 0.82, 0); P(bx(0.12, 1.3, 0.04), ADD(0x7fe3ff, 0.35), 0, 0.82, 0); P(cone(0.028, 0.14, 4), toon(0x9feaff, 1, 1.2), 0, 1.51, 0); }
+  else if (id == "rift") { P(sph(0.14, 14, 10), toon(0x2a1460, 1, 0.6), 0, 0.16, 0); P(torus(0.17, 0.022, 18), toon(0xc47bff, 1, 1.4), 0, 0.16, 0, Math.PI / 2); P(sph(0.24, 12, 8), ADD(0xc47bff, 0.25), 0, 0.16, 0); }
   else if (id == "smoke") { P(cyl(0.11, 0.11, 0.34, 10), toon(0x6a7284), 0, 0.2, 0); P(cyl(0.115, 0.115, 0.06, 10), toon(0xb8c0d0), 0, 0.3, 0); P(cyl(0.05, 0.05, 0.07, 8), toon(0x2b2f4a), 0, 0.4, 0); }
   else if (id == "dome") { P(sph(0.17, 12, 8, 0, 6.2832, 0, 1.57), toon(0x7fdcff, 1, 0.8), 0, 0.14, 0); P(cyl(0.19, 0.19, 0.1, 12), toon(0x2b2f4a), 0, 0.1, 0); }
   else if (id == "splash") { P(sph(0.17, 10, 8), toon(0xff7ad9, 1, 0.6), 0, 0.2, 0); P(cyl(0.06, 0.08, 0.12, 8), toon(0xeef2ff), 0, 0.4, 0); P(cyl(0.075, 0.075, 0.05, 8), toon(0xffd23a), 0, 0.48, 0); }
@@ -4699,6 +4740,7 @@ function mkUtil(id) {
   else if (id == "jet") { for (const s of [-1, 1]) { P(cyl(0.09, 0.09, 0.42, 10), toon(0xc8ccd8), s * 0.11, 0.27, 0); P(cone(0.09, 0.14, 10), toon(0xff7a2f, 1, 0.8), s * 0.11, 0.55, 0); P(cyl(0.06, 0.09, 0.09, 10), toon(0x2b2f3a), s * 0.11, 0.03, 0); } P(rbox(0.16, 0.26, 0.1, 0.03), toon(0x2b2f4a), 0, 0.28, -0.04); P(rbox(0.1, 0.05, 0.11, 0.01), toon(0xffb04f, 1, 0.9), 0, 0.33, -0.04); }
   else if (id == "shock") { P(sph(0.13, 14, 10), toon(0x2b3a6a), 0, 0.15, 0); for (const a of [0, 1.05, 2.1]) { const o = P(torus(0.16, 0.014, 18), toon(0x8ab4ff, 1, 1), 0, 0.15, 0, Math.PI / 2); o.rotation.y = a; } P(sph(0.07, 10, 8), toon(0xdfe9ff, 1, 1.2), 0, 0.15, 0); P(sph(0.2, 12, 8), ADD(0x8ab4ff, 0.2), 0, 0.15, 0); }
   else if (id == "grap") { P(cyl(0.07, 0.09, 0.42, 10), toon(0x2b2f4a), 0, 0.22, 0); P(torus(0.1, 0.025, 14), toon(0x7dffea, 1, 0.9), 0, 0.08, 0, Math.PI / 2); P(cone(0.1, 0.2, 6), toon(0xc8ccd8), 0, 0.53, 0); for (const a of [0, 2.1, 4.2]) { const h = P(cyl(0.015, 0.015, 0.2, 5), toon(0xc8ccd8), Math.cos(a) * 0.1, 0.42, Math.sin(a) * 0.1); h.rotation.z = Math.cos(a) * 0.7; h.rotation.x = -Math.sin(a) * 0.7; } }
+  else if (id == "feather") { const q = P(cone(0.11, 0.62, 6), toon(0xffc23a, 1, 0.9), 0, 0.36, 0); q.scale.z = 0.35; P(cyl(0.015, 0.02, 0.3, 5), toon(0xff7a3d, 1, 0.7), 0, 0.02, 0); P(cone(0.07, 0.3, 5), toon(0xff5a3a, 1, 1), 0, 0.62, 0); }
   else if (id == "trap") { P(cyl(0.36, 0.4, 0.08, 16), toon(0x2b2f3a), 0, 0.04, 0); P(torus(0.3, 0.025, 20), toon(0xff9a3c, 1, 0.9), 0, 0.09, 0, Math.PI / 2); for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2, r = k ? 0.2 : 0; P(cone(0.05, 0.2, 4), toon(0xc8ccd8), Math.cos(a) * r, 0.17, Math.sin(a) * r); } }
   else if (id == "fire") { for (let k = 0; k < 3; k++) { const o = P(cyl(0.05, 0.06, 0.62, 6), toon(0x6a4326), 0, 0.08, 0); o.rotation.z = Math.PI / 2 - 0.12; o.rotation.y = (k / 3) * Math.PI; } P(cyl(0.34, 0.36, 0.05, 10), toon(0x3a3a44), 0, 0.03, 0); P(cone(0.2, 0.55, 7), ADD(0xff7a2f, 0.75), 0, 0.36, 0); P(cone(0.11, 0.36, 7), ADD(0xffe070, 0.9), 0, 0.3, 0); }
   else { P(cyl(0.34, 0.38, 0.1, 20), toon(0x2b2f4a), 0, 0.05, 0); P(cyl(0.28, 0.28, 0.02, 20), toon(0x52e0ff, 1, 0.9), 0, 0.11, 0); P(torus(0.2, 0.02, 20), toon(0xffffff, 1, 0.8), 0, 0.12, 0, Math.PI / 2); P(cone(0.08, 0.14, 4), toon(0xffffff, 1, 0.8), 0, 0.2, 0); }
@@ -4729,7 +4771,7 @@ function stepGrens(dt) {
     const gr = Math.max(groundAt(q.x, q.z, q.y + 0.5), -0.3); if (q.y < gr + 0.12) { q.y = gr + 0.12; if (q.vy < 0) q.vy = -q.vy * 0.35; q.vx *= 0.6; q.vz *= 0.6; if (Math.abs(q.vy) > 2 && dist3(q, G.p) < 30) tone(300, 0.04, "triangle", 0.03); }
     q.m.position.set(q.x, q.y - 0.15, q.z); q.m.rotation.x += dt * 8;
     if (q.kind == "fort") { if (q.t > 2.1 || (q.t > 0.25 && q.y < gr + 0.3 && Math.abs(q.vy) < 4)) { sc.remove(q.m); G.grens.splice(i, 1); fortPop(q); } continue; }
-    if (q.kind == "smoke" || q.kind == "dome" || q.kind == "splash") { const first = q.kind == "splash" && q.t > 0.12 && (hitS || q.y < gr + 0.35); if (first || q.t > 2.1 || (q.t > 0.25 && q.y < gr + 0.3 && Math.abs(q.vy) < 4)) { sc.remove(q.m); G.grens.splice(i, 1); throwLand(q, gr); } continue; }
+    if (q.kind == "smoke" || q.kind == "dome" || q.kind == "splash" || q.kind == "rift") { const first = q.kind == "splash" && q.t > 0.12 && (hitS || q.y < gr + 0.35); if (first || q.t > 2.1 || (q.t > 0.25 && q.y < gr + 0.3 && Math.abs(q.vy) < 4)) { sc.remove(q.m); G.grens.splice(i, 1); throwLand(q, gr); } continue; }
     let boom = q.t > 2.1; for (const c of G.E) if (c.alive && c !== q.by && c.team !== q.by.team && c.st == "play" && Math.abs(c.x - q.x) < 0.8 && Math.abs(c.z - q.z) < 0.8 && q.y > c.y && q.y < c.y + 2.1) boom = true;
     if (boom) { sc.remove(q.m); G.grens.splice(i, 1); if (q.kind == "shock") shockBlast(q.x, q.y, q.z); else explode(q.x, q.y, q.z, q.by, 72, "gren"); }
   }
@@ -4826,9 +4868,10 @@ function stepBoards(dt) {
 function useUtil(e, it) {
   if (it.id == "jet") { jetBurn(e, it); return; }
   if (it.id == "blade") { bladeSwing(e); return; }
+  if (it.id == "feather") { if (e.isP) toast("The Phoenix Feather works on its own: carry it and it saves you once."); e.cd = 0.6; return; }
   if (it.id == "moon") { useMoon(e, it); e.cd = 0.6; return; }
   if (it.id == "bush") { if (e.bush) return; useCloak(e, it); e.cd = 0.6; return; }
-  if (["gren", "shock", "fort", "smoke", "dome", "splash"].includes(it.id)) { throwGren(e, e.isP ? grenVel() : V3(), it.id); e.cd = 0.7; }
+  if (["gren", "shock", "fort", "smoke", "dome", "splash", "rift"].includes(it.id)) { throwGren(e, e.isP ? grenVel() : V3(), it.id); e.cd = 0.7; }
   else if (it.id == "grap") { if (!grapFire(e)) return; e.cd = 0.5; }
   else if (it.id == "pad") { if (!placePad(e)) return; e.cd = 0.6; }
   else { if (!placeThing(e, it.id)) return; e.cd = 0.6; }
@@ -5739,6 +5782,7 @@ const SMOKE_R = 6.5, SMOKE_T = 11, DOME_R = 5.5, DOME_T = 8, SPLASH_R = 6.5, SPL
 let SMOKE_M = null;
 function throwLand(q, gr) {
   if (q.kind == "splash") { splashBurst(q.x, gr, q.z); return; }
+  if (q.kind == "rift") { riftLand(q, gr); return; }
   if (q.kind == "smoke") {
     if (!SMOKE_M) SMOKE_M = new TH.MeshBasicMaterial({ color: 0xc4c8d4, transparent: true, opacity: 0.5, depthWrite: false, side: TH.DoubleSide });
     const g = new TH.Group(), m = SMOKE_M.clone();
@@ -5753,6 +5797,16 @@ function throwLand(q, gr) {
   g.position.set(q.x, gr, q.z); g.scale.setScalar(0.1); sc.add(g);
   G.domes.push({ x: q.x, y: gr, z: q.z, t: 0, m: g, m1, hit: 0 });
   soundAt(q.x, q.z, () => tone(520, 0.4, "sine", 0.06, 500));
+}
+// the Rift Orb: throw it and you jump through space to where it lands (not while driving, gliding or knocked down)
+function riftLand(q, gr) {
+  const e = q.by; if (!e || !e.alive || e.st != "play" || e.kn || e.car || e.grap || (G.net && !netAuth(e))) return;
+  const from = V3(e.x, e.y + 1, e.z); puff(from, 0xc47bff, 14);
+  let tx = q.x, tz = q.z; const dd = Math.hypot(tx - e.x, tz - e.z); if (dd > 40) { tx = e.x + ((tx - e.x) * 40) / dd; tz = e.z + ((tz - e.z) * 40) / dd; if (blockedAt(tx, tz, 1)) return; }
+  e.board && leaveBoard(e); e.zip = null; e.x = tx; e.z = tz; e.y = Math.max(-0.3, groundAt(tx, tz, 80)); e.vx = 0; e.vy = 0; e.vz = 0; e.on = true; e.sl = 0; e.fall0 = 1; e.use = null;
+  puff(V3(e.x, e.y + 1, e.z), 0xc47bff, 18); puff(V3(e.x, e.y + 1, e.z), 0xffffff, 6);
+  soundAt(q.x, q.z, () => tone(880, 0.3, "sine", 0.06, 220));
+  if (e.isP) toast("Rift jump");
 }
 function splashBurst(x, y, z) {
   const c = V3(x, y + 0.6, z); puff(c, 0xff7ad9, 16); puff(c, 0xffffff, 5);
@@ -6470,7 +6524,7 @@ function spawnCache() {
 }
 function openCache(C) {
   C.open = 1;
-  const items = [rollWeapon(60), rollWeapon(45), { t: "c", id: "med", n: 1 }, { t: "c", id: "orb", n: 1 }, { t: "m", id: "m", n: 60 }];
+  const items = [rollWeapon(60), rollWeapon(45), { t: "c", id: "med", n: 1 }, { t: "c", id: "orb", n: 1 }, { t: "m", id: "m", n: 60 }]; if (G.cacheN === 2) items.push({ t: "u", id: "feather", n: 1 });
   const w = items[0]; items.push({ t: "a", id: W[w.id].am, n: AMMO[W[w.id].am].give * 2 });
   spill(items, C.x, C.y + 1, C.z, rnd(0, 6.28));
   C.m.core.visible = false; C.m.ring.visible = false;
@@ -6497,11 +6551,79 @@ function cacheMark(c, X, Z) {
   c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 3.5 : 8 + Math.sin(t) * 1.2, a = -Math.PI / 2 + (i * Math.PI) / 5; c.lineTo(x + Math.cos(a) * r, z + Math.sin(a) * r); } c.closePath(); c.fill(); c.stroke();
 }
 
+/* ===== daily.js ===== */
+// Daily rewards: open the game once a day to claim stars. Seven days in a row ends with a big prize; missing a day
+// starts the streak again. The popup shows once a day in the lobby (never in tests), and Claim is one tap.
+const DAILY = [50, 75, 100, 125, 150, 200, 400];
+const dayNo = (d = new Date()) => Math.floor((d.getTime() - d.getTimezoneOffset() * 6e4) / 864e5);
+function dailyState() {
+  const today = dayNo(), D = S.daily || { last: -1, n: 0 };
+  const streak = D.last === today ? D.n : D.last === today - 1 ? D.n : 0; // days already claimed in this streak
+  return { today, claimed: D.last === today, day: D.last === today ? D.n : (streak % 7) + 1, streak };
+}
+function dailyClaim() {
+  const st = dailyState(); if (st.claimed) return 0;
+  const gain = DAILY[st.day - 1]; S.stars += gain; if (st.day == 7) S.xp += 100;
+  S.daily = { last: st.today, n: st.day }; save();
+  try { tone(523, 0.12, "triangle", 0.06); tone(784, 0.16, "triangle", 0.06, 0, 0.1); if (st.day == 7) tone(1046, 0.3, "triangle", 0.07, 0, 0.22); } catch (e) { /* no sound yet */ }
+  return gain;
+}
+function dailyCheck() {
+  if ((TEST && !window.__dly) || $("#dly") || !S || !S.name) return;
+  const st = dailyState(); if (st.claimed) return;
+  const d = document.createElement("div"); d.id = "dly"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", "Daily reward");
+  d.innerHTML = `<div class=dbx><small>Daily reward · day ${st.day} of 7</small><h2>${st.day == 7 ? "Big prize day!" : "Welcome back!"}</h2><div class=drow>${DAILY.map((n, i) => `<div class='dd ${i + 1 < st.day ? "got" : i + 1 == st.day ? "now" : ""}'><b>Day ${i + 1}</b><span>★ ${n}</span>${i == 6 ? "<em>+100 XP</em>" : ""}</div>`).join("")}</div><p>${st.streak && st.day > 1 ? "You've played " + (st.day - 1) + " day" + (st.day > 2 ? "s" : "") + " in a row. Come back tomorrow to keep it going." : "Play every day: each day pays more, and day 7 pays the most. Miss a day and it starts again."}</p><button class=yb id=dlyc>Claim ★ ${DAILY[st.day - 1]}</button></div>`;
+  document.body.appendChild(d);
+  $("#dlyc").onclick = () => { const g = dailyClaim(); d.remove(); note("+" + g + " stars" + (st.day == 7 ? " and 100 XP. See you tomorrow!" : ". See you tomorrow!")); lobby(); };
+  $("#dlyc").focus();
+}
+
+/* ===== lava.js ===== */
+// Rising Lava (a party mode): a minute after landing the sea turns to lava and starts to climb, a little higher every
+// second, until only the hills and whatever you build stay safe. Standing in it burns 12 health a second.
+// Bots head for high ground in time. The level comes from the match clock, so every player sees the same lava.
+const LAVA_START = 60, LAVA_RATE = 0.042, LAVA_MAX = 15.5, LAVA_DPS = 12;
+const lavaY = () => (G.m && G.m.lv ? Math.min(LAVA_MAX, -0.6 + Math.max(0, G.t - LAVA_START) * LAVA_RATE) : -99);
+function lavaReset() {
+  if (G.lava) sc.remove(G.lava); G.lava = null; G.lavaTick = 0; G.lavaMsg = 0;
+  if (!G.m || !G.m.lv) return;
+  const m = new TH.Mesh(new TH.PlaneGeometry(1600, 1600, 1, 1), new TH.MeshBasicMaterial({ color: 0xff5a1f, transparent: true, opacity: 0.86 }));
+  m.rotation.x = -Math.PI / 2; m.position.y = -3; m.renderOrder = 2; sc.add(m); G.lava = m;
+  const glow = new TH.Mesh(new TH.PlaneGeometry(1600, 1600, 1, 1), new TH.MeshBasicMaterial({ color: 0xffc23a, transparent: true, opacity: 0.25, blending: TH.AdditiveBlending, depthWrite: false }));
+  glow.rotation.x = -Math.PI / 2; glow.position.y = 0.06; m.add(glow); m.glow = glow;
+}
+function stepLava(dt) {
+  if (!G.lava) return;
+  const y = lavaY();
+  G.lava.position.y = y; G.lava.visible = G.stage != "wait" && y > -0.5;
+  G.lava.material.color.setHSL(0.04 + Math.sin(G.t * 1.3) * 0.012, 1, 0.52);
+  G.lava.glow.material.opacity = 0.18 + Math.sin(G.t * 2.1) * 0.08;
+  if (G.stage == "wait") return;
+  if (G.t > LAVA_START - 10 && G.lavaMsg == 0) { G.lavaMsg = 1; toast("The sea turns to lava in 10 seconds. Get to high ground or build up!"); }
+  if (G.t > LAVA_START && G.lavaMsg == 1) { G.lavaMsg = 2; toast("The lava is rising!"); try { tone(110, 0.8, "sawtooth", 0.06, -40); } catch (e) { /* no sound */ } }
+  G.lavaTick -= dt; if (G.lavaTick > 0) return; G.lavaTick = 0.5;
+  for (const q of G.E) {
+    if (!q.alive || q.st != "play" || q.car || (G.net && !netAuth(q))) continue;
+    if (q.y > y + 0.15) continue;
+    damage(q, LAVA_DPS * 0.5, null, false, "lava");
+    if (q.isP && G.t - (G.lavaHurtMsg || -99) > 6) { G.lavaHurtMsg = G.t; toast("You're in the lava! Climb or build up."); }
+    if (Math.random() < 0.5 && dist3(q, G.p) < 50) puff(V3(q.x, y + 0.3, q.z), 0xff7a2a, 2);
+  }
+}
+// for bots: somewhere safe and high nearby when the lava gets close
+function lavaGoal(e) {
+  const y = lavaY(); if (y < -0.5 && G.t < LAVA_START - 20) return null;
+  if (terrH(e.x, e.z) > y + 4) return null;
+  let best = null, bh = -1;
+  for (let k = 0; k < 60; k++) { const a = Math.random() * 6.283, d = 15 + Math.random() * 170, x = e.x + Math.cos(a) * d, z = e.z + Math.sin(a) * d, h = terrH(x, z); if (h > y + 6 && inZone(x, z, 10) && !blockedAt(x, z, 1.5) && h - d * 0.04 > bh) { bh = h - d * 0.04; best = { x, z, y: h, kind: "high" }; } }
+  return best;
+}
+
 /* ===== bots.js ===== */
 // Computer players and the main loop. Bots land somewhere, loot chests and floor items, pick better weapons,
 // heal, build a wall when shot at, rotate out of the storm and fight at the range their weapon likes.
-const PREF = { marksman: 2.7, drum: 2.6, pistol: 1, smg: 2.5, shotgun: 2.4, rifle: 3, sniper: 2, launcher: 2.2, burst: 2.9, revolver: 1.8, tac: 2.5, repeater: 3.1 };
-const RANGE = { marksman: 34, drum: 11, pistol: 14, smg: 10, shotgun: 5, rifle: 22, sniper: 45, launcher: 24, burst: 24, revolver: 16, tac: 7, repeater: 20 };
+const PREF = { marksman: 2.7, drum: 2.6, pistol: 1, smg: 2.5, shotgun: 2.4, rifle: 3, sniper: 2, launcher: 2.2, burst: 2.9, revolver: 1.8, tac: 2.5, repeater: 3.1, arc: 2.6 };
+const RANGE = { marksman: 34, drum: 11, pistol: 14, smg: 10, shotgun: 5, rifle: 22, sniper: 45, launcher: 24, burst: 24, revolver: 16, tac: 7, repeater: 20, arc: 9 };
 const wScore = (it) => (it && it.t == "w" ? PREF[it.id] + it.r * 0.6 : 0);
 function botBestSlot(e, dist) {
   let best = 0, bs = 0;
@@ -6535,6 +6657,7 @@ function botThink(e) {
   A.mode = "wander";
   if (A.fireRest && (e.hp >= 92 || e.dmgT > G.t - 0.5)) A.fireRest = 0;
   if (!inZone(e.x, e.z, 6) && (G.pt > WAITS[Math.min(5, G.ph)] * 0.4 || inStorm(e))) { const c = G.circ[Math.min(6, G.ph + 1)], a = Math.atan2(e.z - c.z, e.x - c.x); A.goal = { x: c.x + Math.cos(a) * c.r * 0.5, z: c.z + Math.sin(a) * c.r * 0.5 }; A.mode = "rotate"; }
+  if (G.m.lv && e.st == "play") { const hg = (A.goal && A.goal.kind == "high" && terrH(A.goal.x, A.goal.z) > lavaY() + 4) ? A.goal : lavaGoal(e); if (hg) { A.goal = hg; A.mode = "rotate"; } }
   if (!G.net && e.st == "play" && !e.car && !tg && A.goal && G.cars.length) { roverSeek(e); if (e.car) return; }
   if (tg && hasGun && A.mode != "rotate") { A.mode = "fight"; e.sel = botBestSlot(e, bd); if (bd > 10 && bd < 42 && A.vis && e.mats.w + e.mats.s + e.mats.m >= 60 && G.t > (A.rushCd || 0) && Math.random() < 0.16 * A.lvl) { A.rushT = rnd(1.8, 3.2); A.rushCd = G.t + rnd(9, 16); A.rushL = null; A.rushD = null; } }
   else if (tg && !hasGun && bd < 5) { const bl = e.inv.findIndex((x) => x && x.t == "u" && x.id == "blade"); A.mode = "fight"; e.sel = bl >= 0 ? bl + 1 : 0; }
@@ -6545,7 +6668,7 @@ function botThink(e) {
     // loot: a chest or something better on the floor nearby
     const rg = rallyGoal(e); if (rg) { A.goal = rg; A.mode = "rotate"; return; }
     // a Comet Cache that is open or about to open (cache.js) beats ordinary loot, until its loot is gone
-    { const C = G.cache; if (C && (C.t < 8 && !C.open || C.open && G.loot.some((l) => Math.abs(l.x - C.x) < 8 && Math.abs(l.z - C.z) < 8))) { const d = Math.hypot(C.x - e.x, C.z - e.z); if (d < 140 && d > 6) { if (!(A.goal && A.goal.kind == "cache")) A.goal = { x: C.x + rnd(-2, 2), z: C.z + rnd(-2, 2), y: C.y, kind: "cache" }; A.mode = "rotate"; return; } } }
+    { const C = G.cache; if (C && (C.t < 8 && !C.open || C.open && G.loot.some((l) => Math.abs(l.x - C.x) < 8 && Math.abs(l.z - C.z) < 8))) { const d = Math.hypot(C.x - e.x, C.z - e.z); if (d < 140 && d > 6 && !(A.cacheNo && G.t < A.cacheNo)) { if (!(A.goal && A.goal.kind == "cache")) { const a = Math.atan2(e.z - C.z, e.x - C.x) + rnd(-0.6, 0.6); A.goal = { x: C.x + Math.cos(a) * 2.5, z: C.z + Math.sin(a) * 2.5, y: C.y, kind: "cache" }; A.goalT = 0; } A.mode = "rotate"; return; } } }
     if ((!A.goal || A.goal.kind != "loot" || A.goal.done) && !(A.goal && A.goal.kind == "mark" && G.t < (A.markT || 0))) {
       let best = null, bs = G.type != "br" ? 14 : e.inv.filter(Boolean).length >= 4 && hasGun ? 18 : 48;
       for (const pd of G.pods) { if (pd.o || pd.st != "land") continue; const d = Math.hypot(pd.x - e.x, pd.z - e.z); if (d < 90 && d * 0.35 < bs) { bs = d * 0.35; best = { x: pd.x, z: pd.z, y: pd.gy, kind: "loot", pod: pd }; } }
@@ -6625,7 +6748,7 @@ function botStep(e, dt, near) {
     if (b == 1) jump = true;
     else if (b == 2) { for (const a of [0.7, -0.7, 1.4, -1.4, 2.2, -2.2]) { const ca = Math.cos(a * (A.turn || 1)), sa = Math.sin(a * (A.turn || 1)), nx = wx * ca - wz * sa, nz = wx * sa + wz * ca; if (!blockedDir(nx, nz)) { wx = nx; wz = nz; break; } } }
     // stuck: try the other way round, then give up on that goal
-    A.chk = (A.chk || 0) - dt; if (A.chk <= 0) { A.chk = 1.5; if (A.lx != null && Math.hypot(e.x - A.lx, e.z - A.lz) < 1) { A.turn = -(A.turn || 1); jump = true; A.stuck = (A.stuck || 0) + 1; if (A.stuck > 3 && A.goal) { if (A.goal.chest || A.goal.loot) (A.skip = A.skip || new Set()).add(A.goal.chest || A.goal.loot); A.goal = null; A.stuck = 0; } } else A.stuck = 0; A.lx = e.x; A.lz = e.z; }
+    A.chk = (A.chk || 0) - dt; if (A.chk <= 0) { A.chk = 1.5; if (A.lx != null && Math.hypot(e.x - A.lx, e.z - A.lz) < 1) { A.turn = -(A.turn || 1); jump = true; A.stuck = (A.stuck || 0) + 1; if (A.stuck > 3 && A.goal) { if (A.goal.kind == "cache") A.cacheNo = G.t + 5; if (A.goal.chest || A.goal.loot) (A.skip = A.skip || new Set()).add(A.goal.chest || A.goal.loot); A.goal = null; A.stuck = 0; } } else A.stuck = 0; A.lx = e.x; A.lz = e.z; }
   }
   if (e.wet) sp *= 0.6; if (e.use) sp = Math.min(sp, 3); e.cr = e.use && e.on ? 1 : 0;
   e.slc = (e.slc || 0) - dt; let vx = wx * sp, vz = wz * sp;
@@ -6709,7 +6832,7 @@ function step(dt) {
   NET.bctx = 0; if (G.net) netStep(dt);
   // characters near you don't stand inside each other
   for (const a of G.E) { if (!a.alive || a.st != "play" || Math.abs(a.x - p.x) > 30 || Math.abs(a.z - p.z) > 30) continue; for (const b of G.E) { if (b === a || !b.alive || b.st != "play") continue; const dx = b.x - a.x, dz = b.z - a.z; if (Math.abs(dx) > 1 || Math.abs(dz) > 1 || Math.abs(a.y - b.y) > 1.6) continue; const d = Math.hypot(dx, dz); if (d < 0.8 && d > 0.001) { const k = (0.8 - d) / 2; a.x -= (dx / d) * k; a.z -= (dz / d) * k; b.x += (dx / d) * k; b.z += (dz / d) * k; } } }
-  stepLoot(dt); stepBuilds(dt); stepRockets(dt); stepGrens(dt); stepPads(dt); stepBoards(dt); stepRovers(dt); stepRally(dt); stepForage(); stepShockRings(dt); stepHunt(dt); stepZero(dt); stepSwim(dt); stepJet(); stepToys(dt); stepWild(dt); stepPerks(dt); stepSky(dt); stepThrows(dt); stepRails(dt); stepFires(dt); stepCache(dt); stepRain(dt); medalPlaces(); stepDayCycle(); stepFishing(dt); stepMeteors(dt); stepTraps(dt); stepWeak(dt); stepHum(dt); stepPods(dt); stepLightning(dt); ambient(dt); stepFx(dt);
+  stepLoot(dt); stepBuilds(dt); stepRockets(dt); stepGrens(dt); stepPads(dt); stepBoards(dt); stepRovers(dt); stepRally(dt); stepForage(); stepShockRings(dt); stepHunt(dt); stepZero(dt); stepSwim(dt); stepJet(); stepToys(dt); stepWild(dt); stepPerks(dt); stepSky(dt); stepThrows(dt); stepRails(dt); stepFires(dt); stepCache(dt); stepLava(dt); stepRain(dt); medalPlaces(); stepDayCycle(); stepFishing(dt); stepMeteors(dt); stepTraps(dt); stepWeak(dt); stepHum(dt); stepPods(dt); stepLightning(dt); ambient(dt); stepFx(dt);
   if (WD.spire) { WD.spire.rotation.y += dt * 0.35; WD.spire.position.y = WD.spire.userData.y + Math.sin(G.t * 0.8) * 0.6; }
   { const it = curItem(p); drawArc(!!(p.alive && p.st == "play" && !p.board && it && it.t == "u" && (it.id == "gren" || it.id == "shock"))); }
   for (const c of WD.chests) if (c.o && c.lt < 1) { c.lt = Math.min(1, c.lt + dt * 4); setLid(c, c.lt * 1.9); }
@@ -7346,7 +7469,7 @@ function slotHTML(p) {
   let h = "";
   for (let i = 0; i < 6; i++) {
     const it = i ? p.inv[i - 1] : null; let nm = i == 0 ? "Pickaxe" : "", ct = "", col = "#ffffff22", bar = "";
-    if (it) { nm = it.t == "w" ? (coarse ? { pistol: "Pistol", smg: "SMG", shotgun: "Shotgun", rifle: "Rifle", sniper: "Sniper", launcher: "Rockets", burst: "Burst", tac: "Tac", revolver: "Revolver", repeater: "Repeater", marksman: "Marksman", drum: "Drum" }[it.id] : W[it.id].n) : coarse ? (it.t == "u" ? UT : CI)[it.id].n.split(" ").pop() : (it.t == "u" ? UT : CI)[it.id].n; col = itemColor(it); if (it.t == "w") { ct = `${it.m}<small>/${p.ammo[W[it.id].am]}</small>`; } else ct = it.id == "jet" ? Math.ceil(it.fuel == null ? 100 : it.fuel) + "%" : it.n; bar = `<em style="background:${col}"></em>`; }
+    if (it) { nm = it.t == "w" ? (coarse ? { pistol: "Pistol", smg: "SMG", shotgun: "Shotgun", rifle: "Rifle", sniper: "Sniper", launcher: "Rockets", burst: "Burst", tac: "Tac", revolver: "Revolver", repeater: "Repeater", marksman: "Marksman", drum: "Drum", arc: "Arc" }[it.id] : W[it.id].n) : coarse ? (it.t == "u" ? UT : CI)[it.id].n.split(" ").pop() : (it.t == "u" ? UT : CI)[it.id].n; col = itemColor(it); if (it.t == "w") { ct = `${it.m}<small>/${p.ammo[W[it.id].am]}</small>`; } else ct = it.id == "jet" ? Math.ceil(it.fuel == null ? 100 : it.fuel) + "%" : it.n; bar = `<em style="background:${col}"></em>`; }
     h += `<button class='hs ${p.sel == i && !G.bmode ? "on" : ""}' data-i=${i} onclick=selSlot(+this.dataset.i) style="--rc:${col}">${bar}<i>${i + 1}</i>${nm}<u>${ct}</u></button>`;
   }
   return h;
@@ -7395,7 +7518,7 @@ function hud(dt) {
   else if (me && !coarse && !it0Busy(p) && (G.edT = editTarget(p))) pr = `<span class=k>${kbName("KeyF")}</span>${G.edT.type == "ramp" ? "Turn the ramp" : "Edit this " + ED_N[G.edT.type]}`;
   else if (p.car && me) pr = `<span class=k>${useKey()}</span>Get out <i class=rvb><i style='width:${Math.round((p.car.hp / ROVER_HP) * 100)}%'></i></i> · ${p.seat == 0 ? Math.round(Math.abs(p.car.sp) * 3.6) + " km/h" + (coarse ? "" : " · Shift boosts · Space brakes") : (p.car.seats[0] ? "you can shoot from here" : (coarse ? "push the stick" : "W") + " to take the wheel")}`;
   else if (p.board && me) pr = `<span class=k>${useKey()}</span>Hop off · ${coarse ? "push the stick" : "W"} to go, ${coarse ? "push it all the way" : "Shift"} to boost`;
-  else if (it && it.t == "u" && me && p.st == "play") pr = it.id == "blade" ? (coarse ? "Tap Fire to swing and lunge" : "Click to swing and lunge") : it.id == "smoke" || it.id == "dome" || it.id == "splash" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "fort" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "moon" ? (coarse ? "Tap Fire for low gravity" : "Click for low gravity") : it.id == "bush" ? (p.bush ? "You're hidden until you're hurt" : coarse ? "Tap Fire to become a bush" : "Click to become a bush") : it.id == "jet" ? (coarse ? "Hold Fire to fly" : "Hold click to fly") : it.id == "shock" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "gren" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "grap" ? (coarse ? "Aim, then tap Fire to swing" : "Aim and click to pull yourself there") : (coarse ? "Tap Fire to place the " : "Click to place the ") + UT[it.id].n;
+  else if (it && it.t == "u" && me && p.st == "play") pr = it.id == "blade" ? (coarse ? "Tap Fire to swing and lunge" : "Click to swing and lunge") : it.id == "smoke" || it.id == "dome" || it.id == "splash" || it.id == "rift" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "fort" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "moon" ? (coarse ? "Tap Fire for low gravity" : "Click for low gravity") : it.id == "bush" ? (p.bush ? "You're hidden until you're hurt" : coarse ? "Tap Fire to become a bush" : "Click to become a bush") : it.id == "jet" ? (coarse ? "Hold Fire to fly" : "Hold click to fly") : it.id == "shock" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "gren" ? (coarse ? "Tap Fire to throw" : "Click to throw") : it.id == "grap" ? (coarse ? "Aim, then tap Fire to swing" : "Aim and click to pull yourself there") : (coarse ? "Tap Fire to place the " : "Click to place the ") + UT[it.id].n;
   else if (it && it.t == "c" && !p.use && me) pr = coarse ? "Tap Fire to use" : "Click to use";
   else if (it && it.t == "w" && W[it.id].scope && !ads && me && p.st == "play") pr = coarse ? "Tap Scope to look through the scope" : "Hold right-click to scope in";
   if (me && p.st == "play" && inWell(p.x, p.z) && !p.wellHint) { p.wellHint = 1; toast("Gravity Well! Jumps go high here and you float down slowly."); }
@@ -7423,7 +7546,7 @@ function hud(dt) {
   // floating names over loot near you
   const near = []; if (me && p.st == "play") for (const l of G.loot) { const d = Math.hypot(l.x - p.x, l.z - p.z); if (d < 9 && Math.abs(l.y - p.y) < 4) near.push([d, l]); }
   near.sort((a, b) => a[0] - b[0]); const placed = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 10; i++) { if (coarse && i >= 4 && near[i] && !(G.near && G.near.loot === near[i][1])) near[i] = null;
     let el = LBL[i]; if (!el) { el = document.createElement("div"); el.className = "lb"; $("#labels").appendChild(el); LBL[i] = el; }
     const n = near[i]; if (!n) { el.style.display = "none"; continue; }
     const l = n[1], s = proj(l.x, l.y + 0.9, l.z); if (!s) { el.style.display = "none"; continue; }

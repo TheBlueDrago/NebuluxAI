@@ -9,7 +9,7 @@ const UPDATES = [
   {
     date: "November 2026",
     items: [
-      { icon: Gamepad2, text: "Two new games in the Arcade: Nebula Royale, a 100-player battle royale with building, Tusker rides, Comet Caches and a weekly battle pass, and Nebula Brawl, fast 3v3 fights in eight modes with gadgets, Hyper Surge and 107 fighters to unlock." },
+      { icon: Gamepad2, text: "Two new games in the Arcade: Nebula Royale, a 100-player battle royale with building, Tusker rides, Comet Caches and a weekly battle pass, and Nebula Brawl, fast 3v3 fights in eight modes with gadgets, Hyper Surge and 110 fighters to unlock." },
       { icon: Gamepad2, text: "Rate games and leave comments: give any game 1 to 5 stars, and comment on games and on sites in the Gallery. Every comment is filtered to keep it friendly, and has a Report button." },
       { icon: Gamepad2, text: "Try before you sign up: play a game right on the home page, and browse a bigger Gallery with the best games, sites and Nebulux Orbit uses. Any game or Gallery site can be remixed into your own." },
       { icon: Zap, text: "See what you have left before you send: the usage meter always shows what remains, with an estimate of what a message will use." },

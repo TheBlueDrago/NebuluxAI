@@ -172,7 +172,7 @@ const $=(sel,root)=>(root||document).querySelector(sel);
 const el=(html)=>{const t=document.createElement("template");t.innerHTML=html.trim();return t.content.firstElementChild;};
 
 // =====================================================================
-// Brawler roster: 107 all-original space-themed fighters. The first
+// Brawler roster: 110 all-original space-themed fighters. The first
 // five are hand-designed heroes (Nebula & Nebulux are the headline
 // duo — Nebula's Super deploys Nebulux). The rest are generated from
 // space-name combinations across eight archetypes with a seeded RNG,
@@ -246,8 +246,22 @@ function generateRoster(count){
   }
   return out;
 }
-const BRAWLERS=[...FEATURED,...generateRoster(102)];
+// added later, after the generated roster, so every older fighter keeps its id and stats
+const NEW_HEROES=[
+ {id:"halo",name:"Halo",title:"Star Medic",desc:"Fires soft star darts. Her Super is a burst of starlight that heals her whole crew nearby.",hp:3400,speed:262,radius:23,damage:620,range:330,bulletSpeed:640,fireRate:2.6,pellets:1,spreadDeg:0,reloadTime:1.2,maxAmmo:3,superChargeHits:5,superKind:"heal",superName:"Starlight",superDesc:"Heals you and teammates nearby by 2,200 at once.",suit:"#f8fafc",trim:"#fde047",skin:"#ffe0c2",hair:"#fbbf24",hairStyle:"bob",pattern:"stars",accessory:"halo",rarity:"Epic",atk:"shot"},
+ {id:"warp",name:"Warp",title:"Rift Runner",desc:"A quick fighter with a pulse pistol. Her Super blinks her to where she aims and blasts everyone around the landing spot.",hp:3300,speed:282,radius:23,damage:540,range:290,bulletSpeed:700,fireRate:3.2,pellets:2,spreadDeg:6,reloadTime:1.1,maxAmmo:3,superChargeHits:6,superKind:"blink",superName:"Rift Jump",superDesc:"Blink to where you aim and blast everyone near the landing spot.",suit:"#0f172a",trim:"#a78bfa",skin:"#c68642",hair:"#a78bfa",hairStyle:"mohawk",pattern:"grid",accessory:"goggles",rarity:"Mythic",atk:"shot"},
+ {id:"singularity",name:"Singularity",title:"Gravity Mage",desc:"Throws heavy gravity orbs. Her Super opens a tiny black hole that pulls rivals in and crushes them.",hp:3700,speed:246,radius:24,damage:1050,range:370,bulletSpeed:520,fireRate:1.6,pellets:1,spreadDeg:0,reloadTime:1.6,maxAmmo:3,superChargeHits:5,superKind:"pull",superName:"Event Horizon",superDesc:"A black hole pulls rivals in, then crushes them.",suit:"#312e81",trim:"#f0abfc",skin:"#8d5524",hair:"#1e1b4b",hairStyle:"hood",pattern:"dots",accessory:"crown",rarity:"Legendary",atk:"lob"}
+];
+const BRAWLERS=[...FEATURED,...generateRoster(102),...NEW_HEROES];
 function brawlerById(id){return BRAWLERS.find(b=>b.id===id)||BRAWLERS[0];}
+// ---- skins: the same fighter in other colors ----
+const SKIN_LOOKS={
+  shadow:{name:"Shadow",suit:"#1e1b2e",trim:"#a78bfa",hair:"#0f0d1a"},
+  solar:{name:"Solar",suit:"#f59e0b",trim:"#fff7ed",hair:"#b45309"}
+};
+const SKIN_PRICE=300;
+function skinned(def,skin){ const L=SKIN_LOOKS[skin]; return L?{...def,suit:L.suit,trim:L.trim,hair:L.hair,skin:def.skin,skinId:skin}:def; }
+const skinOf=(id)=>{ const k=(profile.skin||{})[id]; return k&&SKIN_LOOKS[k]&&((profile.skinsOwned||{})[id]||[]).indexOf(k)>=0?k:null; };
 const BOT_CALLSIGNS=["Astro","Luna","Void","Eclipse","Quasar","Rocket","Comet","Nova","Orbit","Meteor","Stardust","Cosmo","Vega","Zero-G","Blaze","Photon","Nebula-9","Rocketman","Moonwalk","Starlord","Ion","Pulsar","Zenith","Drift"];
 
 const MODE_INFO={
@@ -258,6 +272,8 @@ const MODE_INFO={
   vault:{name:"Vault Raid",tagline:"Crack the rival vault before they crack yours. Defend, push, repeat!",mapName:"Twin Vaults",badge:"3 VS 3 · RAID"},
   zone:{name:"Zone Control",tagline:"Stand in the glowing zones to fill your meter. First crew to 100 wins!",mapName:"Twin Rings",badge:"3 VS 3 · HOLD"},
   hunt:{name:"Star Hunt",tagline:"Every KO takes the stars on a rival's head. Most stars when time runs out wins!",mapName:"Hunter's Belt",badge:"3 VS 3 · BOUNTY"},
+  duel:{name:"1v1 Duel",tagline:"Just you and one rival. First to 3 KOs wins!",mapName:"Duel Grounds",badge:"1 VS 1"},
+  titan:{name:"Titan Raid",tagline:"Team up against a giant Titan and its drones. Bring it down before time runs out!",mapName:"Titan's Rest",badge:"3 VS TITAN · CO-OP"},
   arena:{name:"KO Arena",tagline:"Pure brawling! KO rivals to score — first crew to 8 KOs wins!",mapName:"Nebula Arena",badge:"3 VS 3 · KO RACE"}
 };
 const TIPS=[
@@ -276,6 +292,7 @@ const TIPS=[
  "In Vault Raid, one fighter who stays home can stop a sneaky raid.",
  "Sharpshooter shots pierce: line rivals up and hit them all. Wardens can shield the whole crew with their Super.",
  "At level 3 every fighter gets a gadget: three uses a match. Tap Gadget (or press E) to use it.",
+ "At level 7 each fighter offers two Star Perks. Pick one in the lobby, and switch whenever you like.",
  "At level 5 you unlock Hyper Surge. Land hits to fill it, then tap Hyper (or press Q): 5 seconds of extra speed, damage and toughness, and your Super fills twice as fast."
 ];
 const RANKS=[{name:"Rookie",at:0},{name:"Star Cadet",at:50},{name:"Nebula Knight",at:150},{name:"Comet Ace",at:300},{name:"Galaxy Legend",at:600}];
@@ -418,6 +435,14 @@ const MAP_DEFS=[
   bush:[[4,3,5,5],[9,3,10,5],[6,7,8,8],[0,2,1,4],[13,2,14,4]], midBush:[[0,10,1,10],[13,10,14,10]],
   wall:[[3,3,3,5],[11,3,11,5],[6,6,8,6],[0,6,1,6],[13,6,14,6]],
   crate:[[2.5,7.5],[12.5,7.5],[7.5,5.5],[5.5,8.5],[9.5,8.5]], midCrate:[[5.5,10.5],[9.5,10.5]]},
+ {name:"Comet Canyon",
+  bush:[[0,2,1,3],[13,2,14,3],[5,4,6,5],[8,4,9,5],[2,8,3,9],[11,8,12,9]], midBush:[[7,10,7,10]],
+  wall:[[3,2,4,2],[10,2,11,2],[7,6,7,7],[0,6,2,6],[12,6,14,6],[5,8,5,8],[9,8,9,8]],
+  crate:[[1.5,4.5],[13.5,4.5],[4.5,6.5],[10.5,6.5],[7.5,8.5]], midCrate:[[5.5,10.5],[9.5,10.5]]},
+ {name:"Nova Gardens",
+  bush:[[2,2,4,3],[10,2,12,3],[0,5,1,7],[13,5,14,7],[6,7,8,8]], midBush:[[3,10,4,10],[10,10,11,10]],
+  wall:[[6,6,8,6],[3,5,4,5],[10,5,11,5],[3,7,3,7],[11,7,11,7]],
+  crate:[[7.5,8.5],[1.5,3.5],[13.5,3.5],[5.5,9.5],[9.5,9.5]], midCrate:[[4.5,10.5],[10.5,10.5]]},
  {name:"Ring Station",
   bush:[[0,4,2,5],[12,4,14,5],[6,5,8,6],[3,8,4,8],[10,8,11,8]], midBush:[[6,10,6,10],[8,10,8,10]],
   wall:[[2,2,3,2],[11,2,12,2],[5,5,5,6],[9,5,9,6],[7,7,7,8]],
@@ -651,6 +676,10 @@ function drawBrawlerFigure(ctx,def,x,y,r,opts){
 //  · Storm Standoff: no respawns, purple storm closes in, last crew wins.
 //  · KO Arena: KO race — first crew to 8 KOs wins.
 // =====================================================================
+const DUEL_TIME=90, DUEL_KOS=3;
+const TITAN_TIME=150, TITAN_HP=88000;
+const TITAN_DEF={id:"titan",name:"The Titan",title:"Raid Boss",desc:"",hp:TITAN_HP,speed:150,radius:46,damage:760,range:320,bulletSpeed:520,fireRate:1.5,pellets:5,spreadDeg:46,reloadTime:0.9,maxAmmo:3,superChargeHits:5,superKind:"meteor",superName:"Titan Slam",superDesc:"",suit:"#3f3f46",trim:"#f43f5e",skin:"#fca5a5",hair:"#18181b",hairStyle:"spikes",pattern:"chevron",accessory:"horns",rarity:"Legendary",atk:"shot"};
+const DRONE_DEF={id:"drone",name:"Drone",title:"Titan Drone",desc:"",hp:2200,speed:250,radius:20,damage:420,range:300,bulletSpeed:640,fireRate:2.2,pellets:1,spreadDeg:0,reloadTime:1.2,maxAmmo:3,superChargeHits:99,superKind:"dash",superName:"",superDesc:"",suit:"#52525b",trim:"#fb7185",skin:"#d4d4d8",hair:"#27272a",hairStyle:"cap",pattern:"grid",accessory:"none",rarity:"Rare",atk:"shot"};
 const VAULT_HP=60000, VAULT_TIME=150, ZONE_TIME=150, HUNT_TIME=120, CORE_HP=400, SHIELD_TIME=2.2;
 // ---- sound: tiny synth effects, no files. Off with ?mute, ?test or the speaker button. ----
 const SFX=(()=>{
@@ -687,6 +716,23 @@ const SFX=(()=>{
   return {
     play(name,v){ if(muted||!S[name])return; try{ if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==="suspended")ac.resume(); S[name](v==null?1:Math.max(0.15,Math.min(1,v))); }catch(e){} },
     get muted(){ return muted; },
+    // one sixteenth-note step of the music; called by the music clock below
+    beat(kind,n,fast){
+      if(muted||!ac||ac.state!=="running")return;
+      const CH=[[262,330,392],[220,262,330],[175,220,262],[196,247,294]], c=CH[Math.floor(n/16)%4], k=n%16, t=ac.currentTime;
+      const blip=(f,d,type,v,when)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type=type; o.frequency.value=f; g.gain.setValueAtTime(v,t+(when||0)); g.gain.exponentialRampToValueAtTime(0.0001,t+(when||0)+d); o.connect(g); g.connect(ac.destination); o.start(t+(when||0)); o.stop(t+(when||0)+d+0.02); };
+      if(kind==="lobby"){
+        if(k%4===0)blip(c[0]/2,0.5,"sine",0.035);
+        if(k%2===0)blip(c[[0,1,2,1,2,1,0,2][(k/2)%8]]*2,0.18,"triangle",0.018);
+      }else{
+        if(k%4===0)blip(c[0]/2,0.22,"sine",0.05);
+        if(k%8===4)blip(c[0]/4,0.12,"square",0.02);
+        if(k%2===1)blip(c[[0,2,1,2,0,1,2,1][(k>>1)%8]]*2,0.09,"triangle",fast?0.022:0.015);
+        if(fast&&k%4===2)blip(c[2]*4,0.05,"square",0.01);
+        if(k%4===2){ const nb=Math.floor(ac.sampleRate*0.03), bf=ac.createBuffer(1,nb,ac.sampleRate), dd=bf.getChannelData(0); for(let i=0;i<nb;i++)dd[i]=(Math.random()*2-1)*(1-i/nb); const sr=ac.createBufferSource(), g=ac.createGain(); sr.buffer=bf; g.gain.value=fast?0.03:0.018; sr.connect(g); g.connect(ac.destination); sr.start(t); }
+      }
+    },
+    wake(){ if(muted)return; try{ if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==="suspended")ac.resume(); }catch(e){} },
     toggle(){ muted=!muted; try{ localStorage.setItem("nebula-brawl-mute",muted?"1":"0"); }catch(e){} return muted; }
   };
 })();
@@ -697,19 +743,40 @@ const GADGETS={
   barrier:{name:"Star Barrier",desc:"Blocks the next 1,400 damage for 3 seconds."},
   mine:{name:"Shock Mine",desc:"Drops a mine that zaps a rival who steps near it."}
 };
+// ---- Star Perks ----
+const PERKS={
+  wind:{name:"Second Wind",desc:"Health starts coming back after 2.5 seconds out of the fight, not 4."},
+  reload:{name:"Quick Hands",desc:"Reload 20% faster."},
+  saver:{name:"Head Start",desc:"Start every life with your Super a third full."},
+  swift:{name:"Light Feet",desc:"Move 8% faster."},
+  reach:{name:"Long Arm",desc:"Your attacks reach 12% farther."},
+  vamp:{name:"Star Leech",desc:"Heal 12% of the damage your attacks deal."}
+};
+const PERK_KEYS=Object.keys(PERKS), PERK_LEVEL=7;
+const perkPair=(def)=>{ const h=hashCode(def.id+"p"), a=h%PERK_KEYS.length, b=(a+1+(h>>3)%(PERK_KEYS.length-1))%PERK_KEYS.length; return [PERK_KEYS[a],PERK_KEYS[b]]; };
 const HYPER_TIME=5, HYPER_HITS=22, HYPER_LEVEL=5;
 const GADGET_KEYS=Object.keys(GADGETS), GADGET_USES=3, GADGET_CD=5, GADGET_LEVEL=3;
 const gadgetOf=(def)=>GADGET_KEYS[hashCode(def.id+"g")%GADGET_KEYS.length];
+// the music clock: what plays depends on the screen (window.__musicMode is set by the screens)
+window.__musicMode="lobby"; window.__musicFast=false;
+{ let n=0, nextAt=0;
+  const tick=()=>{ const now=performance.now(), kind=window.__musicMode, bpm=kind==="lobby"?92:window.__musicFast?150:128, step=60000/bpm/4;
+    if(!document.hidden&&kind&&now>=nextAt){ nextAt=now+step; SFX.beat(kind,n++,window.__musicFast); } };
+  if(!/[?&](test|mute)\b/.test(location.search))window.setInterval(tick,25);
+  const first=()=>{ SFX.wake(); window.removeEventListener("pointerdown",first); window.removeEventListener("keydown",first); };
+  window.addEventListener("pointerdown",first); window.addEventListener("keydown",first);
+}
 const GEM_TARGET=10, COUNTDOWN_TIME=15, MATCH_TIME=150, BALL_TIME=150, SHOWDOWN_TIME=180, ARENA_TIME=120;
 const BALL_GOALS_TO_WIN=2, ARENA_KOS_TO_WIN=8, MINE_INTERVAL=2.6, RESPAWN_TIME=3;
 
-function makeFighter(id,def,team,name,isPlayer,spawn,level){
+function makeFighter(id,def,team,name,isPlayer,spawn,level,perk){
   const mul=1+0.06*(Math.max(1,level||1)-1), hp0=Math.round(def.hp*mul/10)*10;
   return { id,def,team,isPlayer,name, pos:{...spawn}, vel:{x:0,y:0},
     level:Math.max(1,level||1), baseMul:mul, dmgMul:mul, cores:0, shieldT:0, guardT:0, gad:(Math.max(1,level||1)>=GADGET_LEVEL?gadgetOf(def):null), gadN:GADGET_USES, gadCd:0, jetT:0, barrier:0, barrierT:0, bounty:2, showBounty:false, dealt:0, kills:0, lobDist:null,
     hp:hp0, maxHp:hp0, radius:def.radius,
     facing:team===0?-Math.PI/2:Math.PI/2, aimDir:null,
     ammo:def.maxAmmo, reloadT:0, fireCd:0, superCharge:0, superReady:false, hyper:0, hyperT:0, hyperOk:Math.max(1,level||1)>=HYPER_LEVEL,
+    perk:(Math.max(1,level||1)>=PERK_LEVEL?(perk||perkPair(def)[hashCode(def.id+name)%2]):null),
     gems:0, alive:true, respawnT:0, lastDamageT:-99, regenDelay:4, hitFlash:0,
     walkPhase:Math.random()*6,
     ai:{ targetPos:{...spawn}, repath:0, strafeDir:1, strafeT:0, holdFire:0 } };
@@ -740,15 +807,26 @@ class Match{
     const lv=setup.level||1, foeLv=setup.foeLevel||lv;
     const spawns=this.mode==="showdown"?SHOWDOWN_SPAWNS:SPAWNS;
     const blue=[
-      makeFighter(0,setup.playerDef,0,"You",true,spawns[0][0],lv),
+      makeFighter(0,setup.playerDef,0,"You",true,spawns[0][0],lv,setup.perk),
       makeFighter(1,setup.blueMateDefs[0],0,setup.blueMateNames[0],false,spawns[0][1],lv),
       makeFighter(2,setup.blueMateDefs[1],0,setup.blueMateNames[1],false,spawns[0][2],lv)
     ];
     const red=setup.redDefs.map((def,i)=>makeFighter(3+i,def,1,setup.redNames[i],false,spawns[1][i],foeLv));
     this.fighters=[...blue,...red];
     if(this.mode==="hunt")for(const f of this.fighters)f.showBounty=true;
+    if(this.mode==="duel"){
+      for(const f of this.fighters)if(f.id!==0&&f.id!==3){ f.out=true; f.alive=false; f.respawnT=1e9; }
+      this.fighters[3].pos={x:WORLD_W/2,y:220}; this.fighters[0].pos={x:WORLD_W/2,y:WORLD_H-220};
+    }
+    if(this.mode==="titan"){
+      const mul=1+0.15*((setup.level||1)-1), red=this.fighters.filter(f=>f.team===1);
+      const T=red[0]; T.def=TITAN_DEF; T.name="The Titan"; T.radius=TITAN_DEF.radius; T.maxHp=T.hp=Math.round(TITAN_HP*mul); T.titan=true; T.pos={x:WORLD_W/2,y:300}; T.gad=null; T.hyperOk=false; T.perk=null; T.ammo=3;
+      for(const d of red.slice(1)){ d.def=DRONE_DEF; d.name="Drone"; d.radius=DRONE_DEF.radius; d.maxHp=d.hp=Math.round(DRONE_DEF.hp*mul); d.gad=null; d.hyperOk=false; d.perk=null; d.ammo=3; }
+      this.titan=T; this.titanRage=false;
+    }
+    for(const f of this.fighters)if(f.perk==="saver")f.superCharge=1/3;
   }
-  matchDuration(){ if(this.mode==="ball")return BALL_TIME; if(this.mode==="showdown")return SHOWDOWN_TIME; if(this.mode==="arena")return ARENA_TIME; if(this.mode==="vault")return VAULT_TIME; if(this.mode==="zone")return ZONE_TIME; if(this.mode==="hunt")return HUNT_TIME; return MATCH_TIME; }
+  matchDuration(){ if(this.mode==="ball")return BALL_TIME; if(this.mode==="showdown")return SHOWDOWN_TIME; if(this.mode==="arena")return ARENA_TIME; if(this.mode==="vault")return VAULT_TIME; if(this.mode==="titan")return TITAN_TIME; if(this.mode==="duel")return DUEL_TIME; if(this.mode==="zone")return ZONE_TIME; if(this.mode==="hunt")return HUNT_TIME; return MATCH_TIME; }
   scores(){
     const m=this.mode;
     if(m==="ball")return [this.blueScore,this.redScore];
@@ -757,6 +835,8 @@ class Match{
     if(m==="vault")return this.vaults.map(v=>Math.max(0,Math.ceil(100*v.hp/v.maxHp)));
     if(m==="zone")return this.zonePts.map(p=>Math.min(100,Math.floor(p)));
     if(m==="hunt")return [this.stars[0],this.stars[1]];
+    if(m==="duel")return [this.kos[0],this.kos[1]];
+    if(m==="titan"){ const t=this.titan; return [t?Math.round(100*(1-Math.max(0,t.hp)/t.maxHp)):0,t?Math.max(0,Math.ceil(100*t.hp/t.maxHp)):0]; }
     return [this.teamGems(0),this.teamGems(1)];
   }
   sfx(name,pos){
@@ -765,7 +845,7 @@ class Match{
     if(d>760)return;
     SFX.play(name,1-d/950);
   }
-  aliveCount(team){ return this.fighters.filter(f=>f.team===team&&f.alive).length; }
+  aliveCount(team){ return this.fighters.filter(f=>f.team===team&&f.alive&&!f.out).length; }
   get player(){ return this.fighters[0]; }
   teamGems(team){ let t=0; for(const f of this.fighters) if(f.team===team)t+=f.gems; return t; }
   boxes(){
@@ -910,9 +990,19 @@ class Match{
     this.cores=this.cores.filter(c=>!c.taken);
     if(this.mode==="zone")this.updateZones(dt);
     this.stepMines(dt);
+    if(this.wells&&this.wells.length){
+      const boxes2=this.boxes();
+      for(const w of this.wells){
+        w.t-=dt;
+        for(const e of this.fighters){ if(!e.alive||e.team===w.team||e.titan)continue; const d=dist(e.pos,w.pos); if(d<200&&d>6){ const k=Math.min(1,(200-d)/200+0.25)*260*dt; e.pos=collideCircle({x:e.pos.x+(w.pos.x-e.pos.x)/d*k,y:e.pos.y+(w.pos.y-e.pos.y)/d*k},e.radius,boxes2); } }
+        if(Math.random()<0.6)this.particles.push({pos:{x:w.pos.x+(Math.random()-0.5)*260,y:w.pos.y+(Math.random()-0.5)*260},vel:{x:0,y:0},life:0.3,maxLife:0.3,size:3,color:"#f0abfc",to:w.pos});
+        if(w.t<=0)this.explode(w.pos,95,w.dmg,w.team,w.ownerId,true,"#c026d3");
+      }
+      this.wells=this.wells.filter(w=>w.t>0);
+    }
     this.feed=this.feed.filter(k=>this.time-k.t<4.5);
     // Particles & floaters
-    for(const pt of this.particles){ pt.life-=dt; pt.pos.x+=pt.vel.x*dt; pt.pos.y+=pt.vel.y*dt; pt.vel.x*=0.92; pt.vel.y*=0.92; }
+    for(const pt of this.particles){ pt.life-=dt; if(pt.to){ pt.pos.x+=(pt.to.x-pt.pos.x)*Math.min(1,dt*7); pt.pos.y+=(pt.to.y-pt.pos.y)*Math.min(1,dt*7); continue; } pt.pos.x+=pt.vel.x*dt; pt.pos.y+=pt.vel.y*dt; pt.vel.x*=0.92; pt.vel.y*=0.92; }
     this.particles=this.particles.filter(pt=>pt.life>0);
     for(const fl of this.floaters){ fl.life-=dt; fl.pos.x+=VIEW_UP.x*34*dt; fl.pos.y+=VIEW_UP.y*34*dt; }
     this.floaters=this.floaters.filter(fl=>fl.life>0);
@@ -1029,6 +1119,21 @@ class Match{
       }
       return;
     }
+    if(this.mode==="duel"){
+      if(this.kos[0]>=DUEL_KOS){ this.finish(true,"You won the duel, "+this.kos[0]+" to "+this.kos[1]+"!"); return; }
+      if(this.kos[1]>=DUEL_KOS){ this.finish(false,"Your rival won the duel, "+this.kos[1]+" to "+this.kos[0]+"."); return; }
+      if(!this.finished&&this.timeLeft<=0){
+        const a=this.kos[0], b=this.kos[1], me=this.fighters[0], foe=this.fighters[3];
+        const win=a!==b?a>b:(me.alive?me.hp/me.maxHp:0)>(foe.alive?foe.hp/foe.maxHp:0);
+        this.finish(win, a!==b?(win?"Time! You landed more KOs.":"Time! Your rival landed more KOs."):(win?"Tied on KOs, but you had more health left!":"Tied on KOs, and your rival had more health left."));
+      }
+      return;
+    }
+    if(this.mode==="titan"){
+      if(!this.finished&&this.aliveCount(0)===0&&this.fighters.every(f=>f.team!==0||f.respawnT>2.5))return;
+      if(!this.finished&&this.timeLeft<=0){ const t=this.titan; this.finish(false,"Time! The Titan still had "+Math.ceil(100*t.hp/t.maxHp)+"% of its health."); }
+      return;
+    }
     if(this.mode==="vault"){
       if(!this.finished&&this.timeLeft<=0){
         const a=this.vaults[0].hp/this.vaults[0].maxHp, b=this.vaults[1].hp/this.vaults[1].maxHp;
@@ -1100,7 +1205,7 @@ class Match{
     }
     if(!this.quiet)SFX.play(won?"win":"lose");
     const sc=this.scores();
-    const trophyDelta=this.mode==="ranked"?(won?14:-9):this.mode==="showdown"?(won?10:-6):(won?8:-4);
+    const trophyDelta=this.mode==="duel"?(won?9:-5):this.mode==="titan"?(won?12:-2):this.mode==="ranked"?(won?14:-9):this.mode==="showdown"?(won?10:-6):(won?8:-4);
     this.result={ won, trophyDelta, playerKills:this.playerKills, playerGems:this.player.gems,
       blueGems:blue, redGems:red, mvpName:mvp.isPlayer?"You":mvp.name, reason, mode:this.mode,
       blueScore:sc[0], redScore:sc[1], playerDealt:Math.round(this.player.dealt), mvpIsPlayer:mvp.isPlayer,
@@ -1167,21 +1272,23 @@ class Match{
   }
   speedOf(f){
     const slowed=this.slowZones.some(z=>z.team!==f.team&&this.time<z.until&&dist(z.pos,f.pos)<120);
-    return f.def.speed*(slowed?0.55:1)*(f.jetT>0?1.6:1)*(f.hyperT>0?1.25:1);
+    return f.def.speed*(slowed?0.55:1)*(f.jetT>0?1.6:1)*(f.hyperT>0?1.25:1)*(f.perk==="swift"?1.08:1);
   }
   hiddenFrom(f,viewerTeam){
     if(f.team===viewerTeam)return false;
+    if(f.titan)return false; // too big to hide
     if(!isInBush(f.pos.x,f.pos.y))return false;
     for(const v of this.fighters){ if(v.team===viewerTeam&&v.alive&&dist(v.pos,f.pos)<130)return false; }
     return true;
   }
   stepFighter(f,dt,boxes){
     if(!f.alive){
-      if(this.mode==="showdown")return;
+      if(this.mode==="showdown"||f.titan||f.out)return;
       f.respawnT-=dt;
       if(f.respawnT<=0){
         const spawn=SPAWNS[f.team][f.id%3];
         f.pos={...spawn}; f.hp=f.maxHp; f.alive=true; f.ammo=f.def.maxAmmo; f.shieldT=SHIELD_TIME;
+        if(f.perk==="saver"){ f.superCharge=Math.max(f.superCharge,1/3); f.superReady=f.superCharge>=1; }
         f.superCharge=Math.max(0,f.superCharge-0.25); f.superReady=f.superCharge>=1;
         this.burst(f.pos,10,f.team===0?"#22d3ee":"#fb4d6d",120);
       }
@@ -1191,9 +1298,10 @@ class Match{
     f.shieldT=Math.max(0,f.shieldT-dt); f.guardT=Math.max(0,f.guardT-dt);
     f.gadCd=Math.max(0,f.gadCd-dt); if(f.hyperT>0){ f.hyperT=Math.max(0,f.hyperT-dt); } f.jetT=Math.max(0,f.jetT-dt); f.barrierT=Math.max(0,f.barrierT-dt); if(f.barrierT<=0)f.barrier=0;
     f.fireCd-=dt;
-    if(f.ammo<f.def.maxAmmo){ f.reloadT-=dt; if(f.reloadT<=0){ f.ammo+=1; f.reloadT=f.def.reloadTime; } }
-    else{ f.reloadT=f.def.reloadTime; }
-    if(this.time-f.lastDamageT>f.regenDelay&&f.hp<f.maxHp){ f.hp=Math.min(f.maxHp,f.hp+f.maxHp*0.13*dt); }
+    const rt=f.def.reloadTime*(f.perk==="reload"?0.8:1);
+    if(f.ammo<f.def.maxAmmo){ f.reloadT-=dt; if(f.reloadT<=0){ f.ammo+=1; f.reloadT=rt; } }
+    else{ f.reloadT=rt; }
+    if(this.time-f.lastDamageT>(f.perk==="wind"?2.5:f.regenDelay)&&f.hp<f.maxHp){ f.hp=Math.min(f.maxHp,f.hp+f.maxHp*0.13*dt); }
     const before={...f.pos};
     f.pos=collideCircle({x:f.pos.x+f.vel.x*dt,y:f.pos.y+f.vel.y*dt},f.radius,boxes);
     const moved=Math.hypot(f.pos.x-before.x,f.pos.y-before.y);
@@ -1238,7 +1346,7 @@ class Match{
       else if(n>1){ const spread=(f.def.spreadDeg*Math.PI)/180; ang=base-spread/2+spread*(i/(n-1)); }
       this.bullets.push({ pos:{x:f.pos.x+Math.cos(ang)*(f.radius+4),y:f.pos.y+Math.sin(ang)*(f.radius+4)},
         vel:{x:Math.cos(ang)*f.def.bulletSpeed,y:Math.sin(ang)*f.def.bulletSpeed},
-        team:f.team, ownerId:f.id, damage:dmg, life:f.def.range/f.def.bulletSpeed,
+        team:f.team, ownerId:f.id, damage:dmg, life:f.def.range*(f.perk==="reach"?1.12:1)/f.def.bulletSpeed,
         radius:f.def.range<200?11:f.def.atk==="pierce"?7:6, color:f.def.trim, big:false, pierce:f.def.atk==="pierce", hitIds:[] });
     }
     this.burst({x:f.pos.x+Math.cos(base)*(f.radius+8),y:f.pos.y+Math.sin(base)*(f.radius+8)},2,f.def.trim,60);
@@ -1267,6 +1375,21 @@ class Match{
       target={x:clamp(target.x,60,WORLD_W-60),y:clamp(target.y,60,WORLD_H-60)};
       this.bullets.push({pos:{x:target.x,y:target.y-340},vel:{x:0,y:680},team:f.team,ownerId:f.id,damage:Math.round(2100*f.dmgMul),life:9,radius:26,color:"#fb923c",big:true,h:0,aoe:120,meteor:true,lob:{from:{x:target.x,y:target.y},to:target,t:0,dur:0.75}});
       this.float(f.pos,"METEOR!","#fb923c");
+    }else if(kind==="heal"){
+      for(const m of this.fighters){ if(m.alive&&m.team===f.team&&dist(m.pos,f.pos)<230){ const n=Math.round(2200*f.dmgMul); m.hp=Math.min(m.maxHp,m.hp+n); this.float({x:m.pos.x,y:m.pos.y-m.radius-20},"+"+n,"#4ade80"); this.burst(m.pos,12,"#bbf7d0",140); } }
+      this.particles.push({pos:{...f.pos},vel:{x:0,y:0},life:0.45,maxLife:0.45,size:230,color:"rgba(187,247,208,0.2)",ring:true});
+      this.float({x:f.pos.x,y:f.pos.y-f.radius-44},"STARLIGHT!","#bbf7d0");
+    }else if(kind==="blink"){
+      const from={...f.pos}, a=f.aimDir?Math.atan2(f.aimDir.y,f.aimDir.x):f.facing, d=clamp(f.lobDist||260,80,300);
+      f.pos=collideCircle({x:f.pos.x+Math.cos(a)*d,y:f.pos.y+Math.sin(a)*d},f.radius,this.boxes()); f.shieldT=Math.max(f.shieldT,0.4);
+      for(let i=0;i<=10;i++){ const t=i/10; this.particles.push({pos:{x:from.x+(f.pos.x-from.x)*t,y:from.y+(f.pos.y-from.y)*t},vel:{x:0,y:0},life:0.35,maxLife:0.35,size:7,color:"#a78bfa"}); }
+      this.explode(f.pos,110,Math.round(1500*f.dmgMul),f.team,f.id,true,"#a78bfa");
+      this.float({x:f.pos.x,y:f.pos.y-f.radius-40},"RIFT JUMP!","#c4b5fd");
+    }else if(kind==="pull"){
+      let target={x:f.pos.x+Math.cos(f.facing)*220,y:f.pos.y+Math.sin(f.facing)*220}, bestD=Infinity;
+      for(const e of this.fighters){ if(!e.alive||e.team===f.team)continue; const d=dist(f.pos,e.pos); if(d<bestD&&d<420){ bestD=d; target={...e.pos}; } }
+      this.wells=this.wells||[]; this.wells.push({pos:{x:clamp(target.x,40,WORLD_W-40),y:clamp(target.y,40,WORLD_H-40)},team:f.team,ownerId:f.id,t:1.4,dmg:Math.round(1700*f.dmgMul)});
+      this.float({x:f.pos.x,y:f.pos.y-f.radius-40},"EVENT HORIZON!","#f0abfc");
     }else if(kind==="shield"){
       for(const m of this.fighters){ if(m.alive&&m.team===f.team&&dist(m.pos,f.pos)<240){ m.guardT=4; this.burst(m.pos,10,"#fde047",120); } }
       this.particles.push({pos:{...f.pos},vel:{x:0,y:0},life:0.35,maxLife:0.35,size:240,color:"rgba(253,224,71,0.18)",ring:true});
@@ -1300,6 +1423,7 @@ class Match{
   }
   damageFighter(f,damage,ownerId,fromSuper){
     if(!f.alive||this.finished)return;
+    if(f.titan&&!this.titanRage&&f.hp-damage<f.maxHp/2){ this.titanRage=true; f.def={...f.def,fireRate:2.2,speed:175,damage:860}; this.float({x:f.pos.x,y:f.pos.y-80},"THE TITAN IS ANGRY!","#fb7185"); this.shake=Math.max(this.shake,14); }
     if(f.shieldT>0){ this.burst(f.pos,3,"#a5f3fc",80); return; }
     if(f.guardT>0)damage=Math.round(damage*0.4);
     if(f.hyperT>0)damage=Math.round(damage*0.8);
@@ -1307,6 +1431,7 @@ class Match{
     f.hp-=damage; f.lastDamageT=this.time; f.hitFlash=1;
     const src=this.fighters[ownerId];
     if(src&&src.team!==f.team)src.dealt+=Math.min(damage,f.hp+damage);
+    if(src&&src.perk==="vamp"&&src.alive&&src.team!==f.team){ src.hp=Math.min(src.maxHp,src.hp+damage*0.12); }
     if(f.isPlayer){ this.shake=Math.max(this.shake,fromSuper?12:6); this.sfx("hurt",f.pos); }
     else if(src&&src.isPlayer){ this.shake=Math.max(this.shake,fromSuper?7:3); this.sfx("hit",f.pos); }
     this.float({x:f.pos.x,y:f.pos.y-f.radius-8},String(Math.round(damage)),fromSuper?"#fde047":"#ffffff");
@@ -1315,7 +1440,8 @@ class Match{
     if(owner&&!fromSuper){ owner.superCharge=Math.min(1,owner.superCharge+(owner.hyperT>0?2:1)/owner.def.superChargeHits); owner.superReady=owner.superCharge>=1; }
     if(owner&&owner.hyperOk&&owner.hyperT<=0&&owner.team!==f.team){ const was=owner.hyper; owner.hyper=Math.min(1,owner.hyper+(fromSuper?3:1)/HYPER_HITS+1e-9); if(owner.isPlayer&&was<1&&owner.hyper>=1)this.float({x:owner.pos.x,y:owner.pos.y-owner.radius-50},"HYPER READY!","#f472b6"); }
     if(f.hp<=0){
-      f.alive=false; f.respawnT=RESPAWN_TIME; f.hp=0;
+      f.alive=false; f.respawnT=f.def.id==="drone"?6:RESPAWN_TIME; f.hp=0;
+      if(f.titan){ this.shake=24; this.burst(f.pos,60,"#f43f5e",360); this.float({x:f.pos.x,y:f.pos.y-70},"TITAN DOWN!","#fde047"); this.finish(true,"Your crew brought down the Titan!"); }
       if(this.mode==="ball"&&this.ballCarrier===f.id){
         this.ballCarrier=null; this.ball.pos={...f.pos}; this.ball.vel={x:0,y:0}; this.ballPickupDelayT=0.3;
       }
@@ -1418,6 +1544,13 @@ class Match{
       if(lowHp&&enemy&&enemyD<300){ goal=SPAWNS[f.team][f.id%3]; }
       else if(canSee&&enemy&&dist(enemy.pos,z.pos)<z.r+150&&dist(f.pos,z.pos)<z.r+60){ goal=enemy.pos; }
       else{ goal={x:z.pos.x+(f.id%3-1)*34,y:z.pos.y+(f.team===0?34:-34)}; }
+    }else if(this.mode==="duel"){
+      if(lowHp&&enemy&&enemyD<300){ goal=SPAWNS[f.team][0]; }
+      else if(canSee&&enemy){ goal=enemy.pos; }
+      else{ goal=enemy?enemy.pos:{x:WORLD_W/2,y:WORLD_H/2}; }
+    }else if(this.mode==="titan"){
+      if(f.team===1){ goal=canSee&&enemy?enemy.pos:{x:WORLD_W/2,y:WORLD_H/2-120}; if(f.titan)wantRange=f.def.range*0.7; }
+      else{ const T=this.titan; goal=T&&T.alive?T.pos:(enemy?enemy.pos:null); if(lowHp&&enemy&&enemyD<260)goal=SPAWNS[0][f.id%3]; }
     }else if(this.mode==="arena"||this.mode==="hunt"){
       if(lowHp&&enemy&&enemyD<300){ goal=SPAWNS[f.team][f.id%3]; }
       else if(canSee&&enemy){ goal=enemy.pos; }
@@ -1496,7 +1629,9 @@ class Match{
       }
       if(f.superReady){
         const kind=f.def.superKind;
-        const useIt=kind==="deploy"?enemyD<320:kind==="meteor"?enemyD<430:kind==="nova"?enemyD<125:kind==="shield"?(enemyD<320&&f.hp<f.maxHp*0.8):(enemyD>200&&f.hp<f.maxHp*0.5);
+        const mateHurt=this.fighters.some(m=>m.alive&&m.team===f.team&&dist(m.pos,f.pos)<230&&m.hp<m.maxHp*0.55);
+        if(kind==="blink")f.lobDist=Math.max(80,enemyD-40);
+        const useIt=kind==="heal"?(mateHurt||f.hp<f.maxHp*0.5):kind==="blink"?(enemyD<300&&enemyD>90):kind==="pull"?enemyD<400:kind==="deploy"?enemyD<320:kind==="meteor"?enemyD<430:kind==="nova"?enemyD<125:kind==="shield"?(enemyD<320&&f.hp<f.maxHp*0.8):(enemyD>200&&f.hp<f.maxHp*0.5);
         if(useIt)this.useSuper(f);
       }
     }else{ f.aimDir=null; ai.holdFire=this.time+0.12+(1-this.skill)*0.6; }
@@ -1504,7 +1639,7 @@ class Match{
   hud(){
     const p=this.player;
     return { mode:this.mode,
-      blueScore:this.scores()[0], redScore:this.scores()[1], feed:this.feed, playerCores:p.cores, playerBounty:p.bounty, playerShield:p.shieldT>0,
+      blueScore:this.scores()[0], redScore:this.scores()[1], titanRage:!!this.titanRage, feed:this.feed, playerCores:p.cores, playerBounty:p.bounty, playerShield:p.shieldT>0,
       zoneFrac:clamp(this.zoneR/(Math.hypot(WORLD_W,WORLD_H)/2),0,1),
       aliveBlue:this.aliveCount(0), aliveRed:this.aliveCount(1),
       blueGems:this.teamGems(0), redGems:this.teamGems(1),
@@ -1522,7 +1657,9 @@ function buildSetup(playerDef,mode){
   const others=shuffle(BRAWLERS.filter(b=>b.id!==playerDef.id));
   const names=shuffle(BOT_CALLSIGNS);
   const lv=levelOf(playerDef.id);
-  return { mode, playerDef, map:mapIndexFor(mode), level:lv, foeLevel:lv, skill:clamp(0.18+profile.trophies/520,0.18,1), blueMateDefs:[others[0],others[1]], blueMateNames:[names[0],names[1]], redDefs:[others[2],others[3],others[4]], redNames:[names[2],names[3],names[4]] };
+  const pp=perkPair(playerDef), chosen=(profile.perks||{})[playerDef.id];
+  playerDef=skinned(playerDef,skinOf(playerDef.id));
+  return { mode, playerDef, perk:pp.indexOf(chosen)>=0?chosen:pp[0], map:mapIndexFor(mode), level:lv, foeLevel:lv, skill:clamp(0.18+profile.trophies/520,0.18,1), blueMateDefs:[others[0],others[1]], blueMateNames:[names[0],names[1]], redDefs:[others[2],others[3],others[4]], redNames:[names[2],names[3],names[4]] };
 }
 
 // =====================================================================
@@ -1601,6 +1738,12 @@ function renderMatch(ctx,match,cam,viewW,viewH,time){
     ctx.restore();
     if(v.hitFlash>0.3){ ctx.fillStyle="rgba(255,255,255,0.4)"; roundRect(ctx,x-s/2,y-s/2,s,s,14); ctx.fill(); }
     drawSmallBar(ctx,x-VIEW_UP.x*(s/2+10),y-VIEW_UP.y*(s/2+10),96,v.hp/v.maxHp,TEAM_COLORS[v.team],String(Math.max(0,Math.round(v.hp))),ui);
+  }
+  for(const w of (match.wells||[])){
+    const k=1-w.t/1.4;
+    ctx.beginPath(); ctx.arc(w.pos.x,w.pos.y,200,0,Math.PI*2); ctx.strokeStyle="rgba(240,171,252,"+(0.2+0.25*k)+")"; ctx.lineWidth=3; ctx.setLineDash([10,8]); ctx.lineDashOffset=time*80; ctx.stroke(); ctx.setLineDash([]);
+    const g=ctx.createRadialGradient(w.pos.x,w.pos.y,4,w.pos.x,w.pos.y,40+k*24); g.addColorStop(0,"#000"); g.addColorStop(0.6,"rgba(88,28,135,.9)"); g.addColorStop(1,"rgba(240,171,252,0)");
+    ctx.beginPath(); ctx.arc(w.pos.x,w.pos.y,40+k*24,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
   }
   for(const m of (match.mines||[])){
     const on=m.arm<=0, col=m.team===0?"34,211,238":"251,77,109";
@@ -2042,18 +2185,21 @@ const ICON_MODES='<svg viewBox="0 0 24 24" style="width:26px;height:26px" aria-h
 const ICON_SWORDS='<svg viewBox="0 0 24 24" style="width:20px;height:20px" aria-hidden="true"><path d="M4 4l11 11M20 4L9 15" stroke="#fda4af" stroke-width="2.4" stroke-linecap="round"/><path d="M14.5 3.5L20.5 3.5L20.5 9.5M3.5 14.5L3.5 20.5L9.5 20.5" stroke="#fda4af" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
 const ICON_VAULT='<svg viewBox="0 0 24 24" style="width:20px;height:20px" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" fill="#67e8f9" stroke="rgba(10,6,32,.5)" stroke-width="1.5"/><circle cx="12" cy="12" r="4" fill="#1e1b4b" stroke="#fde047" stroke-width="1.6"/></svg>';
 const ICON_VAULT_BIG=ICON_VAULT.replace("width:20px;height:20px","width:36px;height:36px");
+const ICON_TITAN='<svg viewBox="0 0 24 24" style="width:20px;height:20px" aria-hidden="true"><path d="M5 9l2-5 2 3h6l2-3 2 5v6a7 7 0 0 1-14 0z" fill="#f43f5e" stroke="rgba(10,6,32,.55)" stroke-width="1.4"/><circle cx="9.200" cy="12" r="1.600" fill="#fde047"/><circle cx="14.800" cy="12" r="1.600" fill="#fde047"/><path d="M9 16.500h6" stroke="#1c1917" stroke-width="1.600" stroke-linecap="round"/></svg>';
+const ICON_TITAN_BIG=ICON_TITAN.replace("width:20px;height:20px","width:36px;height:36px");
 const ICON_ZONE='<svg viewBox="0 0 24 24" style="width:20px;height:20px" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="rgba(125,211,252,.35)" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="4 3"/><circle cx="12" cy="12" r="3" fill="#e0f2fe"/></svg>';
 const ICON_ZONE_BIG=ICON_ZONE.replace("width:20px;height:20px","width:36px;height:36px");
 const ICON_STAR_SM='<svg viewBox="0 0 24 24" style="width:20px;height:20px" aria-hidden="true"><path d="M12 3l2.4 4.9 5.4.8-3.9 3.8 1 5.4-4.9-2.6-4.9 2.6 1-5.4L4.2 8.7l5.4-.8z" fill="#fde047" stroke="rgba(10,6,32,.5)" stroke-width="1.2"/></svg>';
 function modeThumbHTML(mode,big){
-  const bg=mode==="vault"?"linear-gradient(160deg,#0e7490,#134e4a)":mode==="zone"?"linear-gradient(160deg,#1d4ed8,#1e1b4b)":mode==="hunt"?"linear-gradient(160deg,#ca8a04,#713f12)":mode==="ball"?"linear-gradient(160deg,#4d7c0f,#166534)":mode==="showdown"?"linear-gradient(160deg,#7e22ce,#3b0764)":mode==="ranked"?"linear-gradient(160deg,#b45309,#78350f)":mode==="arena"?"linear-gradient(160deg,#be123c,#4c0519)":"linear-gradient(160deg,#6d28d9,#312e81)";
-  const icon=mode==="vault"?ICON_VAULT_BIG:mode==="zone"?ICON_ZONE_BIG:mode==="hunt"?ICON_STAR_BIG:mode==="ball"?ICON_BALL_BIG:mode==="showdown"?ICON_SKULL_BIG:mode==="ranked"?ICON_STAR_BIG:mode==="arena"?'<span style="font-size:30px;line-height:1" aria-hidden="true">⚔</span>':ICON_GEM_BIG;
+  const bg=mode==="duel"?"linear-gradient(160deg,#0369a1,#4c0519)":mode==="titan"?"linear-gradient(160deg,#9f1239,#1c1917)":mode==="vault"?"linear-gradient(160deg,#0e7490,#134e4a)":mode==="zone"?"linear-gradient(160deg,#1d4ed8,#1e1b4b)":mode==="hunt"?"linear-gradient(160deg,#ca8a04,#713f12)":mode==="ball"?"linear-gradient(160deg,#4d7c0f,#166534)":mode==="showdown"?"linear-gradient(160deg,#7e22ce,#3b0764)":mode==="ranked"?"linear-gradient(160deg,#b45309,#78350f)":mode==="arena"?"linear-gradient(160deg,#be123c,#4c0519)":"linear-gradient(160deg,#6d28d9,#312e81)";
+  const icon=mode==="duel"?ICON_SWORDS.replace("width:20px;height:20px","width:36px;height:36px"):mode==="titan"?ICON_TITAN_BIG:mode==="vault"?ICON_VAULT_BIG:mode==="zone"?ICON_ZONE_BIG:mode==="hunt"?ICON_STAR_BIG:mode==="ball"?ICON_BALL_BIG:mode==="showdown"?ICON_SKULL_BIG:mode==="ranked"?ICON_STAR_BIG:mode==="arena"?'<span style="font-size:30px;line-height:1" aria-hidden="true">⚔</span>':ICON_GEM_BIG;
   return '<span class="mode-thumb" style="background:'+bg+'" aria-hidden="true">'+icon+'</span>';
 }
 // =====================================================================
 // Lobby
 // =====================================================================
 function showLobby(){
+  window.__musicMode="lobby"; window.__musicFast=false;
   ensureProfile(); ensureQuests(); refreshMaps();
   const selected=brawlerById(profile.selectedBrawler);
   const mine=ownedList(), lv=levelOf(selected.id), mul=levelMul(lv), upCost=upgradeCost(selected.id);
@@ -2105,6 +2251,12 @@ function showLobby(){
            '<span class="stat-pill accent"><span class="lab">Super </span>'+selected.superName+'</span>'+
            '<span class="stat-pill"><span class="lab">Hyper </span>'+(lv>=HYPER_LEVEL?"Unlocked":"at level "+HYPER_LEVEL)+'</span>'+
            '<span class="stat-pill"><span class="lab">Gadget </span>'+(lv>=GADGET_LEVEL?GADGETS[gadgetOf(selected)].name:"at level "+GADGET_LEVEL)+'</span></div>')+
+         (lv>=PERK_LEVEL?(()=>{ const pp=perkPair(selected), cur=(profile.perks||{})[selected.id]||pp[0];
+           return '<div role="radiogroup" aria-label="Star Perk" style="margin-top:.5rem;display:flex;flex-wrap:wrap;justify-content:center;gap:.375rem">'+pp.map(k=>'<button type="button" role="radio" aria-checked="'+(k===cur)+'" data-perk="'+k+'" title="'+PERKS[k].desc+'" style="min-height:40px;border-radius:.75rem;padding:.25rem .75rem;font-size:12px;font-weight:800;border:0;'+(k===cur?"background:#fde047;color:#451a03":"background:rgba(36,26,82,.9);color:#ddd6fe;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)")+'">'+(k===cur?"Star Perk: ":"")+PERKS[k].name+'</button>').join("")+'</div>'; })()
+           :(tiny?'':'<p style="margin:.5rem 0 0;font-size:11px;font-weight:700;color:#c4b5fd">Star Perk at level '+PERK_LEVEL+': '+perkPair(selected).map(k=>PERKS[k].name).join(" or ")+'</p>'))+
+         (()=>{ const own=((profile.skinsOwned||{})[selected.id]||[]), cur=skinOf(selected.id)||"base";
+           return '<div role="radiogroup" aria-label="Skin" style="margin-top:'+(tiny?'.25rem':'.5rem')+';display:flex;flex-wrap:wrap;justify-content:center;gap:.375rem">'+[["base","Original"]].concat(Object.keys(SKIN_LOOKS).map(k=>[k,SKIN_LOOKS[k].name])).map(([k,n])=>{ const has=k==="base"||own.indexOf(k)>=0, on=k===cur;
+             return '<button type="button" role="radio" aria-checked="'+on+'" data-skin="'+k+'" style="min-height:'+(tiny?36:40)+'px;border-radius:.75rem;padding:.25rem .75rem;font-size:12px;font-weight:800;border:0;display:inline-flex;align-items:center;gap:.375rem;'+(on?"background:#f5f3ff;color:#1e1b4b":"background:rgba(36,26,82,.9);color:#ddd6fe;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)")+'"><span aria-hidden="true" style="width:12px;height:12px;border-radius:999px;background:'+(k==="base"?selected.suit:SKIN_LOOKS[k].suit)+';box-shadow:0 0 0 2px '+(k==="base"?selected.trim:SKIN_LOOKS[k].trim)+'"></span>'+n+(has?"":" · "+SKIN_PRICE)+'</button>'; }).join("")+'</div>'; })()+
          '<button type="button" id="btn-upgrade" class="btn-chunk font-display" '+(upCost===null||profile.coins<upCost?'aria-disabled="true" ':"")+'style="margin-top:.625rem;border-radius:1rem;padding:.5rem 1rem;font-size:.8rem;min-height:44px;'+(upCost!==null&&profile.coins>=upCost?"background:linear-gradient(180deg,#86efac,#22c55e);color:#052e16;box-shadow:inset 0 0 0 3px #bbf7d0, 0 7px 0 rgba(10,6,32,.55)":"background:linear-gradient(180deg,#3b2a7d,#241a52);color:#c4b5fd;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), 0 7px 0 rgba(10,6,32,.55)")+'">'+(upCost===null?"MAX LEVEL":"UPGRADE TO LEVEL "+(lv+1)+" · "+upCost+" COINS")+'</button>'+
          (tiny?"":'<div style="width:16rem;max-width:70vw;margin-top:.75rem">'+
            '<div style="display:flex;align-items:flex-end;justify-content:space-between;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#ddd6fe">'+
@@ -2129,8 +2281,19 @@ function showLobby(){
   // Responsive tweaks for very short / narrow screens
   if(window.innerWidth<430){ const p=$("#pill-played",root); if(p)p.style.display="none"; }
   if(window.innerWidth<640){ const p=$("#pill-wl",root); if(p)p.style.display="none"; }
-  registerFigure($("#hero-canvas",root),selected,{size:heroSize,nebulux:selected.id==="nebula",animated:true});
+  registerFigure($("#hero-canvas",root),skinned(selected,skinOf(selected.id)),{size:heroSize,nebulux:selected.id==="nebula",animated:true});
+  for(const b of root.querySelectorAll("[data-skin]"))b.addEventListener("click",()=>{
+    const k=b.dataset.skin, id=selected.id; profile.skin=profile.skin||{}; profile.skinsOwned=profile.skinsOwned||{};
+    const own=(profile.skinsOwned[id]||[]);
+    if(k!=="base"&&own.indexOf(k)<0){
+      if(profile.coins<SKIN_PRICE){ toast("The "+SKIN_LOOKS[k].name+" skin costs "+SKIN_PRICE+" coins. You have "+profile.coins+"."); return; }
+      if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent="Tap again: "+SKIN_PRICE+" coins"; window.setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; b.textContent=SKIN_LOOKS[k].name+" · "+SKIN_PRICE; } },4000); return; }
+      profile.coins-=SKIN_PRICE; profile.skinsOwned[id]=own.concat(k); SFX.play("power"); toast(SKIN_LOOKS[k].name+" "+selected.name+" unlocked!");
+    }
+    profile.skin[id]=k==="base"?null:k; saveProfile(); SFX.play("ui"); showLobby();
+  });
   const cycle=(dir)=>{ const next=mine[(idx+dir+mine.length)%mine.length]; profile.selectedBrawler=next.id; saveProfile(); SFX.play("ui"); showLobby(); };
+  for(const b of root.querySelectorAll("[data-perk]"))b.addEventListener("click",()=>{ profile.perks=profile.perks||{}; profile.perks[selected.id]=b.dataset.perk; saveProfile(); SFX.play("ui"); toast("Star Perk: "+PERKS[b.dataset.perk].name+". "+PERKS[b.dataset.perk].desc); showLobby(); });
   $("#btn-upgrade",root).addEventListener("click",()=>{
     if(upCost===null)return;
     if(!tryUpgrade(selected.id)){ toast("You need "+(upCost-profile.coins)+" more coins. Win matches and finish quests to earn them."); return; }
@@ -2147,11 +2310,14 @@ function showLobby(){
   mkRail(railL,"Modes",ICON_MODES,()=>openModes());
   const dot=(btn,n)=>{ if(n>0)btn.appendChild(el('<span aria-hidden="true" style="position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #141033">'+n+'</span>')); btn.style.position="relative"; };
   dot(mkRail(railL,"Pods",ICON_POD,()=>openPods()),profile.pods);
+  if(tiny){ const sb=el('<button type="button" class="pill" aria-pressed="'+(!SFX.muted)+'" aria-label="'+(SFX.muted?"Turn sound on":"Turn sound off")+'" style="min-height:36px;cursor:pointer;border:0">'+(SFX.muted?"Sound off":"Sound on")+'</button>'); sb.addEventListener("click",()=>{ SFX.toggle(); SFX.wake(); SFX.play("ui"); showLobby(); }); const tb=root.querySelector(".topbar > div:last-child"); if(tb)tb.prepend(sb); } else
+  { const sb=mkRail(railR,SFX.muted?"Sound off":"Sound on",'<span class="font-display" style="font-size:13px;line-height:1;color:#a5f3fc">'+(SFX.muted?"OFF":"ON")+'</span>',()=>{ SFX.toggle(); SFX.wake(); SFX.play("ui"); showLobby(); }); sb.setAttribute("aria-pressed",String(!SFX.muted)); }
   mkRail(railR,"How to play",'<span class="font-display" style="font-size:24px;line-height:1;color:#fcd34d">?</span>',()=>openHelp());
   dot(mkRail(railR,"Quests",ICON_QUEST,()=>openQuests()),questsReady());
   dot(mkRail(railR,"Star Road",ICON_ROAD,()=>openRoad()),roadReady());
   $("#mode-card",root).addEventListener("click",()=>openModes());
   $("#play-btn",root).addEventListener("click",()=>startMatch());
+  window.setTimeout(()=>{ if(app.contains(root)&&!sheetOpen)showGift(false); },600);
 }
 
 // =====================================================================
@@ -2239,7 +2405,7 @@ function openModes(){
     grid.appendChild(b);
   }
   body.appendChild(grid);
-  const note=el('<p style="margin-top:1rem;text-align:center;font-size:.75rem;font-weight:600;color:#c4b5fd">Ranked is Crystal Rush with bigger trophy swings (+14 / −9). Storm Standoff has no respawns, and smashed crates drop power cores. Vault Raid, Zone Control and Star Hunt are new! The arena for each mode changes every 15 minutes.</p>');
+  const note=el('<p style="margin-top:1rem;text-align:center;font-size:.75rem;font-weight:600;color:#c4b5fd">Ranked is Crystal Rush with bigger trophy swings (+14 / −9). Storm Standoff has no respawns, and smashed crates drop power cores. Vault Raid, Zone Control, Star Hunt and Titan Raid (co-op against a giant boss) are new! The arena for each mode changes every 15 minutes.</p>');
   body.appendChild(note);
 }
 function toast(text){
@@ -2250,6 +2416,21 @@ function toast(text){
 }
 const panelCss="margin-top:.75rem;border-radius:1.25rem;background:rgba(36,26,82,.9);padding:.875rem 1rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)";
 const bigBtn=(id,label,on)=>'<button type="button" id="'+id+'" class="btn-chunk font-display" '+(on?"":'aria-disabled="true" ')+'style="margin-top:.75rem;width:100%;min-height:48px;border-radius:1rem;padding:.625rem 1rem;font-size:1rem;'+(on?"background:linear-gradient(180deg,#fde047,#fbbf24 55%,#f59e0b);color:#451a03;box-shadow:inset 0 0 0 3px rgba(254,240,138,.7), 0 7px 0 rgba(10,6,32,.55)":"background:linear-gradient(180deg,#3b2a7d,#241a52);color:#c4b5fd;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), 0 7px 0 rgba(10,6,32,.55)")+'">'+label+'</button>';
+// ---- daily gift ----
+const GIFT=[20,30,40,50,60,80,150];
+const dayNum=(d=new Date())=>Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5);
+function giftState(){ const t=dayNum(), g=profile.gift||{last:-1,n:0}; const run=g.last===t-1||g.last===t?g.n:0; return {today:t,claimed:g.last===t,day:g.last===t?g.n:(run%7)+1}; }
+function claimGift(){ const st=giftState(); if(st.claimed)return null; const coins=GIFT[st.day-1]; profile.coins+=coins; if(st.day===7)profile.pods+=1; profile.gift={last:st.today,n:st.day}; saveProfile(); return {coins,pod:st.day===7}; }
+function showGift(force){
+  const st=giftState(); if(st.claimed||(!force&&/[?&]test\b/.test(location.search))||document.getElementById("gift"))return;
+  const w=el('<div id="gift" role="dialog" aria-modal="true" aria-label="Daily gift" style="position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(5,4,15,.72);padding:1rem"></div>');
+  w.innerHTML='<div style="'+panelCss+';margin:0;max-width:min(30rem,94vw);text-align:center"><p style="margin:0;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#fde047">Daily gift · day '+st.day+' of 7</p><h2 class="font-display" style="margin:.375rem 0 .75rem;font-size:1.5rem">'+(st.day===7?"Big gift day!":"Welcome back!")+'</h2>'+
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:.25rem">'+GIFT.map((n,i)=>'<div style="border-radius:.625rem;padding:.375rem 0;font-size:11px;font-weight:800;'+(i+1===st.day?"background:#fde047;color:#451a03":"background:rgba(255,255,255,.07);color:#ddd6fe;"+(i+1<st.day?"opacity:.45":""))+'">Day '+(i+1)+'<br>'+n+(i===6?"<br>+ pod":"")+'</div>').join("")+'</div>'+
+    '<p style="margin:.75rem 0 0;font-size:12px;font-weight:600;color:#c4b5fd">Come back every day: each day pays more coins, and day 7 adds a free Supply Pod.</p>'+bigBtn("gift-claim","CLAIM "+GIFT[st.day-1]+" COINS"+(st.day===7?" + A POD":""),true)+'</div>';
+  document.body.appendChild(w);
+  const b=$("#gift-claim",w); b.focus();
+  b.addEventListener("click",()=>{ const g=claimGift(); w.remove(); if(g){ SFX.play("power"); toast("+"+g.coins+" coins"+(g.pod?" and a Supply Pod!":"! See you tomorrow.")); } showLobby(); });
+}
 function openPods(){
   const body=sheetShell("Supply Pods","30rem");
   const draw=(last)=>{
@@ -2480,6 +2661,7 @@ function showVersus(){
   requestAnimationFrame(tick);
 }
 function showResults(){
+  window.__musicMode=null;
   const result=currentResult;
   if(!result){ showLobby(); return; }
   recordResult(result);
@@ -2519,6 +2701,16 @@ function showResults(){
    '</div>';
   setScreen(root);
   $("#res-again",root).addEventListener("click",()=>startMatch());
+  // a win: confetti for a few seconds (skipped for anyone who asked their device for less motion)
+  if(result.won&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    const cv=el('<canvas aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5"></canvas>'); root.appendChild(cv);
+    const g=cv.getContext("2d"), W=cv.width=root.clientWidth, H=cv.height=root.clientHeight, C=["#fde047","#22d3ee","#f472b6","#a78bfa","#4ade80","#fb923c"];
+    const bits=Array.from({length:Math.min(160,Math.round(W/6))},()=>({x:Math.random()*W,y:-20-Math.random()*H*0.6,vx:(Math.random()-0.5)*80,vy:120+Math.random()*160,r:Math.random()*6.28,vr:(Math.random()-0.5)*8,w:5+Math.random()*6,h:8+Math.random()*8,c:C[Math.floor(Math.random()*C.length)]}));
+    let last=performance.now(), t0=last; const f=(now)=>{ if(!cv.isConnected)return; const dt=Math.min(0.05,(now-last)/1000); last=now; g.clearRect(0,0,W,H);
+      for(const b of bits){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.r+=b.vr*dt; g.save(); g.translate(b.x,b.y); g.rotate(b.r); g.fillStyle=b.c; g.globalAlpha=Math.max(0,1-(now-t0-2600)/900); g.fillRect(-b.w/2,-b.h/2,b.w,b.h*Math.abs(Math.cos(b.r*1.7))); g.restore(); }
+      if(now-t0<3500)requestAnimationFrame(f); else cv.remove(); };
+    requestAnimationFrame(f);
+  }
   $("#res-lobby",root).addEventListener("click",()=>showLobby());
 }
 
@@ -2574,6 +2766,7 @@ function attachJoystick(zone,color,size,onChange){
 // Game screen: canvas + HUD + touch controls. NO pause, ever.
 // =====================================================================
 function showGame(){
+  window.__musicMode="match"; window.__musicFast=false;
   const setup=currentSetup;
   const mode=setup.mode;
   const isBall=mode==="ball", isShowdown=mode==="showdown", isArena=mode==="arena";
@@ -2624,7 +2817,7 @@ function showGame(){
    '</div>';
   setScreen(root);
   if(!window.matchMedia("(min-width: 768px)").matches||window.matchMedia("(pointer: coarse)").matches){ const h=$("#desktop-hint",root); if(h)h.style.display="none"; }
-  const modeIcon=mode==="vault"?ICON_VAULT:mode==="zone"?ICON_ZONE:mode==="hunt"?ICON_STAR_SM:isBall?ICON_BALL:isShowdown?ICON_SKULL:isArena?ICON_SWORDS:ICON_GEM;
+  const modeIcon=mode==="duel"?ICON_SWORDS:mode==="titan"?ICON_TITAN:mode==="vault"?ICON_VAULT:mode==="zone"?ICON_ZONE:mode==="hunt"?ICON_STAR_SM:isBall?ICON_BALL:isShowdown?ICON_SKULL:isArena?ICON_SWORDS:ICON_GEM;
   $("#hud-left-icon",root).innerHTML=modeIcon;
   $("#hud-right-icon",root).innerHTML=modeIcon;
   const feedEl=el('<div id="ko-feed" aria-live="polite" style="pointer-events:none;position:absolute;right:.75rem;top:9.25rem;display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;font-size:11px;font-weight:800"></div>');
@@ -2782,7 +2975,7 @@ function showGame(){
     if(n===lastTick)return false; lastTick=n; return n>0;
   };
   function updateHud(h){
-    const pct=mode==="vault"||mode==="zone"?"%":"";
+    const pct=mode==="vault"||mode==="zone"||mode==="titan"?"%":"";
     hudLeft.textContent=String(h.blueScore)+pct;
     hudRight.textContent=String(h.redScore)+pct;
     const feedKey=h.feed.map(k=>k.a+">"+k.b+k.t).join("|");
@@ -2793,6 +2986,7 @@ function showGame(){
     if(h.playerSuperReady&&!wasSuperReady)SFX.play("ready");
     wasSuperReady=h.playerSuperReady;
     if(cdTickFor(h))SFX.play("tick");
+    window.__musicFast=h.timeLeft<=30||h.countdownTeam==="blue"||h.countdownTeam==="red";
     const cdActive=h.countdownTeam==="blue"||h.countdownTeam==="red";
     if(cdActive){
       hudCenter.style.background=h.countdownTeam==="blue"?"rgba(6,182,212,.9)":"rgba(244,63,94,.9)";
@@ -2804,7 +2998,7 @@ function showGame(){
       hudCenter.style.boxShadow="inset 0 0 0 2px rgba(255,255,255,.25)";
       const mm=Math.floor(h.timeLeft/60), ss=Math.floor(h.timeLeft%60);
       hudCenterNum.textContent=mm+":"+String(ss).padStart(2,"0");
-      hudCenterLabel.textContent=mode==="vault"?"Crack the rival vault":mode==="zone"?"Hold the zones · first to 100":mode==="hunt"?"Most stars wins":isBall?"First to 2 goals":isShowdown?(h.zoneFrac<0.99?"Storm closing in!":"Last crew standing"):isArena?"First to 8 KOs":mode==="ranked"?"Ranked · first to 10 gems":"First to 10 gems";
+      hudCenterLabel.textContent=mode==="duel"?"First to 3 KOs":mode==="titan"?(h.titanRage?"The Titan is angry!":"Bring down the Titan"):mode==="vault"?"Crack the rival vault":mode==="zone"?"Hold the zones · first to 100":mode==="hunt"?"Most stars wins":isBall?"First to 2 goals":isShowdown?(h.zoneFrac<0.99?"Storm closing in!":"Last crew standing"):isArena?"First to 8 KOs":mode==="ranked"?"Ranked · first to 10 gems":"First to 10 gems";
     }
     const hpFrac=Math.max(0,h.playerHp/h.playerMaxHp);
     hpFill.style.width=(hpFrac*100)+"%";
@@ -2813,6 +3007,7 @@ function showGame(){
       ?(isBall?(h.playerHasBall?h.playerHp+" HP · YOU HAVE THE BALL — shoot to score!":h.playerHp+" HP · grab the ball!")
         :isShowdown?h.playerHp+" HP · no respawns!"
         :mode==="hunt"?h.playerHp+" HP · your head is worth "+h.playerBounty+" star"+(h.playerBounty>1?"s":"")
+        :mode==="titan"?h.playerHp+" HP · stay together and keep hitting the Titan!"
         :mode==="vault"?h.playerHp+" HP · shoot the red vault!"
         :mode==="zone"?h.playerHp+" HP · stand in a zone!"
         :isShowdown&&h.playerCores>0?h.playerHp+" HP · "+h.playerCores+" power core"+(h.playerCores>1?"s":"")
