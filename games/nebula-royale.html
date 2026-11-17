@@ -410,6 +410,9 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 #kcam{position:absolute;left:50%;top:20%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:1px;background:#0a0618c8;padding:9px 26px;border-radius:12px;pointer-events:none;text-shadow:0 1px 3px #000}#kcam[hidden]{display:none}#kcam small{font-size:12px;color:#ff8a9a;font-weight:700}#kcam b{font-size:24px}#kcam span{font-size:13px;color:#c9c6e8}
 #game:has(#end:not([hidden])) #kcam{visibility:hidden}
 
+/* the message lines sit below the heading pill, not on top of it */
+#game #ft{top:calc(80px + env(safe-area-inset-top,0px))}
+
 /* ===== phones and small screens ===== */
 body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 @media (pointer:coarse),(max-width:700px),(max-height:500px){
@@ -1558,6 +1561,7 @@ const MODES = {
   rankedSquads: { n: "Ranked Squads", d: "Climb the ranks as a squad of four.", tm: 4, dm: 0.8, acc: 0.75, type: "br", rk: "rps" },
   box: { n: "Box PvP", d: "1v1 in build boxes. First to 5 rounds.", tm: 1, dm: 0.75, acc: 0.7, type: "box" },
   zone: { n: "Zone Wars", d: "16 players, fully armed, a fast storm.", tm: 1, dm: 0.6, acc: 0.55, type: "zone" },
+  race: { n: "Weapon Race", d: "10 v 10 with respawns. Every elimination swaps your gun for the next of ten. Get through all eight first.", tm: 1, dm: 0.5, acc: 0.45, type: "rumble", wr: 1 },
   rumble: { n: "Team Rumble", d: "10 v 10 with respawns. First to 30.", tm: 1, dm: 0.5, acc: 0.45, type: "rumble" },
   playground: { n: "Playground", d: "No storm, everything unlocked: try every weapon, build, ride the zip lines, hit practice targets.", tm: 1, dm: 0, acc: 0.4, type: "pg" },
   zero: { n: "Zero Build", d: "No building at all. Your shield grows back when you stay out of trouble.", tm: 1, dm: 0.55, acc: 0.45, type: "br", zb: 1 },
@@ -1602,6 +1606,8 @@ const W = {
   drum: { n: "Pulse Drum", d: 15, r: 0.1, s: 0.05, rg: 70, pl: 1, mag: 50, rl: 3.4, am: "light", hs: 1.4, auto: 1, lo: 0 },
   // the Arc Caster: short range lightning; a hit jumps to up to two more rivals close by (game.js shoot)
   arc: { n: "Arc Caster", d: 24, r: 0.16, s: 0.012, rg: 34, pl: 1, mag: 16, rl: 2.6, am: "light", hs: 1.2, auto: 1, lo: 0, chain: 2 },
+  // the Frost Blaster: each hit chills the target, who moves at 60% speed for 1.2 s (physics in game.js)
+  frost: { n: "Frost Blaster", d: 17, r: 0.13, s: 0.026, rg: 80, pl: 1, mag: 24, rl: 2.3, am: "light", hs: 1.4, auto: 1, lo: 0, frost: 1 },
   turret: { n: "Mounted Turret", d: 19, r: 0.11, s: 0.02, rg: 130, pl: 1, mag: 999, rl: 1, am: "medium", hs: 1.5, auto: 1, lo: 0, fixed: 1 },
   repeater: { n: "Storm Repeater", d: 19, r: 0.085, s: 0.045, rg: 130, pl: 1, mag: 60, rl: 5.2, am: "medium", hs: 1.35, auto: 1, lo: 0, spin: 0.42 },
 };
@@ -2443,6 +2449,11 @@ function mkGun(id, r) {
   } else if (id == "arc") {
     p(rbox(0.1, 0.13, 0.34, 0.03), mL, 0, 0.05, 0.06); tube(0.03, 0.16, mB, 0, 0.07, 0.26); for (let k = 0; k < 3; k++) p(cyl(0.055, 0.055, 0.02, 10), mC, 0, 0.07, 0.2 + k * 0.06, Math.PI / 2);
     p(rbox(0.04, 0.04, 0.05, 0.01), mC, 0, 0.07, 0.38); p(rbox(0.07, 0.15, 0.08, 0.02), mB, 0, -0.08, -0.05, -0.3); p(rbox(0.09, 0.11, 0.16, 0.04), mL, 0, 0.03, -0.18); p(rbox(0.105, 0.025, 0.28, 0.008), mT, 0, 0.0, 0.06);
+  } else if (id == "frost") {
+    const mI = toon(0x9feaff, 1, 1.2);
+    p(rbox(0.11, 0.14, 0.36, 0.03), mL, 0, 0.05, 0.06); tube(0.034, 0.2, mB, 0, 0.07, 0.3); p(rbox(0.07, 0.07, 0.06, 0.02), mI, 0, 0.07, 0.42);
+    for (let k = 0; k < 3; k++) p(rbox(0.03, 0.09, 0.03, 0.01), mI, 0, 0.16, -0.02 + k * 0.08, 0.3);
+    p(rbox(0.07, 0.15, 0.08, 0.02), mB, 0, -0.08, -0.05, -0.3); p(rbox(0.09, 0.11, 0.16, 0.04), mL, 0, 0.03, -0.18); p(rbox(0.105, 0.025, 0.28, 0.008), mT, 0, 0.0, 0.06);
   } else if (id == "drum") {
     p(rbox(0.1, 0.15, 0.4, 0.03), mL, 0, 0.05, 0.08); tube(0.024, 0.2, mB, 0, 0.07, 0.28); p(rbox(0.05, 0.05, 0.08, 0.02), mB, 0, 0.07, 0.5);
     p(cyl(0.15, 0.15, 0.09, 16), mB, 0, -0.14, 0.14, 0, 0, Math.PI / 2); p(cyl(0.06, 0.06, 0.1, 10), mC, 0, -0.14, 0.14, 0, 0, Math.PI / 2);
@@ -2626,7 +2637,7 @@ function emotePose(g, d, t) {
 /* ===== lobby.js ===== */
 // Lobby: Play, Locker, Item Shop, Battle Pass and Quests, with a live 3D preview of your character.
 var NEWS = [{ t: "Arc Caster", d: "A new lightning gun: every hit jumps to two more rivals nearby", g: "linear-gradient(135deg,#7ff0ff,#1a2a6a)" }, { t: "Rising Lava", d: "New party mode: the sea turns to lava and climbs. Get high or build up", g: "linear-gradient(135deg,#ff5a1f,#3a0a10)" }, { t: "Daily rewards", d: "Play seven days in a row for 400 stars and 100 XP", g: "linear-gradient(135deg,#ffd45a,#6a1468)" }, { t: "Phoenix Feather", d: "A rare find that saves you once from being eliminated", g: "linear-gradient(135deg,#ffc23a,#8a1f3a)" }, { t: "Comet Caches", d: "Twice a match a comet crashes in the safe zone. It opens with top loot", g: "linear-gradient(135deg,#ff7a3d,#3a1d5a)" }, { t: "Weekly pass", d: "A new battle pass every week, with three bonus outfits", g: "linear-gradient(135deg,#d6246e,#2b1a5a)" }, { t: "Glow Fires", d: "Rest beside one near any town and your health mends", g: "linear-gradient(135deg,#ff9a3c,#5a2f1e)" }, { t: "Ride a Tusker", d: "Let one charge, dodge it, then hop on", g: "linear-gradient(135deg,#ff4fd8,#5a3a52)" }, { t: "Two new guns", d: "The Comet Marksman and the Pulse Drum", g: "linear-gradient(135deg,#ffb23e,#23262f)" }, { t: "Hot Spots", d: "One town each match is packed with loot. So everyone goes", g: "linear-gradient(135deg,#ff6a3a,#7a1f5a)" }, { t: "Grind Rails", d: "Hop on beside the roads and fly", g: "linear-gradient(135deg,#e8edf7,#3a7bff)" }, { t: "Mounted Turrets", d: "Hold the town. Don't let it overheat", g: "linear-gradient(135deg,#ff6a4a,#2b2f4a)" }, { t: "Glimmerlings", d: "Catch one of these and it bursts into loot", g: "linear-gradient(135deg,#ffe07a,#b06bff)" }, { t: "The Crown", d: "Win a match and wear it into the next", g: "linear-gradient(135deg,#ffd23a,#b06bff)" }, { t: "Comet Blade", d: "A rare blade that lunges at your enemies", g: "linear-gradient(135deg,#7fe3ff,#14205a)" }, { t: "Smoke and Shields", d: "Three new things to throw", g: "linear-gradient(135deg,#b8c0d0,#3a7bff)" }, { t: "Pocket Fort", d: "Throw it and a metal tower springs up", g: "linear-gradient(135deg,#ffb04f,#2b2f4a)" }, { t: "Twisters", d: "They'll throw you sky high. Your wings do the rest", g: "linear-gradient(135deg,#e8e4ff,#5a55a8)" }, { t: "Sky Rifts", d: "Step through and you're diving from the clouds", g: "linear-gradient(135deg,#c98aff,#2a1a5a)" }, { t: "Wildlife", d: "Puffbirds to carry, Tuskers to run from", g: "linear-gradient(135deg,#7fdcff,#5a3a52)" }, { t: "Star Perks", d: "Choose a perk each time the storm closes", g: "linear-gradient(135deg,#ffd23a,#b45cff)" }, { t: "Spring Caps", d: "Giant mushrooms that bounce you sky high", g: "linear-gradient(135deg,#ff4fa3,#52c8ff)" }, { t: "Six new emotes", d: "Hold T anywhere, even on the waiting island", g: "linear-gradient(135deg,#ff4fd8,#3a7bff)" }, { t: "Into the sunset", d: "Day matches now turn to dusk as the storm closes", g: "linear-gradient(135deg,#ffb070,#b04a8a)" }, { t: "Fishing and upgrades", d: "Fish the shallows, upgrade at the benches", g: "linear-gradient(135deg,#1fbfd0,#ffd23a)" }, { t: "Rocket Pack", d: "Hold fire and fly", g: "linear-gradient(135deg,#ffb04f,#7a1f5a)" }, { t: "Rain showers", d: "The weather can turn mid-match", g: "linear-gradient(135deg,#7a8cc8,#1a2040)" }, { t: "Zero Build", d: "No building, and your shield grows back", g: "linear-gradient(135deg,#52e0ff,#14205a)" }, { t: "Moon Jump", d: "Low gravity, huge jumps", g: "linear-gradient(135deg,#c9b6ff,#14103a)" }, { t: "Hunt contracts", d: "Take out your target for loot and stars", g: "linear-gradient(135deg,#ffd23a,#8a3bd0)" }, { t: "Storm Repeater", d: "A heavy new gun, and the Pulse Charge", g: "linear-gradient(135deg,#3a7bff,#1b1050)" }, { t: "Controllers work", d: "Plug one in and press any button", g: "linear-gradient(135deg,#1fbf7a,#3a1c6e)" }, { t: "Meteor showers", d: "Watch the sky and the red rings", g: "linear-gradient(135deg,#ff7a2f,#3a1c6e)" }, { t: "The Warden", d: "Beat the boss for a Mythic weapon", g: "linear-gradient(135deg,#ff4fd8,#5a2bbf)" }, { t: "Rovers", d: "Drive four-seat buggies round the island", g: "linear-gradient(135deg,#ff7a2f,#8a1f7a)" }, { t: "Edit your builds", d: "Doors, windows, half walls, roofs", g: "linear-gradient(135deg,#2b7be0,#6a3df0)" }, { t: "Rally Beacons", d: "Bring your squad back into the match", g: "linear-gradient(135deg,#1fbf7a,#0b3a5c)" }, { t: "Season 1 pass", d: "Reach level 6 to unlock Astra", g: "linear-gradient(135deg,#ff4fa3,#ffb23e)" }, { t: "Ranked is open", d: "Win matches to reach Diamond", g: "linear-gradient(135deg,#22b8a0,#0b3a5c)" }], newsI = 0, sq = "solo", rked = 0;
-const ART = { gold: "linear-gradient(150deg,#fff2a8,#ffb23e 55%,#6a3a08)", lava: "linear-gradient(150deg,#ffc23a,#ff4a1a 55%,#3a0a10)", twister: "linear-gradient(150deg,#e8e4ff,#6a60c8 60%,#1a1450)", perkup: "linear-gradient(150deg,#ffe07a,#c86bff 60%,#2a1460)", blades: "linear-gradient(150deg,#9feaff,#2a7bd0 60%,#10183a)", zero: "linear-gradient(150deg,#52e0ff,#1f5fd0 60%,#14205a)", moon: "linear-gradient(150deg,#c9b6ff,#5a3bd0 60%,#14103a)", playground: "linear-gradient(150deg,#7dff9a,#2b6cff 60%,#b06bff)", solo: "linear-gradient(150deg,#ffb23e,#ff4fa3)", duos: "linear-gradient(150deg,#52e0ff,#6a3df0)", squads: "linear-gradient(150deg,#7dff9a,#1f8a8a)", rankedSquads: "linear-gradient(150deg,#ffd23a,#2b6cff)", ranked: "linear-gradient(150deg,#59e07a,#0b6e8a)", rankedDuos: "linear-gradient(150deg,#2fd6a8,#3a3aa8)", box: "linear-gradient(150deg,#ff6b4a,#8a1f7a)", zone: "linear-gradient(150deg,#b06bff,#2b1a6a)", rumble: "linear-gradient(150deg,#ffd23a,#e0612b)", snipers: "linear-gradient(150deg,#7fa8c8,#1a2a4a)", x: "linear-gradient(150deg,#6b7fa8,#2b2540)" };
+const ART = { race: "linear-gradient(150deg,#ffe07a,#ff6b4a 55%,#3a0a3a)", gold: "linear-gradient(150deg,#fff2a8,#ffb23e 55%,#6a3a08)", lava: "linear-gradient(150deg,#ffc23a,#ff4a1a 55%,#3a0a10)", twister: "linear-gradient(150deg,#e8e4ff,#6a60c8 60%,#1a1450)", perkup: "linear-gradient(150deg,#ffe07a,#c86bff 60%,#2a1460)", blades: "linear-gradient(150deg,#9feaff,#2a7bd0 60%,#10183a)", zero: "linear-gradient(150deg,#52e0ff,#1f5fd0 60%,#14205a)", moon: "linear-gradient(150deg,#c9b6ff,#5a3bd0 60%,#14103a)", playground: "linear-gradient(150deg,#7dff9a,#2b6cff 60%,#b06bff)", solo: "linear-gradient(150deg,#ffb23e,#ff4fa3)", duos: "linear-gradient(150deg,#52e0ff,#6a3df0)", squads: "linear-gradient(150deg,#7dff9a,#1f8a8a)", rankedSquads: "linear-gradient(150deg,#ffd23a,#2b6cff)", ranked: "linear-gradient(150deg,#59e07a,#0b6e8a)", rankedDuos: "linear-gradient(150deg,#2fd6a8,#3a3aa8)", box: "linear-gradient(150deg,#ff6b4a,#8a1f7a)", zone: "linear-gradient(150deg,#b06bff,#2b1a6a)", rumble: "linear-gradient(150deg,#ffd23a,#e0612b)", snipers: "linear-gradient(150deg,#7fa8c8,#1a2a4a)", x: "linear-gradient(150deg,#6b7fa8,#2b2540)" };
 const views = {};
 
 NEWS.length = Math.min(NEWS.length, 7);
@@ -3704,6 +3715,7 @@ function slideStep(e, dt, ix, iz) {
   return [e.sd[0] * e.sv, e.sd[1] * e.sv];
 }
 function physics(e, wx, wz, dt, jump) {
+  if (e.frzT > G.t) { wx *= 0.6; wz *= 0.6; }
   const k = e.on ? (e.sl > 0 ? 30 : 16) : e.carry ? 1.5 : 5;
   e.vx += (wx - e.vx) * Math.min(1, k * dt); e.vz += (wz - e.vz) * Math.min(1, k * dt);
   const lg = G.m.lg || e.lgT > G.t || e.bird || inWell(e.x, e.z);
@@ -3826,7 +3838,7 @@ function toast(t) { const f = $("#ft"); f.innerHTML = t + "<br>" + (f.dataset.p 
 
 // ---------- loot ----------
 function rollTier(bias = 0) { const r = Math.random() * 100 - bias; return r < 4 ? 4 : r < 15 ? 3 : r < 35 ? 2 : r < 65 ? 1 : 0; }
-function rollWeapon(bias) { let r = rollTier(bias); if (G && G.m && G.m.gl) r = Math.max(3, r); const only = G && G.m && G.m.only; if (only) { const id = pick(only); return { t: "w", id, r: Math.max(r, id == "sniper" ? 1 : 0), m: W[id].mag }; } let id = pick(["pistol", "pistol", "revolver", "smg", "smg", "shotgun", "shotgun", "tac", "rifle", "rifle", "rifle", "burst", "burst", "sniper", "marksman", "drum", "arc"]); if (r >= 3 && Math.random() < 0.18) id = "launcher"; else if (r >= 2 && Math.random() < 0.14) id = "repeater"; if (id == "sniper" && r < 2) id = "rifle"; return { t: "w", id, r, m: W[id].mag }; }
+function rollWeapon(bias) { let r = rollTier(bias); if (G && G.m && G.m.gl) r = Math.max(3, r); const only = G && G.m && G.m.only; if (only) { const id = pick(only); return { t: "w", id, r: Math.max(r, id == "sniper" ? 1 : 0), m: W[id].mag }; } let id = pick(["pistol", "pistol", "revolver", "smg", "smg", "shotgun", "shotgun", "tac", "rifle", "rifle", "rifle", "burst", "burst", "sniper", "marksman", "drum", "arc", "frost"]); if (r >= 3 && Math.random() < 0.18) id = "launcher"; else if (r >= 2 && Math.random() < 0.14) id = "repeater"; if (id == "sniper" && r < 2) id = "rifle"; return { t: "w", id, r, m: W[id].mag }; }
 function rollHeal() { const id = pick(["cell", "cell", "cell", "band", "band", "orb", "med", "fizz"]); return { t: "c", id, n: id == "cell" ? 3 : id == "band" ? 5 : id == "fizz" ? 2 : 1 }; }
 function rollUtil() { const r = Math.random(); if (Math.random() < 0.015) return { t: "u", id: "blade", n: 1 }; if (G.type == "br" && Math.random() < 0.012) return { t: "u", id: "feather", n: 1 }; if (Math.random() < 0.035) return { t: "u", id: "rift", n: 1 }; if (!G.m.zb && Math.random() < 0.06) return { t: "u", id: "fort", n: 1 }; const r2 = Math.random(); if (r2 < 0.21) return r2 < 0.09 ? { t: "u", id: "smoke", n: 2 } : r2 < 0.15 ? { t: "u", id: "dome", n: 1 } : { t: "u", id: "splash", n: 2 }; return r < 0.05 ? { t: "u", id: "jet", n: 1, fuel: 100 } : r < 0.12 ? { t: "u", id: "moon", n: 1 } : r < 0.19 ? { t: "u", id: "bush", n: 1 } : r < 0.27 ? { t: "u", id: "shock", n: 2 } : r < 0.45 ? { t: "u", id: "gren", n: 2 } : r < 0.58 ? { t: "u", id: "pad", n: 1 } : r < 0.72 ? { t: "u", id: "trap", n: 1 } : r < 0.86 ? { t: "u", id: "grap", n: 4 } : { t: "u", id: "fire", n: 1 }; }
 function rollFloor() { const r = Math.random(); if (r < 0.46) return rollWeapon(-10); if (r < 0.74) return rollHeal(); if (r < 0.85) return rollUtil(); const id = pick(Object.keys(AMMO).filter((a) => a != "rockets")); return { t: "a", id, n: AMMO[id].give }; }
@@ -3878,6 +3890,7 @@ function addItem(e, it) {
   return (it.t == "c" || it.t == "u") && it.n > 0 && e.inv.some((x) => x && x.t == it.t && x.id == it.id) ? "part" : "full";
 }
 function pickUp(e, l) {
+  if (G.m && G.m.wr && l.it && l.it.t == "w") { if (e.isP && !G.wrTold) { G.wrTold = 1; toast("In the Weapon Race you only get guns by eliminating people."); } return false; }
   const it = l.it, r = addItem(e, it);
   if (r == "ok") { takeLoot(l); if (e.isP) { SND.pick(); toast("Picked up " + (it.t == "a" || it.t == "m" ? `${it.n} ${itemName(it)}` : itemName(it))); } return true; }
   if (r == "part") { if (e.isP) toast(itemName(it) + ": stack is full"); return false; }
@@ -4210,6 +4223,7 @@ function damage(q, n, by, head, w) {
   if (by && by.isP && q !== by) { hitFx(q, dealt, head, onShield > 0 && q.sh > 0); }
   if (onShield > 0 && q.sh <= 0 && ((by && by.isP) || q.isP)) shieldBreak(q);
   flashChar(q);
+  if (w == "frost" && !q.boss) { if (!(q.frzT > G.t) && (q.isP || dist3(q, G.p) < 60)) puff(V3(q.x, q.y + 1.1, q.z), 0x9feaff, 6); q.frzT = G.t + 1.2; if (q.isP && !G.frzTold) { G.frzTold = 1; toast("Chilled: you move slower for a moment"); } }
   if (!q.isP && by && by !== q) q.ai.threat = by;
   if (q.hp <= 0 && phoenix(q)) return;
   if (q.hp <= 0) { if (!q.kn && canKnock(q)) knock(q, by, w); else eliminate(q, by, w); }
@@ -4301,7 +4315,7 @@ function shoot(e, it, o, d, err = 0) {
     if (dome) { dome.hit = 1; if (dist3(hit, G.p) < 60) puff(hit, 0x7fdcff, 3); }
     else if (beast) { hurtWild(beast, w.d * dm, e); puff(hit, beast.kind == "tusk" ? 0xff8aa0 : 0xffffff, 3); }
     else if (car) { hurtRover(car, w.d * dm * (w.pl > 1 ? 0.6 : 1), e); if (dist3(hit, G.p) < 60) puff(hit, 0xffc060, 3); if (e.isP) tone(1500, 0.04, "square", 0.03); }
-    else if (tg) { const fall = w.pl > 1 ? cl(1.25 - best / 28, 0.3, 1) : best > w.rg * 0.6 ? 0.85 : 1; damage(tg, w.d * dm * (head ? w.hs : 1) * fall * (e.isP ? 1 : tg.isP ? G.dm : 0.6), e, head, it.id); if (w.chain) arcChain(e, tg, w.d * dm * 0.6, w.chain, it.id); }
+    else if (tg) { const fall = w.pl > 1 ? cl(1.25 - best / 28, 0.3, 1) : best > w.rg * 0.6 ? 0.85 : 1; damage(tg, w.d * dm * (head ? w.hs : 1) * fall * (e.isP ? 1 : tg.isP ? G.dm : G.m.wr ? 1 : 0.6), e, head, it.id); if (w.chain) arcChain(e, tg, w.d * dm * 0.6, w.chain, it.id); }
     else if (hw.s && hw.s.build) hurtBuild(hw.s.build, w.d * dm * (w.pl > 1 ? 0.6 : 1));
     if (car || beast || dome) { /* sparks above */ }
     else if (hw.s && !tg && dist3(hit, G.p) < 60) { puff(hit, hw.s.build ? MATS[hw.s.build.mk].c : 0xd8d0c0, 2); if (!hw.s.build && !hw.s.prop) decal(hit, boxNormal(hw.s, hit)); }
@@ -4678,19 +4692,24 @@ function startMode() {
     addBots(8, (i) => i); G.E.forEach((e, i) => { if (e.isP) return; const a = (i / 8) * Math.PI * 2, d = 14 + (i % 3) * 9, x = sp.x + Math.cos(a) * d, z = sp.z - 12 + Math.sin(a) * d * 0.6; e.dummy = 1; e.home = { x, z }; revive(e, x, groundAt(x, z, 99) + 0.1, z, 0, i % 2 ? 50 : 0); e.inv = [null, null, null, null, null]; e.sel = 0; holdItem(e); });
     toast("Playground! No storm and everything unlocked. Walk over the weapons to swap, build all you like, and hit the practice targets.");
   } else if (G.type == "rumble") {
-    const c = { x: 0, z: 10, r: 150 }; G.circ = [...Array(7)].map(() => ({ ...c })); G.waits = [1e9, 1e9, 1e9, 1e9, 1e9, 1e9]; G.dmgs = [2, 2, 2, 2, 2, 2]; G.sx = c.x; G.sz = c.z; G.sr = c.r;
-    G.tk = [0, 0]; G.need = 30; G.spawns = [{ x: -78, z: 12 }, { x: 78, z: 8 }];
+    const c = { x: 0, z: 10, r: G.m.wr ? 95 : 150 }; G.circ = [...Array(7)].map(() => ({ ...c })); G.waits = [1e9, 1e9, 1e9, 1e9, 1e9, 1e9]; G.dmgs = [2, 2, 2, 2, 2, 2]; G.sx = c.x; G.sz = c.z; G.sr = c.r;
+    G.tk = [0, 0]; G.need = G.m.wr ? 1e9 : 30; G.spawns = G.m.wr ? [{ x: -48, z: 12 }, { x: 48, z: 8 }] : [{ x: -78, z: 12 }, { x: 78, z: 8 }]; G.raceT = RACE_T;
     addBots(19, (i) => (i <= 9 ? 0 : 1));
     for (const e of G.E) rumbleDrop(e, true);
-    toast("Team Rumble! First team to 30 eliminations wins. You come back when you're knocked out.");
+    toast(G.m.wr ? "Weapon Race! Each elimination gives you the next gun. First through all " + RACE.length + " wins it for their team." : "Team Rumble! First team to 30 eliminations wins. You come back when you're knocked out.");
   }
   G.alive = G.E.filter((e) => e.alive).length;
 }
 // the Playground kit: strong weapons, heals, lots of everything
 function pgKit(e) { giveKit(e, [wpn("burst", 4), wpn("tac", 4), wpn("sniper", 4), { t: "c", id: "orb", n: 3 }, { t: "u", id: "gren", n: 6 }], 999, [999, 999, 999]); }
+// Weapon Race: the eight guns in order, easiest to hardest. Four minutes; then the team of whoever is furthest along wins.
+const RACE = ["rifle", "smg", "burst", "shotgun", "drum", "revolver", "marksman", "pistol"], RACE_T = 240;
+function raceKit(e) { const id = RACE[Math.min(RACE.length - 1, e.wr || 0)]; giveKit(e, [wpn(id, 3), { t: "c", id: "cell", n: 2 }], 200, [60, 0, 0]); e.ammo.rockets = 30; e.ammo.heavy = 40; }
+function raceLeader() { let b = null; for (const e of G.E) if (!b || (e.wr || 0) > (b.wr || 0)) b = e; return b; }
 function rumbleDrop(e, first) {
   const s = G.spawns[e.team === G.p.team ? 0 : 1], x = s.x + rnd(-18, 18), z = s.z + rnd(-18, 18);
   revive(e, x, terrH(x, z) + 42, z, e.team === G.p.team ? -Math.PI / 2 : Math.PI / 2, 0); e.st = "glide"; e.tx = x * 0.75; e.tz = z + rnd(-10, 10);
+  if (G.m.wr) { if (first) e.wr = 0; raceKit(e); if (e.isP) { G.spec = null; yaw = e.yaw; if (!first) toast("Back in the fight!"); } return; }
   if (first || !e.inv.some(Boolean)) giveKit(e, [wpn("rifle", ri(1, 2)), wpn("shotgun", ri(0, 2)), { t: "c", id: "cell", n: 3 }], 120, [120, 40, 0]);
   else { for (const k of Object.keys(e.ammo)) e.ammo[k] = Math.max(e.ammo[k], 60); for (const it of e.inv) if (it && it.t == "w") it.m = W[it.id].mag; }
   if (e.isP) { G.spec = null; yaw = e.yaw; if (!first) toast("Back in the fight!"); }
@@ -4700,6 +4719,7 @@ function stepModes(dt) {
   if (G.type == "box" && G.box.wait > 0) { G.box.wait -= dt; if (G.box.wait <= 0) { if (G.box.end == 1) winMatch(); else if (G.box.end == -1) loseMatch(); else if (!G.net || G.host) boxRound(); } }
   if (G.type == "box" && G.net && G.host && !G.box.round && G.opp && !G.over) { G.box.go = (G.box.go || 2) - dt; if (G.box.go <= 0) boxRound(); }
   if (G.type == "box" && G.arena) for (const e of G.E) if (e.alive && (!G.net || netAuth(e)) && e.y < G.arena.y - 22) damage(e, 999, null, false, null);
+  if (G.type == "rumble" && G.m.wr && !G.over && G.stage != "wait") { G.raceT -= dt; if (G.raceT <= 0) { const L = raceLeader(); toast("Time! " + (L.isP ? "You were" : esc(L.name) + " was") + " furthest along."); if (L.team === G.p.team) winMatch(); else loseMatch(); } }
   if (G.type == "rumble" && !G.over) for (const e of G.E) if (!e.alive && e.respT > 0) { e.respT -= dt; if (e.respT <= 0) rumbleDrop(e, false); }
   if (G.type == "pg" && !G.over) for (const e of G.E) if (!e.alive && e.respT > 0) { e.respT -= dt; if (e.respT <= 0) { if (e.isP) { const s = G.pgSpawn; revive(e, s.x, groundAt(s.x, s.z, 99) + 0.1, s.z, Math.PI); pgKit(e); G.spec = null; yaw = Math.PI; toast("Back again!"); } else revive(e, e.home.x, groundAt(e.home.x, e.home.z, 99) + 0.1, e.home.z, 0, Math.random() < 0.5 ? 50 : 0); } }
   if (G.type == "pg" && G.p.alive) { const P = G.p; for (const k of Object.keys(P.ammo)) P.ammo[k] = Math.max(P.ammo[k], 200); P.mats.w = P.mats.s = P.mats.m = 999; }
@@ -4709,6 +4729,11 @@ function modeElim(q, by) {
   if (G.type == "box") { boxRoundEnd(q); return true; }
   if (G.type == "pg") { q.respT = q.isP ? 2.5 : 3; if (q.isP) G.spec = null; return true; }
   if (G.type == "rumble") {
+    if (G.m.wr && by && by !== q && by.team !== q.team && by.alive) {
+      by.wr = (by.wr || 0) + 1;
+      if (by.wr >= RACE.length) { if (!G.over) { toast(by.isP ? "You finished the Weapon Race!" : esc(by.name) + " finished the Weapon Race."); if (by.team === G.p.team) winMatch(); else loseMatch(); } }
+      else { raceKit(by); if (by.isP) { toast("Next gun: " + W[RACE[by.wr]].n + " (" + (by.wr + 1) + " of " + RACE.length + ")"); tone(660, 0.15, "triangle", 0.05, 300); } }
+    }
     q.respT = 5; if (by && by !== q && by.team !== q.team) { const t = by.team === G.p.team ? 0 : 1; G.tk[t]++; if (G.tk[t] >= G.need && !G.over) { if (t == 0) winMatch(); else loseMatch(); } }
     if (q.isP) G.spec = by && by !== q && by.alive ? by : null; return true;
   }
@@ -4718,6 +4743,7 @@ function modeHud() {
   const p = G.p;
   if (G.type == "box") return `Round <b>${G.box.round}</b> · <b>${G.box.score[0]}</b> - <b>${G.box.score[1]}</b><div class=mate>First to ${G.box.need} · ${G.opp ? "vs " + esc(G.opp.name) : "waiting for your opponent"}</div>`;
   if (G.type == "pg") return `Playground · <b>${p.k}</b> target${p.k == 1 ? "" : "s"} down<div class=mate>No storm · ${!p.alive && p.respT > 0 ? "back in " + Math.ceil(p.respT) + "s" : "press Leave to go back"}</div>`;
+  if (G.type == "rumble" && G.m.wr) { const L = raceLeader(); return `Weapon Race · your gun <b>${Math.min(RACE.length, (p.wr || 0) + 1)}</b> of ${RACE.length}<div class=mate>Leader: ${L === p ? "you" : esc(L.name)} on ${Math.min(RACE.length, (L.wr || 0) + 1)} · ${Math.floor(Math.max(0, G.raceT) / 60)}:${String(Math.floor(Math.max(0, G.raceT) % 60)).padStart(2, "0")} left${!p.alive && p.respT > 0 ? " · back in " + Math.ceil(p.respT) + "s" : ""}</div>`; }
   if (G.type == "rumble") return `Your team <b>${G.tk[0]}</b> · Them <b>${G.tk[1]}</b><div class=mate>First to ${G.need}${!p.alive && p.respT > 0 ? " · back in " + Math.ceil(p.respT) + "s" : ""}</div>`;
   return null;
 }
@@ -5846,9 +5872,9 @@ function clearThrows() { for (const s of G.slashes || []) sc.remove(s.m); G.slas
 function botTrick(e, d) {
   if ((e.trickT || 0) > G.t || !e.on || e.kn) return false;
   const has = (id) => e.inv.find((x) => x && x.t == "u" && x.id == id), tot = e.hp + e.sh, hit = G.t - (e.dmgT == null ? -99 : e.dmgT) < 2.5;
-  const id = tot < 90 && hit && has("dome") ? "dome" : tot < 90 && hit && has("smoke") ? "smoke" : tot < 130 && has("splash") ? "splash" : d > 14 && d < 45 && !G.m.zb && (G.botForts || 0) < 4 && has("fort") ? "fort" : null;
+  const id = tot < 60 && hit && has("rift") ? "rift" : tot < 90 && hit && has("dome") ? "dome" : tot < 90 && hit && has("smoke") ? "smoke" : tot < 130 && has("splash") ? "splash" : d > 14 && d < 45 && !G.m.zb && (G.botForts || 0) < 4 && has("fort") ? "fort" : null;
   if (!id || Math.random() > 0.35) return false;
-  const it = has(id), L = id == "fort" ? 5 : 1.5; throwGren(e, V3(Math.sin(e.yaw) * L, 3, Math.cos(e.yaw) * L), id);
+  const it = has(id), L = id == "fort" ? 5 : id == "rift" ? -13 : 1.5; throwGren(e, V3(Math.sin(e.yaw) * L, id == "rift" ? 7 : 3, Math.cos(e.yaw) * L), id);
   it.n--; if (it.n <= 0) { e.inv[e.inv.indexOf(it)] = null; e.held = null; }
   if (id == "fort") G.botForts = (G.botForts || 0) + 1;
   e.trickT = G.t + 7;
@@ -6622,8 +6648,8 @@ function lavaGoal(e) {
 /* ===== bots.js ===== */
 // Computer players and the main loop. Bots land somewhere, loot chests and floor items, pick better weapons,
 // heal, build a wall when shot at, rotate out of the storm and fight at the range their weapon likes.
-const PREF = { marksman: 2.7, drum: 2.6, pistol: 1, smg: 2.5, shotgun: 2.4, rifle: 3, sniper: 2, launcher: 2.2, burst: 2.9, revolver: 1.8, tac: 2.5, repeater: 3.1, arc: 2.6 };
-const RANGE = { marksman: 34, drum: 11, pistol: 14, smg: 10, shotgun: 5, rifle: 22, sniper: 45, launcher: 24, burst: 24, revolver: 16, tac: 7, repeater: 20, arc: 9 };
+const PREF = { marksman: 2.7, drum: 2.6, pistol: 1, smg: 2.5, shotgun: 2.4, rifle: 3, sniper: 2, launcher: 2.2, burst: 2.9, revolver: 1.8, tac: 2.5, repeater: 3.1, arc: 2.6, frost: 2.5 };
+const RANGE = { marksman: 34, drum: 11, pistol: 14, smg: 10, shotgun: 5, rifle: 22, sniper: 45, launcher: 24, burst: 24, revolver: 16, tac: 7, repeater: 20, arc: 9, frost: 13 };
 const wScore = (it) => (it && it.t == "w" ? PREF[it.id] + it.r * 0.6 : 0);
 function botBestSlot(e, dist) {
   let best = 0, bs = 0;
@@ -6921,7 +6947,7 @@ function finish(win) {
   const lasted = G.t;
   setTimeout(() => {
     if (!G || !G.over) return;
-    const line = G.type == "box" ? `Box PvP · ${G.box.score[0]} - ${G.box.score[1]} · ${p.k} elimination${p.k == 1 ? "" : "s"}` : G.type == "rumble" ? `Team Rumble · ${G.tk[0]} - ${G.tk[1]} · ${p.k} elimination${p.k == 1 ? "" : "s"}` : `Placement #${pl} of ${G.E.length} · ${p.k} elimination${p.k == 1 ? "" : "s"}`;
+    const line = G.type == "box" ? `Box PvP · ${G.box.score[0]} - ${G.box.score[1]} · ${p.k} elimination${p.k == 1 ? "" : "s"}` : G.type == "rumble" ? `${G.m.n} · ${G.tk[0]} - ${G.tk[1]} · ${p.k} elimination${p.k == 1 ? "" : "s"}` : `Placement #${pl} of ${G.E.length} · ${p.k} elimination${p.k == 1 ? "" : "s"}`;
     const pill = (b, s) => `<span><b>${b}</b><small>${s}</small></span>`;
     const pills = (win && G.type == "br" && S.crown > 1 ? pill(S.crown, "wins in a row") : "") + (G.type == "box" ? pill(G.box.score[0] + " - " + G.box.score[1], "rounds") : G.type == "rumble" ? pill(G.tk[0] + " - " + G.tk[1], "team score") : pill("#" + pl, "of " + G.E.length)) + pill(p.k, "elimination" + (p.k == 1 ? "" : "s")) + pill(Math.round((G.stats || {}).d || 0), "damage") + ((G.stats || {}).hs ? pill(G.stats.hs, "headshot" + (G.stats.hs == 1 ? "" : "s")) : "") + pill(((lasted / 60) | 0) + ":" + String((lasted % 60) | 0).padStart(2, "0"), "survived") + (G.medalN ? pill(G.medalN, "medal" + (G.medalN == 1 ? "" : "s")) : "") + pill("+" + st, "stars") + pill("+" + xp, "XP") + (rk ? pill((rp >= 0 ? "+" : "") + rp, "RP") : "");
     const E = $("#end"); E.className = win ? "won" : "lost";
@@ -6967,6 +6993,23 @@ function spawnBoss() {
   const mark = new TH.Mesh(new TH.OctahedronGeometry(0.22, 0), new TH.MeshBasicMaterial({ color: 0xff4fd8 })); mark.position.y = 2.55; e.g.add(mark);
   G.E.push(e); G.boss = e; toast("The Warden guards " + poi.n + ". Beat them for a Mythic weapon.");
 }
+// The match never pauses: with the tab hidden the browser stops animation frames, so a worker timer keeps the game
+// running (no drawing) until you come back. Same as a real online match: bots and players carry on without you.
+let bgW = null, bgI = 0, bgLast = 0;
+function bgTick() {
+  if (!document.hidden || !G || G.over || $("#game").hidden || (TEST && !window.__bgOk)) return;
+  const now = performance.now(); let left = Math.min(30, (now - bgLast) / 1000); bgLast = now;
+  while (left > 0) { const d = Math.min(0.05, left); step(d); left -= d; if (G.over) break; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    bgLast = performance.now();
+    if (!bgW && !bgI) { try { bgW = new Worker(URL.createObjectURL(new Blob(["setInterval(function(){postMessage(0)},100)"], { type: "text/javascript" }))); bgW.onmessage = bgTick; } catch (e) { bgW = null; bgI = setInterval(bgTick, 100); } }
+  } else {
+    if (bgW) { bgW.terminate(); bgW = null; } if (bgI) { clearInterval(bgI); bgI = 0; }
+    last = performance.now();
+  }
+});
 
 /* ===== net.js ===== */
 // Real players. Everyone who has the game open on claude.ai at the same time shares a live room:
@@ -6978,7 +7021,7 @@ function spawnBoss() {
 // to them and they take the damage. If the host leaves, the next player takes over the computer
 // players. Nothing is stored: a match lives only while its players are in it.
 const NET = { room: null, peers: [], me: "", q: null, m: null, rx: 0, bctx: 0, real: 1, conn: false, goOp: null };
-const NET_OK = (k) => ["solo", "duos", "squads", "ranked", "rankedDuos", "rankedSquads", "snipers", "box", "zero", "moon", "twister", "perkup", "blades"].includes(k);
+const NET_OK = (k) => ["solo", "duos", "squads", "ranked", "rankedDuos", "rankedSquads", "snipers", "box", "zero", "moon", "twister", "perkup", "blades", "gold", "lava"].includes(k);
 const capOf = (m) => (m == "box" ? 2 : NET_CAP);
 const MM_WAIT = 20, NET_TOTAL = 48, NET_CAP = 16;
 try { const v = localStorage.getItem("nr_real"); if (v != null) NET.real = +v ? 1 : 0; NET.nb = +localStorage.getItem("nr_nb") ? 1 : 0; } catch (e) { /* no storage */ }
@@ -7079,10 +7122,12 @@ function mmTick() {
     if (joined.length >= cap - 1) Q.end = Math.min(Q.end, now + 2000);
     // Box PvP and real-players-only matches wait until there's someone to play against
     const ro0 = [me, ...joined.map((p) => p.peer)], waitReal = (Q.mode == "box" || Q.nb) && new Set(netTeams(ro0, Q.mode)).size < 2;
-    if (waitReal) { Q.end = 1e15; Q.start = 0; } else if (Q.end > 1e14 && Q.mode != "box") Q.end = now + (TEST && window.__mmWait ? window.__mmWait : 10) * 1000;
+    // people in this lobby are in a match of this mode right now: wait for it to end, then everyone plays together
+    const busy = L.filter((p) => !p.sameTab && p.presence.st == "match" && p.presence.md == Q.mode).length; Q.busy = Q.now ? 0 : busy;
+    if (waitReal) { Q.end = 1e15; Q.start = 0; } else if (Q.busy) { Q.end = 1e15; } else if (Q.end > 1e14 && Q.mode != "box") Q.end = now + (TEST && window.__mmWait ? window.__mmWait : 10) * 1000;
     if (Q.start) { Q.end = Math.min(Q.end, now); Q.start = 0; }
     Q.op = Object.assign({}, Q.op, { lf: Q.end > 1e14 ? -1 : Math.max(0, Math.ceil((Q.end - now) / 1000)), n: 1 + joined.length });
-    Q.info = { host: 1, lf: Q.op.lf, n: Q.op.n, alone: Q.alone };
+    Q.info = { host: 1, lf: Q.op.lf, n: Q.op.n, alone: Q.alone, busy: Q.busy };
     if (now >= Q.end) { const ro = [me, ...joined.map((p) => p.peer)]; netBegin(Object.assign({}, Q.op, { go: 1, ro, tm: netTeams(ro, Q.mode) }), me); return; }
   } else {
     Q.jn = null; Q.info = { lf: -1, n: qs.length }; const fr = qs.filter((p) => !p.presence.fw);
@@ -7098,6 +7143,7 @@ function mqShow() {
   const I = Q.info || {}, m = MODES[Q.mode], others = Math.max(0, (I.n || 1) - 1);
   const box = Q.mode == "box", wr = (box || Q.nb) && I.lf < 0, line = I.host ? (wr ? (box ? "Waiting for an opponent" : "Real players only · waiting for another real player or squad") : `${others ? `${others} other player${others == 1 ? "" : "s"} joined` : I.alone ? "Nobody else is online right now, so it's you and computer players" : "Waiting for other players to join"} · starting in ${I.lf}s`)
     : Q.follow && !Q.jn ? "Your party leader is looking for a match" : Q.jn ? `Joined ${esc(I.nm || "a")}'s match · ${I.n} player${I.n == 1 ? "" : "s"} · ${I.lf >= 0 ? `starting in ${I.lf}s` : "starting soon"}` : "Looking for a match...";
+  if (I.host && I.busy && !box) { const h2 = `<b>${m.n} · real players</b><span>${I.busy} player${I.busy == 1 ? " is" : "s are"} in a match right now. You'll all play the next one together when it ends${others ? " (" + others + " waiting with you)" : ""}.</span><button class=mqs onclick="if(NET.q){NET.q.now=1;NET.q.start=1;mmTick()}">Start now</button><button class=mqs onclick=netCancel()>Cancel</button>`; if (d.dataset.h !== h2) { d.dataset.h = h2; d.innerHTML = h2; } return; }
   const html = `<b>${m.n} · real players</b><span>${line}</span>${I.host ? (box ? (I.lf < 0 ? `<button class=mqs onclick="netCancel();play()">Play the computer instead</button>` : "") : wr ? `<button class=mqs onclick="if(NET.q){NET.q.nb=0;if(NET.q.op)NET.q.op.nb=0}NET.nb=0;netLobbyPres()">Add computer players</button>` : `<button class=mqs onclick="NET.q&&(NET.q.start=1)">Start now</button>`) : ""}${Q.follow ? `<button onclick=netPartyLeave()>Leave party</button>` : `<button onclick=netCancel()>Cancel</button>`}`;
   if (d.dataset.h !== html) { d.dataset.h = html; d.innerHTML = html; }
 }
@@ -7443,13 +7489,7 @@ function onlShow(on) {
   const st = (p) => (p.presence.st == "match" ? "in a match" : p.presence.st == "queue" ? "looking for a match" : "in the lobby");
   d.innerHTML = `<div><b>Online now</b><button class=x onclick=onlShow(false) aria-label=Close>×</button></div>${L.length ? L.map((p) => `<div class=orow><span class=sia>${esc(String(p.presence.nm || "P")).slice(0, 1).toUpperCase()}</span><span><b>${esc(String(p.presence.nm || "Player").slice(0, 16))}</b><small>${inP.has(p.peer) ? "in your party" : st(p)}</small></span>${!inP.has(p.peer) && canInv && p.presence.st == "lobby" ? `<button class=btn data-p='${esc(p.peer)}' onclick=netInvite(this.dataset.p)>Invite</button>` : ""}</div>`).join("") : "<p class=nrp>Nobody else has the game open right now.</p>"}`;
 }
-// you were away from the tab for a long time: the match carried on without you
-let hidAt = 0;
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) { hidAt = performance.now(); return; }
-  if (hidAt && G && G.net && NET.m && G.p.alive && !G.over && performance.now() - hidAt > 15000) { G.p.alive = 0; G.p.place = G.E.filter((e) => e.alive).length + 1; netEv("el", G.p.nid, "", ""); sc.remove(G.p.g); toast("You were away from the game for a while, so you left the match"); finish(0); }
-  hidAt = 0;
-});
+
 
 /* ===== hud.js ===== */
 // The heads-up display: health and shield, the hotbar with rarity colours, ammo and materials, prompts,
@@ -7469,7 +7509,7 @@ function slotHTML(p) {
   let h = "";
   for (let i = 0; i < 6; i++) {
     const it = i ? p.inv[i - 1] : null; let nm = i == 0 ? "Pickaxe" : "", ct = "", col = "#ffffff22", bar = "";
-    if (it) { nm = it.t == "w" ? (coarse ? { pistol: "Pistol", smg: "SMG", shotgun: "Shotgun", rifle: "Rifle", sniper: "Sniper", launcher: "Rockets", burst: "Burst", tac: "Tac", revolver: "Revolver", repeater: "Repeater", marksman: "Marksman", drum: "Drum", arc: "Arc" }[it.id] : W[it.id].n) : coarse ? (it.t == "u" ? UT : CI)[it.id].n.split(" ").pop() : (it.t == "u" ? UT : CI)[it.id].n; col = itemColor(it); if (it.t == "w") { ct = `${it.m}<small>/${p.ammo[W[it.id].am]}</small>`; } else ct = it.id == "jet" ? Math.ceil(it.fuel == null ? 100 : it.fuel) + "%" : it.n; bar = `<em style="background:${col}"></em>`; }
+    if (it) { nm = it.t == "w" ? (coarse ? { pistol: "Pistol", smg: "SMG", shotgun: "Shotgun", rifle: "Rifle", sniper: "Sniper", launcher: "Rockets", burst: "Burst", tac: "Tac", revolver: "Revolver", repeater: "Repeater", marksman: "Marksman", drum: "Drum", arc: "Arc", frost: "Frost" }[it.id] : W[it.id].n) : coarse ? (it.t == "u" ? UT : CI)[it.id].n.split(" ").pop() : (it.t == "u" ? UT : CI)[it.id].n; col = itemColor(it); if (it.t == "w") { ct = `${it.m}<small>/${p.ammo[W[it.id].am]}</small>`; } else ct = it.id == "jet" ? Math.ceil(it.fuel == null ? 100 : it.fuel) + "%" : it.n; bar = `<em style="background:${col}"></em>`; }
     h += `<button class='hs ${p.sel == i && !G.bmode ? "on" : ""}' data-i=${i} onclick=selSlot(+this.dataset.i) style="--rc:${col}">${bar}<i>${i + 1}</i>${nm}<u>${ct}</u></button>`;
   }
   return h;
