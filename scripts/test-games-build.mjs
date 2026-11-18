@@ -11,7 +11,7 @@ const assert = (c, m) => {
   } else console.log("ok", m);
 };
 const src = new URL("../games/src/", import.meta.url), dir = new URL("../games/", import.meta.url);
-const kit = readFileSync(new URL("kit.js", src), "utf8"), css = readFileSync(new URL("kit.css", src), "utf8");
+const kit = readFileSync(new URL("nopause.js", src), "utf8") + "\n" + readFileSync(new URL("kit.js", src), "utf8"), css = readFileSync(new URL("kit.css", src), "utf8");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 // boards rank lowest-first when they're times, or listed in LOW_BOARDS (golf strokes); the rest highest-first
 {

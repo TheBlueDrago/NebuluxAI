@@ -7,7 +7,8 @@ import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 
 const dir = new URL("../games/", import.meta.url);
 const src = new URL("../games/src/", import.meta.url);
-const kit = readFileSync(new URL("kit.js", src), "utf8");
+// the no-pause shim goes first, so the game loop keeps running in a hidden tab
+const kit = readFileSync(new URL("nopause.js", src), "utf8") + "\n" + readFileSync(new URL("kit.js", src), "utf8");
 const css = readFileSync(new URL("kit.css", src), "utf8");
 const only = process.argv[2];
 const names = readdirSync(src).filter((f) => f.endsWith(".html")).map((f) => f.slice(0, -5)).filter((n) => !only || n === only);
