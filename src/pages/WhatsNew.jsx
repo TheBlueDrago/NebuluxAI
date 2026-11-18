@@ -9,6 +9,8 @@ const UPDATES = [
   {
     date: "November 2026",
     items: [
+      { icon: Gamepad2, text: "Real players in every Arcade game. Nebula Brawl matches take up to six real players in every mode (three in co-op Titan Raid), Nebula Royale has real players in every mode including Team Rumble, Weapon Race and Zone Wars, and in every other game you see the people playing it at the same time. If people are mid-match when you look for one, you wait and join their next match instead of being sent somewhere else." },
+      { icon: Gamepad2, text: "A fresh start: every Nebula Royale and Nebula Brawl account and save was reset, so everyone starts from zero." },
       { icon: Gamepad2, text: "Nebula Brawl now has a player agreement and accounts: log in or sign up with the same name and password as Nebula Royale, and play 1v1 Duel and KO Arena against real players. New: Training Ground to practice on dummies, quick chat pins, skins and three new fighters." },
       { icon: Gamepad2, text: "Nebula Royale: Weapon Race (every elimination gives you the next gun), Golden Loot, the Frost Blaster and the Rift Orb. If others are mid-match when you look for one, you wait and play the next match with them. Matches in both games keep going if you switch tabs, just like a real online game." },
       { icon: Gamepad2, text: "Two new games in the Arcade: Nebula Royale, a 100-player battle royale with building, Tusker rides, Comet Caches and a weekly battle pass, and Nebula Brawl, fast 3v3 fights in eight modes with gadgets, Hyper Surge and 110 fighters to unlock." },
