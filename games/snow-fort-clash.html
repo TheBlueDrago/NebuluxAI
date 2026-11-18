@@ -219,11 +219,11 @@ const keys = {}; let started = false, locked = false, rmb = false;
 const actions = {}; // key code -> function (the game adds its own, e.g. actions.KeyE = interact)
 addEventListener("keydown", (e) => {
   keys[e.code] = true;
+  if (e.code === "KeyT" && !e.repeat && typeof netSay == "function" && !/INPUT|TEXTAREA/.test((e.target && e.target.tagName) || "")) netSay();
   if (!started) return;
   if (e.code === "Space") { P.wantJump = true; e.preventDefault(); }
   if (e.code === "ControlLeft" || e.code === "ControlRight" || e.code === "ShiftLeft") { e.preventDefault(); if (locked) document.exitPointerLock?.(); else cvs.requestPointerLock?.(); }
-  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }
-});
+  if (actions[e.code] && !e.repeat) { e.preventDefault(); actions[e.code](); }});
 addEventListener("keyup", (e) => { keys[e.code] = false; if (e.code === "Space") P.wantJump = false; });
 document.addEventListener("pointerlockchange", () => { locked = document.pointerLockElement === cvs; });
 cvs.addEventListener("mousedown", (e) => { if (e.button === 2) rmb = true; if (e.button === 0 && started && actions.click) actions.click(); });
@@ -401,6 +401,17 @@ const NETK = { ws: null, up: false, room: '', peers: new Map(), sendT: 0, tries:
   };
   open();
 })();
+const QCHAT = ["Hi!", "GG", "Nice!", "Follow me", "Watch out", "Oops", "Thanks!"];
+function netSay() {
+  if (!NETK.up) return;
+  const t = performance.now(); if (t - (NETK.sayAt || 0) < 1500) return; NETK.sayAt = t;
+  NETK.say = QCHAT[(NETK.qi = NETK.qi == null ? 0 : (NETK.qi + 1) % QCHAT.length)]; NETK.sayN = (NETK.sayN || 0) + 1; NETK.sayT = 3;
+  show("You: " + NETK.say, 1.6);
+}
+function netBubble(o, text) {
+  if (!o.bub) { o.bub = liveLabel(512, 56); o.bub.scale.set(3 / 0.62, 0.75 / 0.62, 1); o.bub.position.y = 6.2; o.bub.material.depthTest = false; o.bub.renderOrder = 6; o.body.g.add(o.bub); }
+  o.bub.set(text, "#fde047"); o.bub.visible = true; o.bubT = 3;
+}
 function netKitPeer(p, d) {
   if (!d || d.v !== 3 || !Array.isArray(d.p)) return;
   let o = NETK.peers.get(p);
@@ -411,22 +422,25 @@ function netKitPeer(p, d) {
     o = { body, pos: V(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10), to: V(), yaw: 0, sp: 0 }; NETK.peers.set(p, o);
   }
   o.to.set(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10); o.yaw = (d.y | 0) / 100; o.sp = (d.s | 0) / 10; o.og = !!d.g; o.at = performance.now(); o.body.g.visible = !d.h;
+  if (Array.isArray(d.m) && d.m[0] !== o.mN && QCHAT.includes(d.m[1])) { o.mN = d.m[0]; netBubble(o, d.m[1]); }
 }
 onFrame((dt, T) => {
   for (const [p, o] of NETK.peers) {
     if (performance.now() - (o.at || 0) > 6000) { scene.remove(o.body.g); NETK.peers.delete(p); continue; }
     o.pos.lerp(o.to, Math.min(1, dt * 10)); o.body.g.position.copy(o.pos);
     o.body.g.rotation.y += angDiff(o.yaw, o.body.g.rotation.y) * Math.min(1, 12 * dt); if (o.body.legs) animate(o.body, o.sp, o.og, T);
+    if (o.bub && o.bub.visible && (o.bubT -= dt) <= 0) o.bub.visible = false;
   }
   if (NETK.up && NETK.ws && (NETK.sendT -= dt) <= 0) {
     NETK.sendT = 0.1;
     const me = NET_SELF ? NET_SELF() : null, pos = me ? me.pos : P.pos;
-    const d = { v: 3, n: NETK.name, c: NETK.c, k: NETK.k, p: [Math.round(pos.x * 10), Math.round(pos.y * 10), Math.round(pos.z * 10)], y: Math.round((me ? me.yaw : P.body.g.rotation.y || 0) * 100), s: Math.round((me ? me.sp || 0 : Math.hypot(P.vel.x, P.vel.z)) * 10), g: me ? 1 : P.onGround ? 1 : 0, h: !me && P.body.g.visible === false ? 1 : 0 };
+    const d = { v: 3, n: NETK.name, c: NETK.c, k: NETK.k, p: [Math.round(pos.x * 10), Math.round(pos.y * 10), Math.round(pos.z * 10)], y: Math.round((me ? me.yaw : P.body.g.rotation.y || 0) * 100), s: Math.round((me ? me.sp || 0 : Math.hypot(P.vel.x, P.vel.z)) * 10), g: me ? 1 : P.onGround ? 1 : 0, h: !me && P.body.g.visible === false ? 1 : 0, m: NETK.sayT > 0 ? [NETK.sayN, NETK.say] : null };
+    if (NETK.sayT > 0) NETK.sayT -= 0.1;
     try { NETK.ws.send(JSON.stringify({ t: 'p', r: NETK.room, d })); } catch { /* dropped */ }
   }
   const el = $("netk"), n = NETK.peers.size;
-  if (n && !el) { const e = document.createElement('div'); e.id = 'netk'; e.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:30;padding:4px 12px;border-radius:999px;background:#0009;color:#9fe8ff;font:700 13px Segoe UI,system-ui;pointer-events:none'; document.body.appendChild(e); }
-  if (el) { if (!n) el.remove(); else el.textContent = n + 1 + ' real players here'; }
+  if (n && !el) { const e = document.createElement('div'); e.id = 'netk'; e.setAttribute('role', 'button'); e.tabIndex = 0; e.title = 'Say something to the other players (T)'; e.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:30;padding:10px 14px;min-height:40px;box-sizing:border-box;border-radius:999px;background:#000a;color:#9fe8ff;font:700 13px Segoe UI,system-ui;cursor:pointer;user-select:none'; e.addEventListener('click', (ev) => { ev.stopPropagation(); netSay(); }); document.body.appendChild(e); }
+  if (el) { if (!n) el.remove(); else el.textContent = n + 1 + ' real players here · Chat (T)'; }
 });
 
 function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
