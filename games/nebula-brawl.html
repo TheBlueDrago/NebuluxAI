@@ -92,6 +92,19 @@
   .middle{ position:relative; display:flex; flex:1; min-height:0; align-items:center; justify-content:center; padding:.5rem 0; }
   .rail{ position:absolute; top:50%; transform:translateY(-50%); z-index:10; display:flex; flex-direction:column; gap:.625rem; }
   .rail-left{ left:0; } .rail-right{ right:0; }
+  /* narrow upright phones: the aim stick in the corner, the action buttons in rows above it, the pin beside it */
+  @media (max-width:519px){
+    #stick-move, #stick-aim{ width:clamp(6.5rem,31vmin,9rem)!important; height:clamp(6.5rem,31vmin,9rem)!important; }
+    #ctl-right{ width:clamp(6.5rem,31vmin,9rem); flex-wrap:wrap-reverse; justify-content:flex-end; align-items:flex-end; gap:.375rem!important; margin-right:.375rem!important; }
+    #ctl-right > #stick-aim{ order:-1; }
+    #ctl-right > .round-btn{ margin:0!important; }
+    #ctl-right > #btn-auto{ height:2.75rem!important; width:2.75rem!important; }
+    #ctl-right > #btn-super{ height:3.75rem!important; width:3.75rem!important; }
+    #ctl-right > #btn-hyper, #ctl-right > #btn-gadget{ height:2.75rem!important; width:2.75rem!important; }
+    #ctl-right > #btn-pin{ right:auto!important; left:-3.25rem; bottom:.25rem!important; }
+  }
+  .rail-xs .rail-label{ display:none; } .rail-xs .rail-btn{ width:2.75rem; min-height:2.75rem; justify-content:center; }
+  .rail-sm{ gap:.375rem; } .rail-sm .rail-btn{ padding:.3rem .2rem; } .rail-sm .rail-btn svg{ width:18px; height:18px; }
   .rail-btn{ display:flex; width:3.5rem; flex-direction:column; align-items:center; gap:.25rem; border-radius:1rem;
     background:linear-gradient(180deg,var(--rail-a),var(--rail-b)); padding:.5rem .125rem; box-shadow:inset 0 0 0 2px rgba(255,255,255,.3), 0 7px 0 rgba(10,6,32,.55), inset 0 -6px 0 rgba(0,0,0,.22), inset 0 3px 0 rgba(255,255,255,.45); }
   @media (min-width:640px){ .rail-btn{ width:4rem; padding:.625rem .25rem; } }
@@ -309,7 +322,7 @@ function speedLabel(speed){ if(speed<235)return "Slow"; if(speed<262)return "Nor
 
 // The owner wiped every save and account on 2026-11-17: the first time a game opens after that, it clears its old saves
 // and saved accounts on this device (Nebula Royale and Nebula Brawl share the marker, so it happens once).
-(() => { try { if (localStorage.getItem("nb_wipe") !== "2026-11-17") { for (const k of Object.keys(localStorage)) if (/^(nr|nb|nebula-brawl)/.test(k)) localStorage.removeItem(k); localStorage.setItem("nb_wipe", "2026-11-17"); } } catch (e) { /* no storage */ } })();
+(() => { try { if (localStorage.getItem("nb_wipe") !== "2026-11-18") { for (const k of Object.keys(localStorage)) if (/^(nr|nb|nebula-brawl)/.test(k)) localStorage.removeItem(k); localStorage.setItem("nb_wipe", "2026-11-18"); } } catch (e) { /* no storage */ } })();
 // ---------- profile in localStorage ----------
 // Each account has its own save ("nb2:<name key>"); tests and offline play use "nb2:guest". The old v1 save is not read:
 // everyone started fresh when accounts came in (2026-11-17).
@@ -2207,6 +2220,8 @@ function heroSizeFor(vh){ return vh<440?104:vh<580?148:vh<760?188:230; }
 // registered figure (lobby hero, loading crew, versus cards).
 let figureRegistry=[];
 let figureRaf=0;
+// big screens: the lobby is zoomed so it fills the screen; figures draw at that resolution so they stay sharp
+let UI_ZOOM=1;
 function registerFigure(canvas,def,opts){
   opts=opts||{};
   const entry={canvas,def,size:opts.size||64,nebulux:!!opts.nebulux,ring:opts.ring||null,animated:!!opts.animated,facing:opts.facing!=null?opts.facing:Math.PI/2.6};
@@ -2218,7 +2233,7 @@ function registerFigure(canvas,def,opts){
 function drawFigureEntry(entry,t){
   const canvas=entry.canvas, ctx=canvas.getContext("2d");
   if(!ctx)return;
-  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const dpr=Math.min(2,window.devicePixelRatio||1)*UI_ZOOM;
   const w=entry.nebulux?entry.size*1.5:entry.size, h=entry.size;
   if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){
     canvas.width=w*dpr; canvas.height=h*dpr;
@@ -2306,14 +2321,17 @@ function modeThumbHTML(mode,big){
 // =====================================================================
 // Lobby
 // =====================================================================
-function showLobby(){
+// fit: 0 is the full lobby; if it doesn't fit the screen it is drawn again more compactly (up to 4)
+function showLobby(fit){
+  fit=(typeof fit==="number"?fit:0)|0;
   window.__musicMode="lobby"; window.__musicFast=false;
   ensureProfile(); ensureQuests(); refreshMaps();
   const selected=brawlerById(profile.selectedBrawler);
   const mine=ownedList(), lv=levelOf(selected.id), mul=levelMul(lv), upCost=upgradeCost(selected.id);
-  const vh=viewportH();
-  const narrow=(window.innerWidth||800)<520, heroSize=Math.min(heroSizeFor(vh),narrow?170:999);
-  const compact=vh<600, tiny=vh<460, tight=tiny||narrow;
+  const vh0=viewportH(), z=Math.min(2,Math.min((window.innerWidth||1280)/1280,vh0/760)); UI_ZOOM=z>1.08?z:1;
+  const vh=vh0/UI_ZOOM;
+  const narrow=(window.innerWidth||800)<520, heroSize=Math.max(fit>=4?56:72,Math.round(Math.min(heroSizeFor(vh),narrow?170:999)*[1,1,0.78,0.62,0.5][fit]));
+  const compact=vh<600||fit>=2, tiny=vh<460||fit>=3, tight=tiny||narrow||fit>=1;
   const rank=rankFor(profile.trophies);
   const info=MODE_INFO[appMode];
   const idx=Math.max(0,mine.findIndex(b=>b.id===selected.id));
@@ -2327,14 +2345,14 @@ function showLobby(){
        '<div style="margin-left:auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end">'+
          '<span class="pill" id="pill-coins">'+ICON_COIN+' '+fmt(profile.coins)+'</span>'+
          '<span class="pill">'+ICON_TROPHY+' '+profile.trophies+'</span>'+
-         '<span class="pill" id="pill-played">'+ICON_GEM+' '+profile.games+' <span class="sub">played</span></span>'+
-         '<span class="pill" id="pill-wl">'+profile.wins+'W · '+profile.losses+'L</span>'+
+         (fit>=4?"":'<span class="pill" id="pill-played">'+ICON_GEM+' '+profile.games+' <span class="sub">played</span></span>'+
+         '<span class="pill" id="pill-wl">'+profile.wins+'W · '+profile.losses+'L</span>')+
          '<span class="pill" id="pill-online" style="display:none;color:#86efac" aria-live="polite"></span>'+
        '</div>'+
      '</div>'+
      '<div class="middle">'+
-       '<div class="rail rail-left" id="rail-left"></div>'+
-       '<div class="rail rail-right" id="rail-right"></div>'+
+       '<div class="rail rail-left'+(fit>=2?' rail-sm':'')+(fit>=4?' rail-xs':'')+'" id="rail-left"></div>'+
+       '<div class="rail rail-right'+(fit>=2?' rail-sm':'')+(fit>=4?' rail-xs':'')+'" id="rail-right"></div>'+
        '<div class="hero-col">'+
          '<div style="position:relative;width:'+heroSize+'px" id="hero-stage">'+
            '<button type="button" class="cycle-btn" id="cycle-prev" aria-label="Previous brawler" style="left:-1.75rem">◀</button>'+
@@ -2344,13 +2362,13 @@ function showLobby(){
            '<div class="animate-floaty" style="position:relative;display:flex;justify-content:center"><canvas id="hero-canvas" aria-hidden="true"></canvas></div>'+
            '<div aria-hidden="true" style="position:relative;border-radius:50%;background:radial-gradient(ellipse at center,rgba(139,92,246,.75),rgba(139,92,246,.18) 60%,transparent 72%);width:'+(heroSize*1.4)+'px;height:'+(heroSize*0.15)+'px;margin:-'+(heroSize*0.16)+'px auto 0"></div>'+
          '</div>'+
-         '<div class="name-plate"><h1 class="font-display" style="font-size:'+(compact?26:34)+'px">'+selected.name+'</h1></div>'+
-         '<div style="margin-top:.5rem;display:flex;max-width:94vw;flex-wrap:wrap;align-items:center;justify-content:center;gap:.375rem .5rem;padding:0 .25rem">'+
+         '<div class="name-plate"><h1 class="font-display" style="font-size:'+(fit>=4?21:compact?26:34)+'px">'+selected.name+'</h1></div>'+
+         (fit>=4?"":'<div style="margin-top:.5rem;display:flex;max-width:94vw;flex-wrap:wrap;align-items:center;justify-content:center;gap:.375rem .5rem;padding:0 .25rem">'+
            '<span class="badge" style="background:'+RARITY_COLORS[selected.rarity]+'">'+selected.rarity+'</span>'+
            '<span style="max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.875rem;font-weight:700;color:#ede9fe">'+selected.title+'</span>'+
            '<span class="count-badge">Level '+lv+'</span>'+
            '<span class="count-badge">'+(idx+1)+' / '+mine.length+' owned</span>'+
-         '</div>'+
+         '</div>')+
          (tiny?"":'<div style="margin-top:.625rem;display:flex;max-width:94vw;flex-wrap:wrap;justify-content:center;gap:.375rem;font-size:11px;font-weight:700">'+
            '<span class="stat-pill"><span class="lab">HP </span>'+Math.round(selected.hp*mul/10)*10+'</span>'+
            '<span class="stat-pill"><span class="lab">Damage </span>'+Math.round(selected.damage*mul)+(selected.pellets>1?" x"+selected.pellets:"")+'</span>'+
@@ -2363,10 +2381,11 @@ function showLobby(){
          (lv>=PERK_LEVEL?(()=>{ const pp=perkPair(selected), cur=(profile.perks||{})[selected.id]||pp[0];
            return '<div role="radiogroup" aria-label="Star Perk" style="margin-top:.5rem;display:flex;flex-wrap:wrap;justify-content:center;gap:.375rem">'+pp.map(k=>'<button type="button" role="radio" aria-checked="'+(k===cur)+'" data-perk="'+k+'" title="'+PERKS[k].desc+'" style="min-height:40px;border-radius:.75rem;padding:.25rem .75rem;font-size:12px;font-weight:800;border:0;'+(k===cur?"background:#fde047;color:#451a03":"background:rgba(36,26,82,.9);color:#ddd6fe;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)")+'">'+(k===cur?"Star Perk: ":"")+PERKS[k].name+'</button>').join("")+'</div>'; })()
            :(tight?'':'<p style="margin:.5rem 0 0;font-size:11px;font-weight:700;color:#c4b5fd">Star Perk at level '+PERK_LEVEL+': '+perkPair(selected).map(k=>PERKS[k].name).join(" or ")+'</p>'))+
+         (fit>=4?'<div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.375rem;margin-top:.25rem"><span class="count-badge">Level '+lv+' · '+(idx+1)+' / '+mine.length+' owned</span>':"")+
          (()=>{ const own=((profile.skinsOwned||{})[selected.id]||[]), cur=skinOf(selected.id)||"base";
            return '<div role="radiogroup" aria-label="Skin" style="margin-top:'+(tight?'.25rem':'.5rem')+';display:flex;flex-wrap:wrap;justify-content:center;gap:.375rem">'+[["base","Original"]].concat(Object.keys(SKIN_LOOKS).map(k=>[k,SKIN_LOOKS[k].name])).map(([k,n])=>{ const has=k==="base"||own.indexOf(k)>=0, on=k===cur;
              return '<button type="button" role="radio" aria-checked="'+on+'" data-skin="'+k+'" style="min-height:'+(tiny?36:40)+'px;border-radius:.75rem;padding:.25rem .75rem;font-size:12px;font-weight:800;border:0;display:inline-flex;align-items:center;gap:.375rem;'+(on?"background:#f5f3ff;color:#1e1b4b":"background:rgba(36,26,82,.9);color:#ddd6fe;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)")+'"><span aria-hidden="true" style="width:12px;height:12px;border-radius:999px;background:'+(k==="base"?selected.suit:SKIN_LOOKS[k].suit)+';box-shadow:0 0 0 2px '+(k==="base"?selected.trim:SKIN_LOOKS[k].trim)+'"></span>'+n+(has?"":" · "+SKIN_PRICE)+'</button>'; }).join("")+'</div>'; })()+
-         '<button type="button" id="btn-upgrade" class="btn-chunk font-display" '+(upCost===null||profile.coins<upCost?'aria-disabled="true" ':"")+'style="margin-top:.625rem;border-radius:1rem;padding:.5rem 1rem;font-size:.8rem;min-height:44px;'+(upCost!==null&&profile.coins>=upCost?"background:linear-gradient(180deg,#86efac,#22c55e);color:#052e16;box-shadow:inset 0 0 0 3px #bbf7d0, 0 7px 0 rgba(10,6,32,.55)":"background:linear-gradient(180deg,#3b2a7d,#241a52);color:#c4b5fd;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), 0 7px 0 rgba(10,6,32,.55)")+'">'+(upCost===null?"MAX LEVEL":"UPGRADE TO LEVEL "+(lv+1)+" · "+upCost+" COINS")+'</button>'+
+         '<button type="button" id="btn-upgrade" class="btn-chunk font-display" '+(upCost===null||profile.coins<upCost?'aria-disabled="true" ':"")+'style="margin-top:'+(fit>=4?'0':fit>=3?'.25rem':'.625rem')+';border-radius:1rem;padding:'+(fit>=4?'.25rem .75rem':'.5rem 1rem')+';font-size:.8rem;min-height:'+(fit>=4?40:44)+'px;'+(upCost!==null&&profile.coins>=upCost?"background:linear-gradient(180deg,#86efac,#22c55e);color:#052e16;box-shadow:inset 0 0 0 3px #bbf7d0, 0 7px 0 rgba(10,6,32,.55)":"background:linear-gradient(180deg,#3b2a7d,#241a52);color:#c4b5fd;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), 0 7px 0 rgba(10,6,32,.55)")+'">'+(upCost===null?"MAX LEVEL":fit>=4?"LEVEL UP · "+upCost:"UPGRADE TO LEVEL "+(lv+1)+" · "+upCost+" COINS")+'</button>'+(fit>=4?"</div>":"")+
          (tiny?"":'<div style="width:16rem;max-width:70vw;margin-top:.75rem">'+
            '<div style="display:flex;align-items:flex-end;justify-content:space-between;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#ddd6fe">'+
              '<span style="display:flex;align-items:center;gap:.25rem">'+ICON_TROPHY+' '+rank.cur.name+'</span>'+
@@ -2380,13 +2399,21 @@ function showLobby(){
          '<span style="min-width:0"><span style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem"><span class="font-display" style="font-size:1rem;line-height:1">'+info.name+'</span>'+
          '<span style="border-radius:999px;padding:.125rem .5rem;font-size:10px;font-weight:900;'+(appMode==="ranked"?"background:#fde047;color:#451a03":appMode==="showdown"?"background:#c084fc;color:#3b0764":appMode==="ball"?"background:#bef264;color:#1a2e05":appMode==="arena"?"background:#fda4af;color:#4c0519":"background:#22d3ee;color:#083344")+'">'+info.badge+'</span></span>'+
          '<span style="display:block;margin-top:.25rem;font-size:11px;font-weight:700;color:#c4b5fd">'+info.mapName+' · tap to change mode</span>'+
-         '<span style="display:block;margin-top:.125rem;font-size:12px;font-weight:500;line-height:1.35;color:rgba(237,233,254,.85)">'+info.tagline+'</span></span>'+
+         (fit>=4?"":'<span style="display:block;margin-top:.125rem;font-size:12px;font-weight:500;line-height:1.35;color:rgba(237,233,254,.85)">'+info.tagline+'</span>')+'</span>'+
        '</button>'+
        '<button type="button" class="btn-chunk btn-play play-btn font-display" id="play-btn" aria-label="Play a match" style="font-size:'+(compact?"1.875rem":"2.25rem")+'">PLAY!</button>'+
      '</div>'+
      (compact?"":'<p style="margin:.5rem 0 0;text-align:center;font-size:11px;font-weight:600;color:rgba(196,181,253,.8)">'+profile.games+' matches played · '+mine.length+' of '+BRAWLERS.length+' fighters unlocked · use ◀ ▶ to flip through yours · '+(NET_MODES.includes(appMode)&&netOk()?"real players first, computer players fill in":"teammates and rivals are computer players")+'</p>')+
    '</div>';
-  setScreen(root); setTimeout(()=>{ if(typeof lobbyHere==="function")lobbyHere(); },0);
+  setScreen(root);
+  if(UI_ZOOM>1){ const lw=root.querySelector(".lobby-wrap"); if(lw){ lw.style.zoom=UI_ZOOM; } }
+  // does it fit? the middle column must sit between the top bar and the bottom row, and the side buttons too
+  if(fit<4){ const tb=root.querySelector(".topbar"), hc=root.querySelector(".hero-col"), br=root.querySelector(".bottom-row");
+    if(tb&&hc&&br){ const t=tb.getBoundingClientRect().bottom, b=br.getBoundingClientRect().top; let top=1e9, bot=-1e9;
+      for(const k of hc.children){ const q=k.getBoundingClientRect(); if(q.height<2)continue; top=Math.min(top,q.top); bot=Math.max(bot,q.bottom); }
+      const railBad=[...root.querySelectorAll(".rail")].some(x=>{ const q=x.getBoundingClientRect(); return q.height>2&&(q.top<t-2||q.bottom>b+2); });
+      if(top<t-2||bot>b+2||railBad)return showLobby(fit+1); } }
+  setTimeout(()=>{ if(typeof lobbyHere==="function")lobbyHere(); },0);
   // Responsive tweaks for very short / narrow screens
   if(window.innerWidth<430){ const p=$("#pill-played",root); if(p)p.style.display="none"; }
   if(window.innerWidth<640){ const p=$("#pill-wl",root); if(p)p.style.display="none"; }
@@ -2806,7 +2833,8 @@ function showResults(){
        (result.rewards.road?'<p style="margin:.375rem 0 0;font-size:12px;font-weight:800;color:#67e8f9">Star Road reward ready in the lobby!</p>':"")+
      '</div>':"")+
      '<div style="margin-top:.5rem;width:100%;border-radius:1rem;background:rgba(36,26,82,.9);padding:.75rem 1rem;text-align:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)"><span style="font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#fde047">★ Star Player</span><div class="font-display" style="margin-top:.125rem;font-size:1.25rem">'+result.mvpName+'</div></div>'+
-     '<div style="margin-top:auto;display:flex;width:100%;flex-direction:column;gap:.625rem;padding-top:2rem">'+
+     // short screens: the two buttons side by side, held at the bottom while the rest scrolls
+     '<div style="margin-top:auto;display:flex;width:100%;flex-direction:'+(vh<560?'row':'column')+';gap:.625rem;padding-top:'+(vh<700?'.5rem;position:sticky;bottom:-1.5rem;z-index:6;padding-bottom:2rem;margin-bottom:-1.5rem;background:linear-gradient(180deg,rgba(20,12,50,0),rgba(20,12,50,.97) 30%)':'2rem')+'">'+
        '<button type="button" class="btn-chunk btn-play font-display" id="res-again" style="width:100%;border-radius:1.5rem;background:linear-gradient(180deg,#fde047,#fbbf24 55%,#f59e0b);padding:.875rem;font-size:1.5rem;color:#451a03;box-shadow:inset 0 0 0 4px rgba(254,240,138,.7), 0 7px 0 rgba(10,6,32,.55)">PLAY AGAIN</button>'+
        '<button type="button" class="btn-chunk font-display" id="res-lobby" style="width:100%;border-radius:1.5rem;background:linear-gradient(180deg,#8b5cf6,#6d28d9);padding:.75rem;font-size:1.125rem;color:#fff;box-shadow:inset 0 0 0 2px rgba(196,181,253,.6), 0 7px 0 rgba(10,6,32,.55)">BACK TO LOBBY</button>'+
      '</div>'+
@@ -2905,10 +2933,10 @@ function showGame(){
    // Touch controls
    '<div class="pb-safe" style="position:absolute;inset-inline:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between">'+
      '<div class="stick-zone" id="stick-move" role="application" aria-label="Move joystick" style="width:clamp(8rem,34vmin,13rem);height:clamp(8rem,34vmin,13rem)"><div style="pointer-events:none;position:absolute;bottom:.25rem;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(125,211,252,.8)">Move</div></div>'+
-     '<div style="position:relative;margin:0 .5rem .75rem 0;display:flex;align-items:flex-end;gap:.75rem">'+
+     '<div id="ctl-right" style="position:relative;margin:0 .5rem .75rem 0;display:flex;align-items:flex-end;gap:.75rem">'+
        '<button type="button" id="btn-auto" aria-label="Auto-fire at the nearest rival when you let go" aria-pressed="false" class="btn-chunk round-btn" style="margin-bottom:2.5rem;height:3.5rem;width:3.5rem;flex-direction:column;background:linear-gradient(180deg,#53419f,#2a1e63);box-shadow:inset 0 0 0 4px rgba(255,255,255,.3), 0 7px 0 rgba(10,6,32,.55)">'+
          '<svg viewBox="0 0 24 24" style="width:24px;height:24px" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fda4af" stroke-width="2.2"/><circle cx="12" cy="12" r="2" fill="#fda4af"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="#fda4af" stroke-width="2.2" stroke-linecap="round"/></svg><span style="font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em">Auto</span></button>'+
-       '<button type="button" id="btn-pin" aria-label="Send a quick chat pin" class="btn-chunk round-btn" style="position:absolute;right:0;bottom:min(13.5rem,30vh);height:2.75rem;width:2.75rem;font-size:11px;font-weight:900;background:linear-gradient(180deg,#334155,#1e293b);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3), 0 4px 0 rgba(10,6,32,.55)">GG</button>'+
+       '<button type="button" id="btn-pin" aria-label="Send a quick chat pin" class="btn-chunk round-btn" style="position:absolute;right:0;bottom:calc(clamp(8rem,34vmin,13rem) + .75rem);height:2.75rem;width:2.75rem;font-size:11px;font-weight:900;background:linear-gradient(180deg,#334155,#1e293b);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3), 0 4px 0 rgba(10,6,32,.55)">GG</button>'+
        '<button type="button" id="btn-hyper" aria-label="Use Hyper Surge" class="btn-chunk round-btn" style="position:relative;margin-bottom:6.5rem;height:3.25rem;width:3.25rem;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#831843,#500724);box-shadow:inset 0 0 0 3px rgba(249,168,212,.5), 0 6px 0 rgba(10,6,32,.55)"><span id="hyper-fill" aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:0%;background:rgba(244,114,182,.55)"></span><span style="position:relative;font-size:15px;line-height:1;font-weight:900">&#9889;</span><span style="position:relative;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em">Hyper</span></button>'+
        '<button type="button" id="btn-gadget" aria-label="Use gadget" class="btn-chunk round-btn" style="position:relative;margin-bottom:6.5rem;height:3.25rem;width:3.25rem;flex-direction:column;background:linear-gradient(180deg,#0e7490,#164e63);box-shadow:inset 0 0 0 3px rgba(165,243,252,.5), 0 6px 0 rgba(10,6,32,.55)"><span id="gad-n" class="font-display" style="font-size:1rem;line-height:1">3</span><span style="font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em">Gadget</span></button>'+
        '<button type="button" id="btn-super" aria-label="Use super" class="btn-chunk round-btn" style="position:relative;margin-bottom:2.5rem;height:4.5rem;width:4.5rem;flex-direction:column;background:linear-gradient(180deg,#3d2f7a,#241a52);box-shadow:inset 0 0 0 4px rgba(255,255,255,.25), 0 7px 0 rgba(10,6,32,.55)">'+
@@ -3407,17 +3435,22 @@ function gate(){
 }
 // on claude.ai: a player name (kept on this device) and claude.ai's live room for real players
 function gateClaude(){
-  const saved=nbGet("nb_cl_name","");
-  gateShell('<h2 id="nbh">Pick a player name</h2><p>Other players see this name. Your progress is saved on this device.</p><label class="nbi">Player name<input id="nbnm" maxlength="16" autocomplete="nickname" autocapitalize="off" spellcheck="false" value="'+escHtml(saved)+'"></label><button class="nbgo" id="nbgo">Play</button><p class="nber" id="nber" role="alert"></p><button class="nb2" id="nbreread">Read the player agreement again</button>');
-  document.getElementById("nbreread").onclick=()=>{ nbSet("nb_agree",""); gate(); };
-  const go=()=>{ const n=document.getElementById("nbnm").value.trim().replace(/\s+/g," "), bad=nameProblem(n); if(bad){ document.getElementById("nber").textContent=bad; return; }
-    nbSet("nb_cl_name",n); ACC.name=n; ACC.key="cl-"+nameKey(n); ACC.offline=true; loadProfileKey(ACC.key,null); ensureProfile(); showLobby();
-    window.claude.use("room").then(r=>{ if(!r)return; ACC.cl=r; r.onPeers(c=>{ for(const p of c.peers||[])if(p.isMe&&!ACC.peer)ACC.peer=p.peer; }); if(!ACC.peer&&window.__PEER)ACC.peer=window.__PEER; lobbyHere(); }).catch(()=>{}); };
-  document.getElementById("nbgo").onclick=go; document.getElementById("nbnm").onkeydown=(e)=>{ if(e.key==="Enter")go(); };
+  gateShell('<h2 id="nbh">Sign in</h2><p>Checking your claude.ai account...</p>');
+  const fail=()=>gateShell('<h2 id="nbh">Sign in to claude.ai</h2><p>On claude.ai you play with your own claude.ai account, so nobody else can get into it. Sign in to claude.ai, then open the game again.</p><button class="nbgo" id="nbretry">Try again</button>');
+  Promise.resolve(window.claude.use("user")).then(async(u)=>{ let id=null; try{ id=u?await u.id():null; }catch(e){ id=null; }
+    if(!id){ fail(); const b=document.getElementById("nbretry"); if(b)b.onclick=gateClaude; return; }
+    const key="cl-"+String(id).replace(/[^A-Za-z0-9_-]/g,"").slice(0,40), saved=nbGet("nb_cl_name:"+key,"");
+    const enter=(n)=>{ ACC.name=n; ACC.key=key; ACC.offline=true; loadProfileKey(key,null); ensureProfile(); showLobby();
+      window.claude.use("room").then(r=>{ if(!r)return; ACC.cl=r; r.onPeers(c=>{ for(const p of c.peers||[])if(p.isMe&&!ACC.peer)ACC.peer=p.peer; }); if(!ACC.peer&&window.__PEER)ACC.peer=window.__PEER; lobbyHere(); }).catch(()=>{}); };
+    if(saved)return enter(saved);
+    gateShell('<h2 id="nbh">Pick a player name</h2><p>You&#39;re signed in with your claude.ai account, so only you can play as you. Other players see this name.</p><label class="nbi">Player name<input id="nbnm" maxlength="16" autocomplete="nickname" autocapitalize="off" spellcheck="false"></label><button class="nbgo" id="nbgo">Play</button><p class="nber" id="nber" role="alert"></p><button class="nb2" id="nbreread">Read the player agreement again</button>');
+    document.getElementById("nbreread").onclick=()=>{ nbSet("nb_agree",""); gate(); };
+    const go=()=>{ const n=document.getElementById("nbnm").value.trim().replace(/\s+/g," "), bad=nameProblem(n); if(bad){ document.getElementById("nber").textContent=bad; return; } nbSet("nb_cl_name:"+key,n); enter(n); };
+    document.getElementById("nbgo").onclick=go; document.getElementById("nbnm").onkeydown=(e)=>{ if(e.key==="Enter")go(); };
+  }).catch(()=>{ fail(); const b=document.getElementById("nbretry"); if(b)b.onclick=gateClaude; });
 }
 function gateOffline(){
-  gateShell('<h2 id="nbh">Can\'t reach the game\'s server</h2><p>You can play on this device now. Your progress is saved here, and you can sign in to save it online once the server can be reached.</p><button class="nbgo" id="nboff">Play on this device</button><button class="nb2" id="nbretry">Try again</button>');
-  document.getElementById("nboff").onclick=()=>{ ACC.offline=true; ACC.name="Player"; ACC.key=null; loadProfileKey("guest",null); ensureProfile(); showLobby(); };
+  gateShell('<h2 id="nbh">Can&#39;t reach the game&#39;s server</h2><p>You need your account to play, so the game has to reach its server. Check your connection and try again.</p><button class="nbgo" id="nbretry">Try again</button>');
   document.getElementById("nbretry").onclick=()=>{ ACC.p=null; gate(); };
 }
 async function resumeAcct(a,quiet){
@@ -3546,10 +3579,10 @@ function signOut(){
 }
 function accountSheet(){
   if(document.getElementById("nbsheet"))return;
-  const d=el('<div id="nbsheet" class="sheet-backdrop" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.6)"><div class="nbb" role="dialog" aria-label="Your account">'+GATE_CSS+'<h2>'+escHtml(ACC.name||"Player")+'</h2><p>'+(String(ACC.key||"").startsWith("cl-")?"Your progress is saved on this device. Real players on this page can join your matches.":ACC.offline||!ACC.key?"Playing on this device only. Sign in to save your progress online.":"Your progress is saved on this device and online. Log in with this name on any device to keep playing, in Nebula Brawl or Nebula Royale.")+'</p>'+(String(ACC.key||"").startsWith("cl-")?'<button class="nbgo" id="nbout">Change name</button>':'<button class="nbgo" id="nbout">'+(ACC.offline||!ACC.key?"Sign in":"Sign out")+'</button>')+'<button class="nb2" id="nbclose">Close</button></div></div>');
+  const d=el('<div id="nbsheet" class="sheet-backdrop" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.6)"><div class="nbb" role="dialog" aria-label="Your account">'+GATE_CSS+'<h2>'+escHtml(ACC.name||"Player")+'</h2><p>'+(String(ACC.key||"").startsWith("cl-")?"You're signed in with your claude.ai account. Your progress is saved on this device. Real players on this page can join your matches.":ACC.offline||!ACC.key?"Playing on this device only. Sign in to save your progress online.":"Your progress is saved on this device and online. Log in with this name on any device to keep playing, in Nebula Brawl or Nebula Royale.")+'</p>'+(String(ACC.key||"").startsWith("cl-")?'<button class="nbgo" id="nbout">Change name</button>':'<button class="nbgo" id="nbout">'+(ACC.offline||!ACC.key?"Sign in":"Sign out")+'</button>')+'<button class="nb2" id="nbclose">Close</button></div></div>');
   document.body.appendChild(d);
   const close=()=>d.remove(); d.addEventListener("click",e=>{ if(e.target===d)close(); });
-  d.querySelector("#nbclose").onclick=close; d.querySelector("#nbout").onclick=()=>{ close(); if(String(ACC.key||"").startsWith("cl-")){ gateClaude(); return; } ACC.p=ACC.up?ACC.p:null; signOut(); };
+  d.querySelector("#nbclose").onclick=close; d.querySelector("#nbout").onclick=()=>{ close(); if(String(ACC.key||"").startsWith("cl-")){ nbSet("nb_cl_name:"+ACC.key,""); gateClaude(); return; } ACC.p=ACC.up?ACC.p:null; signOut(); };
 }
 document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("#player-chip"); if(b)accountSheet(); });
 

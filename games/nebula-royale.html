@@ -1496,7 +1496,7 @@ body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 /* ===== core.js ===== */
 // The owner wiped every save and account on 2026-11-17: the first time a game opens after that, it clears its old saves
 // and saved accounts on this device (Nebula Royale and Nebula Brawl share the marker, so it happens once).
-(() => { try { if (localStorage.getItem("nb_wipe") !== "2026-11-17") { for (const k of Object.keys(localStorage)) if (/^(nr|nb|nebula-brawl)/.test(k)) localStorage.removeItem(k); localStorage.setItem("nb_wipe", "2026-11-17"); } } catch (e) { /* no storage */ } })();
+(() => { try { if (localStorage.getItem("nb_wipe") !== "2026-11-18") { for (const k of Object.keys(localStorage)) if (/^(nr|nb|nebula-brawl)/.test(k)) localStorage.removeItem(k); localStorage.setItem("nb_wipe", "2026-11-18"); } } catch (e) { /* no storage */ } })();
 // Nebula Royale core: helpers, saved progress, the catalog (outfits, gear, weapons, items) and sound.
 const TH = THREE, $ = (s) => document.querySelector(s);
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[(Math.random() * a.length) | 0];
@@ -1904,9 +1904,11 @@ function nameProblem(n) {
   return "";
 }
 // this device's players: { key: { name, s (progress) } } and who is playing now
-const profiles = () => lsGet("nr_players", {});
-function storeProfile(key, name, s, online) { const P = profiles(); P[key] = { name, s, online: online != null ? !!online : !!(P[key] && P[key].online) }; lsSet("nr_players", P); }
-let CUR = lsGet("nr_cur", null);
+// on claude.ai each claude.ai account keeps its own players on this device, so nobody else using the browser can open them
+const PKEY = () => (onClaude() && CLOUD.uid ? "nr_players:" + CLOUD.uid : "nr_players"), CKEY = () => (onClaude() && CLOUD.uid ? "nr_cur:" + CLOUD.uid : "nr_cur");
+const profiles = () => lsGet(PKEY(), {});
+function storeProfile(key, name, s, online) { const P = profiles(); P[key] = { name, s, online: online != null ? !!online : !!(P[key] && P[key].online) }; lsSet(PKEY(), P); }
+let CUR = null;
 
 // Online storage (when the page has it):
 //   names/<account id>       { keys: [name keys], list: [names] }  everyone reads, each account writes only its own
@@ -1915,17 +1917,19 @@ let CUR = lsGet("nr_cur", null);
 async function cloudInit() {
   try {
     const [db, user] = await Promise.all([capUse("db"), capUse("user")]);
+    // who is playing (claude.ai: the viewer's claude.ai account), even where there's no online storage
+    if (user) { let uid = null, c = null; try { uid = await user.id(); } catch (e) { /* not told */ } try { c = await user.can("data.write"); } catch (e) { /* not told */ } CLOUD.uid = uid || null; CLOUD.can = !!db && !!uid && c !== false; }
     if (!db) return;
     CLOUD.db = db; CLOUD.srv = !onClaude();
-    if (user) { let uid = null, c = null; try { uid = await user.id(); } catch (e) { /* not told */ } try { c = await user.can("data.write"); } catch (e) { /* not told */ } CLOUD.uid = uid || null; CLOUD.can = !!uid && c !== false; }
   } catch (e) { /* no online storage here */ }
   finally { CLOUD.ready = true; cloudReady(); afterCloud(); }
 }
 async function afterCloud() {
   if (CLOUD.srv) { if ($("#signin")) renderSignIn(); return; }
+  if (!CUR && onClaude() && CLOUD.uid) { const k = lsGet(CKEY(), null), P = profiles(); if (k && P[k]) { usePlayer(k, P[k].name, P[k].s, P[k].online); return; } }
   if (!CUR) { if ($("#signin")) renderSignIn(); return; }
   const p = profiles()[CUR]; if (!p || !CLOUD.can) return;
-  if (!p.online) { const r = await claimName(p.name, true); if (r.ok && r.online) { const P = profiles(); if (P[CUR]) { P[CUR].online = true; lsSet("nr_players", P); } saveProgress(); } return; }
+  if (!p.online) { const r = await claimName(p.name, true); if (r.ok && r.online) { const P = profiles(); if (P[CUR]) { P[CUR].online = true; lsSet(PKEY(), P); } saveProgress(); } return; }
   // the same player on another device may have newer progress
   const c = await pullCloud(CUR); if (c && c.s && (c.s.at || 0) > (S.at || 0) && $("#game").hidden && CUR == nameKey(p.name)) { loadInto(p.name, c.s); storeProfile(CUR, p.name, S, true); save(); lobby(); }
 }
@@ -1961,7 +1965,7 @@ async function releaseName(key) {
 // progress: always on this device; online too where it can be written (after a short pause, only when it changed)
 let cloudT = 0, cloudLast = "", cloudBusy = false;
 function saveProgress() {
-  if (!CUR) return; S.at = Date.now(); const P = profiles(); if (!P[CUR]) return; P[CUR].s = S; lsSet("nr_players", P);
+  if (!CUR) return; S.at = Date.now(); const P = profiles(); if (!P[CUR]) return; P[CUR].s = S; lsSet(PKEY(), P);
   if (CLOUD.db && CLOUD.can && P[CUR].online) { clearTimeout(cloudT); cloudT = setTimeout(pushCloud, 4000); }
 }
 async function pushCloud() {
@@ -1989,17 +1993,17 @@ function loadInto(name, s) {
   ini();
 }
 function usePlayer(key, name, s, online) {
-  CUR = key; lsSet("nr_cur", key); loadInto(name, s); storeProfile(key, name, S, online); save();
+  CUR = key; lsSet(CKEY(), key); loadInto(name, s); storeProfile(key, name, S, online); save();
   const d = $("#signin"); if (d) d.remove(); lobby();
 }
-function signOut() { save(); clearTimeout(cloudT); if (CLOUD.can) pushCloud(); CUR = null; lsSet("nr_cur", null); const d = $("#set"); if (d) d.remove(); renderAcct.m = ""; renderSignIn(); }
+function signOut() { save(); clearTimeout(cloudT); if (CLOUD.can) pushCloud(); CUR = null; lsSet(CKEY(), null); const d = $("#set"); if (d) d.remove(); renderAcct.m = ""; renderSignIn(); }
 // forget this account on this device (it stays on the server; log in again with the password)
-async function forgetHere() { save(); clearTimeout(cloudT); if (CLOUD.can) await pushCloud(); const k = CUR; CUR = null; lsSet("nr_cur", null); await acctForget(k); const d = $("#set"); if (d) d.remove(); renderAcct.m = ""; renderSignIn(); }
+async function forgetHere() { save(); clearTimeout(cloudT); if (CLOUD.can) await pushCloud(); const k = CUR; CUR = null; lsSet(CKEY(), null); await acctForget(k); const d = $("#set"); if (d) d.remove(); renderAcct.m = ""; renderSignIn(); }
 async function deleteSave() {
   const P = profiles(), key = CUR; if (!key || !P[key]) return; clearTimeout(cloudT);
   if (CLOUD.srv) { try { await srvCall({ op: "delacct" }); } catch (e) { /* tried */ } await acctForget(key); }
   else if (P[key].online) await releaseName(key);
-  delete P[key]; lsSet("nr_players", P); CUR = null; lsSet("nr_cur", null); loadInto("Player", null); try { localStorage.removeItem("nr"); } catch (e) { /* no storage */ } lobby();
+  delete P[key]; lsSet(PKEY(), P); CUR = null; lsSet(CKEY(), null); loadInto("Player", null); try { localStorage.removeItem("nr"); } catch (e) { /* no storage */ } lobby();
   const d = $("#set"); if (d) d.remove(); renderSignIn();
 }
 
@@ -2022,9 +2026,14 @@ function renderSignIn() {
     return;
   }
   if (srvMode() && (!CLOUD.ready || CLOUD.srv)) return renderAcct(d);
+  const head = "<div class=siT>NEBULA <b>ROYALE</b></div>";
+  // the game's server can't be reached: no playing without an account
+  if (srvMode()) { d.innerHTML = `<div class=sib>${head}<h2>Can&#39;t reach the game&#39;s server</h2><p class=sis>You need your account to play, so the game has to reach its server. Check your connection and try again.</p><button class=go onclick="location.reload()">Try again</button></div>`; return; }
+  if (onClaude() && !CLOUD.ready) { d.innerHTML = `<div class=sib>${head}<h2>Sign in</h2><p class=sis>Checking your claude.ai account...</p></div>`; return; }
+  if (onClaude() && !CLOUD.uid) { d.innerHTML = `<div class=sib>${head}<h2>Sign in to claude.ai</h2><p class=sis>On claude.ai you play with your own claude.ai account, so nobody else can get into it. Sign in to claude.ai, then open the game again.</p><button class=go onclick="location.reload()">Try again</button></div>`; return; }
   const P = profiles(), mine = Object.entries(P);
   const row = (k, p, sub) => `<button class=sip data-k='${esc(k)}'><span class=sia>${esc(p.name).slice(0, 1).toUpperCase()}</span><span><b>${esc(p.name)}</b><small>${sub}</small></span></button>`;
-  d.innerHTML = `<div class=sib><div class=siT>NEBULA <b>ROYALE</b></div><h2>Sign in</h2><p class=sis>Just pick a player name. No password needed.</p>
+  d.innerHTML = `<div class=sib><div class=siT>NEBULA <b>ROYALE</b></div><h2>Sign in</h2><p class=sis>${onClaude() ? "You&#39;re signed in with your claude.ai account, so only you can play as your players. Pick a player name." : "Just pick a player name."}</p>
     ${mine.length ? `<div class=sil><i>Players on this device</i>${mine.map(([k, p]) => row(k, p, `★ ${(p.s && p.s.stars) || 0} · Level ${1 + (((p.s && p.s.xp) || 0) / 100 | 0)} · ${(p.s && p.s.car && p.s.car.w) || 0} wins`)).join("")}</div>` : ""}
     <div id=sicl class=sil></div>
     <label class=sin><i>${mine.length ? "Or make a new player" : "Your player name"}</i><input id=sinm maxlength=16 autocomplete=off autocapitalize=off spellcheck=false placeholder="e.g. StarPilot"></label><p id=sier class=sier></p>
@@ -2122,7 +2131,7 @@ function codeAsk() {
     for (let i = 0; i < 60 && !(SRV.up && SRV.uid && SRV.uid !== old); i++) await new Promise((r) => setTimeout(r, 250));
     if (!(SRV.up && SRV.uid !== old)) { er.textContent = "The game's server can't be reached right now. Try again in a moment."; if ($("#sicgo")) $("#sicgo").disabled = false; return; }
     // players made on this device before stay here, saved on this device only
-    CLOUD.uid = SRV.uid; const P = profiles(); for (const k in P) P[k].online = false; lsSet("nr_players", P);
+    CLOUD.uid = SRV.uid; const P = profiles(); for (const k in P) P[k].online = false; lsSet(PKEY(), P);
     renderSignIn();
   };
   $("#sicgo").onclick = go; $("#sicd").onkeydown = (e) => { if (e.key == "Enter") go(); }; $("#sicd").focus();
@@ -2130,8 +2139,8 @@ function codeAsk() {
 function accountStart() {
   // on the game's server you choose your account every time the game opens
   if (srvMode()) { CUR = null; renderSignIn(); setTimeout(cloudInit, 0); return; }
-  const P = profiles();
-  if (CUR && P[CUR]) loadInto(P[CUR].name, P[CUR].s); else { CUR = null; renderSignIn(); }
+  // claude.ai: wait for the viewer's claude.ai account, then that account's last player on this device
+  CUR = null; if (onClaude()) loadInto("Player", null); renderSignIn();
   setTimeout(cloudInit, 0);
 }
 
