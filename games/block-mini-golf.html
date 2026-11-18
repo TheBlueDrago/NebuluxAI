@@ -346,8 +346,65 @@ const TEST = /[?&]test\b/.test(location.search);
 let timeScale = 1;
 const clock = new THREE.Clock(); let T = 0; const frames = [];
 const onFrame = (f) => frames.push(f);
+// ---------- real players (the same game server as Nebula Royale and Nebula Brawl) ----------
+// Everyone playing the same game at the same time shares a room: each page sends where its player is about ten times a
+// second, and shows the other real players walking around with their names. Nothing is stored. Offline (or in the
+// automated checks, unless they pass ?srv=) the game plays as before.
+const NETK = { ws: null, up: false, room: '', peers: new Map(), sendT: 0, tries: 0, n: 0 };
+(function netKit() {
+  const q = /[?&]srv=([^&#]+)/.exec(location.search), sv = q ? decodeURIComponent(q[1]) : '';
+  const url = /^ws:\/\/(127\.0\.0\.1|localhost):\d{2,5}\/play$/.test(sv) ? sv : /[?&]test\b/.test(location.search) ? '' : 'wss://nebula-royale.thebluedragonstriker.workers.dev/play';
+  if (!url || typeof WebSocket == 'undefined' || !window.crypto || !crypto.getRandomValues) return;
+  let h = 0; for (const ch of String(document.title || location.pathname)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  NETK.room = 'nr-k' + h.toString(36).padStart(6, '0').slice(0, 12);
+  NETK.name = ME_NAME !== 'You' ? ME_NAME : 'Player ' + (100 + Math.floor(Math.random() * 900));
+  let tok = ''; try { tok = localStorage.getItem('nr_tok_k') || ''; } catch { /* none */ }
+  if (!/^[0-9A-HJKMNP-TV-Z]{20}$/.test(tok)) { const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ', b = new Uint8Array(20); crypto.getRandomValues(b); tok = [...b].map((x) => A[x & 31]).join(''); try { localStorage.setItem('nr_tok_k', tok); } catch { /* this visit only */ } }
+  const open = () => {
+    let ws; try { ws = new WebSocket(url); } catch { return; }
+    NETK.ws = ws;
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hi', tok, peer: Math.random().toString(36).slice(2, 10), v: 1 }));
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.t === 'ok') { NETK.up = true; NETK.tries = 0; ws.send(JSON.stringify({ t: 'j', r: NETK.room })); return; }
+      if (m.r !== NETK.room) return;
+      if (m.t === 'js') { for (const [p, d] of m.peers || []) netKitPeer(p, d); return; }
+      if (m.t === 'u') { netKitPeer(m.p, m.d); return; }
+      if (m.t === 'x') { const o = NETK.peers.get(m.p); if (o) { scene.remove(o.body.g); NETK.peers.delete(m.p); } }
+    };
+    ws.onclose = () => { if (NETK.ws !== ws) return; NETK.up = false; NETK.ws = null; for (const o of NETK.peers.values()) scene.remove(o.body.g); NETK.peers.clear(); if (NETK.tries++ < 6) setTimeout(open, 3000 * NETK.tries); };
+  };
+  open();
+})();
+function netKitPeer(p, d) {
+  if (!d || d.v !== 3 || !Array.isArray(d.p)) return;
+  let o = NETK.peers.get(p);
+  if (!o) {
+    const body = makeAvatar({ shirt: Number(d.c) & 0xffffff || 0x1e88e5, skin: SKINS[(Number(d.k) | 0) % SKINS.length] });
+    const nm = String(d.n || 'Player').replace(/[^A-Za-z0-9 _-]/g, '').slice(0, 18) || 'Player';
+    body.g.add(nameTag(nm, '#9fe8ff')); scene.add(body.g);
+    o = { body, pos: V(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10), to: V(), yaw: 0, sp: 0 }; NETK.peers.set(p, o);
+  }
+  o.to.set(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10); o.yaw = (d.y | 0) / 100; o.sp = (d.s | 0) / 10; o.og = !!d.g; o.at = performance.now();
+}
+onFrame((dt, T) => {
+  for (const [p, o] of NETK.peers) {
+    if (performance.now() - (o.at || 0) > 6000) { scene.remove(o.body.g); NETK.peers.delete(p); continue; }
+    o.pos.lerp(o.to, Math.min(1, dt * 10)); o.body.g.position.copy(o.pos);
+    o.body.g.rotation.y += angDiff(o.yaw, o.body.g.rotation.y) * Math.min(1, 12 * dt); animate(o.body, o.sp, o.og, T);
+  }
+  if (NETK.up && NETK.ws && (NETK.sendT -= dt) <= 0) {
+    NETK.sendT = 0.1;
+    const d = { v: 3, n: NETK.name, c: 0x1e88e5, k: 0, p: [Math.round(P.pos.x * 10), Math.round(P.pos.y * 10), Math.round(P.pos.z * 10)], y: Math.round((P.body.g.rotation.y || 0) * 100), s: Math.round(Math.hypot(P.vel.x, P.vel.z) * 10), g: P.onGround ? 1 : 0 };
+    try { NETK.ws.send(JSON.stringify({ t: 'p', r: NETK.room, d })); } catch { /* dropped */ }
+  }
+  const el = $("netk"), n = NETK.peers.size;
+  if (n && !el) { const e = document.createElement('div'); e.id = 'netk'; e.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:30;padding:4px 12px;border-radius:999px;background:#0009;color:#9fe8ff;font:700 13px Segoe UI,system-ui;pointer-events:none'; document.body.appendChild(e); }
+  if (el) { if (!n) el.remove(); else el.textContent = n + 1 + ' real players here'; }
+});
+
 function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
-if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys };
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys, net: NETK };
 // ---------- end of kit ----------
 
 
