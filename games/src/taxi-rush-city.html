@@ -232,6 +232,7 @@ if (TEST) window.__game = {
   state: () => ({ phase, cash, fares, ride: ride && { name: ride.name, time: Math.round(ride.time), dist: Math.round(ride.to.distanceTo(me.pos)) }, waiting: waiting.length, v: Math.round(me.v), car: S.car }),
   goRider: () => { const w = waiting[0]; me.pos.set(w.p.x + 2, 0, w.p.z + 2); me.v = 0; }, goDest: () => { if (ride) { me.pos.set(ride.to.x + 2, 0, ride.to.z); me.v = 0; } }, me, S: () => S, give: (n) => { S.cash += n; storeSave(SAVE, S); drawShop(); },
 };
+netAs(() => ({ pos: me.pos, yaw: me.h, sp: Math.abs(me.v || 0) }), (c) => { const k = makeCar(c, false); scene.remove(k.g); return k; });
 loop();
 })();
 </script>

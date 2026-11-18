@@ -358,6 +358,10 @@ const onFrame = (f) => frames.push(f);
 // Everyone playing the same game at the same time shares a room: each page sends where its player is about ten times a
 // second, and shows the other real players walking around with their names. Nothing is stored. Offline (or in the
 // automated checks, unless they pass ?srv=) the game plays as before.
+// A game that drives something else (a kart, a car, a glider) calls netAs(() => ({ pos, yaw, sp }), (color) => ({ g })):
+// the first says where its player is, the second makes what other real players look like.
+let NET_SELF = null, NET_LOOK = null;
+function netAs(self, look) { NET_SELF = self; NET_LOOK = look || null; }
 const NETK = { ws: null, up: false, room: '', peers: new Map(), sendT: 0, tries: 0, n: 0 };
 (function netKit() {
   const q = /[?&]srv=([^&#]+)/.exec(location.search), sv = q ? decodeURIComponent(q[1]) : '';
@@ -389,22 +393,23 @@ function netKitPeer(p, d) {
   if (!d || d.v !== 3 || !Array.isArray(d.p)) return;
   let o = NETK.peers.get(p);
   if (!o) {
-    const body = makeAvatar({ shirt: Number(d.c) & 0xffffff || 0x1e88e5, skin: SKINS[(Number(d.k) | 0) % SKINS.length] });
+    const col = Number(d.c) & 0xffffff || 0x1e88e5, body = NET_LOOK ? NET_LOOK(col) : makeAvatar({ shirt: col, skin: SKINS[(Number(d.k) | 0) % SKINS.length] });
     const nm = String(d.n || 'Player').replace(/[^A-Za-z0-9 _-]/g, '').slice(0, 18) || 'Player';
     body.g.add(nameTag(nm, '#9fe8ff')); scene.add(body.g);
     o = { body, pos: V(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10), to: V(), yaw: 0, sp: 0 }; NETK.peers.set(p, o);
   }
-  o.to.set(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10); o.yaw = (d.y | 0) / 100; o.sp = (d.s | 0) / 10; o.og = !!d.g; o.at = performance.now();
+  o.to.set(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10); o.yaw = (d.y | 0) / 100; o.sp = (d.s | 0) / 10; o.og = !!d.g; o.at = performance.now(); o.body.g.visible = !d.h;
 }
 onFrame((dt, T) => {
   for (const [p, o] of NETK.peers) {
     if (performance.now() - (o.at || 0) > 6000) { scene.remove(o.body.g); NETK.peers.delete(p); continue; }
     o.pos.lerp(o.to, Math.min(1, dt * 10)); o.body.g.position.copy(o.pos);
-    o.body.g.rotation.y += angDiff(o.yaw, o.body.g.rotation.y) * Math.min(1, 12 * dt); animate(o.body, o.sp, o.og, T);
+    o.body.g.rotation.y += angDiff(o.yaw, o.body.g.rotation.y) * Math.min(1, 12 * dt); if (o.body.legs) animate(o.body, o.sp, o.og, T);
   }
   if (NETK.up && NETK.ws && (NETK.sendT -= dt) <= 0) {
     NETK.sendT = 0.1;
-    const d = { v: 3, n: NETK.name, c: NETK.c, k: NETK.k, p: [Math.round(P.pos.x * 10), Math.round(P.pos.y * 10), Math.round(P.pos.z * 10)], y: Math.round((P.body.g.rotation.y || 0) * 100), s: Math.round(Math.hypot(P.vel.x, P.vel.z) * 10), g: P.onGround ? 1 : 0 };
+    const me = NET_SELF ? NET_SELF() : null, pos = me ? me.pos : P.pos;
+    const d = { v: 3, n: NETK.name, c: NETK.c, k: NETK.k, p: [Math.round(pos.x * 10), Math.round(pos.y * 10), Math.round(pos.z * 10)], y: Math.round((me ? me.yaw : P.body.g.rotation.y || 0) * 100), s: Math.round((me ? me.sp || 0 : Math.hypot(P.vel.x, P.vel.z)) * 10), g: me ? 1 : P.onGround ? 1 : 0, h: !me && P.body.g.visible === false ? 1 : 0 };
     try { NETK.ws.send(JSON.stringify({ t: 'p', r: NETK.room, d })); } catch { /* dropped */ }
   }
   const el = $("netk"), n = NETK.peers.size;
