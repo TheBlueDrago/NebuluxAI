@@ -366,6 +366,7 @@ const NETK = { ws: null, up: false, room: '', peers: new Map(), sendT: 0, tries:
   let h = 0; for (const ch of String(document.title || location.pathname)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   NETK.room = 'nr-k' + h.toString(36).padStart(6, '0').slice(0, 12);
   NETK.name = ME_NAME !== 'You' ? ME_NAME : 'Player ' + (100 + Math.floor(Math.random() * 900));
+  { let x = 0; for (const ch of NETK.name) x = (x * 33 + ch.charCodeAt(0)) >>> 0; NETK.c = BOT_COLORS[x % BOT_COLORS.length]; NETK.k = x % SKINS.length; }
   let tok = ''; try { tok = localStorage.getItem('nr_tok_k') || ''; } catch { /* none */ }
   if (!/^[0-9A-HJKMNP-TV-Z]{20}$/.test(tok)) { const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ', b = new Uint8Array(20); crypto.getRandomValues(b); tok = [...b].map((x) => A[x & 31]).join(''); try { localStorage.setItem('nr_tok_k', tok); } catch { /* this visit only */ } }
   const open = () => {
@@ -403,7 +404,7 @@ onFrame((dt, T) => {
   }
   if (NETK.up && NETK.ws && (NETK.sendT -= dt) <= 0) {
     NETK.sendT = 0.1;
-    const d = { v: 3, n: NETK.name, c: 0x1e88e5, k: 0, p: [Math.round(P.pos.x * 10), Math.round(P.pos.y * 10), Math.round(P.pos.z * 10)], y: Math.round((P.body.g.rotation.y || 0) * 100), s: Math.round(Math.hypot(P.vel.x, P.vel.z) * 10), g: P.onGround ? 1 : 0 };
+    const d = { v: 3, n: NETK.name, c: NETK.c, k: NETK.k, p: [Math.round(P.pos.x * 10), Math.round(P.pos.y * 10), Math.round(P.pos.z * 10)], y: Math.round((P.body.g.rotation.y || 0) * 100), s: Math.round(Math.hypot(P.vel.x, P.vel.z) * 10), g: P.onGround ? 1 : 0 };
     try { NETK.ws.send(JSON.stringify({ t: 'p', r: NETK.room, d })); } catch { /* dropped */ }
   }
   const el = $("netk"), n = NETK.peers.size;

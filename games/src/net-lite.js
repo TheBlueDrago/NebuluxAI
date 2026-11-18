@@ -11,11 +11,12 @@ function NETLITE(getMe) {
   N.room = "nr-k" + h.toString(36).padStart(6, "0").slice(0, 12);
   const un = window.nebulux && window.nebulux.username && window.nebulux.username !== "Anonymous" ? String(window.nebulux.username) : "";
   N.name = (un || "Player " + (100 + Math.floor(Math.random() * 900))).replace(/[^A-Za-z0-9 _-]/g, "").slice(0, 18) || "Player";
+  { let x = 0; for (const ch of N.name) x = (x * 33 + ch.charCodeAt(0)) >>> 0; N.c = [0xe53935, 0x8e24aa, 0x3949ab, 0x00897b, 0x7cb342, 0xfdd835, 0xfb8c00, 0xd81b60, 0x00acc1, 0x5e35b1][x % 10]; }
   let tok = ""; try { tok = localStorage.getItem("nr_tok_k") || ""; } catch { /* none */ }
   if (!/^[0-9A-HJKMNP-TV-Z]{20}$/.test(tok)) { const A = "0123456789ABCDEFGHJKMNPQRSTVWXYZ", b = new Uint8Array(20); crypto.getRandomValues(b); tok = [...b].map((x) => A[x & 31]).join(""); try { localStorage.setItem("nr_tok_k", tok); } catch { /* this visit only */ } }
   const box = (w, hh, d, c, y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 })); m.position.y = y; return m; };
-  function body(nm) {
-    const g = new THREE.Group(); g.add(box(1, 1, 0.5, 0x29b6f6, 1.5)); g.add(box(0.7, 0.7, 0.7, 0xffcc80, 2.35)); const L1 = box(0.45, 1, 0.45, 0x37474f, 0.5), L2 = L1.clone(); L1.position.x = -0.25; L2.position.x = 0.25; g.add(L1); g.add(L2);
+  function body(nm, shirt) {
+    const g = new THREE.Group(); g.add(box(1, 1, 0.5, shirt || 0x29b6f6, 1.5)); g.add(box(0.7, 0.7, 0.7, 0xffcc80, 2.35)); const L1 = box(0.45, 1, 0.45, 0x37474f, 0.5), L2 = L1.clone(); L1.position.x = -0.25; L2.position.x = 0.25; g.add(L1); g.add(L2);
     const c = document.createElement("canvas"); c.width = 512; c.height = 128; const x = c.getContext("2d"); x.font = "900 56px Segoe UI, system-ui"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineWidth = 12; x.strokeStyle = "#000"; x.strokeText(nm, 256, 64); x.fillStyle = "#9fe8ff"; x.fillText(nm, 256, 64);
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false })); s.scale.set(3.2, 0.8, 1); s.position.y = 3.3; g.add(s);
     g.legs = [L1, L2]; return g;
@@ -23,7 +24,7 @@ function NETLITE(getMe) {
   function peer(p, d) {
     if (!d || d.v !== 3 || !Array.isArray(d.p)) return;
     let o = N.peers.get(p);
-    if (!o) { const g = body(String(d.n || "Player").replace(/[^A-Za-z0-9 _-]/g, "").slice(0, 18) || "Player"); scene.add(g); o = { g, to: new THREE.Vector3(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10) }; g.position.copy(o.to); N.peers.set(p, o); }
+    if (!o) { const g = body(String(d.n || "Player").replace(/[^A-Za-z0-9 _-]/g, "").slice(0, 18) || "Player", Number(d.c) & 0xffffff); scene.add(g); o = { g, to: new THREE.Vector3(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10) }; g.position.copy(o.to); N.peers.set(p, o); }
     o.to.set(d.p[0] / 10, d.p[1] / 10, d.p[2] / 10); o.yaw = (d.y | 0) / 100; o.sp = (d.s | 0) / 10; o.at = performance.now();
   }
   const drop = (p) => { const o = N.peers.get(p); if (o) { scene.remove(o.g); N.peers.delete(p); } };
@@ -52,7 +53,7 @@ function NETLITE(getMe) {
     if (N.up && N.ws && me && me.pos && (N.sendT -= dt) <= 0) {
       N.sendT = 0.1;
       const yaw = me.yaw != null ? me.yaw : me.body && me.body.g ? me.body.g.rotation.y : 0, v = me.vel || { x: 0, z: 0 };
-      try { N.ws.send(JSON.stringify({ t: "p", r: N.room, d: { v: 3, n: N.name, p: [Math.round(me.pos.x * 10), Math.round(me.pos.y * 10), Math.round(me.pos.z * 10)], y: Math.round(yaw * 100), s: Math.round(Math.hypot(v.x || 0, v.z || 0) * 10) } })); } catch { /* dropped */ }
+      try { N.ws.send(JSON.stringify({ t: "p", r: N.room, d: { v: 3, n: N.name, c: N.c, p: [Math.round(me.pos.x * 10), Math.round(me.pos.y * 10), Math.round(me.pos.z * 10)], y: Math.round(yaw * 100), s: Math.round(Math.hypot(v.x || 0, v.z || 0) * 10) } })); } catch { /* dropped */ }
     }
     let el = document.getElementById("netk"); const n = N.peers.size;
     if (n && !el) { el = document.createElement("div"); el.id = "netk"; el.style.cssText = "position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:30;padding:4px 12px;border-radius:999px;background:#0009;color:#9fe8ff;font:700 13px Segoe UI,system-ui;pointer-events:none"; document.body.appendChild(el); }
