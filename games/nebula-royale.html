@@ -1494,6 +1494,9 @@ body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 </script>
 <script>
 /* ===== core.js ===== */
+// The owner wiped every save and account on 2026-11-17: the first time a game opens after that, it clears its old saves
+// and saved accounts on this device (Nebula Royale and Nebula Brawl share the marker, so it happens once).
+(() => { try { if (localStorage.getItem("nb_wipe") !== "2026-11-17") { for (const k of Object.keys(localStorage)) if (/^(nr|nb|nebula-brawl)/.test(k)) localStorage.removeItem(k); localStorage.setItem("nb_wipe", "2026-11-17"); } } catch (e) { /* no storage */ } })();
 // Nebula Royale core: helpers, saved progress, the catalog (outfits, gear, weapons, items) and sound.
 const TH = THREE, $ = (s) => document.querySelector(s);
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[(Math.random() * a.length) | 0];
@@ -4673,11 +4676,13 @@ function startMode() {
       roundBanner("Box PvP", "Waiting for your opponent", "");
     } else { addBots(1, () => 1); G.opp = G.E[1]; G.opp.ai.lvl = Math.max(0.55, G.acc * rnd(0.95, 1.15)); boxRound(); }
   } else if (G.type == "zone") {
-    const P0 = pick(POIS.filter((q) => q.t != "lodge" && q.t != "docks")), R = [72, 46, 28, 15, 7, 2, 0]; let cx = P0.x, cz = P0.z; G.circ = [{ x: cx, z: cz, r: R[0] }];
-    for (let i = 1; i < R.length; i++) { const a = rnd(0, 6.28), d = rnd(0, (R[i - 1] - R[i]) * 0.55); cx += Math.cos(a) * d; cz += Math.sin(a) * d; G.circ.push({ x: cx, z: cz, r: R[i] }); }
+    // online, the storm comes from the match seed so every page has the same one
+    const R = [72, 46, 28, 15, 7, 2, 0], P0 = seeded(G.net ? NET.m.seed + 3 : 0, () => { const P = pick(POIS.filter((q) => q.t != "lodge" && q.t != "docks")); let cx = P.x, cz = P.z; G.circ = [{ x: cx, z: cz, r: R[0] }];
+      for (let i = 1; i < R.length; i++) { const a = rnd(0, 6.28), d = rnd(0, (R[i - 1] - R[i]) * 0.55); cx += Math.cos(a) * d; cz += Math.sin(a) * d; G.circ.push({ x: cx, z: cz, r: R[i] }); } return P; }); let cx;
     G.waits = [8, 7, 6, 6, 5, 5]; G.shrinks = [16, 14, 12, 10, 8, 8]; G.dmgs = [3, 4, 5, 7, 9, 12]; G.ph = 0; G.pt = 0; G.sx = cx = P0.x; G.sz = P0.z; G.sr = R[0];
-    addBots(15, (i) => i);
+    if (G.net) netMakeBots(16); else addBots(15, (i) => i);
     for (const e of G.E) {
+      if (G.net && e !== p && !e.bot) continue; // other real players place themselves
       let x = 0, z = 0; for (let k = 0; k < 40; k++) { const a = rnd(0, 6.28), d = rnd(8, 58); x = P0.x + Math.cos(a) * d; z = P0.z + Math.sin(a) * d; if (terrH(x, z) > 1 && !blockedAt(x, z, 1.5)) break; }
       revive(e, x, groundAt(x, z, 99) + 0.1, z, rnd(0, 6.28), 50);
       giveKit(e, [wpn("shotgun", ri(1, 3)), wpn(pick(["rifle", "smg"]), ri(1, 3)), wpn(pick(["rifle", "sniper", "smg", "pistol"]), ri(1, 2)), { t: "c", id: "cell", n: 4 }, { t: "c", id: pick(["orb", "med", "fizz"]), n: 2 }], 150, [300, 200, 100]);
@@ -4694,7 +4699,8 @@ function startMode() {
   } else if (G.type == "rumble") {
     const c = { x: 0, z: 10, r: G.m.wr ? 95 : 150 }; G.circ = [...Array(7)].map(() => ({ ...c })); G.waits = [1e9, 1e9, 1e9, 1e9, 1e9, 1e9]; G.dmgs = [2, 2, 2, 2, 2, 2]; G.sx = c.x; G.sz = c.z; G.sr = c.r;
     G.tk = [0, 0]; G.need = G.m.wr ? 1e9 : 30; G.spawns = G.m.wr ? [{ x: -48, z: 12 }, { x: 48, z: 8 }] : [{ x: -78, z: 12 }, { x: 78, z: 8 }]; G.raceT = RACE_T;
-    addBots(19, (i) => (i <= 9 ? 0 : 1));
+    // online: the real players are split over the two teams (team 1000 starts on the left), and bots fill to 20
+    if (G.net) netMakeBots(20); else addBots(19, (i) => (i <= 9 ? 0 : 1));
     for (const e of G.E) rumbleDrop(e, true);
     toast(G.m.wr ? "Weapon Race! Each elimination gives you the next gun. First through all " + RACE.length + " wins it for their team." : "Team Rumble! First team to 30 eliminations wins. You come back when you're knocked out.");
   }
@@ -4707,7 +4713,7 @@ const RACE = ["rifle", "smg", "burst", "shotgun", "drum", "revolver", "marksman"
 function raceKit(e) { const id = RACE[Math.min(RACE.length - 1, e.wr || 0)]; giveKit(e, [wpn(id, 3), { t: "c", id: "cell", n: 2 }], 200, [60, 0, 0]); e.ammo.rockets = 30; e.ammo.heavy = 40; }
 function raceLeader() { let b = null; for (const e of G.E) if (!b || (e.wr || 0) > (b.wr || 0)) b = e; return b; }
 function rumbleDrop(e, first) {
-  const s = G.spawns[e.team === G.p.team ? 0 : 1], x = s.x + rnd(-18, 18), z = s.z + rnd(-18, 18);
+  const s = G.spawns[G.net ? (e.team === 1000 ? 0 : 1) : e.team === G.p.team ? 0 : 1], x = s.x + rnd(-18, 18), z = s.z + rnd(-18, 18);
   revive(e, x, terrH(x, z) + 42, z, e.team === G.p.team ? -Math.PI / 2 : Math.PI / 2, 0); e.st = "glide"; e.tx = x * 0.75; e.tz = z + rnd(-10, 10);
   if (G.m.wr) { if (first) e.wr = 0; raceKit(e); if (e.isP) { G.spec = null; yaw = e.yaw; if (!first) toast("Back in the fight!"); } return; }
   if (first || !e.inv.some(Boolean)) giveKit(e, [wpn("rifle", ri(1, 2)), wpn("shotgun", ri(0, 2)), { t: "c", id: "cell", n: 3 }], 120, [120, 40, 0]);
@@ -7021,7 +7027,7 @@ document.addEventListener("visibilitychange", () => {
 // to them and they take the damage. If the host leaves, the next player takes over the computer
 // players. Nothing is stored: a match lives only while its players are in it.
 const NET = { room: null, peers: [], me: "", q: null, m: null, rx: 0, bctx: 0, real: 1, conn: false, goOp: null };
-const NET_OK = (k) => ["solo", "duos", "squads", "ranked", "rankedDuos", "rankedSquads", "snipers", "box", "zero", "moon", "twister", "perkup", "blades", "gold", "lava"].includes(k);
+const NET_OK = (k) => ["solo", "duos", "squads", "ranked", "rankedDuos", "rankedSquads", "snipers", "box", "zero", "moon", "twister", "perkup", "blades", "gold", "lava", "rumble", "race", "zone"].includes(k);
 const capOf = (m) => (m == "box" ? 2 : NET_CAP);
 const MM_WAIT = 20, NET_TOTAL = 48, NET_CAP = 16;
 try { const v = localStorage.getItem("nr_real"); if (v != null) NET.real = +v ? 1 : 0; NET.nb = +localStorage.getItem("nr_nb") ? 1 : 0; } catch (e) { /* no storage */ }
@@ -7040,7 +7046,7 @@ function unpackIt(a) {
   return null;
 }
 // Duos and Squads: people from the same party share a team (up to the team size); everyone else is on their own team
-function netTeams(ro, md) { const tz = (MODES[md] && MODES[md].tm) || 1, seen = {}, tm = []; let n = 0; ro.forEach((peer, i) => { const py = (presOf(peer) || {}).py; if (tz > 1 && py) { const t = seen[py]; if (t && t.c < tz) { tm[i] = t.id; t.c++; return; } seen[py] = { id: n, c: 1 }; } tm[i] = n++; }); return tm; }
+function netTeams(ro, md) { if (MODES[md] && MODES[md].type == "rumble") return ro.map((_, i) => i % 2); const tz = (MODES[md] && MODES[md].tm) || 1, seen = {}, tm = []; let n = 0; ro.forEach((peer, i) => { const py = (presOf(peer) || {}).py; if (tz > 1 && py) { const t = seen[py]; if (t && t.c < tz) { tm[i] = t.id; t.c++; return; } seen[py] = { id: n, c: 1 }; } tm[i] = n++; }); return tm; }
 const inList = (L, id) => (id && L.some((x) => x.id == id) ? id : null);
 // is this character run on this page? (you, and the computer players while you host)
 const netAuth = (e) => !!e && (e.isP || (e.bot && !e.net));
@@ -7193,7 +7199,8 @@ function netMakeBots(N) {
   if (tz > 1 && M.tm && !M.nb) { const cnt = {}; M.roster.forEach((_, i) => (cnt[M.tm[i]] = (cnt[M.tm[i]] || 0) + 1)); Object.keys(cnt).sort((a, b) => a - b).forEach((t) => { for (let k = cnt[t]; k < tz && fill.length < nb; k++) fill.push({ team: 1000 + +t, peer: M.roster[M.tm.indexOf(+t)], mi: k - 1 }); }); }
   const specs = seeded(M.seed + 1, () => { const names = [...NAMES].sort(() => Math.random() - 0.5); return [...Array(nb)].map((_, j) => ({ s: pick(SK), nm: names[j % names.length] + (j >= names.length ? j : ""), gl: Math.random() < 0.6 ? pick(GL).id : null, pk: Math.random() < 0.35 ? pick(PK).id : null, w: Math.random() < 0.15 ? rollWeapon(-25) : null, lvl: rnd(0.6, 1.25) })); });
   specs.forEach((sp, j) => {
-    const f = fill[j], e = mkE(1 + j, f ? f.team : 1 + Math.floor((j - fill.length) / tz), 0, sp.s, sp.nm, { gl: sp.gl, pk: sp.pk }); e.bot = 1; e.nid = "b" + j; e.net = G.host ? 0 : 1;
+    const f = fill[j], e = mkE(1 + j, G.type == "rumble" ? 1000 + ((M.roster.length + j) % 2) : f ? f.team : 1 + Math.floor((j - fill.length) / tz), 0, sp.s, sp.nm, { gl: sp.gl, pk: sp.pk }); e.bot = 1; e.nid = "b" + j; e.net = G.host ? 0 : 1;
+    if (G.type == "rumble" && e.team === G.p.team) e.mate = 1;
     if (f) { e.leadPeer = f.peer; e.mi = f.mi; if (e.team === G.p.team) { e.mate = 1; e.ai && (e.ai.lvl = Math.max(e.ai.lvl || 0, 0.7)); } }
     e.st = "bus"; e.g.visible = false; e.jt = 0; e.ai = { t: rnd(0, 0.3), lvl: G.acc * sp.lvl }; if (sp.w) e.inv[0] = sp.w;
     G.E.push(e); M.bots[j] = e;

@@ -307,6 +307,9 @@ function rankFor(trophies){
 function rangeLabel(range){ if(range<180)return "Melee"; if(range<280)return "Short"; if(range<380)return "Long"; return "Super long"; }
 function speedLabel(speed){ if(speed<235)return "Slow"; if(speed<262)return "Normal"; if(speed<282)return "Fast"; return "Very fast"; }
 
+// The owner wiped every save and account on 2026-11-17: the first time a game opens after that, it clears its old saves
+// and saved accounts on this device (Nebula Royale and Nebula Brawl share the marker, so it happens once).
+(() => { try { if (localStorage.getItem("nb_wipe") !== "2026-11-17") { for (const k of Object.keys(localStorage)) if (/^(nr|nb|nebula-brawl)/.test(k)) localStorage.removeItem(k); localStorage.setItem("nb_wipe", "2026-11-17"); } } catch (e) { /* no storage */ } })();
 // ---------- profile in localStorage ----------
 // Each account has its own save ("nb2:<name key>"); tests and offline play use "nb2:guest". The old v1 save is not read:
 // everyone started fresh when accounts came in (2026-11-17).
@@ -897,16 +900,18 @@ class Match{
       if(input.useHyper)this.useHyper(p);
     }
     if(this.net&&this.net.role==="host"){
-      const f=this.fighters[3], ri=this.netIn&&this.netIn();
-      if(f.remote&&f.alive&&ri){
+      for(const g of this.net.guests){
+        const f=this.fighters[g.slot], sg=g.slot>=3?-1:1, ri=this.netIn&&this.netIn(g.peer);
+        if(!f||!f.remote||!f.alive||!ri)continue;
         const mv=ri.mv||[0,0], mag=Math.hypot(mv[0],mv[1]);
-        if(mag>0.12){ const sp=this.speedOf(f); f.vel={x:-mv[0]/Math.max(1,mag)*sp*Math.min(1,mag),y:-mv[1]/Math.max(1,mag)*sp*Math.min(1,mag)}; f.facing=Math.atan2(-mv[1],-mv[0]); } else f.vel={x:0,y:0};
-        if(ri.am){ f.aimDir={x:-ri.am[0],y:-ri.am[1]}; f.facing=Math.atan2(-ri.am[1],-ri.am[0]); }
+        if(mag>0.12){ const sp=this.speedOf(f); f.vel={x:sg*mv[0]/Math.max(1,mag)*sp*Math.min(1,mag),y:sg*mv[1]/Math.max(1,mag)*sp*Math.min(1,mag)}; f.facing=Math.atan2(sg*mv[1],sg*mv[0]); } else f.vel={x:0,y:0};
+        if(ri.am){ f.aimDir={x:sg*ri.am[0],y:sg*ri.am[1]}; f.facing=Math.atan2(sg*ri.am[1],sg*ri.am[0]); }
         const D=f.rDone||(f.rDone={fs:ri.fs|0,ss:ri.ss|0,gs:ri.gs|0,hs:ri.hs|0});
-        if((ri.fs|0)>D.fs){ D.fs=ri.fs|0; if(ri.fa){ f.lobDist=ri.fd||null; this.tryFire(f,{x:-ri.fa[0],y:-ri.fa[1]}); } }
+        if((ri.fs|0)>D.fs){ D.fs=ri.fs|0; if(ri.fa){ f.lobDist=ri.fd||null; this.tryFire(f,{x:sg*ri.fa[0],y:sg*ri.fa[1]}); } }
         if((ri.ss|0)>D.ss){ D.ss=ri.ss|0; this.useSuper(f); }
         if((ri.gs|0)>D.gs){ D.gs=ri.gs|0; this.useGadget(f); }
         if((ri.hs|0)>D.hs){ D.hs=ri.hs|0; this.useHyper(f); }
+        if((ri.ps|0)>(D.ps|0)){ D.ps=ri.ps|0; if(PINS.includes(ri.pt))this.pin(f,ri.pt); }
       }
     }
     for(const f of this.fighters){
@@ -1022,7 +1027,7 @@ class Match{
       const boxes2=this.boxes();
       for(const w of this.wells){
         w.t-=dt;
-        for(const e of this.fighters){ if(!e.alive||e.team===w.team||e.titan)continue; const d=dist(e.pos,w.pos); if(d<200&&d>6){ const k=Math.min(1,(200-d)/200+0.25)*260*dt; e.pos=collideCircle({x:e.pos.x+(w.pos.x-e.pos.x)/d*k,y:e.pos.y+(w.pos.y-e.pos.y)/d*k},e.radius,boxes2); } }
+        for(const e of this.fighters){ if(!e.alive||e.team===w.team||e.titan)continue; const d=dist(e.pos,w.pos); if(d<200&&d>6){ const k=Math.min(1,(200-d)/200+0.6)*360*dt; e.pos=collideCircle({x:e.pos.x+(w.pos.x-e.pos.x)/d*k,y:e.pos.y+(w.pos.y-e.pos.y)/d*k},e.radius,boxes2); } }
         if(Math.random()<0.6)this.particles.push({pos:{x:w.pos.x+(Math.random()-0.5)*260,y:w.pos.y+(Math.random()-0.5)*260},vel:{x:0,y:0},life:0.3,maxLife:0.3,size:3,color:"#f0abfc",to:w.pos});
         if(w.t<=0)this.explode(w.pos,95,w.dmg,w.team,w.ownerId,true,"#c026d3");
       }
@@ -1518,27 +1523,58 @@ class Match{
   }
   pin(f,text){
     if(!f||!f.alive)return; this.pins=(this.pins||[]).filter(p=>p.f!==f); this.pins.push({f,text,t:1.8});
-    if(f===this.player&&Math.random()<0.6){
-      const mate=this.fighters.find(m=>m!==f&&m.alive&&m.team===f.team), foe=this.fighters.find(m=>m.alive&&m.team!==f.team&&!m.titan);
+    if(f===this.player&&!(this.net&&this.net.role==="guest")&&Math.random()<0.6){
+      const mate=this.fighters.find(m=>m!==f&&m.alive&&m.team===f.team&&!m.remote), foe=this.fighters.find(m=>m.alive&&m.team!==f.team&&!m.titan&&!m.remote);
       const who=Math.random()<0.5?mate||foe:foe||mate, reply=PIN_REPLY[text]||"Nice!";
       if(who)this.pinLater={f:who,text:reply,t:0.8};
     }
   }
   // the host's view of the match, small enough for one message (positions are mirrored on the guest's side)
   netSnap(){
-    const r=(v)=>Math.round(v), F=this.fighters.map(f=>{ return [r(f.pos.x),r(f.pos.y),r(f.hp),r(f.maxHp),f.alive?1:0,r(f.facing*100),r((f.ammo||0)*10),r((f.superCharge||0)*100),r((f.respawnT||0)*10)]; });
+    const r=(v)=>Math.round(v), F=this.fighters.map(f=>{ return [r(f.pos.x),r(f.pos.y),r(f.hp),r(f.maxHp),f.alive?1:0,r(f.facing*100),r((f.ammo||0)*10),r((f.superCharge||0)*100),r((f.respawnT||0)*10),f.gems|0,f.cores|0,f.bounty|0]; });
+    const X={ c:this.crateAlive.map(a=>a?1:0).join(""), zr:r(this.zoneR) };
+    if(this.gems.length)X.g=this.gems.slice(-40).map(g=>[r(g.pos.x),r(g.pos.y)]);
+    if(this.cores.length)X.co=this.cores.slice(-30).map(g=>[r(g.pos.x),r(g.pos.y)]);
+    if(this.mode==="ball")X.bl=[r(this.ball.pos.x),r(this.ball.pos.y),this.ballCarrier==null?-1:this.ballCarrier,this.blueScore,this.redScore];
+    if(this.vaults.length)X.v=this.vaults.map(v=>r(v.hp));
+    if(this.zones.length){ X.zp=this.zonePts.map(r); X.zo=this.zones.map(z=>z.owner); }
+    if(this.mode==="hunt")X.st=this.stars.slice();
+    if(this.mode==="titan")X.tr=this.titanRage?1:0;
+    if(this.pins&&this.pins.length)X.pn=this.pins.map(p=>[this.fighters.indexOf(p.f),p.text,Math.round(p.t*10)]).filter(a=>a[0]>=0);
+    if(this.mode==="gem"||this.mode==="ranked")X.ct=[this.countdownTeam,r(this.countdownT*10)];
+    if(this.turrets.length)X.tu=this.turrets.slice(-8).map(t=>[r(t.pos.x),r(t.pos.y),t.team,t.kind==="nebulux"?1:0,r(t.facing*100),r(t.hp),r(t.maxHp)]);
     const B=this.bullets.slice(-40).map(b=>{ const p=b.lob?b.lob.to:b.pos; return [r(b.pos.x),r(b.pos.y),b.lob?0:r(b.vel.x),b.lob?0:r(b.vel.y),b.team,r(b.radius||6),b.color||"#fff"]; });
-    return { t:Math.round(this.timeLeft*10), k:[this.kos[0],this.kos[1]], f:F, b:B, fin:this.finished&&this.result?{w:this.result.won?1:0}:null };
+    return { t:Math.round(this.timeLeft*10), k:[this.kos[0],this.kos[1]], f:F, b:B, x:X, fin:this.finished&&this.result?{w:this.result.won?1:0}:null };
   }
   netFollow(dt){
     this.time+=dt; const S=this.snap; if(!S)return;
     if(S!==this.snapUsed){
-      this.snapUsed=S; this.timeLeft=S.t/10; this.kos=[S.k[1],S.k[0]];
-      S.f.forEach((a,j)=>{ const f=this.fighters[(j+3)%6]; if(!f)return; f.tgt={x:WORLD_W-a[0],y:WORLD_H-a[1]}; f.hp=a[2]; f.maxHp=a[3]; const was=f.alive; f.alive=!!a[4]; if(!was&&f.alive)f.pos={...f.tgt}; f.facing=a[5]/100+Math.PI; f.ammo=a[6]/10; f.superCharge=a[7]/100; f.superReady=f.superCharge>=1; f.respawnT=a[8]/10; });
-      this.bullets=S.b.map(a=>({pos:{x:WORLD_W-a[0],y:WORLD_H-a[1]},vel:{x:-a[2],y:-a[3]},team:1-a[4],ownerId:-1,damage:0,life:0.3,radius:a[5],color:a[6],big:false}));
-      if(S.fin&&!this.finished){ const won=!S.fin.w, a=this.kos[0], b=this.kos[1]; this.finish(won,this.mode==="duel"?(won?"You won the duel, "+a+" to "+b+"!":"Your rival won the duel, "+b+" to "+a+"."):(won?"Your crew won, "+a+" KOs to "+b+"!":"The rival crew won, "+b+" KOs to "+a+".")); }
+      const Lm=this.net.L, mir=this.net.mir;
+      this.snapUsed=S; this.timeLeft=S.t/10; this.kos=mir?[S.k[1],S.k[0]]:[S.k[0],S.k[1]];
+      const M=mir?(x,y)=>({x:WORLD_W-x,y:WORLD_H-y}):(x,y)=>({x,y}), mi=(id)=>id==null||id<0?null:Lm[id], tm=(t)=>mir?1-t:t, rot=mir?Math.PI:0, sw=(a)=>mir?[a[1],a[0]]:[a[0],a[1]];
+      S.f.forEach((a,j)=>{ const f=this.fighters[Lm[j]]; if(!f)return; f.tgt=M(a[0],a[1]); f.hp=a[2]; f.maxHp=a[3]; const was=f.alive; f.alive=!!a[4]; if(!was&&f.alive)f.pos={...f.tgt}; f.facing=a[5]/100+rot; f.ammo=a[6]/10; f.superCharge=a[7]/100; f.superReady=f.superCharge>=1; f.respawnT=a[8]/10; f.gems=a[9]|0; f.cores=a[10]|0; f.bounty=a[11]|0; });
+      const X=S.x||{};
+      if(!this.crMap)this.crMap=mir?CRATES.map(c=>{ const j=CRATES.findIndex(d=>Math.abs(d.x-(WORLD_W-c.x))<4&&Math.abs(d.y-(WORLD_H-c.y))<4); return j<0?CRATES.indexOf(c):j; }):CRATES.map((c,i)=>i);
+      if(X.c)for(let i=0;i<X.c.length&&i<this.crMap.length;i++)this.crateAlive[this.crMap[i]]=X.c[i]==="1";
+      this.gems=(X.g||[]).map((a,i)=>({id:i,pos:M(a[0],a[1]),taken:false}));
+      this.cores=(X.co||[]).map((a,i)=>({id:i,pos:M(a[0],a[1]),taken:false}));
+      if(X.bl){ this.ball.pos=M(X.bl[0],X.bl[1]); this.ballCarrier=mi(X.bl[2]); const sc=sw([X.bl[3],X.bl[4]]); this.blueScore=sc[0]; this.redScore=sc[1]; }
+      if(X.v&&this.vaults.length===2){ const v=sw(X.v); this.vaults[0].hp=v[0]; this.vaults[1].hp=v[1]; }
+      if(X.zp&&this.zones.length===2){ this.zonePts=sw(X.zp); for(let i=0;i<2;i++){ const o=X.zo[mir?1-i:i]; this.zones[i].owner=o<0?-1:tm(o); } }
+      if(X.st)this.stars=sw(X.st);
+      if(X.zr!=null)this.zoneR=X.zr;
+      if(X.ct){ this.countdownTeam=typeof X.ct[0]==="number"?tm(X.ct[0]):X.ct[0]; this.countdownT=X.ct[1]/10; }
+      this.turrets=(X.tu||[]).map(a=>({pos:M(a[0],a[1]),team:tm(a[2]),ownerId:-1,hp:a[5],maxHp:a[6],kind:a[3]?"nebulux":"sentry",cooldown:1,facing:a[4]/100+rot,hitFlash:0}));
+      if(X.tr!=null)this.titanRage=!!X.tr;
+      this.pins=(X.pn||[]).filter(a=>PINS.includes(a[1])||Object.values(PIN_REPLY).includes(a[1])).map(a=>({f:this.fighters[Lm[a[0]]],text:a[1],t:a[2]/10})).filter(p=>p.f);
+      this.bullets=S.b.map(a=>({pos:M(a[0],a[1]),vel:mir?{x:-a[2],y:-a[3]}:{x:a[2],y:a[3]},team:tm(a[4]),ownerId:-1,damage:0,life:0.3,radius:a[5],color:a[6],big:false}));
+      if(S.fin&&!this.finished){ const won=mir?!S.fin.w:!!S.fin.w, a=this.kos[0], b=this.kos[1];
+        this.finish(won,this.mode==="titan"?(won?"Your crew brought down the Titan!":"The Titan held on."):this.mode==="duel"?(won?"You won the duel, "+a+" to "+b+"!":"Your rival won the duel, "+b+" to "+a+"."):this.mode==="arena"?(won?"Your crew won, "+a+" KOs to "+b+"!":"The rival crew won, "+b+" KOs to "+a+"."):(won?"Your crew won!":"The rival crew won.")); }
     }
-    for(const f of this.fighters){ if(f.tgt&&f.alive){ const k=Math.min(1,dt*14); f.pos.x+=(f.tgt.x-f.pos.x)*k; f.pos.y+=(f.tgt.y-f.pos.y)*k; } }
+    // your own fighter moves at once on your screen, then eases toward where the host has it
+    const me=this.fighters[0], mv=this.netMove;
+    if(me&&me.alive&&mv){ const mag=Math.hypot(mv.x,mv.y); if(mag>0.12){ const sp=this.speedOf(me); me.pos=collideCircle({x:me.pos.x+mv.x/Math.max(1,mag)*sp*Math.min(1,mag)*dt,y:me.pos.y+mv.y/Math.max(1,mag)*sp*Math.min(1,mag)*dt},me.radius,this.boxes()); } }
+    for(const f of this.fighters){ if(f.tgt&&f.alive){ const own=f===me&&mv, far=Math.hypot(f.tgt.x-f.pos.x,f.tgt.y-f.pos.y)>140, k=own&&!far?Math.min(1,dt*3):Math.min(1,dt*14); f.pos.x+=(f.tgt.x-f.pos.x)*k; f.pos.y+=(f.tgt.y-f.pos.y)*k; } }
     for(const b of this.bullets){ b.pos.x+=b.vel.x*dt; b.pos.y+=b.vel.y*dt; }
     for(const pt of this.particles){ pt.life-=dt; pt.pos.x+=pt.vel.x*dt; pt.pos.y+=pt.vel.y*dt; }
     this.particles=this.particles.filter(pt=>pt.life>0);
@@ -2293,6 +2329,7 @@ function showLobby(){
          '<span class="pill">'+ICON_TROPHY+' '+profile.trophies+'</span>'+
          '<span class="pill" id="pill-played">'+ICON_GEM+' '+profile.games+' <span class="sub">played</span></span>'+
          '<span class="pill" id="pill-wl">'+profile.wins+'W · '+profile.losses+'L</span>'+
+         '<span class="pill" id="pill-online" style="display:none;color:#86efac" aria-live="polite"></span>'+
        '</div>'+
      '</div>'+
      '<div class="middle">'+
@@ -2349,7 +2386,7 @@ function showLobby(){
      '</div>'+
      (compact?"":'<p style="margin:.5rem 0 0;text-align:center;font-size:11px;font-weight:600;color:rgba(196,181,253,.8)">'+profile.games+' matches played · '+mine.length+' of '+BRAWLERS.length+' fighters unlocked · use ◀ ▶ to flip through yours · '+(NET_MODES.includes(appMode)&&netOk()?"real players first, computer players fill in":"teammates and rivals are computer players")+'</p>')+
    '</div>';
-  setScreen(root);
+  setScreen(root); setTimeout(()=>{ if(typeof lobbyHere==="function")lobbyHere(); },0);
   // Responsive tweaks for very short / narrow screens
   if(window.innerWidth<430){ const p=$("#pill-played",root); if(p)p.style.display="none"; }
   if(window.innerWidth<640){ const p=$("#pill-wl",root); if(p)p.style.display="none"; }
@@ -2585,7 +2622,7 @@ function openHelp(){
      '<ul style="margin:.375rem 0 0;padding-left:1.25rem;font-size:.875rem;font-weight:500;line-height:1.6;color:#ede9fe">'+
      '<li style="margin-top:.375rem"><strong style="color:#fff">Phone (best sideways!):</strong> left thumbstick moves, right thumbstick aims — let go to fire one shot (just tap it to auto-aim at the nearest rival). The star button fires your Super. Tap AUTO to auto-fire at the nearest rival, and tap the frame button to zoom out to the whole map.</li>'+
      '<li style="margin-top:.375rem"><strong style="color:#fff">Computer:</strong> WASD or arrow keys move, hold the mouse to aim and let go to fire (a quick click auto-aims), tap J to auto-fire at the nearest rival, Space fires your Super, M zooms to the full map.</li>'+
-     '<li style="margin-top:.375rem"><strong style="color:#fff">No pausing!</strong> Matches can\'t be paused — not with a button, not with a key. Keep brawling until the match ends or you leave with the ✕ button.</li>'+
+     '<li style="margin-top:.375rem"><strong style="color:#fff">No pausing!</strong> Matches can\'t be paused — not with a button, not with a key. Keep brawling until the match ends or you leave with the ✕ button.</li><li style="margin-top:.375rem"><strong style="color:#fff">Real players!</strong> Press Play and the game looks for other people playing the same mode: up to six in a match (three in Titan Raid, two in a Duel), with computer players in any empty places. If they\'re mid-match, wait and you\'ll play their next one. Press T or the GG button to send a quick chat pin.</li>'+
      '<li style="margin-top:.375rem">Landing hits charges your Super. Your health refills if you stay out of trouble for a few seconds.</li></ul></section>'+
    '<section style="margin-top:.75rem;border-radius:1.5rem;background:rgba(36,26,82,.9);padding:1rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)">'+
      '<h3 class="font-display" style="margin:0;font-size:1rem;color:#fde047">Pro tips</h3>'+
@@ -2776,6 +2813,7 @@ function showResults(){
    '</div>';
   setScreen(root);
   $("#res-again",root).addEventListener("click",()=>startMatch());
+  const hum=currentSetup&&currentSetup.net&&currentSetup.net.humans; if(hum&&hum.length){ const h=root.querySelector("h2"); if(h){ const p=document.createElement("p"); p.style.cssText="margin:.375rem 0 0;font-size:13px;font-weight:800;color:#86efac;text-align:center"; p.textContent="Played with real players: "+hum.join(", "); h.after(p); } }
   if(result.mode==="train"){ const h=root.querySelector("h2"); if(h)h.textContent="TRAINING DONE"; for(const d of root.querySelectorAll("div")){ const t=(d.textContent||"").trim(); if(/^\+0\s*trophies$/i.test(t)||/^\+0 coins/i.test(t))d.style.display="none"; } }
   // a win: confetti for a few seconds (skipped for anyone who asked their device for less motion)
   if(result.mode!=="train"&&result.won&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
@@ -2910,7 +2948,7 @@ function showGame(){
   const NL=setup.net?{ ...setup.net, sendT:0, seen:performance.now(), inp:{mv:[0,0],am:null,fs:0,ss:0,gs:0,hs:0,fa:null,fd:null}, gone:false }:null;
   if(NL){
     match.net=NL; match.quiet=false;
-    if(NL.role==="host"){ const f=match.fighters[3]; f.remote=true; match.netIn=()=>{ const R=ROOMS.get(NL.room), d=R&&R.peers.get(NL.other); return d&&d.in; }; }
+    if(NL.role==="host"){ for(const g of NL.guests){ const f=match.fighters[g.slot]; if(f)f.remote=true; } match.netIn=(peer)=>{ const R=ROOMS.get(NL.room), d=R&&R.peers.get(peer); return d&&d.in; }; }
   }
   const input={ aimDist:null, pendingDist:null, mouseDist:null, move:{x:0,y:0}, aim:null, aimMaxMag:0, keys:new Set(), mouseAim:null, mouseDown:false, mouseDownPos:null, mouseDownAt:0, mouseDragged:false, superQueued:false, pendingShot:null, pendingAuto:false };
   let fullMap=false, autoHeld=false, rotateDismissed=false, stopped=false;
@@ -2962,7 +3000,7 @@ function showGame(){
   }
   const hypBtn=$("#btn-hyper",root), hypFill=$("#hyper-fill",root);
   if(!match.player.hyperOk)hypBtn.style.display="none";
-  let pinI=0, pinAt=0; const sendPin=()=>{ const now=performance.now(); if(now-pinAt<1200||!match)return; pinAt=now; match.pin(match.player,PINS[pinI]); pinI=(pinI+1)%PINS.length; const pb=$("#btn-pin",root); if(pb)pb.firstChild.nodeValue=["GG","Nice","Go!","Help","Oops"][pinI]; };
+  let pinI=0, pinAt=0; const sendPin=()=>{ const now=performance.now(); if(now-pinAt<1200||!match)return; pinAt=now; match.pin(match.player,PINS[pinI]); if(match.net&&match.net.role==="guest"){ match.net.inp.ps=(match.net.inp.ps|0)+1; match.net.inp.pt=PINS[pinI]; } pinI=(pinI+1)%PINS.length; const pb=$("#btn-pin",root); if(pb)pb.firstChild.nodeValue=["GG","Nice","Go!","Help","Oops"][pinI]; };
   { const pb=$("#btn-pin",root); pb.addEventListener("pointerdown",(e)=>{ e.preventDefault(); e.stopPropagation(); sendPin(); }); pb.addEventListener("pointerup",(e)=>e.stopPropagation()); }
   hypBtn.addEventListener("pointerdown",(e)=>{ e.preventDefault(); e.stopPropagation(); input.hypQueued=true; });
   const gadBtn=$("#btn-gadget",root), gadN=$("#gad-n",root);
@@ -3145,7 +3183,7 @@ function showGame(){
     if(stopped)return;
     stopped=true;
     cancelAnimationFrame(raf); if(bgStop){ bgStop(); bgStop=null; }
-    if(NL){ const nl=NL; if(nl.role==="host")roomPres(nl.room,{v:2,nm:ACC.name,role:"host",s:match.netSnap()}); setTimeout(()=>roomLeave(nl.room),3000); setTimeout(()=>{ if(!NETB.q)roomLeave("nr-brawl"); },3000); }
+    if(NL){ const nl=NL; if(nl.role==="host")roomPres(nl.room,{v:2,nm:ACC.name,role:"host",s:match.netSnap()}); setTimeout(()=>roomLeave(nl.room),3000); setTimeout(()=>{ if(!NETB.q)lobbyHere(); },3000); }
     ro.disconnect();
     window.clearInterval(rotateIv);
     window.removeEventListener("resize",checkRotate);
@@ -3186,15 +3224,16 @@ function showGame(){
     let firing=shotAim!==null;
     const step=1/60;
     if(NL){
-      const R=ROOMS.get(NL.room), od=R&&R.peers.get(NL.other);
-      if(od)NL.seen=performance.now();
-      if(!NL.gone&&!match.finished&&performance.now()-NL.seen>8000){ NL.gone=true; if(NL.role==="host"){ match.fighters[3].remote=false; toast("Your rival left. A computer player took over."); } else match.finish(true,"Your rival's game left the match."); }
+      const R=ROOMS.get(NL.room), od=NL.other&&R&&R.peers.get(NL.other);
+      if(NL.role==="host"){ for(const g of NL.guests){ if(R&&R.peers.get(g.peer))g.seen=performance.now(); else if(!g.gone&&!match.finished&&performance.now()-g.seen>8000){ g.gone=true; const f=match.fighters[g.slot]; if(f)f.remote=false; toast((f?f.name:"A player")+" left. A computer player took over."); } } }
+      else{ if(od)NL.seen=performance.now(); if(!NL.gone&&!match.finished&&performance.now()-NL.seen>8000){ NL.gone=true; match.finish(true,"The host's game left the match."); } }
       if(NL.role==="guest"){
         const I=NL.inp; I.mv=[+moveVec.x.toFixed(2),+moveVec.y.toFixed(2)]; I.am=aim?[+aim.x.toFixed(2),+aim.y.toFixed(2)]:null;
         if(firing&&shotAim){ I.fs++; I.fa=[+shotAim.x.toFixed(3),+shotAim.y.toFixed(3)]; I.fd=shotDist||null; firing=false; shotAim=null; input.pendingShot=null; input.pendingAuto=false; input.pendingDist=null; }
         if(input.superQueued){ I.ss++; input.superQueued=false; } if(input.gadQueued){ I.gs++; input.gadQueued=false; } if(input.hypQueued){ I.hs++; input.hypQueued=false; }
         NL.sendT-=dt; if(NL.sendT<=0){ NL.sendT=0.05; roomPres(NL.room,{v:2,nm:ACC.name,role:"guest",in:I}); }
         if(od&&od.s)match.snap=od.s;
+        match.netMove={x:moveVec.x,y:moveVec.y};
         while(acc>=step){ match.netFollow(step); acc-=step; }
       } else {
         NL.sendT-=dt; if(NL.sendT<=0||match.finished){ NL.sendT=1/15; roomPres(NL.room,{v:2,nm:ACC.name,role:"host",s:match.netSnap()}); }
@@ -3307,9 +3346,20 @@ function acctCall(m){
 }
 function acctSend(m){ if(ACC.ws&&ACC.up){ try{ ACC.ws.send(JSON.stringify(m)); return true; }catch(e){} } return false; }
 const ROOMS=new Map();
-function roomJoin(name,on){ const R={peers:new Map(),on,pres:null}; ROOMS.set(name,R); acctSend({t:"j",r:name}); return R; }
-function roomPres(name,d){ const R=ROOMS.get(name); if(R)R.pres=d; acctSend({t:"p",r:name,d}); }
-function roomLeave(name){ if(!ROOMS.has(name))return; ROOMS.delete(name); acctSend({t:"l",r:name}); }
+function roomJoin(name,on){
+  const R={peers:new Map(),on,pres:null}; ROOMS.set(name,R);
+  if(ACC.cl){
+    ACC.cl.join(name).then(api=>{ if(ROOMS.get(name)!==R){ api.leave(); return; } R.api=api;
+      api.onPeers(c=>{ const m=new Map(); for(const p of c.peers||[]){ if(p.isMe){ ACC.peer=ACC.peer||p.peer; continue; } if(p.peer!==ACC.peer)m.set(p.peer,p.presence); } R.peers=m; R.seen=performance.now(); if(R.on)R.on({}); });
+      if(R.pres)clPres(R,R.pres); }).catch(()=>{});
+    return R;
+  }
+  acctSend({t:"j",r:name}); return R;
+}
+// claude.ai presence is a patch: keys left out of the new state are cleared with null
+function clPres(R,d){ const p={...d}; for(const k of Object.keys(R.sent||{}))if(!(k in p))p[k]=null; R.sent=d; R.api.presence(p).catch(()=>{}); }
+function roomPres(name,d){ const R=ROOMS.get(name); if(R)R.pres=d; if(ACC.cl){ if(R&&R.api)clPres(R,d); return; } acctSend({t:"p",r:name,d}); }
+function roomLeave(name){ const R=ROOMS.get(name); if(!R)return; ROOMS.delete(name); if(ACC.cl){ if(R.api)R.api.leave().catch(()=>{}); return; } acctSend({t:"l",r:name}); }
 async function pwHash(name,pw){
   const te=new TextEncoder(), k=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveBits"]);
   const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:te.encode("nebula-royale:"+nameKey(name)),iterations:150000,hash:"SHA-256"},k,256);
@@ -3351,8 +3401,19 @@ function gate(){
     c.onchange=()=>{ b.disabled=!c.checked; }; b.onclick=()=>{ nbSet("nb_agree",AGREE_V); gate(); };
     return;
   }
+  if(window.claude&&window.claude.use)return gateClaude();
   gateShell('<h2 id="nbh">Sign in</h2><p>Connecting to the game\'s server...</p>');
   acctConnect().then(up=>{ if(!up){ gateOffline(); return; } const cur=nbGet("nb_cur",""), a=accts().find(x=>x.key===cur); if(a&&!gateMode)return resumeAcct(a,true); gateAcct(); });
+}
+// on claude.ai: a player name (kept on this device) and claude.ai's live room for real players
+function gateClaude(){
+  const saved=nbGet("nb_cl_name","");
+  gateShell('<h2 id="nbh">Pick a player name</h2><p>Other players see this name. Your progress is saved on this device.</p><label class="nbi">Player name<input id="nbnm" maxlength="16" autocomplete="nickname" autocapitalize="off" spellcheck="false" value="'+escHtml(saved)+'"></label><button class="nbgo" id="nbgo">Play</button><p class="nber" id="nber" role="alert"></p><button class="nb2" id="nbreread">Read the player agreement again</button>');
+  document.getElementById("nbreread").onclick=()=>{ nbSet("nb_agree",""); gate(); };
+  const go=()=>{ const n=document.getElementById("nbnm").value.trim().replace(/\s+/g," "), bad=nameProblem(n); if(bad){ document.getElementById("nber").textContent=bad; return; }
+    nbSet("nb_cl_name",n); ACC.name=n; ACC.key="cl-"+nameKey(n); ACC.offline=true; loadProfileKey(ACC.key,null); ensureProfile(); showLobby();
+    window.claude.use("room").then(r=>{ if(!r)return; ACC.cl=r; r.onPeers(c=>{ for(const p of c.peers||[])if(p.isMe&&!ACC.peer)ACC.peer=p.peer; }); if(!ACC.peer&&window.__PEER)ACC.peer=window.__PEER; lobbyHere(); }).catch(()=>{}); };
+  document.getElementById("nbgo").onclick=go; document.getElementById("nbnm").onkeydown=(e)=>{ if(e.key==="Enter")go(); };
 }
 function gateOffline(){
   gateShell('<h2 id="nbh">Can\'t reach the game\'s server</h2><p>You can play on this device now. Your progress is saved here, and you can sign in to save it online once the server can be reached.</p><button class="nbgo" id="nboff">Play on this device</button><button class="nb2" id="nbretry">Try again</button>');
@@ -3406,61 +3467,89 @@ function showRecovery(v){
   c.onchange=()=>{ b.disabled=!c.checked; }; b.onclick=()=>acctEnterGame(v,v.sess);
 }
 // ---------- real players: Duel ----------
-const NETB={ q:null, room:null }, NET_MODES=["duel","arena"];
-const netOk=()=>!!(ACC.key&&!ACC.offline&&ACC.up&&ACC.peer);
+const NETB={ q:null, room:null, code:null }, NET_MODES=["duel","arena","gem","ranked","ball","showdown","vault","zone","hunt","titan"];
+const netOk=()=>!!(ACC.cl?ACC.peer:(ACC.key&&!ACC.offline&&ACC.up&&ACC.peer));
 function duelQueue(){
   if(NETB.q)return;
-  NETB.q={ qt:Date.now()+Math.random(), go:null, t0:performance.now(), md:appMode };
-  const ov=el('<div id="duelq" role="dialog" aria-label="Looking for a real player" style="position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.72)"><div class="nbb" style="text-align:center">'+GATE_CSS+'<h2>'+MODE_INFO[appMode].name+' · real players</h2><p id="duelqs">Looking for another player...</p><button class="nbgo" id="duelbot">Play the computer instead</button><button class="nb2" id="duelx">Cancel</button></div></div>');
+  NETB.q={ qt:Date.now()+Math.random(), go:null, t0:performance.now(), md:appMode }; if(NETB.code==null)NETB.code=nbGet("nb_party","")||null;
+  const ov=el('<div id="duelq" role="dialog" aria-label="Looking for a real player" style="position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.72)"><div class="nbb" style="text-align:center">'+GATE_CSS+'<h2>'+MODE_INFO[appMode].name+' · real players</h2><p id="duelqs">Looking for another player...</p><div id="duelparty" style="margin:.5rem 0"></div><button class="nbgo" id="duelbot">Play the computer instead</button><button class="nb2" id="duelx">Cancel</button></div></div>');
   document.body.appendChild(ov);
   ov.querySelector("#duelbot").onclick=()=>{ duelCancel(); NETB.skip=true; startMatch(); };
   ov.querySelector("#duelx").onclick=duelCancel;
-  roomJoin("nr-brawl",duelTick); duelPres(); NETB.iv=setInterval(duelTick,500);
+  partyUi();
+  const LR=ROOMS.get("nr-brawl"); if(LR)LR.on=duelTick; else roomJoin("nr-brawl",duelTick); duelPres(); NETB.iv=setInterval(duelTick,500);
 }
-function duelPres(){ if(!NETB.q)return; roomPres("nr-brawl",{v:2,nm:ACC.name,st:"q",md:NETB.q.md,qt:NETB.q.qt,def:profile.selectedBrawler,lv:levelOf(profile.selectedBrawler),go:NETB.q.go}); }
-function duelCancel(){ clearInterval(NETB.iv); NETB.q=null; roomLeave("nr-brawl"); const o=document.getElementById("duelq"); if(o)o.remove(); }
+// signed in and in the lobby: stay in the lobby room, so the lobby can show how many people are playing Nebula Brawl right now
+function lobbyHere(){ if(NETB.q){ onlineCount(); return; } if(!netOk()&&!(ACC.cl||(ACC.key&&!ACC.offline)))return; let R=ROOMS.get("nr-brawl"); if(!R)R=roomJoin("nr-brawl",onlineCount); else R.on=onlineCount; roomPres("nr-brawl",{v:2,nm:ACC.name,st:"l"}); onlineCount(); }
+function onlineCount(){ const R=ROOMS.get("nr-brawl"), el=document.getElementById("pill-online"); if(!el)return; const n=R?[...R.peers.values()].filter(d=>d&&d.v===2).length+1:0; el.style.display=n>1?"":"none"; el.textContent=n+" online"; }
+// the party code box: make a code, type a friend's, or clear it
+function partyUi(){
+  const box=document.getElementById("duelparty"); if(!box)return;
+  if(NETB.code){ box.innerHTML='<p style="margin:0">Party code <b style="font-size:20px;letter-spacing:.12em;color:#fde047">'+NETB.code+'</b><br>Friends who press Play with this code join your match.</p><button class="nb2" id="partyoff">Play with anyone instead</button>'; box.querySelector("#partyoff").onclick=()=>{ NETB.code=null; nbSet("nb_party",""); partyUi(); duelPres(); }; return; }
+  box.innerHTML='<p style="margin:0 0 .25rem">Playing with friends?</p><div style="display:flex;gap:.375rem"><input id="partyin" maxlength="4" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="CODE" aria-label="Party code" style="flex:1;min-height:44px;border-radius:.75rem;border:0;padding:0 .75rem;font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;background:#f5f3ff;color:#1e1b4b"><button class="nb2" id="partyjoin" style="width:auto;margin:0;padding:0 .75rem;background:rgba(255,255,255,.1)">Join</button></div><button class="nb2" id="partynew">Make a party code</button>';
+  const set=(c)=>{ c=String(c||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4); if(c.length<4)return; NETB.code=c; nbSet("nb_party",c); partyUi(); duelPres(); if(NETB.q){ NETB.q.fillAt=0; } };
+  box.querySelector("#partynew").onclick=()=>{ const A="ABCDEFGHJKMNPQRSTVWXYZ23456789"; let c=""; const b=new Uint8Array(4); crypto.getRandomValues(b); for(const x of b)c+=A[x%A.length]; set(c); };
+  box.querySelector("#partyjoin").onclick=()=>set(box.querySelector("#partyin").value);
+  box.querySelector("#partyin").onkeydown=(e)=>{ if(e.key==="Enter")set(e.target.value); };
+}
+function duelPres(){ if(!NETB.q)return; roomPres("nr-brawl",{v:2,nm:ACC.name,st:"q",md:NETB.q.md,cd:NETB.code||null,qt:NETB.q.qt,def:profile.selectedBrawler,lv:levelOf(profile.selectedBrawler),go:NETB.q.go}); }
+function duelCancel(){ clearInterval(NETB.iv); NETB.q=null; lobbyHere(); const o=document.getElementById("duelq"); if(o)o.remove(); }
+// which host places real players take: Duel the rival, Titan Raid the crew, 3v3 alternating crews
+const slotsFor=(md)=>md==="duel"?[3]:md==="titan"?[1,2]:[3,1,4,2,5];
+// a guest in host place s: where each of the host's fighters goes in the guest's own match, and whether it's turned round
+function netMapFor(s){ const t=s<3?0:1, mine=[0,1,2].map(k=>k+t*3), oth=[0,1,2].map(k=>k+(1-t)*3), order=[s,...mine.filter(k=>k!==s),...oth], L=[]; order.forEach((h,l)=>{ L[h]=l; }); return { L, mir:t===1 }; }
 function duelTick(){
   const Q=NETB.q, R=ROOMS.get("nr-brawl"); if(!Q||!R)return;
-  const st=document.getElementById("duelqs"), others=[...R.peers].filter(([p,d])=>d&&d.v===2);
+  const st=document.getElementById("duelqs"), cd=NETB.code||null, others=[...R.peers].filter(([p,d])=>d&&d.v===2&&((d.st!=="q"&&d.st!=="m")||(d.cd||null)===cd));
   const busy=others.filter(([p,d])=>d.st==="m"&&d.md===Q.md).length;
   if(st)st.textContent=busy?busy+" player"+(busy===1?" is":"s are")+" in a "+MODE_INFO[Q.md].name+" match right now. Stay here: when it ends and they play again, you'll be matched with them.":others.length?"Found "+others.length+" other player"+(others.length===1?"":"s")+" online...":"Looking for another player... ("+Math.round((performance.now()-Q.t0)/1000)+"s)";
-  for(const [p,d] of others) if(d.go&&d.go.g===ACC.peer&&d.md===Q.md) return duelStart("guest",p,d,d.go);
+  for(const [p,d] of others) if(d.go&&Array.isArray(d.go.g)&&d.go.g.includes(ACC.peer)&&d.md===Q.md) return duelStart("guest",p,d,d.go);
   if(Q.go)return;
   const qs=others.filter(([p,d])=>d.st==="q"&&d.md===Q.md&&!d.go).sort((a,b)=>a[1].qt-b[1].qt);
-  if(qs.length&&Q.qt<qs[0][1].qt){ const [gp,gd]=qs[0]; refreshMaps(); const su=buildSetup(brawlerById(profile.selectedBrawler),Q.md);
-    su.redDefs[0]=brawlerById(gd.def||"nebula"); su.redNames[0]=String(gd.nm||"Rival").slice(0,16);
-    Q.su=su; Q.go={ id:Math.random().toString(36).slice(2,10), g:gp, map:su.map|0, defs:[su.playerDef,...su.blueMateDefs,...su.redDefs].map(x=>x.id), names:[ACC.name,...su.blueMateNames,...su.redNames] }; duelPres(); setTimeout(()=>{ NETB.lastSu=Q.su; duelStart("host",gp,gd,Q.go); },700); }
+  if(!qs.length||Q.qt>qs[0][1].qt){ Q.fillAt=0; return; }
+  const sl=slotsFor(Q.md), cap=sl.length;
+  if(!Q.fillAt)Q.fillAt=performance.now()+(cap>1&&qs.length<cap?5000:0);
+  if(performance.now()<Q.fillAt&&qs.length<cap){ if(st)st.textContent=qs.length+" other player"+(qs.length===1?"":"s")+" found. Starting in "+Math.ceil((Q.fillAt-performance.now())/1000)+"s..."; return; }
+  const take=qs.slice(0,cap), slots=sl.slice(0,take.length);
+  refreshMaps(); const su=buildSetup(brawlerById(profile.selectedBrawler),Q.md);
+  const all=[su.playerDef,...su.blueMateDefs,...su.redDefs], nm=[ACC.name,...su.blueMateNames,...su.redNames];
+  take.forEach(([p,d],k)=>{ all[slots[k]]=brawlerById(d.def||"nebula"); nm[slots[k]]=String(d.nm||"Player").slice(0,16); });
+  su.blueMateDefs=[all[1],all[2]]; su.blueMateNames=[nm[1],nm[2]]; su.redDefs=[all[3],all[4],all[5]]; su.redNames=[nm[3],nm[4],nm[5]];
+  Q.su=su; Q.go={ id:Math.random().toString(36).slice(2,10), g:take.map(x=>x[0]), sl:slots, map:su.map|0, defs:all.map(x=>x.id), names:nm };
+  duelPres(); setTimeout(()=>{ NETB.lastSu=Q.su; duelStart("host",null,{md:Q.md},Q.go); },700);
 }
 function duelStart(role,peer,d,go){
   if(!NETB.q)return;
   clearInterval(NETB.iv); const o=document.getElementById("duelq"); if(o)o.remove();
-  const room="nr-b"+go.id; NETB.q=null; setTimeout(()=>{ if(!NETB.q)roomPres("nr-brawl",{v:2,nm:ACC.name,st:"m",md}); },1500);
-  roomJoin(room,null); roomPres(room,{v:2,nm:ACC.name,role});
   const md=d.md||"duel"; appMode=md; refreshMaps();
+  const room="nr-b"+go.id; NETB.q=null; setTimeout(()=>{ if(!NETB.q)roomPres("nr-brawl",{v:2,nm:ACC.name,st:"m",md,cd:NETB.code||null}); },1500);
+  roomJoin(room,null); roomPres(room,{v:2,nm:ACC.name,role});
   let setup;
-  if(role==="host"&&NETB.lastSu){ setup=NETB.lastSu; }
-  else{
+  if(role==="host"){
+    setup=NETB.lastSu||buildSetup(brawlerById(profile.selectedBrawler),md);
+    setup.net={ role, room, guests:go.g.map((p,k)=>({ peer:p, slot:go.sl[k], seen:performance.now(), gone:false })), humans:go.sl.map(sl=>go.names[sl]) };
+  } else {
+    const s=go.sl[go.g.indexOf(ACC.peer)], mp=netMapFor(s), D=go.defs.map(x=>brawlerById(x)), N=go.names, Dl=[], Nl=[];
+    D.forEach((x,h)=>{ Dl[mp.L[h]]=x; Nl[mp.L[h]]=N[h]; });
     setup=buildSetup(brawlerById(profile.selectedBrawler),md);
-    const D=(go.defs||[]).map(x=>brawlerById(x)), N=go.names||[];
-    if(D.length===6){ setup.blueMateDefs=[D[4],D[5]]; setup.blueMateNames=[N[4],N[5]]; setup.redDefs=[D[0],D[1],D[2]]; setup.redNames=[N[0],N[1],N[2]]; }
-    else{ setup.redDefs[0]=brawlerById(d.def||"nebula"); setup.redNames[0]=String(d.nm||"Rival").slice(0,16); }
+    setup.blueMateDefs=[Dl[1],Dl[2]]; setup.blueMateNames=[Nl[1],Nl[2]]; setup.redDefs=[Dl[3],Dl[4],Dl[5]]; setup.redNames=[Nl[3],Nl[4],Nl[5]];
     setup.map=go.map|0; setup.foeLevel=Math.max(1,d.lv|0);
+    setup.net={ role, room, other:peer, slot:s, L:mp.L, mir:mp.mir, humans:[N[0],...go.sl.filter(sl=>sl!==s).map(sl=>N[sl])] };
   }
   NETB.lastSu=null;
-  setup.net={ role, room, other:peer };
   currentSetup=setup; currentResult=null; recordedResult=false; showLoading();
 }
 function signOut(){
-  clearTimeout(ACC.pushT);
+  clearTimeout(ACC.pushT); roomLeave("nr-brawl");
   const done=()=>{ ACC.uid=null; ACC.key=null; ACC.name=null; ACC.sess=null; nbSet("nb_cur",""); gateMode="saved"; loadProfileKey("guest",null); gate(); };
   if(ACC.key&&!ACC.offline&&ACC.uid){ acctCall({op:"set",path:savePath(),data:{p:profile,name:ACC.name,at:profile.at||Date.now()}}).then(done,done); } else done();
 }
 function accountSheet(){
   if(document.getElementById("nbsheet"))return;
-  const d=el('<div id="nbsheet" class="sheet-backdrop" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.6)"><div class="nbb" role="dialog" aria-label="Your account">'+GATE_CSS+'<h2>'+escHtml(ACC.name||"Player")+'</h2><p>'+(ACC.offline||!ACC.key?"Playing on this device only. Sign in to save your progress online.":"Your progress is saved on this device and online. Log in with this name on any device to keep playing, in Nebula Brawl or Nebula Royale.")+'</p><button class="nbgo" id="nbout">'+(ACC.offline||!ACC.key?"Sign in":"Sign out")+'</button><button class="nb2" id="nbclose">Close</button></div></div>');
+  const d=el('<div id="nbsheet" class="sheet-backdrop" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.6)"><div class="nbb" role="dialog" aria-label="Your account">'+GATE_CSS+'<h2>'+escHtml(ACC.name||"Player")+'</h2><p>'+(String(ACC.key||"").startsWith("cl-")?"Your progress is saved on this device. Real players on this page can join your matches.":ACC.offline||!ACC.key?"Playing on this device only. Sign in to save your progress online.":"Your progress is saved on this device and online. Log in with this name on any device to keep playing, in Nebula Brawl or Nebula Royale.")+'</p>'+(String(ACC.key||"").startsWith("cl-")?'<button class="nbgo" id="nbout">Change name</button>':'<button class="nbgo" id="nbout">'+(ACC.offline||!ACC.key?"Sign in":"Sign out")+'</button>')+'<button class="nb2" id="nbclose">Close</button></div></div>');
   document.body.appendChild(d);
   const close=()=>d.remove(); d.addEventListener("click",e=>{ if(e.target===d)close(); });
-  d.querySelector("#nbclose").onclick=close; d.querySelector("#nbout").onclick=()=>{ close(); ACC.p=ACC.up?ACC.p:null; signOut(); };
+  d.querySelector("#nbclose").onclick=close; d.querySelector("#nbout").onclick=()=>{ close(); if(String(ACC.key||"").startsWith("cl-")){ gateClaude(); return; } ACC.p=ACC.up?ACC.p:null; signOut(); };
 }
 document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("#player-chip"); if(b)accountSheet(); });
 
