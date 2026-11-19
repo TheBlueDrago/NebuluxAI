@@ -15,20 +15,20 @@ function token() {
   return t;
 }
 
-// onCounts({ [liveKey(game)]: players }) is called whenever the numbers change. Returns a function that stops it.
+// onCounts({ [liveKey(game)]: players }, { [liveKey(game)]: title }) is called whenever the numbers change. Returns a function that stops it.
 export function watchLiveGames(onCounts) {
   if (typeof WebSocket === "undefined" || !window.crypto || !crypto.getRandomValues) return () => {};
   const rooms = { nr: new Map(), "nr-brawl": new Map() };
   let ws = null, stopped = false, timer = 0;
   const send = () => {
-    const c = {};
+    const c = {}, names = { nebularoyale: "Nebula Royale", nebulabrawl: "Nebula Brawl" };
     for (const d of rooms.nr.values()) {
       if (!d) continue;
       const k = d.v === 4 ? liveKey(d.g) : d.v === 1 ? "nebularoyale" : "";
-      if (k) c[k] = (c[k] || 0) + 1;
+      if (k) { c[k] = (c[k] || 0) + 1; if (d.v === 4 && d.g) names[k] = String(d.g).slice(0, 40); }
     }
     for (const d of rooms["nr-brawl"].values()) if (d && d.v === 2) c.nebulabrawl = (c.nebulabrawl || 0) + 1;
-    onCounts(c);
+    onCounts(c, names);
   };
   const soon = () => { clearTimeout(timer); timer = setTimeout(send, 300); };
   try { ws = new WebSocket(SERVER); } catch { return () => {}; }
@@ -43,4 +43,23 @@ export function watchLiveGames(onCounts) {
   };
   ws.onerror = () => {};
   return () => { stopped = true; clearTimeout(timer); try { ws && ws.close(); } catch { /* closed */ } };
+}
+
+// For the Monitor: is the game server up, and is it the latest version (the one that knows Nebula Brawl's save path)?
+// resolves { up: bool, latest: bool|null }. Reads and writes nothing.
+export function checkGameServer() {
+  return new Promise((resolve) => {
+    if (typeof WebSocket === "undefined") return resolve({ up: false, latest: null });
+    let ws, done = false;
+    const end = (r) => { if (done) return; done = true; try { ws && ws.close(); } catch { /* closed */ } resolve(r); };
+    setTimeout(() => end({ up: false, latest: null }), 9000);
+    try { ws = new WebSocket(SERVER); } catch { return end({ up: false, latest: null }); }
+    ws.onopen = () => ws.send(JSON.stringify({ t: "hi", tok: token(), peer: "mon" + Math.random().toString(36).slice(2, 8), v: 1 }));
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.t === "ok") ws.send(JSON.stringify({ t: "db", i: 1, op: "get", path: "data/brawl/000000000000000000000000/monitor" }));
+      if (m.t === "dbr") end({ up: true, latest: m.code !== "invalid_path" });
+    };
+    ws.onerror = () => end({ up: false, latest: null });
+  });
 }

@@ -16,6 +16,7 @@ import AdminLog from "@/components/monitor/AdminLog";
 import SecurityGlance from "@/components/monitor/SecurityGlance";
 import TermsOverdue from "@/components/monitor/TermsOverdue";
 import AiHealth from "@/components/monitor/AiHealth";
+import GameServer from "@/components/monitor/GameServer";
 import ErrorReports from "@/components/monitor/ErrorReports";
 import Waitlist from "@/components/monitor/Waitlist";
 import SiteOrders from "@/components/monitor/SiteOrders";
@@ -260,6 +261,7 @@ export default function Monitor({ onBack }) {
       <VisitsCard />
       <OrbitMonitor users={users} />
       <AiHealth />
+      <GameServer />
       <ErrorReports />
       <SiteOrders />
       <Waitlist />
