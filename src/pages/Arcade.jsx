@@ -54,10 +54,11 @@ export default function Arcade() {
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
+    // games with real players in them right now come first, so a newcomer can join them
     return (games || []).filter(
       (g) => (genre === "all" || g.genre === genre) && (!s || `${g.title || ""} ${g.name}`.toLowerCase().includes(s))
-    );
-  }, [games, genre, q]);
+    ).map((g, i) => [g, i]).sort((x, y) => liveOf(y[0]) - liveOf(x[0]) || x[1] - y[1]).map((x) => x[0]);
+  }, [games, genre, q, live]);
   // Today's featured game (lib/examples.js): one of the games with a picture, a new one each day.
   const featured = useMemo(() => {
     const pick = featuredGame((games || []).filter((g) => GAME_THUMBS.has(g.name)).map((g) => g.name));
