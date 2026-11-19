@@ -9,6 +9,7 @@ const UPDATES = [
   {
     date: "November 2026",
     items: [
+      { icon: Gamepad2, text: "See who's playing: every game in the Arcade shows how many people are in it right now, on its card and on its page. In the Arcade games other real players are solid now, so you bump into each other, and in Nebula Brawl real players' names are green." },
       { icon: Gamepad2, text: "No game ever pauses now: switch tabs and the match keeps going, like a real online game. Every Arcade game has quick chat with the real players in it (press T or tap the players pill), and Nebula Royale's online matches now have supply pods, Comet Caches, The Warden and hoverboards too." },
       { icon: Gamepad2, text: "Nebula Royale and Nebula Brawl need an account: sign up with a name and password on Nebulux AI (on claude.ai you play with your claude.ai account), so nobody can get into anyone else's. Nebula Brawl also fits every screen now, from small phones to big monitors." },
       { icon: Gamepad2, text: "Real players in every Arcade game. Nebula Brawl matches take up to six real players in every mode (three in co-op Titan Raid), Nebula Royale has real players in every mode including Team Rumble, Weapon Race and Zone Wars, and in every other game you see the people playing it at the same time. If people are mid-match when you look for one, you wait and join their next match instead of being sent somewhere else." },
