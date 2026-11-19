@@ -157,7 +157,8 @@ function NETLITE(getMe) {
     ws.onopen = () => ws.send(JSON.stringify({ t: "hi", tok, peer: Math.random().toString(36).slice(2, 10), v: 1 }));
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
-      if (m.t === "ok") { N.up = true; N.tries = 0; ws.send(JSON.stringify({ t: "j", r: N.room })); return; }
+      if (m.t === "ok") { N.up = true; N.tries = 0; ws.send(JSON.stringify({ t: "j", r: N.room })); ws.send(JSON.stringify({ t: "j", r: "nr" })); return; }
+      if (m.t === "js" && m.r === "nr") { try { ws.send(JSON.stringify({ t: "p", r: "nr", d: { v: 4, g: String(document.title || "").slice(0, 60) } })); } catch { /* dropped */ } return; }
       if (m.r !== N.room) return;
       if (m.t === "js") { for (const [p, d] of m.peers || []) peer(p, d); } else if (m.t === "u") peer(m.p, m.d); else if (m.t === "x") drop(m.p);
     };

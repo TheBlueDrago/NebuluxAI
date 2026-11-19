@@ -7,6 +7,7 @@ import { builtInGameEntities } from "@/lib/builtInGames";
 import PublicLayout from "@/components/PublicLayout";
 import { GAME_THUMBS } from "@/lib/gameThumbs";
 import { featuredGame } from "@/lib/examples";
+import { watchLiveGames, liveKey } from "@/lib/liveGames";
 
 const GENRES = ["io", "shooting", "horror", "action", "arcade", "puzzle", "racing", "sports", "adventure", "strategy"];
 const GENRE_LABEL = { io: ".io" };
@@ -34,6 +35,10 @@ export default function Arcade() {
   const [games, setGames] = useState(null);
   const [genre, setGenre] = useState("all");
   const [q, setQ] = useState("");
+  // how many real players are in each game right now, from the game server
+  const [live, setLive] = useState({});
+  useEffect(() => watchLiveGames(setLive), []);
+  const liveOf = (g) => live[liveKey(g.title)] || live[liveKey(g.name)] || 0;
 
   useEffect(() => {
     const builtIns = builtInGameEntities();
@@ -132,6 +137,9 @@ export default function Arcade() {
                 {GAME_THUMBS.has(g.name) ? (
                   <img src={`/game-thumbs/${g.name}.jpg`} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                 ) : React.createElement(ICON[g.genre] || Gamepad2, { className: "w-12 h-12 text-white/90 drop-shadow-lg transition-transform group-hover:scale-110", "aria-hidden": true })}
+                {liveOf(g) > 0 && (
+                  <span className="absolute top-2 left-2 z-10 rounded-full bg-emerald-500/95 px-2 py-0.5 text-[11px] font-bold text-white shadow">{liveOf(g)} playing now</span>
+                )}
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
                   <Play className="w-8 h-8 text-white" />
                 </span>

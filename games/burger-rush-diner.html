@@ -386,7 +386,10 @@ const NETK = { ws: null, up: false, room: '', peers: new Map(), sendT: 0, tries:
     ws.onopen = () => ws.send(JSON.stringify({ t: 'hi', tok, peer: Math.random().toString(36).slice(2, 10), v: 1 }));
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
-      if (m.t === 'ok') { NETK.up = true; NETK.tries = 0; ws.send(JSON.stringify({ t: 'j', r: NETK.room })); return; }
+      if (m.t === 'ok') { NETK.up = true; NETK.tries = 0; ws.send(JSON.stringify({ t: 'j', r: NETK.room }));
+        // the lobby room: which game this is, for the Arcade's live player counts
+        ws.send(JSON.stringify({ t: 'j', r: 'nr' })); return; }
+      if (m.t === 'js' && m.r === 'nr') { try { ws.send(JSON.stringify({ t: 'p', r: 'nr', d: { v: 4, g: String(document.title || '').slice(0, 60) } })); } catch { /* dropped */ } return; }
       if (m.r !== NETK.room) return;
       if (m.t === 'js') { for (const [p, d] of m.peers || []) netKitPeer(p, d); return; }
       if (m.t === 'u') { netKitPeer(m.p, m.d); return; }
