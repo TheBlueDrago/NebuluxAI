@@ -353,6 +353,11 @@ onFrame((dt, T) => {
     o.pos.lerp(o.to, Math.min(1, dt * 10)); o.body.g.position.copy(o.pos);
     o.body.g.rotation.y += angDiff(o.yaw, o.body.g.rotation.y) * Math.min(1, 12 * dt); if (o.body.legs) animate(o.body, o.sp, o.og, T);
     if (o.bub && o.bub.visible && (o.bubT -= dt) <= 0) o.bub.visible = false;
+    // real players are solid: walk into one and you're nudged aside (walking games; the vehicle games keep their own)
+    if (!NET_SELF && o.body.g.visible && P.body.g.visible !== false) {
+      const dx = P.pos.x - o.pos.x, dz = P.pos.z - o.pos.z, d = Math.hypot(dx, dz);
+      if (d > 0.01 && d < 0.9 && Math.abs(P.pos.y - o.pos.y) < 2.2) { const k = ((0.9 - d) / d) * Math.min(1, dt * 12); P.pos.x += dx * k; P.pos.z += dz * k; }
+    }
   }
   if (NETK.up && NETK.ws && (NETK.sendT -= dt) <= 0) {
     NETK.sendT = 0.1;
