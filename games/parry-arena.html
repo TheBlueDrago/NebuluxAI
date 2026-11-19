@@ -26,6 +26,9 @@
   #knob{position:absolute;left:40px;top:40px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.7);border:3px solid #000}
   .tb{position:fixed;width:92px;height:92px;border-radius:50%;border:3px solid #000;color:#000;font:900 15px Segoe UI,sans-serif;touch-action:none;padding:4px}
   @media (max-width:600px){h1{font-size:44px} #msg{font-size:22px} #hud{top:76px} #hud .big1{font-size:22px}}
+  /* short screens (phones held sideways): the title screens fit, and a tall one scrolls from its top */
+  .ov{place-items:safe center}
+  @media (max-height:460px){h1{font-size:36px} .ov p{font-size:13px;margin:6px 0} .big{font-size:17px;padding:8px 24px;margin-top:6px}}
 
   #start{background:linear-gradient(#e53935dd,#1a0606ee)}
   h1{color:#ffca28}
