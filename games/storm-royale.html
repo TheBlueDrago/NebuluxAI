@@ -10,7 +10,7 @@
   .sh{text-shadow:0 2px 0 #000,0 0 4px #000}
   #hud{position:fixed;left:14px;bottom:14px;width:280px;font-weight:900}
   .bar{position:relative;height:20px;border-radius:4px;background:#1b1b1b;overflow:hidden;margin:5px 0;border:2px solid #000}
-  .bar i{display:block;height:100%} .bar span{position:absolute;inset:0;font-size:12px;display:grid;place-items:center}
+  .bar i{display:block;height:100%} .bar span{position:absolute;inset:0;font-size:12px;display:grid;place-items:safe center}
   #hp i{background:#3ad13a} #sh i{background:#29b6f6}
   #top{position:fixed;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:10px;font-weight:900}
   #top div{background:rgba(0,0,0,.55);border:2px solid #000;border-radius:8px;padding:5px 12px}
@@ -27,7 +27,7 @@
   #prompt{position:fixed;left:50%;top:60%;transform:translateX(-50%);font-weight:900;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:8px;display:none}
   #mini{position:fixed;right:14px;top:150px;width:150px;height:150px;border:3px solid #000;border-radius:10px;background:#2e7d32}
   #storm{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 160px #8e24aa;opacity:0;transition:opacity .3s}
-  #start,#end{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#7e57c2dd,#1a0f3aee);z-index:6}
+  #start,#end{position:fixed;inset:0;display:grid;place-items:safe center;background:linear-gradient(#7e57c2dd,#1a0f3aee);z-index:6}
   #end{display:none} .c{text-align:center;max-width:600px;padding:20px}
   h1{font-size:66px;margin:0;font-weight:900;color:#ce93d8;-webkit-text-stroke:3px #000}
   .big{font:inherit;font-size:22px;font-weight:900;padding:12px 40px;border-radius:12px;border:4px solid #000;background:#3ad13a;cursor:pointer;margin-top:12px}

@@ -14,9 +14,9 @@
   #msg{position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:30px;font-weight:900;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;white-space:pre-line}
   #me{position:fixed;left:14px;bottom:14px;font-weight:900}
   #ammo{display:flex;gap:4px;margin-top:6px} #ammo i{width:46px;height:12px;border:2px solid #000;border-radius:3px;background:#333;overflow:hidden;position:relative} #ammo i b{position:absolute;inset:0;background:#ff9800}
-  #super{position:fixed;right:20px;bottom:20px;width:86px;height:86px;border-radius:50%;border:4px solid #000;background:conic-gradient(#ffd23a var(--p,0%),#333 0);display:grid;place-items:center;font-weight:900;font-size:13px;text-align:center;line-height:1.1}
+  #super{position:fixed;right:20px;bottom:20px;width:86px;height:86px;border-radius:50%;border:4px solid #000;background:conic-gradient(#ffd23a var(--p,0%),#333 0);display:grid;place-items:safe center;font-weight:900;font-size:13px;text-align:center;line-height:1.1}
   #super.ready{animation:pulse .8s infinite alternate;cursor:pointer} @keyframes pulse{to{box-shadow:0 0 22px #ffd23a}}
-  #start,#end{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#ff7043dd,#4a148cee);z-index:6}
+  #start,#end{position:fixed;inset:0;display:grid;place-items:safe center;background:linear-gradient(#ff7043dd,#4a148cee);z-index:6}
   #end{display:none} .c{text-align:center;max-width:720px;padding:20px;max-height:100vh;overflow:auto;box-sizing:border-box}
   @media (max-height:520px){h1{font-size:40px} .card{width:140px;padding:8px} .card p{font-size:11px} .cards{margin:8px 0}}
   h1{font-size:68px;margin:0;font-weight:900;color:#ffd23a;-webkit-text-stroke:3px #000}
