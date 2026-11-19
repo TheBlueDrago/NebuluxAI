@@ -11,6 +11,7 @@ import GameMenu from "@/components/GameMenu";
 import ShareLink from "@/components/designer/ShareLink";
 import GameBoards from "@/components/GameBoards";
 import Reviews from "@/components/Reviews";
+import { watchLiveGames, liveKey } from "@/lib/liveGames";
 
 // Public page for a shared game: anyone can play without an account, then make their own.
 export default function Play() {
@@ -18,6 +19,9 @@ export default function Play() {
   const { isAuthenticated } = useAuth();
   const [game, setGame] = useState(null); // { html, title, genre } | { missing: "why" }
   const [resetKey, setResetKey] = useState(0);
+  // how many real players are in this game right now (from the game server)
+  const [live, setLive] = useState({});
+  useEffect(() => watchLiveGames(setLive), []);
   const navigate = useNavigate();
   // Any public game can be copied into the Games Designer and changed (the copy is yours; the original stays as it is).
   // Signed out, Remix goes to sign-up first and comes back here.
@@ -63,6 +67,7 @@ export default function Play() {
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <h1 className="text-base font-semibold truncate">{game?.title || name}</h1>
           {game?.genre && <span className="hidden sm:inline text-xs text-slate-400 capitalize shrink-0">· {game.genre}</span>}
+          {(() => { const n = live[liveKey(game?.title)] || live[liveKey(name)] || 0; return n > 0 ? <span className="shrink-0 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[11px] font-bold text-white">{n} playing now</span> : null; })()}
         </div>
         {canRemix && (
           <button onClick={remix} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs" title="Copy this game and change it by chatting with the AI">
