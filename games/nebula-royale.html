@@ -526,6 +526,15 @@ body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 /* upright phones: all six lobby tabs fit without scrolling */
 @media (orientation:portrait) and (max-width:480px){#lobby header nav{gap:0!important}#lobby header nav button{padding-left:7px!important;padding-right:7px!important;font-size:13.5px!important}}
 
+/* short sideways phones (360-380 px tall): the hotbar sits beside Map and Bag, the health bars between the stick and the buttons */
+@media (pointer:coarse) and (max-height:380px) and (orientation:landscape){#game #hb{left:calc(96px + env(safe-area-inset-left,0px))!important;right:auto!important;transform:none!important;top:calc(66px + env(safe-area-inset-top,0px))!important;gap:3px!important}#game #hb .hs{width:38px!important;height:38px!important;font-size:9px!important}#game #bars{left:calc(178px + env(safe-area-inset-left,0px))!important;width:170px!important;transform:none!important}}
+
+/* the smallest sideways phones (320-340 px tall): everything a little smaller so nothing overlaps */
+@media (pointer:coarse) and (max-height:340px) and (orientation:landscape){#game #tc [data-b=m]{top:calc(50px + env(safe-area-inset-top,0px))!important;width:52px!important;height:52px!important}#game #tc [data-b=i]{top:calc(108px + env(safe-area-inset-top,0px))!important;width:52px!important;height:52px!important}#game #joy{width:108px!important;height:108px!important}#game #hb{left:calc(90px + env(safe-area-inset-left,0px))!important;top:calc(72px + env(safe-area-inset-top,0px))!important;gap:2px!important}#game #hb .hs{width:30px!important;height:30px!important;font-size:8px!important}#game #bars{width:108px!important}#game #mm{width:92px!important;height:92px!important}#game #alive{top:calc(110px + env(safe-area-inset-top,0px))!important}#game #tc [data-b=a]{top:calc(140px + env(safe-area-inset-top,0px))!important;bottom:auto!important}#game #top{font-size:12px!important;padding:4px 10px!important;max-width:160px}}
+
+/* narrow sideways phones: the menu bar keeps every tab (no title) */
+@media (orientation:landscape) and (max-width:640px){#lobby header h1{display:none}}
+
 </style></head><body>
 <div id="rot"><div>Turn your phone sideways to play<br><small>Nebula Royale only runs in landscape.</small></div></div>
 <div id="lobby"></div>
@@ -2087,7 +2096,7 @@ function renderAcct(d) {
     ${mode == "signup" || mode == "recover" ? pwBox("sipw2", mode == "recover" ? "New password again" : "Password again", "new-password") : ""}
     <p id=sier class=sier></p><button class=go id=sigo>${mode == "signup" ? "Sign up" : mode == "recover" ? "Set new password" : "Log in"}</button>
     ${mode == "login" ? "<button class=sil2 data-m=recover>Forgot your password?</button>" : mode == "recover" ? "<button class=sil2 data-m=login>Back to log in</button>" : ""}
-    <p class=sis2>${mode == "signup" ? "Your player name is your account. Pick a password only you know. You'll get a recovery code in case you ever forget it." : mode == "recover" ? "Use the recovery code you saved when you signed up. It works once, and you'll get a new one." : "Use the name and password of your account, from any device."}</p>`;
+    <p class=sis2>${mode == "signup" ? "Your player name is your account, for Nebula Royale and Nebula Brawl. Pick a password only you know. You'll get a recovery code in case you ever forget it." : mode == "recover" ? "Use the recovery code you saved when you signed up. It works once, and you'll get a new one." : "Use the name and password of your account, from any device."}</p>`;
   d.innerHTML = `<div class=sib>${head}<h2>${mode == "saved" ? "Welcome back" : mode == "signup" ? "Sign up" : mode == "recover" ? "Forgot your password" : "Log in"}</h2>${saved}${mode == "saved" ? `<p id=sier class=sier></p><div class=sialt><button class=sil2 data-m=login>Log in to another account</button><button class=sil2 data-m=signup>Sign up for a new account</button></div>` : (L.length ? `<button class=sil2 data-m=saved>Back to the accounts on this device</button>` : "") + form}
     <button class=sil2 onclick="lsSet('nr_agree','');renderSignIn()">Read the player agreement again</button></div>`;
   const er = (t) => { const e = $("#sier"); if (e) e.textContent = t; };
@@ -2842,7 +2851,7 @@ views.pass = () => {
 function lobby() {
   ini(); ownFree(); if (S.auto) autoC();
   const r0 = $("#rail"), sl = r0 ? r0.scrollLeft : 0, dt = dots(); $("#lobby").className = tab;
-  $("#lobby").innerHTML = `<header><h1>Nebula Royale</h1><nav>${[["play", "Play"], ["locker", "Locker"], ["shop", innerWidth < 480 ? "Shop" : "Item Shop"], ["pass", innerWidth < 480 ? "Pass" : "Battle Pass"], ["quests", "Quests"], ["career", "Career"]].map(([k, n]) => `<button class='${tab == k ? "on" : ""}' data-t=${k} onclick=go(this.dataset.t)>${n}${dt[k] ? "<i class=dot></i>" : ""}</button>`).join("")}</nav><span class=stars>★ ${S.stars}</span><button class=ic onclick=openSet() aria-label=Settings>⚙</button></header>${views[tab]()}`;
+  $("#lobby").innerHTML = `<header><h1>Nebula Royale</h1><nav>${[["play", "Play"], ["locker", "Locker"], ["shop", innerWidth < 480 || innerHeight < 400 ? "Shop" : "Item Shop"], ["pass", innerWidth < 480 || innerHeight < 400 ? "Pass" : "Battle Pass"], ["quests", "Quests"], ["career", "Career"]].map(([k, n]) => `<button class='${tab == k ? "on" : ""}' data-t=${k} onclick=go(this.dataset.t)>${n}${dt[k] ? "<i class=dot></i>" : ""}</button>`).join("")}</nav><span class=stars>★ ${S.stars}</span><button class=ic onclick=openSet() aria-label=Settings>⚙</button></header>${views[tab]()}`;
   const r = $("#rail"); if (r) r.scrollLeft = sl; try { pvInit(); } catch (e) { console.error(e); }
   netOnline(); netLobbyPres(); if (tab == "play") setTimeout(dailyCheck, 700);
 }
@@ -7070,7 +7079,18 @@ function unpackIt(a) {
   return null;
 }
 // Duos and Squads: people from the same party share a team (up to the team size); everyone else is on their own team
-function netTeams(ro, md) { if (MODES[md] && MODES[md].type == "rumble") return ro.map((_, i) => i % 2); const tz = (MODES[md] && MODES[md].tm) || 1, seen = {}, tm = []; let n = 0; ro.forEach((peer, i) => { const py = (presOf(peer) || {}).py; if (tz > 1 && py) { const t = seen[py]; if (t && t.c < tz) { tm[i] = t.id; t.c++; return; } seen[py] = { id: n, c: 1 }; } tm[i] = n++; }); return tm; }
+function netTeams(ro, md) {
+  if (MODES[md] && MODES[md].type == "rumble") return ro.map((_, i) => i % 2);
+  const tz = (MODES[md] && MODES[md].tm) || 1, seen = {}, tm = []; let n = 0, fill = null;
+  ro.forEach((peer, i) => {
+    const py = (presOf(peer) || {}).py;
+    if (tz > 1 && py) { const t = seen[py]; if (t && t.c < tz) { tm[i] = t.id; t.c++; return; } seen[py] = { id: n, c: 1 }; tm[i] = n++; return; }
+    // on your own in Duos or Squads: you join other real players who came alone
+    if (tz > 1) { if (!fill || fill.c >= tz) fill = { id: n++, c: 0 }; tm[i] = fill.id; fill.c++; return; }
+    tm[i] = n++;
+  });
+  return tm;
+}
 const inList = (L, id) => (id && L.some((x) => x.id == id) ? id : null);
 // is this character run on this page? (you, and the computer players while you host)
 const netAuth = (e) => !!e && (e.isP || (e.bot && !e.net));

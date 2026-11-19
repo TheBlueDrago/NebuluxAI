@@ -2153,7 +2153,8 @@ function drawNameTag(ctx,f,time,ui){
   ctx.lineWidth=3.5*ui; ctx.strokeStyle="rgba(10,6,32,0.75)";
   const label=f.isPlayer?"You":f.name;
   ctx.strokeText(label,f.pos.x,y-8*ui);
-  ctx.fillStyle=f.isPlayer?"#fde047":"#ffffff";
+  // real players (online matches) have green names; computer players white
+  ctx.fillStyle=f.isPlayer?"#fde047":f.real?"#86efac":"#ffffff";
   ctx.fillText(label,f.pos.x,y-8*ui);
   if(inBush&&f.team===0){
     ctx.font=(10*ui)+"px system-ui, sans-serif";
@@ -2658,7 +2659,7 @@ function openHelp(){
      '<ul style="margin:.375rem 0 0;padding-left:1.25rem;font-size:.875rem;font-weight:500;line-height:1.6;color:#ede9fe">'+
      '<li style="margin-top:.375rem"><strong style="color:#fff">Phone (best sideways!):</strong> left thumbstick moves, right thumbstick aims — let go to fire one shot (just tap it to auto-aim at the nearest rival). The star button fires your Super. Tap AUTO to auto-fire at the nearest rival, and tap the frame button to zoom out to the whole map.</li>'+
      '<li style="margin-top:.375rem"><strong style="color:#fff">Computer:</strong> WASD or arrow keys move, hold the mouse to aim and let go to fire (a quick click auto-aims), tap J to auto-fire at the nearest rival, Space fires your Super, M zooms to the full map.</li>'+
-     '<li style="margin-top:.375rem"><strong style="color:#fff">No pausing!</strong> Matches can\'t be paused — not with a button, not with a key. Keep brawling until the match ends or you leave with the ✕ button.</li><li style="margin-top:.375rem"><strong style="color:#fff">Real players!</strong> Press Play and the game looks for other people playing the same mode: up to six in a match (three in Titan Raid, two in a Duel), with computer players in any empty places. If they\'re mid-match, wait and you\'ll play their next one. Press T or the GG button to send a quick chat pin.</li>'+
+     '<li style="margin-top:.375rem"><strong style="color:#fff">No pausing!</strong> Matches can\'t be paused — not with a button, not with a key. Keep brawling until the match ends or you leave with the ✕ button.</li><li style="margin-top:.375rem"><strong style="color:#fff">Real players!</strong> Press Play and the game looks for other people playing the same mode: up to six in a match (three in Titan Raid, two in a Duel), with computer players in any empty places. If they\'re mid-match, wait and you\'ll play their next one. Real players have green names. To play with friends, make a party code in the looking-for-players box and share it: friends who type it join your crew. Press T or the GG button to send a quick chat pin.</li>'+
      '<li style="margin-top:.375rem">Landing hits charges your Super. Your health refills if you stay out of trouble for a few seconds.</li></ul></section>'+
    '<section style="margin-top:.75rem;border-radius:1.5rem;background:rgba(36,26,82,.9);padding:1rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)">'+
      '<h3 class="font-display" style="margin:0;font-size:1rem;color:#fde047">Pro tips</h3>'+
@@ -2987,7 +2988,8 @@ function showGame(){
   const NL=setup.net?{ ...setup.net, sendT:0, seen:performance.now(), inp:{mv:[0,0],am:null,fs:0,ss:0,gs:0,hs:0,fa:null,fd:null}, gone:false }:null;
   if(NL){
     match.net=NL; match.quiet=false;
-    if(NL.role==="host"){ for(const g of NL.guests){ const f=match.fighters[g.slot]; if(f)f.remote=true; } match.netIn=(peer)=>{ const R=ROOMS.get(NL.room), d=R&&R.peers.get(peer); return d&&d.in; }; }
+    if(NL.role==="guest"&&NL.humans)for(const f of match.fighters)if(!f.isPlayer&&NL.humans.includes(f.name))f.real=true;
+    if(NL.role==="host"){ for(const g of NL.guests){ const f=match.fighters[g.slot]; if(f){ f.remote=true; f.real=true; } } match.netIn=(peer)=>{ const R=ROOMS.get(NL.room), d=R&&R.peers.get(peer); return d&&d.in; }; }
   }
   const input={ aimDist:null, pendingDist:null, mouseDist:null, move:{x:0,y:0}, aim:null, aimMaxMag:0, keys:new Set(), mouseAim:null, mouseDown:false, mouseDownPos:null, mouseDownAt:0, mouseDragged:false, superQueued:false, pendingShot:null, pendingAuto:false };
   let fullMap=false, autoHeld=false, rotateDismissed=false, stopped=false;
@@ -3551,7 +3553,8 @@ function duelTick(){
   if(Q.go)return;
   const qs=others.filter(([p,d])=>d.st==="q"&&d.md===Q.md&&!d.go).sort((a,b)=>a[1].qt-b[1].qt);
   if(!qs.length||Q.qt>qs[0][1].qt){ Q.fillAt=0; return; }
-  const sl=slotsFor(Q.md), cap=sl.length;
+  // friends with a party code play on the same crew first; everyone else alternates crews
+  const sl=NETB.code&&Q.md!=="duel"&&Q.md!=="titan"?[1,2,3,4,5]:slotsFor(Q.md), cap=sl.length;
   if(!Q.fillAt)Q.fillAt=performance.now()+(cap>1&&qs.length<cap?5000:0);
   if(performance.now()<Q.fillAt&&qs.length<cap){ if(st)st.textContent=qs.length+" other player"+(qs.length===1?"":"s")+" found. Starting in "+Math.ceil((Q.fillAt-performance.now())/1000)+"s..."; return; }
   const take=qs.slice(0,cap), slots=sl.slice(0,take.length);
