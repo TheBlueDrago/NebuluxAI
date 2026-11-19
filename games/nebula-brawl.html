@@ -103,6 +103,8 @@
     #ctl-right > #btn-hyper, #ctl-right > #btn-gadget{ height:2.75rem!important; width:2.75rem!important; }
     #ctl-right > #btn-pin{ right:auto!important; left:-3.25rem; bottom:.25rem!important; }
   }
+  /* very short sideways screens: the pin goes left of the action buttons, clear of the exit button */
+  @media (max-height:340px) and (min-width:520px){ #ctl-right > #btn-pin{ right:calc(100% + .5rem)!important; bottom:2.5rem!important; } }
   .rail-xs .rail-label{ display:none; } .rail-xs .rail-btn{ width:2.75rem; min-height:2.75rem; justify-content:center; }
   .rail-sm{ gap:.375rem; } .rail-sm .rail-btn{ padding:.3rem .2rem; } .rail-sm .rail-btn svg{ width:18px; height:18px; }
   .rail-btn{ display:flex; width:3.5rem; flex-direction:column; align-items:center; gap:.25rem; border-radius:1rem;
@@ -138,6 +140,10 @@
   /* Sheets */
   .sheet{ position:fixed; inset:0; z-index:40; display:flex; flex-direction:column; background:rgba(23,16,56,.97); backdrop-filter:blur(4px); }
   .sheet-inner{ margin:0 auto; display:flex; width:100%; flex:1; min-height:0; flex-direction:column; padding:0 1rem 1.5rem; }
+  /* long sheets scroll instead of running off the screen; bigger tap targets */
+  .sheet-body{ overflow-y:auto; overscroll-behavior:contain; }
+  .chip-filter{ min-height:40px; }
+  .sheet-close{ min-width:44px; min-height:44px; }
   .sheet-close{ margin-left:auto; display:flex; height:2.5rem; width:2.5rem; align-items:center; justify-content:center; border-radius:999px; background:rgba(255,255,255,.1); font-size:1.125rem; color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.3); border:none; }
   .sheet-close:active{ transform:scale(.95); }
   .card-btn{ display:flex; width:86px; flex-shrink:0; flex-direction:column; border-radius:1rem; padding:.375rem; border:none; text-align:center; transition:transform .1s; }
@@ -2222,6 +2228,8 @@ let figureRegistry=[];
 let figureRaf=0;
 // big screens: the lobby is zoomed so it fills the screen; figures draw at that resolution so they stay sharp
 let UI_ZOOM=1;
+// how much to zoom a screen on a big monitor (1 = not at all)
+function bigZoom(){ const z=Math.min(2,Math.min((window.innerWidth||1280)/1280,(window.innerHeight||720)/760)); return z>1.08?z:1; }
 function registerFigure(canvas,def,opts){
   opts=opts||{};
   const entry={canvas,def,size:opts.size||64,nebulux:!!opts.nebulux,ring:opts.ring||null,animated:!!opts.animated,facing:opts.facing!=null?opts.facing:Math.PI/2.6};
@@ -2353,7 +2361,7 @@ function showLobby(fit){
      '<div class="middle">'+
        '<div class="rail rail-left'+(fit>=2?' rail-sm':'')+(fit>=4?' rail-xs':'')+'" id="rail-left"></div>'+
        '<div class="rail rail-right'+(fit>=2?' rail-sm':'')+(fit>=4?' rail-xs':'')+'" id="rail-right"></div>'+
-       '<div class="hero-col">'+
+       '<div class="hero-col"'+(fit>=4?' style="padding:0 3.25rem"':'')+'>'+
          '<div style="position:relative;width:'+heroSize+'px" id="hero-stage">'+
            '<button type="button" class="cycle-btn" id="cycle-prev" aria-label="Previous brawler" style="left:-1.75rem">◀</button>'+
            '<button type="button" class="cycle-btn" id="cycle-next" aria-label="Next brawler" style="right:-1.75rem">▶</button>'+
@@ -2381,8 +2389,8 @@ function showLobby(fit){
          (lv>=PERK_LEVEL?(()=>{ const pp=perkPair(selected), cur=(profile.perks||{})[selected.id]||pp[0];
            return '<div role="radiogroup" aria-label="Star Perk" style="margin-top:.5rem;display:flex;flex-wrap:wrap;justify-content:center;gap:.375rem">'+pp.map(k=>'<button type="button" role="radio" aria-checked="'+(k===cur)+'" data-perk="'+k+'" title="'+PERKS[k].desc+'" style="min-height:40px;border-radius:.75rem;padding:.25rem .75rem;font-size:12px;font-weight:800;border:0;'+(k===cur?"background:#fde047;color:#451a03":"background:rgba(36,26,82,.9);color:#ddd6fe;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)")+'">'+(k===cur?"Star Perk: ":"")+PERKS[k].name+'</button>').join("")+'</div>'; })()
            :(tight?'':'<p style="margin:.5rem 0 0;font-size:11px;font-weight:700;color:#c4b5fd">Star Perk at level '+PERK_LEVEL+': '+perkPair(selected).map(k=>PERKS[k].name).join(" or ")+'</p>'))+
-         (fit>=4?'<div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.375rem;margin-top:.25rem"><span class="count-badge">Level '+lv+' · '+(idx+1)+' / '+mine.length+' owned</span>':"")+
-         (()=>{ const own=((profile.skinsOwned||{})[selected.id]||[]), cur=skinOf(selected.id)||"base";
+         (fit>=4?'<div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.375rem;margin-top:.25rem"><span class="count-badge">'+((window.innerWidth||800)>=760?"Level "+lv+" · "+(idx+1)+" / "+mine.length+" owned":"Lv "+lv)+'</span>':"")+
+         (()=>{ if(fit>=4&&vh<340)return ""; const own=((profile.skinsOwned||{})[selected.id]||[]), cur=skinOf(selected.id)||"base";
            return '<div role="radiogroup" aria-label="Skin" style="margin-top:'+(tight?'.25rem':'.5rem')+';display:flex;flex-wrap:wrap;justify-content:center;gap:.375rem">'+[["base","Original"]].concat(Object.keys(SKIN_LOOKS).map(k=>[k,SKIN_LOOKS[k].name])).map(([k,n])=>{ const has=k==="base"||own.indexOf(k)>=0, on=k===cur;
              return '<button type="button" role="radio" aria-checked="'+on+'" data-skin="'+k+'" style="min-height:'+(tiny?36:40)+'px;border-radius:.75rem;padding:.25rem .75rem;font-size:12px;font-weight:800;border:0;display:inline-flex;align-items:center;gap:.375rem;'+(on?"background:#f5f3ff;color:#1e1b4b":"background:rgba(36,26,82,.9);color:#ddd6fe;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)")+'"><span aria-hidden="true" style="width:12px;height:12px;border-radius:999px;background:'+(k==="base"?selected.suit:SKIN_LOOKS[k].suit)+';box-shadow:0 0 0 2px '+(k==="base"?selected.trim:SKIN_LOOKS[k].trim)+'"></span>'+n+(has?"":" · "+SKIN_PRICE)+'</button>'; }).join("")+'</div>'; })()+
          '<button type="button" id="btn-upgrade" class="btn-chunk font-display" '+(upCost===null||profile.coins<upCost?'aria-disabled="true" ':"")+'style="margin-top:'+(fit>=4?'0':fit>=3?'.25rem':'.625rem')+';border-radius:1rem;padding:'+(fit>=4?'.25rem .75rem':'.5rem 1rem')+';font-size:.8rem;min-height:'+(fit>=4?40:44)+'px;'+(upCost!==null&&profile.coins>=upCost?"background:linear-gradient(180deg,#86efac,#22c55e);color:#052e16;box-shadow:inset 0 0 0 3px #bbf7d0, 0 7px 0 rgba(10,6,32,.55)":"background:linear-gradient(180deg,#3b2a7d,#241a52);color:#c4b5fd;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), 0 7px 0 rgba(10,6,32,.55)")+'">'+(upCost===null?"MAX LEVEL":fit>=4?"LEVEL UP · "+upCost:"UPGRADE TO LEVEL "+(lv+1)+" · "+upCost+" COINS")+'</button>'+(fit>=4?"</div>":"")+
@@ -2468,6 +2476,7 @@ function sheetShell(title,maxWidth){
     '<button type="button" class="sheet-close" aria-label="Close">✕</button></div>'+
     '<div class="sheet-body" style="display:flex;flex:1;min-height:0;flex-direction:column"></div></div>';
   $(".sheet-close",sheet).addEventListener("click",closeSheet);
+  { const z=bigZoom(), inner=sheet.querySelector(".sheet-inner"); if(z>1&&inner)inner.style.zoom=z; }
   document.body.appendChild(sheet);
   sheetOpen=true;
   return $(".sheet-body",sheet);
@@ -2726,7 +2735,7 @@ function showLoading(){
      '<span id="load-star" aria-hidden="true" style="position:absolute;top:-.875rem;font-size:1.125rem;color:#fde047;text-shadow:0 2px 4px rgba(0,0,0,.5);transition:left .1s linear;left:calc(4% - 10px)">★</span></div>'+
      '<p id="load-stage" aria-live="polite" style="margin:.625rem 0 0;text-align:center;font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:#ede9fe">Opening the arena…</p>'+
    '</div></div>';
-  setScreen(root);
+  setScreen(root); { const z=bigZoom(); if(z>1)for(const c of root.children)if(!c.classList.contains("space-bg")&&c.tagName!=="CANVAS")c.style.zoom=z; }
   const crewBox=$("#load-crew",root);
   crew.forEach((b,i)=>{
     const cell=el('<div class="animate-pop-in" style="display:flex;flex-direction:column;align-items:center;animation-delay:'+(i*160)+'ms"><div class="'+(i===0?"animate-floaty":"")+'"><canvas aria-hidden="true"></canvas></div><span style="margin-top:.25rem;max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:999px;background:rgba(13,10,36,.85);padding:.125rem .625rem;font-size:11px;font-weight:900;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)">'+(i===0?"You":b.name)+'</span></div>');
@@ -2839,7 +2848,7 @@ function showResults(){
        '<button type="button" class="btn-chunk font-display" id="res-lobby" style="width:100%;border-radius:1.5rem;background:linear-gradient(180deg,#8b5cf6,#6d28d9);padding:.75rem;font-size:1.125rem;color:#fff;box-shadow:inset 0 0 0 2px rgba(196,181,253,.6), 0 7px 0 rgba(10,6,32,.55)">BACK TO LOBBY</button>'+
      '</div>'+
    '</div>';
-  setScreen(root);
+  setScreen(root); { const z=bigZoom(); const c=root.querySelector(".pt-safe"); if(z>1&&c)c.style.zoom=z; }
   $("#res-again",root).addEventListener("click",()=>startMatch());
   const hum=currentSetup&&currentSetup.net&&currentSetup.net.humans; if(hum&&hum.length){ const h=root.querySelector("h2"); if(h){ const p=document.createElement("p"); p.style.cssText="margin:.375rem 0 0;font-size:13px;font-weight:800;color:#86efac;text-align:center"; p.textContent="Played with real players: "+hum.join(", "); h.after(p); } }
   if(result.mode==="train"){ const h=root.querySelector("h2"); if(h)h.textContent="TRAINING DONE"; for(const d of root.querySelectorAll("div")){ const t=(d.textContent||"").trim(); if(/^\+0\s*trophies$/i.test(t)||/^\+0 coins/i.test(t))d.style.display="none"; } }
@@ -2959,6 +2968,8 @@ function showGame(){
      '<button type="button" id="btn-upright" class="btn-chunk font-display" style="margin-top:.75rem;border-radius:1rem;background:linear-gradient(180deg,#8b5cf6,#6d28d9);padding:.75rem 1.5rem;font-size:1rem;color:#fff;box-shadow:inset 0 0 0 2px rgba(196,181,253,.6), 0 7px 0 rgba(10,6,32,.55)">PLAY UPRIGHT ANYWAY</button>'+
    '</div>';
   setScreen(root);
+  // big screens: the HUD and buttons are zoomed like the menus (the arena itself is drawn to fit already)
+  { const z=bigZoom(); if(z>1)for(const c of root.children)if(c.id!=="game-canvas")c.style.zoom=z; }
   if(!window.matchMedia("(min-width: 768px)").matches||window.matchMedia("(pointer: coarse)").matches){ const h=$("#desktop-hint",root); if(h)h.style.display="none"; }
   const modeIcon=mode==="duel"?ICON_SWORDS:mode==="titan"?ICON_TITAN:mode==="vault"?ICON_VAULT:mode==="zone"?ICON_ZONE:mode==="hunt"?ICON_STAR_SM:isBall?ICON_BALL:isShowdown?ICON_SKULL:isArena?ICON_SWORDS:ICON_GEM;
   $("#hud-left-icon",root).innerHTML=modeIcon;
@@ -3419,7 +3430,7 @@ const AGREE_POINTS=[
   ["Younger players","If you're under 13, ask a parent or guardian before you play."],
   ["Changes","The game and this agreement can change over time. If the agreement changes, you'll be asked to agree again."]
 ];
-const GATE_CSS='<style>.nbg{position:absolute;inset:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:1.25rem}.nbb{position:relative;width:100%;max-width:26rem;margin:auto;border-radius:1.25rem;background:rgba(24,16,60,.94);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),0 10px 0 rgba(10,6,32,.5);padding:1.25rem;color:#fff}.nbb h2{margin:.25rem 0 .25rem;font-size:1.5rem}.nbb p{margin:.25rem 0;font-size:13px;color:#ddd6fe}.nbl{margin:.75rem 0;display:flex;flex-direction:column;gap:.5rem;max-height:40vh;overflow:auto}.nbl div{border-radius:.75rem;background:rgba(255,255,255,.06);padding:.5rem .75rem;font-size:12.5px;color:#e9e5ff}.nbl b{display:block;color:#fde047;font-size:13px}.nbi{display:block;margin-top:.625rem;font-size:12px;font-weight:800;color:#c4b5fd}.nbi input{display:block;width:100%;box-sizing:border-box;margin-top:.25rem;min-height:44px;border-radius:.75rem;border:0;padding:0 .75rem;font-size:16px;background:#f5f3ff;color:#1e1b4b}.nbgo{margin-top:.875rem;width:100%;min-height:48px;border-radius:1rem;border:0;font-size:17px;font-weight:900;background:linear-gradient(180deg,#fde047,#f59e0b);color:#451a03;cursor:pointer}.nbgo:disabled{opacity:.5;cursor:default}.nb2{margin-top:.5rem;width:100%;min-height:44px;border-radius:.75rem;border:0;background:transparent;color:#a5f3fc;font-weight:800;font-size:13px;cursor:pointer}.nbtab{display:flex;gap:.375rem;margin-top:.75rem}.nbtab button{flex:1;min-height:44px;border-radius:.75rem;border:0;font-weight:900;cursor:pointer;background:rgba(255,255,255,.08);color:#ddd6fe}.nbtab button.on{background:#f5f3ff;color:#1e1b4b}.nbacc{display:flex;align-items:center;gap:.625rem;width:100%;min-height:52px;margin-top:.5rem;border-radius:.875rem;border:0;padding:.375rem .75rem;background:rgba(255,255,255,.08);color:#fff;font-weight:900;font-size:15px;cursor:pointer;text-align:left}.nbacc span{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:999px;background:#7c3aed}.nber{min-height:1.2em;margin-top:.5rem;font-size:13px;font-weight:800;color:#fda4af}.nbck{display:flex;gap:.5rem;align-items:center;margin-top:.5rem;font-size:13px;font-weight:800;min-height:44px}.nbck input{width:22px;height:22px}.nbcode{margin:.5rem 0;padding:.75rem;border-radius:.75rem;background:#f5f3ff;color:#1e1b4b;font-family:ui-monospace,monospace;font-size:18px;font-weight:900;text-align:center;letter-spacing:.06em;user-select:all}</style>';
+const GATE_CSS='<style>.nbg{position:absolute;inset:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:1.25rem}.nbb{position:relative;width:100%;max-width:26rem;margin:auto;border-radius:1.25rem;background:rgba(24,16,60,.94);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),0 10px 0 rgba(10,6,32,.5);padding:1.25rem;color:#fff}.nbb h2{margin:.25rem 0 .25rem;font-size:1.5rem}.nbb p{margin:.25rem 0;font-size:13px;color:#ddd6fe}.nbl{margin:.75rem 0;display:flex;flex-direction:column;gap:.5rem;max-height:40vh;overflow:auto}.nbl div{border-radius:.75rem;background:rgba(255,255,255,.06);padding:.5rem .75rem;font-size:12.5px;color:#e9e5ff}.nbl b{display:block;color:#fde047;font-size:13px}.nbi{display:block;margin-top:.625rem;font-size:12px;font-weight:800;color:#c4b5fd}.nbi input{display:block;width:100%;box-sizing:border-box;margin-top:.25rem;min-height:44px;border-radius:.75rem;border:0;padding:0 .75rem;font-size:16px;background:#f5f3ff;color:#1e1b4b}.nbgo{margin-top:.875rem;width:100%;min-height:48px;border-radius:1rem;border:0;font-size:17px;font-weight:900;background:linear-gradient(180deg,#fde047,#f59e0b);color:#451a03;cursor:pointer}.nbgo:disabled{opacity:.5;cursor:default}.nb2{margin-top:.5rem;width:100%;min-height:44px;border-radius:.75rem;border:0;background:transparent;color:#a5f3fc;font-weight:800;font-size:13px;cursor:pointer}.nbtab{display:flex;gap:.375rem;margin-top:.75rem}.nbtab button{flex:1;min-height:44px;border-radius:.75rem;border:0;font-weight:900;cursor:pointer;background:rgba(255,255,255,.08);color:#ddd6fe}.nbtab button.on{background:#f5f3ff;color:#1e1b4b}.nbacc{display:flex;align-items:center;gap:.625rem;width:100%;min-height:52px;margin-top:.5rem;border-radius:.875rem;border:0;padding:.375rem .75rem;background:rgba(255,255,255,.08);color:#fff;font-weight:900;font-size:15px;cursor:pointer;text-align:left}.nbacc span{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:999px;background:#7c3aed}.nber{min-height:1.2em;margin-top:.5rem;font-size:13px;font-weight:800;color:#fda4af}.nbck{display:flex;gap:.5rem;align-items:center;margin-top:.5rem;font-size:13px;font-weight:800;min-height:44px}.nbck input{width:22px;height:22px}.nbcode{margin:.5rem 0;padding:.75rem;border-radius:.75rem;background:#f5f3ff;color:#1e1b4b;font-family:ui-monospace,monospace;font-size:18px;font-weight:900;text-align:center;letter-spacing:.06em;user-select:all}@media (max-height:460px){.nbg{padding:.5rem}.nbb{max-width:44rem;padding:.75rem 1rem}.nbb h2{font-size:1.15rem;margin:0}.nbtab{margin-top:.375rem}.nbtab button{min-height:40px}.nbi{display:inline-block;width:calc(50% - .375rem);vertical-align:top;margin-top:.375rem}.nbi:nth-of-type(even){margin-left:.5rem}.nbi input{min-height:40px}.nbgo{min-height:44px;margin-top:.5rem}.nbl{max-height:36vh;margin:.375rem 0}.nb2{min-height:40px;margin-top:.25rem}}</style>';
 let gateMode="";
 function gateShell(inner){ app.innerHTML=GATE_CSS+'<div class="screen"><div class="space-bg"></div><div class="nbg"><div class="nbb" role="dialog" aria-labelledby="nbh"><div class="font-display" style="font-size:13px;letter-spacing:.12em;color:#fde047">NEBULA BRAWL</div>'+inner+'</div></div></div>'; }
 function gate(){
