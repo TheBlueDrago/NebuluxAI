@@ -2356,7 +2356,7 @@ function showLobby(fit){
        '<div style="margin-left:auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end">'+
          '<span class="pill" id="pill-coins">'+ICON_COIN+' '+fmt(profile.coins)+'</span>'+
          '<span class="pill">'+ICON_TROPHY+' '+profile.trophies+'</span>'+
-         (fit>=4?"":'<span class="pill" id="pill-played">'+ICON_GEM+' '+profile.games+' <span class="sub">played</span></span>'+
+         (fit>=4?"":'<span class="pill" id="pill-played" title="Matches played">'+ICON_SWORDS+' '+profile.games+' <span class="sub">played</span></span>'+
          '<span class="pill" id="pill-wl">'+profile.wins+'W · '+profile.losses+'L</span>')+
          '<span class="pill" id="pill-online" style="display:none;color:#86efac" aria-live="polite"></span>'+
        '</div>'+

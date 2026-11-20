@@ -321,6 +321,8 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 /* shop: a Buy you can't afford yet still answers, and says how many stars you need */
 .btn.need{background:#0b0618aa!important;color:#e8dcff!important;border:1.5px dashed #ffffff40!important;font-size:13px!important}.btn.need:hover{border-color:#e9f23c!important;color:#fff!important}
 .btn.wait{opacity:.6;filter:saturate(.5)}.btn.wait:hover{opacity:.85}
+.plus{background:linear-gradient(135deg,#ffffff26,#ffffff0d)!important;color:#fff!important;border:1.5px solid #ffffff55!important;box-shadow:0 6px 18px #0006,0 0 18px #ff4fa333;backdrop-filter:blur(6px);transition:transform .12s,border-color .15s}
+.plus:hover{border-color:#e9f23c!important;transform:translateX(-50%) scale(1.08)}
 
 /* ===== v3 HUD ===== */
 #game{font-family:'Chakra Petch',system-ui,sans-serif}
@@ -536,6 +538,25 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 #sh{background:linear-gradient(90deg,#2f8fe0,#7ae6ff)!important;box-shadow:0 0 12px #52e0ff66}
 #hp{background:linear-gradient(90deg,#2fae55,#9dffa8)!important;box-shadow:0 0 12px #7dff9a55}
 #bars .b.st{background:#0b061899;border-radius:4px;overflow:hidden}#st{background:linear-gradient(90deg,#ffb23a,#ffe14a)!important;border-radius:4px}
+/* results: the stats on a glass card, and the buttons in the sign-in style */
+#end .endbot{background:linear-gradient(165deg,#2a1650d9,#150a2ce6);border:1px solid #ffffff22;border-radius:22px;padding:18px 22px;box-shadow:0 24px 70px #000a,0 0 0 1px #b06bff33,inset 0 1px 0 #ffffff1f;backdrop-filter:blur(10px);max-width:min(640px,94vw);box-sizing:border-box}
+#end .endbot .go{border-radius:14px;box-shadow:0 8px 22px #0006,inset 0 -3px 0 #0002;transition:transform .12s,filter .12s}
+#end .endbot .go:hover{transform:translateY(-1px);filter:brightness(1.06)}
+@media (max-height:420px){#end .endbot{padding:10px 14px;gap:6px}}
+#end{overflow-y:auto;justify-content:safe center}
+#end .endbot{max-width:min(780px,96vw)}
+@media (max-height:420px){#end{padding:8px!important;gap:4px}#end h2{font-size:30px!important}#end .endline{display:none}#end .epills{gap:4px!important}#end .epills span{min-width:52px!important;padding:4px 8px!important}#end .epills b{font-size:16px}#end .epills small{font-size:10px}#end .troph{transform:scale(.6)}#end .recap{padding:6px 10px;margin-bottom:4px}#end .xpb{margin:0}}
+/* first match: How to play in the glass look, with numbered steps */
+#set>.tut{background:linear-gradient(165deg,#2a1650fa,#150a2cfc 60%,#100822fd);border:1px solid #ffffff22;border-radius:22px;padding:24px 22px 20px!important;box-shadow:0 30px 90px #000b,0 0 0 1px #b06bff33,inset 0 1px 0 #ffffff26;position:relative}
+#set>.tut::before{content:"";position:absolute;left:22px;right:22px;top:0;height:3px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#ff4fa3,#b06bff,#52e0ff,#e9f23c)}
+#set>.tut>b{font-style:italic;background:linear-gradient(90deg,#fff,#e8dcff);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:26px!important}
+.tut ol{list-style:none;padding-left:0;counter-reset:tu;display:flex;flex-direction:column;gap:8px}
+.tut li{counter-increment:tu;position:relative;padding:10px 12px 10px 48px;border-radius:12px;background:#ffffff0a;margin:0}
+.tut li::before{content:counter(tu);position:absolute;left:10px;top:9px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#1a0d2c;background:linear-gradient(135deg,#e9f23c,#ffb23a)}
+.tut li b{color:#e9f23c;font-style:italic}
+.tut .go{background:linear-gradient(135deg,#f5ff5a,#ffcf3a 60%,#ffa63a)!important;color:#1a0d2c;border-radius:14px;font-size:20px;font-style:italic;min-height:50px;box-shadow:0 10px 26px #ffb23a40,inset 0 -3px 0 #0002;position:relative;overflow:hidden}
+.tut .go::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,#fff8,transparent);animation:siShine 3.2s ease-in-out infinite}
+@media (max-height:420px){#set>.tut{padding:12px 14px 10px!important;max-width:min(640px,96vw)!important}#set>.tut>b{font-size:19px!important}.tut ol{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px!important;line-height:1.35!important}.tut li{padding:6px 8px 6px 36px}.tut li::before{width:22px;height:22px;font-size:12px;left:7px;top:6px}.tut .go{min-height:40px;font-size:17px;margin-top:2px}}
 
 /* ===== phones and small screens ===== */
 body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
@@ -650,6 +671,9 @@ body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 
 /* narrow sideways phones: the menu bar keeps every tab (no title) */
 @media (orientation:landscape) and (max-width:640px){#lobby header h1{display:none}}
+/* short sideways screens: the Play panel's switches sit two by two so the panel stays under the top bar */
+@media (max-height:420px) and (orientation:landscape){#mp{display:grid!important;grid-template-columns:1fr 1fr;gap:4px!important;width:min(340px,46vw)!important;align-content:end}#mp>*{grid-column:1/-1}#mp>.rk{grid-column:auto;min-height:36px;padding:4px 6px!important;font-size:11.5px!important}#mp h2{margin:0}}
+@media (max-height:340px) and (orientation:landscape){#mp h2,#mp #onl,#mp .nrp{display:none!important}#mp{padding:6px!important}#mp .go{min-height:40px;padding:6px!important;font-size:18px!important}}
 
 </style></head><body>
 <div id="rot"><div>Turn your phone sideways to play<br><small>Nebula Royale only runs in landscape.</small></div></div>
@@ -3084,7 +3108,16 @@ function lobby() {
   $("#lobby").innerHTML = `<header><h1>Nebula Royale</h1><nav>${[["play", "Play"], ["locker", "Locker"], ["shop", innerWidth < 480 || innerHeight < 400 ? "Shop" : "Item Shop"], ["pass", innerWidth < 480 || innerHeight < 400 ? "Pass" : "Battle Pass"], ["quests", "Quests"], ["career", "Career"]].map(([k, n]) => `<button class='${tab == k ? "on" : ""}' data-t=${k} onclick=go(this.dataset.t)>${n}${dt[k] ? "<i class=dot></i>" : ""}</button>`).join("")}</nav><span class=stars>★ ${S.stars}</span><button class=ic onclick=openSet() aria-label=Settings>⚙</button></header>${views[tab]()}`;
   const r = $("#rail"); if (r) r.scrollLeft = sl; try { pvInit(); } catch (e) { console.error(e); }
   netOnline(); netLobbyPres(); if (tab == "play") setTimeout(dailyCheck, 700);
+  playFit();
 }
+// the Play tab when its panel is tall (online adds two more switches): nothing may run into the top bar or the news
+function playFit() {
+  if (tab != "play") return; const mp = $("#mp"), hd = $("#lobby header"); if (!mp || !hd) return;
+  const top = hd.getBoundingClientRect().bottom + 4, box = mp.getBoundingClientRect();
+  for (const el of mp.querySelectorAll(".lvl, .rkb")) { el.style.visibility = ""; if (el.getBoundingClientRect().top < top) el.style.visibility = "hidden"; }
+  const nw = $("#news"); if (nw) { nw.style.visibility = ""; const n = nw.getBoundingClientRect(), hit = !(n.right < box.left || n.left > box.right || n.bottom < box.top - 60 || n.top > box.bottom); if (hit) nw.style.visibility = "hidden"; }
+}
+addEventListener("resize", () => { try { playFit(); } catch (e) { /* not drawn yet */ } });
 function openSet() {
   const d = document.createElement("div"); d.id = "set";
   d.innerHTML = `<div><b>Settings</b><div class=who><span class=sia>${esc(S.name).slice(0, 1).toUpperCase()}</span><span><small>Signed in as</small><b>${esc(S.name)}</b></span><button class=btn onclick=signOut()>Switch player</button></div>${CLOUD.srv ? `<div class=pcode><span><b>Account</b><small>${onClaude() ? "Your player name and password are your account in this browser." : "Your player name is your account. Log in with it and your password on any device."}</small></span><button class=btn onclick=pwAsk(this)>Change password</button><button class=btn onclick=recAsk(this)>Recovery code</button></div><button class=sil2 onclick=forgetHere()>Sign out and forget this account on this device</button>` : ""}<label>Mouse sensitivity<br><input id=ss type=range min=.3 max=2.5 step=.1 value=${S.sens}></label><label>Aiming sensitivity<br><input id=sas type=range min=.2 max=1.2 step=.05 value=${S.adsS || 0.55}></label><label>Field of view<br><input id=sfv type=range min=60 max=100 step=1 value=${S.fov || 72}></label><label>Crosshair color<br><select id=sxc>${XH_COLORS.map(([c, n]) => `<option value="${c}" ${(S.xc || "#ffffff") == c ? "selected" : ""}>${n}</option>`).join("")}</select></label>${coarse ? "" : `<label><input id=sin type=checkbox ${S.inv ? "checked" : ""}> Invert up and down</label><label><input id=sas2 type=checkbox ${S.autoSp ? "checked" : ""}> Always sprint</label>`}<label><input id=sfp type=checkbox ${S.fps ? "checked" : ""}> Show frames per second</label><label><input id=sca type=checkbox ${S.calm ? "checked" : ""}> Less screen shake</label><label>Volume<br><input id=sv type=range min=0 max=1 step=.05 value=${S.vol}></label><label>Time of day<br><select id=st style='font:inherit;padding:6px;border-radius:6px'>${[["random", "Random each match"], ["cycle", "Day into sunset"], ["day", "Day"], ["sunset", "Sunset"], ["night", "Night"]].map(([v, n]) => `<option value=${v} ${(S.tod || "random") == v ? "selected" : ""}>${n}</option>`).join("")}</select></label>${coarse ? `<label><input id=saf type=checkbox ${S.autoFire === 0 ? "" : "checked"}> Auto fire when aiming at someone</label><label><input id=svb type=checkbox ${S.vib === 0 ? "" : "checked"}> Vibration</label>` : ""}<label><input id=sm type=checkbox ${S.music === 0 ? "" : "checked"}> Music</label><label><input id=svs type=checkbox ${S.vsfx === 0 ? "" : "checked"}> Show sounds on screen (gunfire, footsteps)</label>${coarse ? "" : `<label><input id=sfs type=checkbox ${S.fs === 0 ? "" : "checked"}> Full screen in matches (so Ctrl+W can't close the tab)</label>`}<label>Graphics<br><select id=sg style='font:inherit;padding:6px;border-radius:6px'><option value=1 ${S.gfx ? "selected" : ""}>High (shadows, outlines)</option><option value=0 ${S.gfx ? "" : "selected"}>Fast</option></select></label><small>Usual keys: WASD move · mouse aim · click locks the mouse, Esc frees it · right mouse aims · E opens chests and picks up · R reload · Q wall, C ramp, V floor, X roof · F edits your builds (drag over tiles to cut doors, windows and holes; F confirms, R resets; it turns ramps) · right click in build mode changes material · 1 to 6 slots · G drop · M map · Ctrl slide (crouch when standing still) · P or middle click mark a place for your squad · T dance · H or J choose a Star Perk · Tab or I opens your Backpack<br>Controller: left stick moves, right stick looks, RT shoots or places, LT aims, A jumps, B slides or crouches, X uses or reloads, Y builds, LB and RB change weapon or piece, L3 sprints, R3 edits, D-pad up map, right mark, Start plays</small>${coarse ? "" : `<details class=kbs><summary>Change keys</summary><div id=kbl>${kbHtml()}</div><button class=btn onclick=kbReset()>Put every key back</button></details>`}<button class=del onclick=delSave(this)>Delete my save</button><button class=go style='padding:10px' onclick=closeSet()>Done</button></div>`;
@@ -3115,8 +3148,14 @@ let pr, ps, pc, pg, pvOn = 0;
 function pvScene() {
   ps = new TH.Scene(); ps.add(new TH.HemisphereLight(0xffffff, 0x8a4a9a, 0.9)); const d = new TH.DirectionalLight(0xffffff, 0.8); d.position.set(3, 5, 5); ps.add(d);
   const disc = (x, z, r, c, e) => { const m = new TH.Mesh(new TH.CylinderGeometry(r, r * 1.08, 0.2, 32), new TH.MeshLambertMaterial({ color: c, emissive: e })); m.position.set(x, -0.1, z); ps.add(m); return m; };
-  disc(0, 0, 1.4, 0xf0f4ff, 0x7a8cff);
-  if (tab == "play") { disc(-3, -0.6, 1.1, 0x3a1646, 0x220a2a); disc(3, -0.6, 1.1, 0x3a1646, 0x220a2a); if (padCount() > 2) disc(5.6, -1.7, 1.0, 0x3a1646, 0x220a2a); const bm = new TH.Mesh(new TH.CylinderGeometry(1.15, 1.3, 3.8, 24, 1, true), new TH.MeshBasicMaterial({ color: 0x66e6ff, transparent: true, opacity: 0.2, depthWrite: false, side: TH.DoubleSide })); bm.position.y = 1.9; ps.add(bm); }
+  // the pedestal: a dark base with a glowing rim, a thin inner ring and a soft glow on the floor
+  disc(0, 0, 1.4, 0x1c1240, 0x140a34);
+  { const top = new TH.Mesh(new TH.CylinderGeometry(1.32, 1.32, 0.03, 48), new TH.MeshBasicMaterial({ color: 0x2b1f63 })); top.position.y = 0.005; ps.add(top);
+    const ring = (r, t, c, o) => { const m = new TH.Mesh(new TH.TorusGeometry(r, t, 12, 72), new TH.MeshBasicMaterial({ color: c, transparent: o < 1, opacity: o })); m.rotation.x = Math.PI / 2; m.position.y = 0.02; ps.add(m); };
+    ring(1.37, 0.05, 0x66e6ff, 1); ring(0.98, 0.018, 0xe9f23c, 0.75);
+    const gc = document.createElement("canvas"); gc.width = gc.height = 128; { const g = gc.getContext("2d"), r = g.createRadialGradient(64, 64, 8, 64, 64, 64); r.addColorStop(0, "rgba(102,230,255,0.55)"); r.addColorStop(0.5, "rgba(102,230,255,0.18)"); r.addColorStop(1, "rgba(102,230,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 128, 128); }
+    const glow = new TH.Mesh(new TH.PlaneGeometry(3.6, 3.6), new TH.MeshBasicMaterial({ map: new TH.CanvasTexture(gc), transparent: true, depthWrite: false })); glow.rotation.x = -Math.PI / 2; glow.position.y = -0.19; ps.add(glow); }
+  if (tab == "play") { const side = (x, z, r) => { disc(x, z, r, 0x2a1240, 0x1a0828); const m = new TH.Mesh(new TH.TorusGeometry(r * 0.97, 0.035, 10, 60), new TH.MeshBasicMaterial({ color: 0xff4fa3 })); m.rotation.x = Math.PI / 2; m.position.set(x, 0.02, z); ps.add(m); }; side(-3, -0.6, 1.1); side(3, -0.6, 1.1); if (padCount() > 2) side(5.6, -1.7, 1.0); const bm = new TH.Mesh(new TH.CylinderGeometry(1.15, 1.3, 3.8, 24, 1, true), new TH.MeshBasicMaterial({ color: 0x66e6ff, transparent: true, opacity: 0.2, depthWrite: false, side: TH.DoubleSide })); bm.position.y = 1.9; ps.add(bm); }
 }
 function pvInit() {
   const box = $("#pvbox"); if (!box) return;
