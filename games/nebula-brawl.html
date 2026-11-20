@@ -2576,10 +2576,12 @@ function showGift(force){
   const w=el('<div id="gift" role="dialog" aria-modal="true" aria-label="Daily gift" style="position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(5,4,15,.72);padding:1rem"></div>');
   w.innerHTML='<div style="'+panelCss+';margin:0;max-width:min(30rem,94vw);text-align:center"><p style="margin:0;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#fde047">Daily gift · day '+st.day+' of 7</p><h2 class="font-display" style="margin:.375rem 0 .75rem;font-size:1.5rem">'+(st.day===7?"Big gift day!":"Welcome back!")+'</h2>'+
     '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:.25rem">'+GIFT.map((n,i)=>'<div style="border-radius:.625rem;padding:.375rem 0;font-size:11px;font-weight:800;'+(i+1===st.day?"background:#fde047;color:#451a03":"background:rgba(255,255,255,.07);color:#ddd6fe;"+(i+1<st.day?"opacity:.45":""))+'">Day '+(i+1)+'<br>'+n+(i===6?"<br>+ pod":"")+'</div>').join("")+'</div>'+
-    '<p style="margin:.75rem 0 0;font-size:12px;font-weight:600;color:#c4b5fd">Come back every day: each day pays more coins, and day 7 adds a free Supply Pod.</p>'+bigBtn("gift-claim","CLAIM "+GIFT[st.day-1]+" COINS"+(st.day===7?" + A POD":""),true)+'</div>';
+    '<p style="margin:.75rem 0 0;font-size:12px;font-weight:600;color:#c4b5fd">Come back every day: each day pays more coins, and day 7 adds a free Supply Pod.</p>'+bigBtn("gift-claim","CLAIM "+GIFT[st.day-1]+" COINS"+(st.day===7?" + A POD":""),true)+'<button type="button" id="gift-later" style="display:block;margin:.5rem auto 0;min-height:40px;padding:0 1rem;border:0;background:none;color:#c4b5fd;font-weight:800;font-size:13px;text-decoration:underline;cursor:pointer">Later</button></div>';
   document.body.appendChild(w);
   const b=$("#gift-claim",w); b.focus();
-  b.addEventListener("click",()=>{ const g=claimGift(); w.remove(); if(g){ SFX.play("power"); toast("+"+g.coins+" coins"+(g.pod?" and a Supply Pod!":"! See you tomorrow.")); } showLobby(); });
+  const shut=()=>{ w.remove(); removeEventListener("keydown",esc,true); }, esc=(e)=>{ if(e.key==="Escape"){ e.preventDefault(); shut(); } };
+  addEventListener("keydown",esc,true); w.addEventListener("click",(e)=>{ if(e.target===w)shut(); }); $("#gift-later",w).addEventListener("click",shut);
+  b.addEventListener("click",()=>{ shut(); let g=null; try{ g=claimGift(); }catch(e){} if(g){ try{ SFX.play("power"); }catch(e){} toast("+"+g.coins+" coins"+(g.pod?" and a Supply Pod!":"! See you tomorrow.")); } try{ showLobby(); }catch(e){} });
 }
 function openPods(){
   const body=sheetShell("Supply Pods","30rem");
@@ -3382,6 +3384,7 @@ function acctConnect(){
   return ACC.p;
 }
 function acctCall(m){
+  if(ACC.local)return lsrvCall(m); // claude.ai: the accounts kept in this browser
   return new Promise((ok,no)=>{
     if(!ACC.up||!ACC.ws){ no({code:"unavailable"}); return; }
     const i=++ACC.n; ACC.calls.set(i,{ok,no});
@@ -3389,6 +3392,62 @@ function acctCall(m){
     setTimeout(()=>{ if(ACC.calls.has(i)){ ACC.calls.delete(i); no({code:"timeout"}); } },10000);
   });
 }
+
+// ---------- on claude.ai: the same name-and-password accounts, kept in this browser ----------
+const LSRV_KEY="nb_local_srv";
+function lsrvLoad(){ try{ const v=JSON.parse(localStorage.getItem(LSRV_KEY)||"null"); if(v&&v.v===1&&v.acc&&v.sess)return v; }catch(e){} return {v:1,acc:{},sess:{}}; }
+function lsrvSave(D){ try{ localStorage.setItem(LSRV_KEY,JSON.stringify(D)); }catch(e){ throw {code:"server_error"}; } }
+const lhex=(b)=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+const lsha=async(t)=>lhex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)));
+const lrand=(n)=>lhex(crypto.getRandomValues(new Uint8Array(n)));
+function lcode(){ const A="0123456789ABCDEFGHJKMNPQRSTVWXYZ", b=new Uint8Array(20); crypto.getRandomValues(b); return [...b].map(x=>A[x&31]).join(""); }
+async function lsrvCall(m){
+  const D=lsrvLoad(), now=Date.now(), PHX=/^[0-9a-f]{64}$/, no=(code)=>{ throw {code}; };
+  const newSess=async(uid)=>{ const t=lcode(); D.sess[await lsha("nb-sess:"+t)]={uid,at:now}; return t; };
+  const newRec=async(a)=>{ const c=lcode(); a.rec=await lsha("nb-rec:"+c); return c; };
+  const byUid=(uid)=>Object.values(D.acc).find(a=>a.uid===uid);
+  const wrong=(a,code)=>{ a.fails=(a.fails||0)+1; if(a.fails>=6){ a.fails=0; a.lock=now+10*60000; } lsrvSave(D); no(a.lock>now?"locked":code); };
+  try{
+    if(m.op==="reg"||m.op==="login"){
+      const name=String(m.name||"").trim().replace(/\s+/g," "), key=nameKey(name), ph=String(m.ph||"");
+      if(!PHX.test(ph))no("bad_password");
+      if(m.op==="reg"){
+        if(nameProblem(name))no("bad_name"); if(D.acc[key])no("taken"); if(Object.keys(D.acc).length>=ACCT_MAX)no("device_full");
+        const uid=lrand(12), salt=lrand(16), a=(D.acc[key]={key,uid,name,salt,h:await lsha(salt+":"+ph),fails:0,lock:0,at:now});
+        const sess=await newSess(uid), rec=await newRec(a); LSRV_UID=uid; lsrvSave(D); return {uid,sess,name,rec};
+      }
+      const a=D.acc[key]; if(!a)no("no_account"); if(a.lock>now)no("locked");
+      if((await lsha(a.salt+":"+ph))!==a.h)wrong(a,"wrong_password");
+      a.fails=0; const sess=await newSess(a.uid); LSRV_UID=a.uid; lsrvSave(D); return {uid:a.uid,sess,name:a.name};
+    }
+    if(m.op==="recover"){
+      const key=nameKey(String(m.name||"").trim()), ph=String(m.ph||""), code=String(m.code||"");
+      if(!PHX.test(ph))no("bad_password");
+      const a=D.acc[key]; if(!a)no("no_account"); if(a.lock>now)no("locked");
+      if(!/^[0-9A-HJKMNP-TV-Z]{20}$/.test(code)||!a.rec||(await lsha("nb-rec:"+code))!==a.rec)wrong(a,"bad_code");
+      a.salt=lrand(16); a.h=await lsha(a.salt+":"+ph); a.fails=0; a.lock=0;
+      for(const k in D.sess)if(D.sess[k].uid===a.uid)delete D.sess[k];
+      const sess=await newSess(a.uid), rec=await newRec(a); LSRV_UID=a.uid; lsrvSave(D); return {uid:a.uid,sess,name:a.name,rec};
+    }
+    if(m.op==="resume"){ const x=D.sess[await lsha("nb-sess:"+String(m.sess||""))]; if(!x)no("expired"); const a=byUid(x.uid); if(!a)no("expired"); x.at=now; LSRV_UID=a.uid; lsrvSave(D); return {uid:a.uid,name:a.name}; }
+    if(m.op==="logout"){ delete D.sess[await lsha("nb-sess:"+String(m.sess||""))]; if(m.here)LSRV_UID=null; lsrvSave(D); return {}; }
+    if(m.op==="pw"||m.op==="newrec"||m.op==="delacct"){
+      const a=LSRV_UID&&byUid(LSRV_UID); if(!a)no("permission_denied");
+      if(m.op==="delacct"){ delete D.acc[a.key]; for(const k in D.sess)if(D.sess[k].uid===a.uid)delete D.sess[k]; LSRV_UID=null; lsrvSave(D); return {}; }
+      if(!PHX.test(String(m.old||""))||(await lsha(a.salt+":"+m.old))!==a.h)no("wrong_password");
+      if(m.op==="newrec"){ const rec=await newRec(a); lsrvSave(D); return {rec}; }
+      if(!PHX.test(String(m.ph||"")))no("bad_password");
+      a.salt=lrand(16); a.h=await lsha(a.salt+":"+m.ph); lsrvSave(D); return {};
+    }
+    // progress is already kept with the player in this browser
+    if(m.op==="get")return {exists:false};
+    if(m.op==="set"||m.op==="del")return {};
+    no("invalid_op");
+  }catch(e){ throw e&&e.code?e:{code:"server_error"}; }
+}
+let LSRV_UID=null;
+// claude.ai's live room, for real players (joined once)
+function clRoomJoin(){ if(ACC.clP)return; ACC.clP=Promise.resolve(window.claude.use("room")).then(r=>{ if(!r)return; ACC.cl=r; r.onPeers(c=>{ for(const p of c.peers||[])if(p.isMe&&!ACC.peer)ACC.peer=p.peer; }); if(!ACC.peer&&window.__PEER)ACC.peer=window.__PEER; lobbyHere(); }).catch(()=>{}); }
 function acctSend(m){ if(ACC.ws&&ACC.up){ try{ ACC.ws.send(JSON.stringify(m)); return true; }catch(e){} } return false; }
 const ROOMS=new Map();
 function roomJoin(name,on){
@@ -3436,9 +3495,24 @@ const AGREE_POINTS=[
   ["Younger players","If you're under 13, ask a parent or guardian before you play."],
   ["Changes","The game and this agreement can change over time. If the agreement changes, you'll be asked to agree again."]
 ];
+// on claude.ai the account lives in this browser, so the agreement says so
+if(window.claude&&window.claude.use){ AGREE_POINTS[1][1]="The game saves your player name and your progress (coins, trophies, fighters, levels and stats) in this browser with your account: a player name and a password you choose (no email). claude.ai pages can't reach the game's server, so here your account works in this browser. Your password is never stored, only a scrambled version of it. If you forget it, the recovery code you get when you sign up lets you set a new one."; AGREE_POINTS[2][1]="On the Nebulux website your account works in Nebula Brawl and Nebula Royale, with the same name and password in both."; }
 const GATE_CSS='<style>.nbg{position:absolute;inset:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:1.25rem}.nbb{position:relative;width:100%;max-width:26rem;margin:auto;border-radius:1.25rem;background:rgba(24,16,60,.94);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),0 10px 0 rgba(10,6,32,.5);padding:1.25rem;color:#fff}.nbb h2{margin:.25rem 0 .25rem;font-size:1.5rem}.nbb p{margin:.25rem 0;font-size:13px;color:#ddd6fe}.nbl{margin:.75rem 0;display:flex;flex-direction:column;gap:.5rem;max-height:40vh;overflow:auto}.nbl div{border-radius:.75rem;background:rgba(255,255,255,.06);padding:.5rem .75rem;font-size:12.5px;color:#e9e5ff}.nbl b{display:block;color:#fde047;font-size:13px}.nbi{display:block;margin-top:.625rem;font-size:12px;font-weight:800;color:#c4b5fd}.nbi input{display:block;width:100%;box-sizing:border-box;margin-top:.25rem;min-height:44px;border-radius:.75rem;border:0;padding:0 .75rem;font-size:16px;background:#f5f3ff;color:#1e1b4b}.nbgo{margin-top:.875rem;width:100%;min-height:48px;border-radius:1rem;border:0;font-size:17px;font-weight:900;background:linear-gradient(180deg,#fde047,#f59e0b);color:#451a03;cursor:pointer}.nbgo:disabled{opacity:.5;cursor:default}.nb2{margin-top:.5rem;width:100%;min-height:44px;border-radius:.75rem;border:0;background:transparent;color:#a5f3fc;font-weight:800;font-size:13px;cursor:pointer}.nbtab{display:flex;gap:.375rem;margin-top:.75rem}.nbtab button{flex:1;min-height:44px;border-radius:.75rem;border:0;font-weight:900;cursor:pointer;background:rgba(255,255,255,.08);color:#ddd6fe}.nbtab button.on{background:#f5f3ff;color:#1e1b4b}.nbacc{display:flex;align-items:center;gap:.625rem;width:100%;min-height:52px;margin-top:.5rem;border-radius:.875rem;border:0;padding:.375rem .75rem;background:rgba(255,255,255,.08);color:#fff;font-weight:900;font-size:15px;cursor:pointer;text-align:left}.nbacc span{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:999px;background:#7c3aed}.nber{min-height:1.2em;margin-top:.5rem;font-size:13px;font-weight:800;color:#fda4af}.nbck{display:flex;gap:.5rem;align-items:center;margin-top:.5rem;font-size:13px;font-weight:800;min-height:44px}.nbck input{width:22px;height:22px}.nbcode{margin:.5rem 0;padding:.75rem;border-radius:.75rem;background:#f5f3ff;color:#1e1b4b;font-family:ui-monospace,monospace;font-size:18px;font-weight:900;text-align:center;letter-spacing:.06em;user-select:all}@media (max-height:460px){.nbg{padding:.5rem}.nbb{max-width:44rem;padding:.75rem 1rem}.nbb h2{font-size:1.15rem;margin:0}.nbtab{margin-top:.375rem}.nbtab button{min-height:40px}.nbi{display:inline-block;width:calc(50% - .375rem);vertical-align:top;margin-top:.375rem}.nbi:nth-of-type(even){margin-left:.5rem}.nbi input{min-height:40px}.nbgo{min-height:44px;margin-top:.5rem}.nbl{max-height:36vh;margin:.375rem 0}.nb2{min-height:40px;margin-top:.25rem}}</style>';
 let gateMode="";
-function gateShell(inner){ app.innerHTML=GATE_CSS+'<div class="screen"><div class="space-bg"></div><div class="nbg"><div class="nbb" role="dialog" aria-labelledby="nbh"><div class="font-display" style="font-size:13px;letter-spacing:.12em;color:#fde047">NEBULA BRAWL</div>'+inner+'</div></div></div>'; }
+const GATE_CSS2=`<style>.nbgate .nbart{position:absolute;inset:0;overflow:hidden;pointer-events:none}.nbart i{position:absolute;display:block}.nbst{inset:-50%;background-image:radial-gradient(1.5px 1.5px at 20px 30px,#fff,transparent),radial-gradient(1px 1px at 120px 80px,#fffc,transparent),radial-gradient(1.5px 1.5px at 200px 160px,#cfe8ff,transparent),radial-gradient(2px 2px at 260px 40px,#fde68a,transparent);background-size:300px 260px;animation:nbDrift 100s linear infinite;opacity:.75}@keyframes nbDrift{to{background-position:300px 260px}}.nbneb{width:70vmax;height:70vmax;left:-22vmax;top:-28vmax;border-radius:50%;background:radial-gradient(circle,rgba(236,72,153,.35),rgba(124,58,237,.18) 45%,transparent 70%);filter:blur(30px)}.nbneb2{width:60vmax;height:60vmax;right:-20vmax;bottom:-30vmax;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.28),rgba(37,99,235,.12) 45%,transparent 70%);filter:blur(30px)}.nbhero{position:absolute;left:5vw;top:50%;transform:translateY(-50%);width:min(46vw,560px);display:none;text-align:center;z-index:1}.nbtitle{font-size:clamp(44px,5.6vw,84px);line-height:.9;color:#fff;text-shadow:0 6px 0 #5b21b6,0 0 40px rgba(236,72,153,.5);letter-spacing:.02em}.nbtitle b{display:block;color:#fde047;text-shadow:0 6px 0 #b45309,0 0 40px rgba(253,224,71,.45)}.nbtag{margin:14px 0 6px;font-weight:800;font-size:clamp(14px,1.35vw,19px);color:#e9e5ff}.nbcrew{display:flex;justify-content:center;align-items:flex-end;gap:2vw;margin:6px 0 4px}.nbpod{position:relative;display:flex;flex-direction:column;align-items:center}.nbpod::after{content:"";width:80%;height:18px;margin-top:-10px;border-radius:50%;background:radial-gradient(ellipse,rgba(34,211,238,.7),rgba(124,58,237,.35) 60%,transparent 72%);filter:blur(1px)}.nbpod.mid::after{background:radial-gradient(ellipse,rgba(253,224,71,.8),rgba(245,158,11,.35) 60%,transparent 72%)}.nbpod small{margin-top:4px;font-weight:900;font-size:12px;color:#c4b5fd;letter-spacing:.06em;text-transform:uppercase}.nbfacts{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}.nbfacts span{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:800;color:#ddd6fe}.nbfacts b{display:block;font-size:20px;color:#fde047}.nbtop{display:none;justify-content:center;align-items:flex-end;gap:18px;margin:0 auto -8px;position:relative;z-index:2}@media (min-width:1100px) and (min-height:540px){.nbgate .nbg{justify-content:flex-end;padding-right:max(6vw,1.25rem)}.nbhero{display:block}.nbwrap{margin:auto 0!important}}@media (max-height:460px){.nbwrap{max-width:44rem!important}}@media (max-width:1099px) and (min-height:700px){.nbtop{display:flex}}.nbgate .nbg{z-index:1}.nbgate .nbb{background:linear-gradient(165deg,rgba(46,24,96,.95),rgba(22,12,52,.97) 60%,rgba(16,9,40,.98));box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(167,139,250,.35),inset 0 1px 0 rgba(255,255,255,.18),0 10px 0 rgba(10,6,32,.5);border-radius:1.5rem;padding:1.5rem 1.375rem 1.125rem}.nbgate .nbb::before{content:"";position:absolute;left:1.5rem;right:1.5rem;top:0;height:4px;border-radius:0 0 6px 6px;background:linear-gradient(90deg,#ec4899,#a855f7,#22d3ee,#fde047)}.nbgate .nbb h2{font-size:1.75rem;text-shadow:0 3px 0 rgba(91,33,182,.8)}.nbgate .nbi input{background-color:rgba(11,6,24,.85);color:#fff;border:1.5px solid rgba(255,255,255,.16);padding-left:2.75rem;background-repeat:no-repeat;background-position:.875rem 50%;background-size:18px;transition:border-color .15s,box-shadow .15s}.nbgate .nbi input:focus{outline:0;border-color:#fde047;box-shadow:0 0 0 4px rgba(253,224,71,.18)}.nbgate .nbi input::placeholder{color:#8b7fb8}.nbgate #nbnm{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a8e8' stroke-width='2'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c0-4 4-6 8-6s8 2 8 6'/%3E%3C/svg%3E\")}.nbgate input[type=password],.nbgate #nbpw,.nbgate #nbpw2{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a8e8' stroke-width='2'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E\")}.nbgate .nbtab{background:rgba(11,6,24,.85);border:1px solid rgba(255,255,255,.1);border-radius:1rem;padding:5px}.nbgate .nbtab button{background:transparent;transition:background .15s}.nbgate .nbtab button:hover:not(.on){background:rgba(255,255,255,.08);color:#fff}.nbgate .nbtab button.on{background:linear-gradient(180deg,#fde047,#f59e0b);color:#451a03;box-shadow:0 4px 14px rgba(245,158,11,.35)}.nbgate .nbgo{position:relative;overflow:hidden;font-size:19px;box-shadow:0 6px 0 #b45309,0 14px 28px rgba(245,158,11,.3);transition:transform .1s,box-shadow .1s}.nbgate .nbgo:hover:not(:disabled){transform:translateY(-1px)}.nbgate .nbgo:active:not(:disabled){transform:translateY(4px);box-shadow:0 2px 0 #b45309}.nbgate .nbgo::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:nbShine 3.2s ease-in-out infinite}.nbgate .nbgo:disabled::after{display:none}@keyframes nbShine{0%,60%{left:-60%}100%{left:130%}}.nbgate .nbacc{background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.04));border:1.5px solid rgba(255,255,255,.14);transition:border-color .15s,transform .1s}.nbgate .nbacc:hover{border-color:#fde047;transform:translateY(-1px)}.nbgate .nbacc span{background:linear-gradient(135deg,#ec4899,#a855f7 55%,#22d3ee);box-shadow:0 4px 12px rgba(168,85,247,.4)}.nbbar{height:4px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:.625rem}.nbbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#fde047)}.nbgate .nbl{counter-reset:nb;background:rgba(11,6,24,.6);border:1px solid rgba(255,255,255,.08);border-radius:1rem;padding:.625rem;scrollbar-width:thin;scrollbar-color:rgba(168,85,247,.6) transparent}.nbgate .nbl div{counter-increment:nb;position:relative;padding:.625rem .75rem .625rem 2.75rem;font-size:13px;line-height:1.45}.nbgate .nbl div::before{content:counter(nb);position:absolute;left:.625rem;top:.6rem;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:13px;color:#451a03;background:linear-gradient(180deg,#fde047,#f59e0b)}.nbgate .nbl b{font-size:14px}.nbgate .nbck{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:1rem;padding:.5rem .75rem;cursor:pointer}.nbgate .nbck input{appearance:none;-webkit-appearance:none;flex:none;width:26px;height:26px;border-radius:8px;border:2px solid rgba(255,255,255,.4);background:#0b0618;cursor:pointer;margin:0}.nbgate .nbck input:checked{border-color:#fde047;background:#fde047 url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23451a03' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E\") center/18px no-repeat}.nbgate .nbcode{background:#0b0618;color:#fde047;border:1.5px dashed rgba(253,224,71,.5);box-shadow:0 0 24px rgba(253,224,71,.12)}@media (prefers-reduced-motion:reduce){.nbst,.nbgate .nbgo::after{animation:none}}</style>`;
+// three real fighters for the key art: drawn with the same figures as the lobby
+const GATE_CREW=[["crater","Crater"],["nebula","Nebula"],["halo","Halo"]];
+function gateCrew(cls,sizes){ return GATE_CREW.map(([id,n],i)=>'<div class="nbpod'+(i===1?' mid':'')+'"><canvas class="'+cls+'" data-f="'+id+'" aria-hidden="true"></canvas><small>'+n+'</small></div>').join(""); }
+function gateShell(inner){
+  clearFigures();
+  app.innerHTML=GATE_CSS+GATE_CSS2+'<div class="screen nbgate"><div class="space-bg"></div><div class="nbart" aria-hidden="true"><i class="nbst"></i><i class="nbneb"></i><i class="nbneb2"></i></div>'+
+    '<div class="nbhero" aria-hidden="true"><div class="nbtitle font-display">NEBULA<b>BRAWL</b></div><p class="nbtag">Fast 3v3 fights against real players.</p><div class="nbcrew">'+gateCrew("nbfig",0)+'</div><div class="nbfacts"><span><b>110</b>fighters</span><span><b>3v3</b>crews</span><span><b>Real</b>players online</span></div></div>'+
+    '<div class="nbg"><div class="nbwrap" style="margin:auto;width:100%;max-width:26rem"><div class="nbtop" aria-hidden="true">'+gateCrew("nbfig2",0)+'</div><div class="nbb" role="dialog" aria-labelledby="nbh"><div class="font-display" style="font-size:13px;letter-spacing:.12em;color:#fde047">NEBULA BRAWL</div>'+inner+'</div></div></div></div>';
+  const big=Math.round(Math.min(150,Math.max(90,innerHeight*0.17)));
+  app.querySelectorAll("canvas[data-f]").forEach((c,i)=>{ const d=BRAWLERS.find(b=>b.id===c.dataset.f); if(!d)return; const mid=c.dataset.f==="nebula", sz=c.classList.contains("nbfig")?(mid?big:Math.round(big*0.82)):(mid?78:64); registerFigure(c,d,{size:sz,nebulux:mid,animated:true}); });
+  // the agreement: a bar that fills as you read
+  const L=app.querySelector(".nbl"); if(L){ L.insertAdjacentHTML("beforebegin",'<div class="nbbar"><i></i></div>'); const bar=L.previousElementSibling.firstChild, upd=()=>{ const m=L.scrollHeight-L.clientHeight; bar.style.width=(m<=2?100:Math.min(100,L.scrollTop/m*100))+"%"; }; L.addEventListener("scroll",upd,{passive:true}); upd(); }
+}
 function gate(){
   if(nbGet("nb_agree","")!==AGREE_V){
     gateShell('<h2 id="nbh">Player agreement</h2><p>Please read this before you play.</p><div class="nbl">'+AGREE_POINTS.map(([h,t])=>'<div><b>'+h+'</b>'+t+'</div>').join("")+'</div><label class="nbck"><input type="checkbox" id="nbok"> I have read this and I agree</label><button class="nbgo" id="nbagree" disabled>Continue</button>');
@@ -3446,7 +3520,8 @@ function gate(){
     c.onchange=()=>{ b.disabled=!c.checked; }; b.onclick=()=>{ nbSet("nb_agree",AGREE_V); gate(); };
     return;
   }
-  if(window.claude&&window.claude.use)return gateClaude();
+  // claude.ai: the same accounts as everywhere else, kept in this browser, and claude.ai's live room for real players
+  if(window.claude&&window.claude.use){ ACC.local=true; ACC.up=true; ACC.p=Promise.resolve(true); clRoomJoin(); const cur=nbGet("nb_cur",""), a=accts().find(x=>x.key===cur); if(a&&!gateMode)return resumeAcct(a,true); return gateAcct(); }
   gateShell('<h2 id="nbh">Sign in</h2><p>Connecting to the game\'s server...</p>');
   acctConnect().then(up=>{ if(!up){ gateOffline(); return; } const cur=nbGet("nb_cur",""), a=accts().find(x=>x.key===cur); if(a&&!gateMode)return resumeAcct(a,true); gateAcct(); });
 }
@@ -3487,7 +3562,7 @@ function gateAcct(nm,err){
     (mode!=="login"?'<label class="nbi">'+(mode==="recover"?"New password again":"Password again")+'<input id="nbpw2" type="password" maxlength="64" autocomplete="new-password"></label>':"")+
     '<button class="nbgo" id="nbgo">'+(mode==="signup"?"Sign up":mode==="recover"?"Set new password":"Log in")+'</button>'+
     (mode==="login"?'<button class="nb2" data-m="recover">Forgot your password?</button>':mode==="recover"?'<button class="nb2" data-m="login">Back to log in</button>':'')+
-    '<p>'+(mode==="signup"?"Your player name is your account, for Nebula Brawl and Nebula Royale. You'll get a recovery code in case you forget your password.":"Already have a Nebula Royale account? It works here too.")+'</p>';
+    '<p>'+(ACC.local?(mode==="signup"?"Your player name and password are your account in this browser. You'll get a recovery code in case you forget your password.":"Use the name and password of your account in this browser."):(mode==="signup"?"Your player name is your account, for Nebula Brawl and Nebula Royale. You'll get a recovery code in case you forget your password.":"Already have a Nebula Royale account? It works here too."))+'</p>';
   gateShell(body+'<p class="nber" id="nber" role="alert">'+escHtml(err||"")+'</p><button class="nb2" id="nbreread">Read the player agreement again</button>');
   const er=t=>{ const e=document.getElementById("nber"); if(e)e.textContent=t; };
   app.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ const n=document.getElementById("nbnm"); gateMode=b.dataset.m; gateAcct(n?n.value:nm); });

@@ -226,6 +226,77 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 /* real players in a mode right now */
 .gc{position:relative}.gc .gcl{position:absolute;top:8px;right:8px;background:#16a34a;color:#fff;font-style:normal;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
 
+/* ---------- sign-in and player agreement: key art, glass card ---------- */
+#signin{background:radial-gradient(ellipse 80% 60% at 20% 15%,#5a1f9a 0,#2a0f52 35%,transparent 70%),radial-gradient(ellipse 70% 60% at 85% 90%,#0e4a7a 0,#121040 40%,transparent 75%),linear-gradient(160deg,#120826,#07040f 70%);gap:28px}
+.siart{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.siart i{position:absolute;display:block}
+.sist1,.sist2{inset:-50%;background-image:radial-gradient(1.5px 1.5px at 20px 30px,#fff,transparent),radial-gradient(1px 1px at 120px 80px,#fffc,transparent),radial-gradient(1.5px 1.5px at 200px 160px,#cfe8ff,transparent),radial-gradient(1px 1px at 60px 210px,#fff9,transparent),radial-gradient(2px 2px at 260px 40px,#ffe9a8,transparent);background-size:300px 260px;animation:siDrift 90s linear infinite;opacity:.8}
+.sist2{background-size:460px 380px;animation-duration:150s;opacity:.5;transform:rotate(12deg)}
+@keyframes siDrift{to{background-position:300px 260px}}
+.sineb{width:70vmax;height:70vmax;left:-20vmax;top:-25vmax;border-radius:50%;background:radial-gradient(circle,#ff4fa355,#b06bff22 45%,transparent 70%);filter:blur(30px);animation:siPulse 12s ease-in-out infinite alternate}
+@keyframes siPulse{to{transform:translate(4vmax,3vmax) scale(1.08);opacity:.8}}
+.siplan{width:34vmin;height:34vmin;right:6vw;top:9vh;border-radius:50%;background:radial-gradient(circle at 32% 30%,#ffd2f0,#c04fd8 30%,#5a1f9a 62%,#1c0b3a 80%);box-shadow:inset -18px -14px 40px #0009,0 0 60px #b06bff66}
+.siring{width:58vmin;height:16vmin;right:calc(6vw - 12vmin);top:calc(9vh + 9vmin);border-radius:50%;border:3px solid #ffb0ef66;transform:rotate(-16deg);box-shadow:0 0 24px #ff4fa366}
+.sihero{position:absolute;left:6vw;top:50%;transform:translateY(-50%);max-width:44vw;display:none}
+.sibig{font-size:clamp(46px,6.4vw,96px);line-height:.92;font-weight:800;font-style:italic;letter-spacing:2px;color:#fff;text-shadow:0 5px 0 #6a1f8a,0 0 40px #ff4fa388}
+.sibig b{display:block;color:#e9f23c;text-shadow:0 5px 0 #8a6a00,0 0 40px #e9f23c66}
+.sihero p{font-size:clamp(16px,1.5vw,22px);font-style:italic;font-weight:600;margin:18px 0 22px;color:#e8dcff}
+.sihero ul{list-style:none;display:flex;gap:12px;padding:0;margin:0;flex-wrap:wrap}
+.sihero li{background:#ffffff12;border:1px solid #ffffff26;border-radius:14px;padding:10px 16px;display:flex;flex-direction:column;backdrop-filter:blur(6px)}
+.sihero li b{font-size:24px;font-style:italic;color:#e9f23c}.sihero li span{font-size:13px;opacity:.85}
+@media (min-width:1100px) and (min-height:520px){#signin{justify-content:flex-end;padding-right:max(6vw,24px)}.sihero{display:block}.sib .siT{display:none}.siplan,.siring{opacity:.55}}
+.sib{position:relative;z-index:1;background:linear-gradient(165deg,#2a1650f0,#150a2cf5 60%,#100822f8);border:1px solid #ffffff22;border-radius:22px;padding:26px 24px 20px;gap:14px;box-shadow:0 30px 90px #000b,0 0 0 1px #b06bff33,inset 0 1px 0 #ffffff26;backdrop-filter:blur(14px)}
+.sib::before{content:"";position:absolute;left:24px;right:24px;top:0;height:3px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#ff4fa3,#b06bff,#52e0ff,#e9f23c)}
+.sib h2{font-size:26px;background:linear-gradient(90deg,#fff,#e8dcff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sis{color:#d9ccf5}
+.sin input{background-color:#0b0618d9;border:1.5px solid #ffffff26;border-radius:12px;padding:13px 14px 13px 44px;font-size:17px;background-repeat:no-repeat;background-position:14px 50%;background-size:18px;transition:border-color .15s,box-shadow .15s}
+.sin input:focus{border-color:#e9f23c;box-shadow:0 0 0 4px #e9f23c26}
+#sinm{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a8e8' stroke-width='2'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c0-4 4-6 8-6s8 2 8 6'/%3E%3C/svg%3E")}
+.sipw input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a8e8' stroke-width='2'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E")}
+#sirc{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a8e8' stroke-width='2'%3E%3Ccircle cx='8' cy='15' r='4'/%3E%3Cpath d='M11 12l9-9M17 6l3 3'/%3E%3C/svg%3E")}
+.sitabs{background:#0b0618d9;border:1px solid #ffffff1a;border-radius:14px;padding:5px}
+.sitabs button{border-radius:10px;padding:10px;font-size:15px;transition:background .15s,color .15s}
+.sitabs button:hover:not(.on){background:#ffffff12;color:#fff}
+.sitabs button.on{background:linear-gradient(135deg,#f5ff5a,#ffcf3a);color:#1a0d2c;box-shadow:0 4px 14px #ffcf3a44}
+.sib .go{background:linear-gradient(135deg,#f5ff5a,#ffcf3a 60%,#ffa63a);color:#1a0d2c;border:0;border-radius:14px;font-size:20px;font-weight:800;min-height:52px;box-shadow:0 10px 26px #ffb23a40,inset 0 -3px 0 #0002;position:relative;overflow:hidden;transition:transform .12s,box-shadow .12s}
+.sib .go:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 14px 32px #ffb23a55,inset 0 -3px 0 #0002}
+.sib .go::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,#fff8,transparent);animation:siShine 3.2s ease-in-out infinite}
+.sib .go:disabled::after{display:none}
+@keyframes siShine{0%,60%{left:-60%}100%{left:130%}}
+.sip{background:linear-gradient(135deg,#ffffff14,#ffffff08);border:1.5px solid #ffffff22;border-radius:14px;transition:border-color .15s,transform .12s}
+.sip:hover{border-color:#e9f23c;transform:translateY(-1px)}
+.sib .sia{background:linear-gradient(135deg,#ff4fa3,#b06bff 55%,#52e0ff);box-shadow:0 4px 12px #b06bff55}
+.sil2{color:#cdbff2}.sil2:hover{color:#fff;opacity:1}
+.agbar{height:4px;border-radius:4px;background:#ffffff14;overflow:hidden;margin-bottom:-6px}.agbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#52e0ff,#e9f23c);transition:width .1s}
+.agl{counter-reset:ag;background:#0b0618b3;border:1px solid #ffffff14;border-radius:14px;padding:14px;gap:12px}
+.agl>div{counter-increment:ag;position:relative;padding:10px 12px 10px 48px;border-radius:12px;background:#ffffff08}
+.agl>div::before{content:counter(ag);position:absolute;left:10px;top:10px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#1a0d2c;background:linear-gradient(135deg,#e9f23c,#ffb23a)}
+.agl b{font-size:16px}
+.sick{background:#ffffff0d;border:1.5px solid #ffffff1f;border-radius:14px;padding:12px 14px;transition:border-color .15s}
+.sick:hover{border-color:#e9f23c88}
+.sick input{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:8px;border:2px solid #ffffff55;background:#0b0618;cursor:pointer;transition:background .15s,border-color .15s}
+.sick input:checked{border-color:#e9f23c;background:#e9f23c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a0d2c' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/18px no-repeat}
+@media (max-width:1099px),(max-height:519px){.sihero{display:none}.siplan{width:44vmin;height:44vmin;right:-12vmin;top:-10vmin;opacity:.45}.siring{opacity:.35;right:-24vmin;top:2vmin}}
+@media (max-height:420px){.sib{padding:16px 16px 12px;gap:10px}.sib h2{font-size:21px}.siT{font-size:24px}.agl{max-height:38vh}}
+@media (prefers-reduced-motion:reduce){.sist1,.sist2,.sineb,.sib .go::after{animation:none}}
+.sin input,.sipw input{width:100%;box-sizing:border-box}
+.agl{scrollbar-width:thin;scrollbar-color:#b06bff88 transparent}
+@media (min-width:1100px) and (min-height:520px){.siplan{right:auto;left:34vw;top:7vh;width:22vmin;height:22vmin;opacity:.9}.siring{right:auto;left:calc(34vw - 8vmin);top:calc(7vh + 6vmin);width:38vmin;height:10vmin;opacity:.7}}
+.siag{display:flex;gap:10px;align-items:center;justify-content:center;background:#ffffff0d;border:1.5px solid #ffffff1f;border-radius:14px;padding:12px 14px;cursor:pointer}
+.siag input{appearance:none;-webkit-appearance:none;flex:none;width:26px;height:26px;border-radius:8px;border:2px solid #ffffff55;background:#0b0618;cursor:pointer}
+.siag input:checked{border-color:#e9f23c;background:#e9f23c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a0d2c' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/18px no-repeat}
+.sirec{border-color:#e9f23c66!important;background:#0b0618!important;color:#e9f23c!important;letter-spacing:2px;box-shadow:0 0 24px #e9f23c1a}
+/* Quests on short sideways screens: the level bar, event name and Exit stack neatly in the right column */
+@media (max-height:420px) and (orientation:landscape){
+#qp{gap:14px}#ql{flex:1.4}#qr{justify-content:flex-start;gap:6px;padding-top:2px;min-width:0}
+.qlv{position:static;flex-wrap:wrap;justify-content:center;gap:4px 8px;font-size:12px}.qlv span{white-space:nowrap}.seg i{width:9px;height:8px}
+#qem{display:none}#qinfo h2{font-size:22px;line-height:1.05}#qinfo p,#qinfo small{font-size:12px}
+.qexit{position:static;padding:8px 20px;margin-top:auto}
+.qc{font-size:18px;padding:10px 14px;padding-right:92px}.qc .tm{font-size:11px}.qc .xb{transform:scale(.85);transform-origin:right center}
+}
+
+#dly .dlyl{display:block;margin:8px auto 0;background:none;border:0;color:#d9ccf5;font-size:14px;text-decoration:underline;padding:8px 16px;cursor:pointer}#dly .dlyl:hover{color:#fff}
+
 /* ===== v3 HUD ===== */
 #game{font-family:'Chakra Petch',system-ui,sans-serif}
 #tint{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,#a050ff22 30%,#7a2aff88);opacity:0;transition:opacity .4s}
@@ -1843,6 +1914,7 @@ function srvJoin(name) {
 }
 // online storage, the same shape as the claude.ai one (only what the game uses)
 function srvCall(m) {
+  if (onClaude()) return lsrvCall(m); // claude.ai: the accounts kept in this browser
   return new Promise((ok, no) => {
     const go = () => { const i = ++SRV.n; SRV.calls.set(i, { ok, no }); if (!srvSend(Object.assign({ t: "db", i }, m))) { SRV.calls.delete(i); no({ code: "unavailable" }); return; } setTimeout(() => { if (SRV.calls.has(i)) { SRV.calls.delete(i); no({ code: "timeout" }); } }, 10000); };
     if (SRV.up) go(); else { let t = 0; const w = setInterval(() => { if (SRV.up) { clearInterval(w); go(); } else if (++t > 25) { clearInterval(w); no({ code: "unavailable" }); } }, 200); }
@@ -1864,9 +1936,95 @@ const srvDb = {
   },
 };
 const srvUser = { id: () => Promise.resolve(SRV.uid), can: () => Promise.resolve(!!SRV.uid) };
+
+// ---------- on claude.ai: the same name-and-password accounts, kept in this browser ----------
+// claude.ai pages can't reach the game's server, so there the account screens talk to this stand-in instead. It
+// answers the same calls the server does (sign up, log in, recovery code, change password, sessions) with the same
+// rules: the password is only ever kept as a salted hash of its slow hash, a recovery code only as a hash, six wrong
+// tries lock the account for 10 minutes, and a browser holds at most three accounts.
+const LSRV_KEY = "nr_local_srv", LSRV = { uid: null };
+function lsrvLoad() { try { const v = JSON.parse(localStorage.getItem(LSRV_KEY) || "null"); if (v && v.v === 1 && v.acc && v.sess && v.docs) return v; } catch (e) { /* none yet */ } return { v: 1, acc: {}, sess: {}, docs: {} }; }
+function lsrvSave(D) { try { localStorage.setItem(LSRV_KEY, JSON.stringify(D)); } catch (e) { throw { code: "server_error" }; } }
+const lhex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+const lsha = async (s) => lhex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+const lrand = (n) => lhex(crypto.getRandomValues(new Uint8Array(n)));
+function lcode() { const b = new Uint8Array(20); crypto.getRandomValues(b); return [...b].map((x) => CODE_ABC[x & 31]).join(""); }
+async function lsrvCall(m) {
+  const D = lsrvLoad(), now = Date.now(), PHX = /^[0-9a-f]{64}$/, no = (code) => { throw { code }; };
+  const newSess = async (uid) => { const t = lcode(); D.sess[await lsha("nr-sess:" + t)] = { uid, at: now }; return t; };
+  const newRec = async (a) => { const c = lcode(); a.rec = await lsha("nr-rec:" + c); return c; };
+  const byUid = (uid) => Object.values(D.acc).find((a) => a.uid === uid);
+  const wrong = (a, code) => { a.fails = (a.fails || 0) + 1; if (a.fails >= 6) { a.fails = 0; a.lock = now + 10 * 60000; } lsrvSave(D); no(a.lock > now ? "locked" : code); };
+  try {
+    if (m.op === "reg" || m.op === "login") {
+      const name = String(m.name || "").trim().replace(/\s+/g, " "), key = nameKey(name), ph = String(m.ph || "");
+      if (!PHX.test(ph)) no("bad_password");
+      if (m.op === "reg") {
+        if (nameProblem(name)) no("bad_name");
+        if (D.acc[key]) no("taken");
+        if (Object.keys(D.acc).length >= ACCT_MAX) no("device_full");
+        const uid = lrand(12), salt = lrand(16), a = (D.acc[key] = { key, uid, name, salt, h: await lsha(salt + ":" + ph), fails: 0, lock: 0, at: now });
+        D.docs["names/" + uid] = { keys: [key], list: [name], at: now };
+        const sess = await newSess(uid), rec = await newRec(a); LSRV.uid = uid; lsrvSave(D);
+        return { uid, sess, name, rec };
+      }
+      const a = D.acc[key]; if (!a) no("no_account"); if (a.lock > now) no("locked");
+      if ((await lsha(a.salt + ":" + ph)) !== a.h) wrong(a, "wrong_password");
+      a.fails = 0; const sess = await newSess(a.uid); LSRV.uid = a.uid; lsrvSave(D);
+      return { uid: a.uid, sess, name: a.name };
+    }
+    if (m.op === "recover") {
+      const key = nameKey(String(m.name || "").trim()), ph = String(m.ph || ""), code = String(m.code || "");
+      if (!PHX.test(ph)) no("bad_password");
+      const a = D.acc[key]; if (!a) no("no_account"); if (a.lock > now) no("locked");
+      if (!/^[0-9A-HJKMNP-TV-Z]{20}$/.test(code) || !a.rec || (await lsha("nr-rec:" + code)) !== a.rec) wrong(a, "bad_code");
+      a.salt = lrand(16); a.h = await lsha(a.salt + ":" + ph); a.fails = 0; a.lock = 0;
+      for (const k in D.sess) if (D.sess[k].uid === a.uid) delete D.sess[k]; // signed in with the old password: signed out
+      const sess = await newSess(a.uid), rec = await newRec(a); LSRV.uid = a.uid; lsrvSave(D);
+      return { uid: a.uid, sess, name: a.name, rec };
+    }
+    if (m.op === "resume") {
+      const s = D.sess[await lsha("nr-sess:" + String(m.sess || ""))]; if (!s) no("expired");
+      const a = byUid(s.uid); if (!a) no("expired");
+      s.at = now; LSRV.uid = a.uid; lsrvSave(D); return { uid: a.uid, name: a.name };
+    }
+    if (m.op === "logout") { delete D.sess[await lsha("nr-sess:" + String(m.sess || ""))]; if (m.here) LSRV.uid = null; lsrvSave(D); return {}; }
+    if (m.op === "pw" || m.op === "newrec" || m.op === "delacct") {
+      const a = LSRV.uid && byUid(LSRV.uid); if (!a) no("permission_denied");
+      if (m.op === "delacct") {
+        delete D.acc[a.key]; for (const k in D.sess) if (D.sess[k].uid === a.uid) delete D.sess[k];
+        for (const p in D.docs) if (p.split("/").includes(a.uid)) delete D.docs[p];
+        LSRV.uid = null; lsrvSave(D); return {};
+      }
+      if (!PHX.test(String(m.old || "")) || (await lsha(a.salt + ":" + m.old)) !== a.h) no(PHX.test(String(m.old || "")) ? "wrong_password" : "bad_password");
+      if (m.op === "newrec") { const rec = await newRec(a); lsrvSave(D); return { rec }; }
+      if (!PHX.test(String(m.ph || ""))) no("bad_password");
+      a.salt = lrand(16); a.h = await lsha(a.salt + ":" + m.ph); lsrvSave(D); return {};
+    }
+    if (m.op === "acq") return { acquired: true };
+    if (m.op === "rel") return {};
+    if (m.op === "q") {
+      const col = String(m.col || ""), n = col.split("/").length + 1;
+      let docs = Object.entries(D.docs).filter(([p]) => p.startsWith(col + "/") && p.split("/").length === n).map(([p, d]) => ({ id: p.split("/").pop(), data: d }));
+      if (m.where) { const [f, op, v] = m.where; docs = docs.filter((d) => (op === "array-contains" ? Array.isArray(d.data[f]) && d.data[f].includes(v) : op === "==" ? d.data[f] === v : true)); }
+      if (m.order) { const [f, dir] = m.order; docs.sort((x, y) => ((+x.data[f] || 0) - (+y.data[f] || 0)) * (dir === "desc" ? -1 : 1)); }
+      return { docs: docs.slice(0, Math.max(1, Math.min(200, +m.limit || 50))) };
+    }
+    const path = String(m.path || ""), seg = path.split("/");
+    // progress is already kept with the player on this device, so it isn't stored a second time
+    if (seg[0] === "data") { if (seg[2] !== LSRV.uid) no("permission_denied"); return m.op === "get" ? { exists: false } : {}; }
+    if (m.op === "get") return path in D.docs ? { exists: true, data: D.docs[path] } : { exists: false };
+    if (!LSRV.uid || !((seg[0] === "names" || seg[0] === "board") && seg.length === 2 && seg[1] === LSRV.uid)) no("permission_denied");
+    if (m.op === "del") { delete D.docs[path]; lsrvSave(D); return {}; }
+    if (m.op === "set") { if (!m.data || typeof m.data !== "object") no("invalid_data"); D.docs[path] = m.data; lsrvSave(D); return {}; }
+    no("invalid_op");
+  } catch (e) { throw e && e.code ? e : { code: "server_error" }; }
+}
+
 let srvLobbyP = null;
 async function capUse(k) {
-  if (onClaude()) return window.claude.use(k);
+  // claude.ai: its live room for real players, and the same accounts as everywhere else (kept in this browser)
+  if (onClaude()) return k == "room" ? window.claude.use(k) : k == "db" ? srvDb : k == "user" ? srvUser : null;
   if (!SRV.url) SRV.url = srvUrl();
   if (!SRV.url || typeof WebSocket == "undefined" || !window.crypto || !crypto.getRandomValues) return null;
   if (!(await srvConnect())) return null;
@@ -1888,7 +2046,7 @@ async function useCode(raw) {
 // The password never leaves this device: it's turned into a slow hash here (PBKDF2) and only that is sent.
 // Each account saved on this device keeps a session, so it signs straight back in (at most 3 on a device).
 const ACCT_MAX = 3;
-const srvMode = () => !onClaude() && !!(SRV.url || srvUrl()) && typeof WebSocket != "undefined" && !!(window.crypto && crypto.subtle);
+const srvMode = () => (onClaude() ? !!(window.crypto && crypto.subtle) : !!(SRV.url || srvUrl()) && typeof WebSocket != "undefined" && !!(window.crypto && crypto.subtle));
 function accts() { try { const v = JSON.parse(localStorage.getItem("nr_accts") || "[]"); return Array.isArray(v) ? v.filter((a) => a && a.key && a.sess).slice(0, ACCT_MAX) : []; } catch (e) { return SRV.accts || []; } }
 function acctsSave(list) { SRV.accts = list.slice(0, ACCT_MAX); try { localStorage.setItem("nr_accts", JSON.stringify(SRV.accts)); } catch (e) { /* this visit only */ } }
 async function pwHash(name, pw) {
@@ -1934,7 +2092,7 @@ function nameProblem(n) {
 }
 // this device's players: { key: { name, s (progress) } } and who is playing now
 // on claude.ai each claude.ai account keeps its own players on this device, so nobody else using the browser can open them
-const PKEY = () => (onClaude() && CLOUD.uid ? "nr_players:" + CLOUD.uid : "nr_players"), CKEY = () => (onClaude() && CLOUD.uid ? "nr_cur:" + CLOUD.uid : "nr_cur");
+const PKEY = () => "nr_players", CKEY = () => "nr_cur";
 const profiles = () => lsGet(PKEY(), {});
 function storeProfile(key, name, s, online) { const P = profiles(); P[key] = { name, s, online: online != null ? !!online : !!(P[key] && P[key].online) }; lsSet(PKEY(), P); }
 let CUR = null;
@@ -1949,13 +2107,12 @@ async function cloudInit() {
     // who is playing (claude.ai: the viewer's claude.ai account), even where there's no online storage
     if (user) { let uid = null, c = null; try { uid = await user.id(); } catch (e) { /* not told */ } try { c = await user.can("data.write"); } catch (e) { /* not told */ } CLOUD.uid = uid || null; CLOUD.can = !!db && !!uid && c !== false; }
     if (!db) return;
-    CLOUD.db = db; CLOUD.srv = !onClaude();
+    CLOUD.db = db; CLOUD.srv = true;
   } catch (e) { /* no online storage here */ }
   finally { CLOUD.ready = true; cloudReady(); afterCloud(); }
 }
 async function afterCloud() {
   if (CLOUD.srv) { if ($("#signin")) renderSignIn(); return; }
-  if (!CUR && onClaude() && CLOUD.uid) { const k = lsGet(CKEY(), null), P = profiles(); if (k && P[k]) { usePlayer(k, P[k].name, P[k].s, P[k].online); return; } }
   if (!CUR) { if ($("#signin")) renderSignIn(); return; }
   const p = profiles()[CUR]; if (!p || !CLOUD.can) return;
   if (!p.online) { const r = await claimName(p.name, true); if (r.ok && r.online) { const P = profiles(); if (P[CUR]) { P[CUR].online = true; lsSet(PKEY(), P); } saveProgress(); } return; }
@@ -2039,7 +2196,7 @@ async function deleteSave() {
 // ---------- the screens ----------
 const agreePoints = () => [
   ["Your name", "Pick a respectful player name: no swearing, hate, or pretending to be someone else. Your player name can be seen by other players, so don't use your real full name. Names that break these rules can be removed."],
-  ["What gets saved", `The game saves your player name and your progress (stars, levels, items, ranks and stats) so you can keep playing later. It's saved on this device, and online ${onClaude() ? "with your claude.ai sign-in where the game can do that" : "on the game's server with your account: your player name and a password you choose (no email). Keep your password safe. If you forget it, the recovery code you get when you sign up lets you set a new one"}. Nothing else about you is collected. You can delete your save at any time in Settings.`],
+  ["What gets saved", `The game saves your player name and your progress (stars, levels, items, ranks and stats) so you can keep playing later. It's saved on this device, and online ${onClaude() ? "in this browser with your account (claude.ai pages can't reach the game's server, so here your account works in this browser): your player name and a password you choose (no email). Keep your password safe. If you forget it, the recovery code you get when you sign up lets you set a new one" : "on the game's server with your account: your player name and a password you choose (no email). Keep your password safe. If you forget it, the recovery code you get when you sign up lets you set a new one"}. Nothing else about you is collected. You can delete your save at any time in Settings.`],
   ["Play fair", "No cheating, hacking, or abusing bugs, and be kind to other players."],
   ["Stars and items", "Stars, outfits and items are earned by playing. They aren't real money and can't be bought, sold or traded for money."],
   ["Younger players", "If you're under 13, ask a parent or guardian before you play."],
@@ -2107,7 +2264,7 @@ function renderAcct(d) {
     ${mode == "signup" || mode == "recover" ? pwBox("sipw2", mode == "recover" ? "New password again" : "Password again", "new-password") : ""}
     <p id=sier class=sier></p><button class=go id=sigo>${mode == "signup" ? "Sign up" : mode == "recover" ? "Set new password" : "Log in"}</button>
     ${mode == "login" ? "<button class=sil2 data-m=recover>Forgot your password?</button>" : mode == "recover" ? "<button class=sil2 data-m=login>Back to log in</button>" : ""}
-    <p class=sis2>${mode == "signup" ? "Your player name is your account, for Nebula Royale and Nebula Brawl. Pick a password only you know. You'll get a recovery code in case you ever forget it." : mode == "recover" ? "Use the recovery code you saved when you signed up. It works once, and you'll get a new one." : "Use the name and password of your account, from any device."}</p>`;
+    <p class=sis2>${mode == "signup" ? (onClaude() ? "Your player name and password are your account in this browser." : "Your player name is your account, for Nebula Royale and Nebula Brawl.") + " Pick a password only you know. You'll get a recovery code in case you ever forget it." : mode == "recover" ? "Use the recovery code you saved when you signed up. It works once, and you'll get a new one." : "Use the name and password of your account, from any device."}</p>`;
   d.innerHTML = `<div class=sib>${head}<h2>${mode == "saved" ? "Welcome back" : mode == "signup" ? "Sign up" : mode == "recover" ? "Forgot your password" : "Log in"}</h2>${saved}${mode == "saved" ? `<p id=sier class=sier></p><div class=sialt><button class=sil2 data-m=login>Log in to another account</button><button class=sil2 data-m=signup>Sign up for a new account</button></div>` : (L.length ? `<button class=sil2 data-m=saved>Back to the accounts on this device</button>` : "") + form}
     <button class=sil2 onclick="lsSet('nr_agree','');renderSignIn()">Read the player agreement again</button></div>`;
   const er = (t) => { const e = $("#sier"); if (e) e.textContent = t; };
@@ -2195,6 +2352,25 @@ async function loadBoard(force) {
   finally { BOARD.busy = false; if (tab == "career" && !$("#lobby").hidden) lobby(); }
 }
 function boardBy(k) { BOARD.by = k; BOARD.rows = null; loadBoard(true); lobby(); }
+
+// ---------- the look of the sign-in and agreement screens ----------
+// Every screen drawn into #signin gets the same key art: a starfield, a planet with the storm ring, and (on wide
+// screens) the title, a line about the game and three facts beside the card. The agreement also gets a reading bar.
+const SI_ART = `<div class=siart aria-hidden=true><i class=sist1></i><i class=sist2></i><i class=sineb></i><i class=siplan></i><i class=siring></i><div class=sihero><div class=sibig>NEBULA<b>ROYALE</b></div><p>Drop in. Build fast. Be the last one standing.</p><ul><li><b>100</b><span>players a match</span></li><li><b>Real</b><span>players online</span></li><li><b>19</b><span>modes to play</span></li></ul></div></div>`;
+function siDeco() {
+  const d = $("#signin"); if (!d) return;
+  if (!d.querySelector(":scope > .siart")) { d.insertAdjacentHTML("afterbegin", SI_ART); d.scrollTop = 0; } // a new screen starts at its top
+  const a = d.querySelector(".agl");
+  if (a && !a.dataset.bar) {
+    a.dataset.bar = 1; a.insertAdjacentHTML("beforebegin", "<div class=agbar><i></i></div>");
+    const bar = a.previousElementSibling.firstChild, upd = () => { const m = a.scrollHeight - a.clientHeight; bar.style.width = (m <= 2 ? 100 : Math.min(100, (a.scrollTop / m) * 100)) + "%"; };
+    a.addEventListener("scroll", upd, { passive: true }); upd();
+  }
+}
+{
+  const watch = () => { const d = $("#signin"); if (d && !d.dataset.obs) { d.dataset.obs = 1; new MutationObserver(siDeco).observe(d, { childList: true }); siDeco(); } };
+  new MutationObserver(watch).observe(document.body, { childList: true }); watch();
+}
 
 /* ===== chars.js ===== */
 // Characters: rounded toon-shaded heroes with faces, hair or helmets, a jet pack, jointed arms and legs,
@@ -6654,9 +6830,14 @@ function dailyCheck() {
   if ((TEST && !window.__dly) || $("#dly") || !S || !S.name || $("#signin") || $("#lobby").hidden) return;
   const st = dailyState(); if (st.claimed) return;
   const d = document.createElement("div"); d.id = "dly"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", "Daily reward");
-  d.innerHTML = `<div class=dbx><small>Daily reward · day ${st.day} of 7</small><h2>${st.day == 7 ? "Big prize day!" : "Welcome back!"}</h2><div class=drow>${DAILY.map((n, i) => `<div class='dd ${i + 1 < st.day ? "got" : i + 1 == st.day ? "now" : ""}'><b>Day ${i + 1}</b><span>★ ${n}</span>${i == 6 ? "<em>+100 XP</em>" : ""}</div>`).join("")}</div><p>${st.streak && st.day > 1 ? "You've played " + (st.day - 1) + " day" + (st.day > 2 ? "s" : "") + " in a row. Come back tomorrow to keep it going." : "Play every day: each day pays more, and day 7 pays the most. Miss a day and it starts again."}</p><button class=yb id=dlyc>Claim ★ ${DAILY[st.day - 1]}</button></div>`;
+  d.innerHTML = `<div class=dbx><small>Daily reward · day ${st.day} of 7</small><h2>${st.day == 7 ? "Big prize day!" : "Welcome back!"}</h2><div class=drow>${DAILY.map((n, i) => `<div class='dd ${i + 1 < st.day ? "got" : i + 1 == st.day ? "now" : ""}'><b>Day ${i + 1}</b><span>★ ${n}</span>${i == 6 ? "<em>+100 XP</em>" : ""}</div>`).join("")}</div><p>${st.streak && st.day > 1 ? "You've played " + (st.day - 1) + " day" + (st.day > 2 ? "s" : "") + " in a row. Come back tomorrow to keep it going." : "Play every day: each day pays more, and day 7 pays the most. Miss a day and it starts again."}</p><button class=yb id=dlyc>Claim ★ ${DAILY[st.day - 1]}</button><button class=dlyl id=dlyl>Later</button></div>`;
   document.body.appendChild(d);
-  $("#dlyc").onclick = () => { const g = dailyClaim(); d.remove(); note("+" + g + " stars" + (st.day == 7 ? " and 100 XP. See you tomorrow!" : ". See you tomorrow!")); lobby(); };
+  // the popup always closes first, so nothing can leave it covering the lobby; Later, Escape or a tap outside close it too
+  const shut = () => { d.remove(); removeEventListener("keydown", esc, true); }, esc = (e) => { if (e.key == "Escape") { e.preventDefault(); shut(); } };
+  addEventListener("keydown", esc, true);
+  d.addEventListener("click", (e) => { if (e.target === d) shut(); });
+  $("#dlyl").onclick = shut;
+  $("#dlyc").onclick = () => { shut(); let g = 0; try { g = dailyClaim(); } catch (e) { /* the stars are added before anything that could fail */ } if (g) note("+" + g + " stars" + (st.day == 7 ? " and 100 XP. See you tomorrow!" : ". See you tomorrow!")); try { lobby(); } catch (e) { /* the lobby redraws next time */ } };
   $("#dlyc").focus();
 }
 
