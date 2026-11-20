@@ -223,6 +223,9 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 /* the shop's About pill sits under the grid instead of floating over the last row of Buy buttons */
 #shop + .pills{position:static;margin:6px 0 0;justify-content:flex-start}
 
+/* real players in a mode right now */
+.gc{position:relative}.gc .gcl{position:absolute;top:8px;right:8px;background:#16a34a;color:#fff;font-style:normal;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
+
 /* ===== v3 HUD ===== */
 #game{font-family:'Chakra Petch',system-ui,sans-serif}
 #tint{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,#a050ff22 30%,#7a2aff88);opacity:0;transition:opacity .4s}
@@ -2741,6 +2744,8 @@ views.quests = () => {
 function go(t) { tab = t; if (t == "locker") { S.newL = 0; save(); } if (t == "shop") { S.shopSeen = S.stars; save(); } lobby(); }
 const BRM = ["solo", "duos", "squads", "ranked", "rankedDuos", "rankedSquads"];
 const brMode = () => (rked ? { solo: "ranked", duos: "rankedDuos", squads: "rankedSquads" }[sq] : sq);
+// how many real players are in a match of this mode, or looking for one, right now
+function liveMode(k) { try { return typeof netPeople == "function" && NET.room ? netPeople().filter((p) => !p.sameTab && p.presence && (p.presence.st == "match" || p.presence.st == "queue") && (p.presence.q || p.presence.md) == k).length : 0; } catch (e) { return 0; } }
 function pickMode(k) { mode = k; if (BRM.includes(k)) { sq = /squads/i.test(k) ? "squads" : /duos/i.test(k) ? "duos" : "solo"; rked = k.startsWith("ranked") ? 1 : 0; } lobby(); }
 function setSq() { sq = sq == "solo" ? "duos" : sq == "duos" ? "squads" : "solo"; mode = brMode(); lobby(); }
 function setRk() { rked = rked ? 0 : 1; mode = brMode(); lobby(); }
@@ -2779,7 +2784,7 @@ function ico(it) {
 // ---------- play ----------
 views.play = () => {
   const m = MODES[mode], lv = 1 + ((S.xp / 100) | 0);
-  return `<div id=stage><div id=pvbox></div><div id=news>${NEWS.map((n, i) => `<div class='sl ${i == newsI ? "on" : ""}' style='background:${n.g}'><b>${n.t}</b><small>${n.d}</small></div>`).join("")}<div class=dots>${NEWS.map((_, i) => `<i class='${i == newsI ? "on" : ""}'></i>`).join("")}</div></div><div class=nm>${esc(S.name)}${S.car ? `<small class=car>${S.car.w} wins · ${S.car.k} eliminations · ${S.car.m} matches</small>` : ""}</div>${padHtml()}<div id=mp>${m.rk ? rankBadge(S[m.rk], m.n) : rankBadge(S.rp, "Ranked Solo")}<div class=lvl>LVL<b>${lv}</b></div><div id=onl hidden></div>${netPartyHtml()}<h2>${m.n}</h2>${BRM.includes(mode) ? `<button class=rk onclick=setRk()>Ranked: ${rked ? "On" : "Off"}</button><button class=rk onclick=setSq()>Squad: ${sq == "solo" ? "Solo" : sq == "duos" ? "Duos" : "Squads"}</button>` : `<p class=md>${m.d}</p>`}${netMpHtml()}<button class=go onclick=playBtn()>Play</button></div><div id=keys><span><kbd>WASD</kbd>move</span><span><kbd>Mouse</kbd>aim</span><span><kbd>Click</kbd>fire</span><span><kbd>Right</kbd>aim down sights</span><span><kbd>${kbName("KeyE")}</kbd>open, pick up, get in a rover</span><span><kbd>${kbName("KeyR")}</kbd>reload</span><span><kbd>${kbName("KeyQ")}</kbd><kbd>${kbName("KeyC")}</kbd><kbd>${kbName("KeyV")}</kbd><kbd>${kbName("KeyX")}</kbd>wall, ramp, floor, roof</span><span><kbd>${kbName("KeyF")}</kbd>edit your builds</span><span>Hold <kbd>${kbName("KeyT")}</kbd>emote wheel</span><span><kbd>1</kbd>-<kbd>6</kbd>slots</span><span><kbd>${kbName("KeyG")}</kbd>drop</span><span><kbd>${kbName("KeyM")}</kbd>map</span><span><kbd>Shift</kbd>sprint</span><span><kbd>Ctrl</kbd>slide, or crouch when still</span><span><kbd>Tab</kbd>backpack</span><span><kbd>${kbName("KeyP")}</kbd>mark for your squad</span></div></div><div id=dock><div id=rail>${Object.entries(MODES).map(([k, m]) => `<button class='gc ${mode == k ? "on" : ""}' style='background:${ART[k]}' data-k=${k} onclick=pickMode(this.dataset.k)><b>${m.n}</b><span>${m.d}</span></button>`).join("")}</div></div>`;
+  return `<div id=stage><div id=pvbox></div><div id=news>${NEWS.map((n, i) => `<div class='sl ${i == newsI ? "on" : ""}' style='background:${n.g}'><b>${n.t}</b><small>${n.d}</small></div>`).join("")}<div class=dots>${NEWS.map((_, i) => `<i class='${i == newsI ? "on" : ""}'></i>`).join("")}</div></div><div class=nm>${esc(S.name)}${S.car ? `<small class=car>${S.car.w} wins · ${S.car.k} eliminations · ${S.car.m} matches</small>` : ""}</div>${padHtml()}<div id=mp>${m.rk ? rankBadge(S[m.rk], m.n) : rankBadge(S.rp, "Ranked Solo")}<div class=lvl>LVL<b>${lv}</b></div><div id=onl hidden></div>${netPartyHtml()}<h2>${m.n}</h2>${BRM.includes(mode) ? `<button class=rk onclick=setRk()>Ranked: ${rked ? "On" : "Off"}</button><button class=rk onclick=setSq()>Squad: ${sq == "solo" ? "Solo" : sq == "duos" ? "Duos" : "Squads"}</button>` : `<p class=md>${m.d}</p>`}${netMpHtml()}<button class=go onclick=playBtn()>Play</button></div><div id=keys><span><kbd>WASD</kbd>move</span><span><kbd>Mouse</kbd>aim</span><span><kbd>Click</kbd>fire</span><span><kbd>Right</kbd>aim down sights</span><span><kbd>${kbName("KeyE")}</kbd>open, pick up, get in a rover</span><span><kbd>${kbName("KeyR")}</kbd>reload</span><span><kbd>${kbName("KeyQ")}</kbd><kbd>${kbName("KeyC")}</kbd><kbd>${kbName("KeyV")}</kbd><kbd>${kbName("KeyX")}</kbd>wall, ramp, floor, roof</span><span><kbd>${kbName("KeyF")}</kbd>edit your builds</span><span>Hold <kbd>${kbName("KeyT")}</kbd>emote wheel</span><span><kbd>1</kbd>-<kbd>6</kbd>slots</span><span><kbd>${kbName("KeyG")}</kbd>drop</span><span><kbd>${kbName("KeyM")}</kbd>map</span><span><kbd>Shift</kbd>sprint</span><span><kbd>Ctrl</kbd>slide, or crouch when still</span><span><kbd>Tab</kbd>backpack</span><span><kbd>${kbName("KeyP")}</kbd>mark for your squad</span></div></div><div id=dock><div id=rail>${Object.entries(MODES).map(([k, m]) => `<button class='gc ${mode == k ? "on" : ""}' style='background:${ART[k]}' data-k=${k} onclick=pickMode(this.dataset.k)><b>${m.n}</b><span>${m.d}</span>${liveMode(k) ? `<em class=gcl>${liveMode(k)} playing</em>` : ""}</button>`).join("")}</div></div>`;
 };
 
 // ---------- item shop ----------
@@ -6578,7 +6583,7 @@ function spawnCache() {
   if (G.type != "br") return;
   const c = G.circ[Math.min(6, G.ph + 1)];
   let spot = null;
-  for (let k = 0; k < 400 && !spot; k++) { const a = rnd(0, 6.28), d = rnd(0, c.r * 0.6), x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d, h = terrH(x, z); if (h > 1.6 && h < 26 && !blockedAt(x, z, 3.5)) spot = { x, z, y: h }; }
+  for (let k = 0; k < 1200 && !spot; k++) { const a = rnd(0, 6.28), d = rnd(0, c.r * (k < 400 ? 0.6 : 0.95)), x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d, h = terrH(x, z); if (h > 1.6 && h < 26 && !blockedAt(x, z, k < 800 ? 3.5 : 2)) spot = { x, z, y: h }; }
   if (!spot) return;
   if (G.cache && G.cache.m) sc.remove(G.cache.m);
   const m = mkCache(); m.position.set(spot.x, spot.y, spot.z); sc.add(m);
@@ -7119,6 +7124,8 @@ function netOnline() {
   const L = netPeople(), n = Math.max(1, L.length), inM = L.filter((p) => p.presence.st == "match").length;
   el.hidden = false; el.innerHTML = `<i></i>${n} online${inM ? ` · ${inM} in a match` : ""}`;
   el.title = "See who's online"; el.onclick = () => onlShow(); if ($("#olist")) onlShow(true);
+  // the mode tiles show how many real players are in each mode
+  document.querySelectorAll("#rail .gc[data-k]").forEach((b) => { const n = liveMode(b.dataset.k); let t = b.querySelector(".gcl"); if (!n) { if (t) t.remove(); return; } if (!t) { t = document.createElement("em"); t.className = "gcl"; b.appendChild(t); } t.textContent = n + " playing"; });
 }
 // Computer players Off: real people only (the match waits until another real player or squad joins)
 function netBotsToggle() { NET.nb = NET.nb ? 0 : 1; try { localStorage.setItem("nr_nb", NET.nb); } catch (e) { /* no storage */ } note(NET.nb ? "Real players only: your match starts when another real player or squad joins" : "Computer players fill the match"); lobby(); }
