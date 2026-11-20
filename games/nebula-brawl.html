@@ -110,7 +110,7 @@
   .rail-btn{ display:flex; width:3.5rem; flex-direction:column; align-items:center; gap:.25rem; border-radius:1rem;
     background:linear-gradient(180deg,var(--rail-a),var(--rail-b)); padding:.5rem .125rem; box-shadow:inset 0 0 0 2px rgba(255,255,255,.3), 0 7px 0 rgba(10,6,32,.55), inset 0 -6px 0 rgba(0,0,0,.22), inset 0 3px 0 rgba(255,255,255,.45); }
   @media (min-width:640px){ .rail-btn{ width:4rem; padding:.625rem .25rem; } }
-  .rail-btn .rail-label{ text-align:center; font-size:7.5px; font-weight:900; text-transform:uppercase; line-height:1.15; letter-spacing:0; color:#ede9fe; max-width:100%; white-space:nowrap; }
+  .rail-btn .rail-label{ text-align:center; font-size:7.5px; font-weight:900; text-transform:uppercase; line-height:1.15; letter-spacing:0; color:#ede9fe; max-width:100%; white-space:normal; overflow-wrap:normal; }
   @media (min-width:640px){ .rail-btn .rail-label{ font-size:8.5px; } }
   .hero-col{ position:relative; display:flex; max-width:100%; flex-direction:column; align-items:center; padding:0 4rem; }
   @media (min-width:640px){ .hero-col{ padding:0 5rem; } }
@@ -862,6 +862,8 @@ class Match{
     }
     for(const f of this.fighters)if(f.perk==="saver")f.superCharge=1/3;
   }
+  // who the camera follows: you, or once you're out of Storm Standoff a crewmate still in
+  watchTarget(){ const p=this.player; if(this.mode!=="showdown"||p.alive||this.finished)return p; return this.fighters.find(f=>f.team===p.team&&f.alive&&!f.out&&f!==p)||p; }
   matchDuration(){ if(this.mode==="train")return 120; if(this.mode==="ball")return BALL_TIME; if(this.mode==="showdown")return SHOWDOWN_TIME; if(this.mode==="arena")return ARENA_TIME; if(this.mode==="vault")return VAULT_TIME; if(this.mode==="titan")return TITAN_TIME; if(this.mode==="duel")return DUEL_TIME; if(this.mode==="zone")return ZONE_TIME; if(this.mode==="hunt")return HUNT_TIME; return MATCH_TIME; }
   scores(){
     const m=this.mode;
@@ -1768,7 +1770,7 @@ class Match{
       playerReloadFrac:p.ammo>=p.def.maxAmmo?1:1-Math.max(0,p.reloadT)/p.def.reloadTime,
       playerSuperFrac:p.superCharge, playerSuperReady:p.superReady, playerGad:p.gad, playerGadN:p.gadN, playerGadCd:p.gadCd, playerHyperOk:p.hyperOk, playerHyper:p.hyper, playerHyperT:p.hyperT,
       playerGems:p.gems, playerHasBall:this.mode==="ball"&&this.ballCarrier===p.id,
-      playerAlive:p.alive, playerRespawnT:Math.max(0,p.respawnT) };
+      playerAlive:p.alive, playerRespawnT:Math.max(0,p.respawnT), watching:(()=>{ const w=this.watchTarget(); return w&&w!==p?w.name:""; })() };
   }
 }
 function buildSetup(playerDef,mode){
@@ -2364,8 +2366,8 @@ function showLobby(fit){
        '<div class="rail rail-right'+(fit>=2?' rail-sm':'')+(fit>=4?' rail-xs':'')+'" id="rail-right"></div>'+
        '<div class="hero-col"'+(fit>=4?' style="padding:0 3.25rem"':'')+'>'+
          '<div style="position:relative;width:'+heroSize+'px" id="hero-stage">'+
-           '<button type="button" class="cycle-btn" id="cycle-prev" aria-label="Previous brawler" style="left:-1.75rem">◀</button>'+
-           '<button type="button" class="cycle-btn" id="cycle-next" aria-label="Next brawler" style="right:-1.75rem">▶</button>'+
+           '<button type="button" class="cycle-btn" id="cycle-prev" aria-label="Previous brawler" style="left:'+(heroSize<120?"calc(-2.75rem - "+Math.round(heroSize*0.36)+"px)":"-1.75rem")+'">◀</button>'+
+           '<button type="button" class="cycle-btn" id="cycle-next" aria-label="Next brawler" style="right:'+(heroSize<120?"calc(-2.75rem - "+Math.round(heroSize*0.36)+"px)":"-1.75rem")+'">▶</button>'+
            '<div class="animate-spin-slow" aria-hidden="true" style="pointer-events:none;position:absolute;left:50%;top:50%;border:2px dashed rgba(103,232,249,.25);border-radius:999px;width:'+(heroSize*1.28)+'px;height:'+(heroSize*1.28)+'px"></div>'+
            '<div aria-hidden="true" style="pointer-events:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:999px;background:rgba(139,92,246,.25);filter:blur(24px);width:'+(heroSize*0.92)+'px;height:'+(heroSize*0.92)+'px"></div>'+
            '<div class="animate-floaty" style="position:relative;display:flex;justify-content:center"><canvas id="hero-canvas" aria-hidden="true"></canvas></div>'+
@@ -2412,7 +2414,7 @@ function showLobby(fit){
        '</button>'+
        '<button type="button" class="btn-chunk btn-play play-btn font-display" id="play-btn" aria-label="Play a match" style="font-size:'+(compact?"1.875rem":"2.25rem")+'">PLAY!</button>'+
      '</div>'+
-     (compact?"":'<p style="margin:.5rem 0 0;text-align:center;font-size:11px;font-weight:600;color:rgba(196,181,253,.8)">'+profile.games+' matches played · '+mine.length+' of '+BRAWLERS.length+' fighters unlocked · use ◀ ▶ to flip through yours · '+(NET_MODES.includes(appMode)&&netOk()?"real players first, computer players fill in":"teammates and rivals are computer players")+'</p>')+
+     (compact?"":'<p style="position:relative;z-index:2;margin:.5rem 0 0;text-align:center;font-size:11px;font-weight:600;color:rgba(196,181,253,.8)">'+profile.games+' matches played · '+mine.length+' of '+BRAWLERS.length+' fighters unlocked · use ◀ ▶ to flip through yours · '+(NET_MODES.includes(appMode)&&netOk()?"real players first, computer players fill in":"teammates and rivals are computer players")+'</p>')+
    '</div>';
   setScreen(root);
   if(UI_ZOOM>1){ const lw=root.querySelector(".lobby-wrap"); if(lw){ lw.style.zoom=UI_ZOOM; } }
@@ -3179,7 +3181,7 @@ function showGame(){
         :isShowdown&&h.playerCores>0?h.playerHp+" HP · "+h.playerCores+" power core"+(h.playerCores>1?"s":"")
         :isArena?h.playerHp+" HP · "+h.playerKillsNote
         :h.playerHp+" HP · "+h.playerGems+" gems")
-      :(isShowdown?"KO'd — no respawns in Storm Standoff":"Respawning in "+h.playerRespawnT.toFixed(1)+"…");
+      :(isShowdown?(h.watching?"KO'd — watching "+h.watching+" · no respawns":"KO'd — no respawns in Storm Standoff"):"Respawning in "+h.playerRespawnT.toFixed(1)+"…");
     lowHp.classList.toggle("hidden",!(h.playerAlive&&hpFrac<=0.35));
     const pipsKey=h.playerAmmo+"/"+h.playerMaxAmmo+"/"+Math.round(h.playerReloadFrac*20);
     if(pipsKey!==lastPipsKey){
@@ -3269,7 +3271,7 @@ function showGame(){
     if(NL){
       const R=ROOMS.get(NL.room), od=NL.other&&R&&R.peers.get(NL.other);
       if(NL.role==="host"){ for(const g of NL.guests){ if(R&&R.peers.get(g.peer))g.seen=performance.now(); else if(!g.gone&&!match.finished&&performance.now()-g.seen>8000){ g.gone=true; const f=match.fighters[g.slot]; if(f)f.remote=false; toast((f?f.name:"A player")+" left. A computer player took over."); } } }
-      else{ if(od)NL.seen=performance.now(); if(!NL.gone&&!match.finished&&performance.now()-NL.seen>8000){ NL.gone=true; match.finish(true,"The host's game left the match."); } }
+      else{ if(od)NL.seen=performance.now(); if(NL.role==="guest"&&!NL.gone&&!match.finished&&performance.now()-NL.seen>8000){ NL.gone=true; NL.role="solo"; match.net=null; for(const f of match.fighters){ f.remote=false; if(!f.isPlayer)f.real=false; } acc=0; toast("The host left. The match goes on: computer players took over."); } }
       if(NL.role==="guest"){
         const I=NL.inp; I.mv=[+moveVec.x.toFixed(2),+moveVec.y.toFixed(2)]; I.am=aim?[+aim.x.toFixed(2),+aim.y.toFixed(2)]:null;
         if(firing&&shotAim){ I.fs++; I.fa=[+shotAim.x.toFixed(3),+shotAim.y.toFixed(3)]; I.fd=shotDist||null; firing=false; shotAim=null; input.pendingShot=null; input.pendingAuto=false; input.pendingDist=null; }
@@ -3278,7 +3280,7 @@ function showGame(){
         if(od&&od.s)match.snap=od.s;
         match.netMove={x:moveVec.x,y:moveVec.y};
         while(acc>=step){ match.netFollow(step); acc-=step; }
-      } else {
+      } else if(NL.role==="host"){
         NL.sendT-=dt; if(NL.sendT<=0||match.finished){ NL.sendT=1/15; roomPres(NL.room,{v:2,nm:ACC.name,role:"host",s:match.netSnap()}); }
       }
     }
@@ -3291,7 +3293,7 @@ function showGame(){
       if(match.finished)break;
     }
     const rect=root.getBoundingClientRect();
-    cam=computeCamera(match.player,aim,rect.width,rect.height,cam,fullMap);
+    cam=computeCamera(match.watchTarget?match.watchTarget():match.player,aim,rect.width,rect.height,cam,fullMap);
     const dpr=Math.min(2,window.devicePixelRatio||1);
     ctx.setTransform(dpr,0,0,dpr,0,0);
     renderMatch(ctx,match,cam,rect.width,rect.height,now/1000);
@@ -3367,13 +3369,13 @@ function acctConnect(){
     const open=()=>{
       let ws; try{ ws=new WebSocket(NB_SERVER); }catch(e){ fin(false); return; }
       ACC.ws=ws;
-      ws.onopen=()=>ws.send(JSON.stringify({t:"hi",tok:devTok(),peer:Math.random().toString(36).slice(2,10),v:1}));
+      ws.onopen=()=>ws.send(JSON.stringify({t:"hi",tok:devTok(),peer:ACC.pid||(ACC.pid=(Math.random().toString(36).slice(2)+"0000000000").slice(0,10)),v:1}));
       ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
-        if(m.t==="ok"){ ACC.peer=m.peer||ACC.peer; for(const n of ROOMS.keys())try{ ws.send(JSON.stringify({t:"j",r:n})); }catch(e){}
+        if(m.t==="ok"){ ACC.tries=0; ACC.peer=m.peer||ACC.peer; for(const n of ROOMS.keys())try{ ws.send(JSON.stringify({t:"j",r:n})); }catch(e){}
           ACC.up=true; fin(true); clearInterval(ACC.ping); ACC.ping=setInterval(()=>{ try{ ws.send('{"t":"ping"}'); }catch(e){} },20000); if(ACC.sess&&done)acctCall({op:"resume",sess:ACC.sess}).then(v=>{ ACC.uid=v.uid; },()=>{}); }
         if(m.t==="js"||m.t==="u"||m.t==="x"){ const R=ROOMS.get(m.r); if(R){ if(m.t==="js"){ R.peers=new Map((m.peers||[]).map(x=>[x[0],x[1]])); if(R.pres)acctSend({t:"p",r:m.r,d:R.pres}); } else if(m.t==="u")R.peers.set(m.p,m.d); else R.peers.delete(m.p); R.seen=performance.now(); if(R.on)R.on(m); } return; }
         if(m.t==="dbr"){ const c=ACC.calls.get(m.i); if(!c)return; ACC.calls.delete(m.i); if(m.ok)c.ok(m.v||{}); else c.no({code:m.code||"error"}); } };
-      ws.onclose=()=>{ if(ACC.ws!==ws)return; ACC.up=false; ACC.ws=null; for(const c of ACC.calls.values())c.no({code:"unavailable"}); ACC.calls.clear(); if(done)setTimeout(open,4000+Math.random()*4000); else fin(false); };
+      ws.onclose=()=>{ if(ACC.ws!==ws)return; ACC.up=false; ACC.ws=null; for(const c of ACC.calls.values())c.no({code:"unavailable"}); ACC.calls.clear(); if(done){ const d=Math.min(15000,800*2**Math.min(4,ACC.tries=(ACC.tries||0)+1))*(0.7+Math.random()*0.6); setTimeout(open,d); } else fin(false); };
     };
     open();
   });
