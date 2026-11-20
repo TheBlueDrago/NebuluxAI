@@ -3344,8 +3344,9 @@ let bgStop=null;
 // ---------- accounts (shared with Nebula Royale) ----------
 const NB_SERVER=(()=>{ const q=/[?&]srv=([^&#]+)/.exec(location.search), v=q?decodeURIComponent(q[1]):""; return /^ws:\/\/(127\.0\.0\.1|localhost):\d{2,5}\/play$/.test(v)?v:"wss://nebula-royale.thebluedragonstriker.workers.dev/play"; })(), AGREE_V="2026-11-17", ACCT_MAX=3;
 function escHtml(t){ return String(t==null?"":t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-const nbGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } };
-const nbSet=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+const NB_MEM={}; // where the browser blocks storage, values are kept in memory for this visit
+const nbGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return k in NB_MEM?JSON.parse(NB_MEM[k]):d; } };
+const nbSet=(k,v)=>{ NB_MEM[k]=JSON.stringify(v); try{ localStorage.setItem(k,NB_MEM[k]); }catch(e){} };
 const nameKey=(n)=>String(n||"").toLowerCase().replace(/[^a-z0-9]/g,"");
 const BADW=["fuck","fuk","shit","bitch","cunt","dick","pussy","nigg","nigr","fag","whore","slut","rape","nazi","hitler","porn","cock","penis","vagina","asshole","retard","kys","killyourself","sex"];
 function nameProblem(n){
@@ -3395,8 +3396,9 @@ function acctCall(m){
 
 // ---------- on claude.ai: the same name-and-password accounts, kept in this browser ----------
 const LSRV_KEY="nb_local_srv";
-function lsrvLoad(){ try{ const v=JSON.parse(localStorage.getItem(LSRV_KEY)||"null"); if(v&&v.v===1&&v.acc&&v.sess)return v; }catch(e){} return {v:1,acc:{},sess:{}}; }
-function lsrvSave(D){ try{ localStorage.setItem(LSRV_KEY,JSON.stringify(D)); }catch(e){ throw {code:"server_error"}; } }
+let LSRV_MEM=null; // a browser that blocks storage here still gets the account for this visit
+function lsrvLoad(){ try{ const v=JSON.parse(localStorage.getItem(LSRV_KEY)||"null"); if(v&&v.v===1&&v.acc&&v.sess)return v; }catch(e){} return LSRV_MEM?JSON.parse(LSRV_MEM):{v:1,acc:{},sess:{}}; }
+function lsrvSave(D){ LSRV_MEM=JSON.stringify(D); try{ localStorage.setItem(LSRV_KEY,LSRV_MEM); }catch(e){} }
 const lhex=(b)=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 const lsha=async(t)=>lhex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)));
 const lrand=(n)=>lhex(crypto.getRandomValues(new Uint8Array(n)));
@@ -3672,10 +3674,31 @@ function signOut(){
 }
 function accountSheet(){
   if(document.getElementById("nbsheet"))return;
-  const d=el('<div id="nbsheet" class="sheet-backdrop" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.6)"><div class="nbb" role="dialog" aria-label="Your account">'+GATE_CSS+'<h2>'+escHtml(ACC.name||"Player")+'</h2><p>'+(String(ACC.key||"").startsWith("cl-")?"You're signed in with your claude.ai account. Your progress is saved on this device. Real players on this page can join your matches.":ACC.offline||!ACC.key?"Playing on this device only. Sign in to save your progress online.":"Your progress is saved on this device and online. Log in with this name on any device to keep playing, in Nebula Brawl or Nebula Royale.")+'</p>'+(String(ACC.key||"").startsWith("cl-")?'<button class="nbgo" id="nbout">Change name</button>':'<button class="nbgo" id="nbout">'+(ACC.offline||!ACC.key?"Sign in":"Sign out")+'</button>')+'<button class="nb2" id="nbclose">Close</button></div></div>');
+  const signed=!!(ACC.key&&!ACC.offline&&ACC.uid);
+  const where=!signed?"Playing on this device only. Sign in to save your progress.":ACC.local?"Your player name and password are your account in this browser. Your progress is saved here.":"Your progress is saved on this device and online. Log in with this name on any device to keep playing, in Nebula Brawl or Nebula Royale.";
+  const pwBox=(id,l,ac)=>'<label class="nbi">'+l+'<input id="'+id+'" type="password" maxlength="64" autocomplete="'+ac+'"></label>';
+  const d=el('<div id="nbsheet" class="sheet-backdrop nbgate" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(5,3,20,.6);padding:1rem;overflow:auto"><div class="nbb" role="dialog" aria-label="Your account" style="margin:auto">'+GATE_CSS+GATE_CSS2+'<h2>'+escHtml(ACC.name||"Player")+'</h2><p>'+where+'</p>'+
+    (signed?'<div class="nbtab" style="margin-top:.75rem"><button data-a="pw">Change password</button><button data-a="rec">New recovery code</button></div><div id="nbacf"></div>':"")+
+    (signed?'<button class="nb2" id="nbout" style="margin-top:.75rem;border:1.5px solid rgba(255,255,255,.18);color:#fda4af">Sign out</button>':'<button class="nbgo" id="nbout">Sign in</button>')+'<button class="nb2" id="nbclose">Close</button></div></div>');
   document.body.appendChild(d);
   const close=()=>d.remove(); d.addEventListener("click",e=>{ if(e.target===d)close(); });
-  d.querySelector("#nbclose").onclick=close; d.querySelector("#nbout").onclick=()=>{ close(); if(String(ACC.key||"").startsWith("cl-")){ nbSet("nb_cl_name:"+ACC.key,""); gateClaude(); return; } ACC.p=ACC.up?ACC.p:null; signOut(); };
+  d.querySelector("#nbclose").onclick=close; d.querySelector("#nbout").onclick=()=>{ close(); ACC.p=ACC.up?ACC.p:null; signOut(); };
+  d.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
+    d.querySelectorAll("[data-a]").forEach(x=>x.classList.toggle("on",x===b));
+    const pw=b.dataset.a==="pw", f=d.querySelector("#nbacf");
+    f.innerHTML=pwBox("nbold","Current password","current-password")+(pw?pwBox("nbnew","New password","new-password")+pwBox("nbnew2","New password again","new-password"):"")+'<button class="nbgo" id="nbacgo">'+(pw?"Save new password":"Make a new code")+'</button><p class="nber" id="nbacer" role="alert"></p>';
+    const er=t=>{ const e=d.querySelector("#nbacer"); if(e)e.textContent=t; };
+    d.querySelector("#nbacgo").onclick=async()=>{
+      const old=d.querySelector("#nbold").value; if(!old)return er("Type your current password.");
+      if(pw){ const n=d.querySelector("#nbnew").value; if(n.length<6)return er("Use at least 6 characters for the new password."); if(n!==d.querySelector("#nbnew2").value)return er("The two new passwords don't match."); }
+      const go=d.querySelector("#nbacgo"); go.disabled=true; er(pw?"Saving...":"Making a new code...");
+      try{
+        const oh=await pwHash(ACC.name,old);
+        if(pw){ await acctCall({op:"pw",old:oh,ph:await pwHash(ACC.name,d.querySelector("#nbnew").value)}); f.innerHTML='<p style="color:#86efac;font-weight:800">Your password is changed.</p>'; }
+        else{ const v=await acctCall({op:"newrec",old:oh}); f.innerHTML='<p>Your new recovery code. The old one no longer works. Save it somewhere safe: it is shown only this once.</p><div class="nbcode">'+escHtml(String(v.rec||"").replace(/(.{5})(?=.)/g,"$1-"))+'</div>'; }
+      }catch(e){ go.disabled=false; er(acctErr(e)); }
+    };
+  });
 }
 document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("#player-chip"); if(b)accountSheet(); });
 
