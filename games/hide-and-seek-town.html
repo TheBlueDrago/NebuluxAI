@@ -457,7 +457,7 @@ onFrame((dt, T) => {
 });
 
 function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
-if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys, net: NETK };
+if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys, net: NETK, self: () => NET_SELF };
 // ---------- end of kit ----------
 
 
