@@ -351,13 +351,16 @@ function samePath(to) {
 
 export function googleStart(env, request) {
   const url = new URL(request.url);
+  // Google only knows the return address on nebuluxai.com, so a sign-in started on www. starts over there
+  // (otherwise Google answers "redirect_uri_mismatch").
+  if (/^www\./i.test(url.hostname)) return Response.redirect(`${url.protocol}//${url.hostname.slice(4)}${url.pathname}${url.search}`, 302);
   if (!env.GOOGLE_CLIENT_ID) return Response.redirect(url.origin + "/login?google=soon", 302);
   let to = url.searchParams.get("to") || "/chat";
   const from = url.searchParams.get("from_url");
   if (from) {
     try {
       const f = new URL(from);
-      if (f.origin === url.origin) to = f.pathname + f.search;
+      if (f.protocol === url.protocol && f.hostname.replace(/^www\./i, "") === url.hostname) to = f.pathname + f.search;
     } catch {}
   }
   const state = randomHex(16);

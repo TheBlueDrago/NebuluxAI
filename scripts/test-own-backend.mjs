@@ -125,6 +125,8 @@ let s = googleStart(genv, new Request("https://nebuluxai.com/api/apps/auth/googl
 const loc = new URL(s.headers.get("location"));
 const cookie = s.headers.get("set-cookie").split(";")[0];
 assert(loc.host === "accounts.google.com" && loc.searchParams.get("redirect_uri") === "https://nebuluxai.com/api/apps/auth/google/callback", "Google sign-in goes to Google and comes back to nebuluxai.com");
+{ const w = googleStart(genv, new Request("https://www.nebuluxai.com/api/apps/auth/google/start?to=/play/fighter")); assert(w.status === 302 && w.headers.get("location") === "https://nebuluxai.com/api/apps/auth/google/start?to=/play/fighter" && !w.headers.get("set-cookie"), "started on www.: it starts over on nebuluxai.com, the return address Google knows"); }
+{ const f = googleStart(genv, new Request("https://nebuluxai.com/api/apps/auth/google/start?from_url=" + encodeURIComponent("https://www.nebuluxai.com/arcade?x=1"))); assert(/nebuluxai.com/.test(f.headers.get("location")) && /.%2Farcade%3Fx%3D1/.test(f.headers.get("set-cookie")), "and still goes back to the page it came from"); }
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const realFetch = globalThis.fetch;
 const googleSays = (claims) =>
