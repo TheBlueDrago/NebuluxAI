@@ -801,6 +801,8 @@ if (TEST) window.__game = {
   auto: (on) => { autopilot = on; }, give: (it) => { me.item = it; drawItem(); }, use: () => useItem(me),
   minRadius: () => { let r = Infinity; for (let i = 0; i < NS; i++) { const a = tan[i], b = tan[(i + 5) % NS], ang = Math.acos(clamp(a.dot(b), -1, 1)), len = pts[i].distanceTo(pts[(i + 5) % NS]); if (ang > 1e-4) r = Math.min(r, len / ang); } return +r.toFixed(1); }, length: () => Math.round(curve.getLength()), S: () => S,
 };
+// other real players' karts are solid: bump into one and yours is pushed aside (their page moves theirs)
+setInterval(() => { for (const o of NETK.peers.values()) { const dx = me.pos.x - o.pos.x, dz = me.pos.z - o.pos.z, d = Math.hypot(dx, dz); if (d > 0.01 && d < 3.4 && Math.abs(me.pos.y - o.pos.y) < 2.5) { const k = (3.4 - d) / d * 0.5; me.pos.x += dx * k; me.pos.z += dz * k; } } }, 33);
 netAs(() => ({ pos: me.pos, yaw: me.h, sp: Math.abs(me.v || 0) }), (c) => { const k = makeKart(c, false); scene.remove(k.g); return k; });
 loop();
 })();

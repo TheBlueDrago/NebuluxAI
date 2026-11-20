@@ -657,6 +657,8 @@ if (TEST) window.__game = {
   state: () => ({ phase, cash, fares, ride: ride && { name: ride.name, time: Math.round(ride.time), dist: Math.round(ride.to.distanceTo(me.pos)) }, waiting: waiting.length, v: Math.round(me.v), car: S.car }),
   goRider: () => { const w = waiting[0]; me.pos.set(w.p.x + 2, 0, w.p.z + 2); me.v = 0; }, goDest: () => { if (ride) { me.pos.set(ride.to.x + 2, 0, ride.to.z); me.v = 0; } }, me, S: () => S, give: (n) => { S.cash += n; storeSave(SAVE, S); drawShop(); },
 };
+// other real players' cars are solid: bump into one and yours is pushed aside (their page moves theirs)
+setInterval(() => { for (const o of NETK.peers.values()) { const dx = me.pos.x - o.pos.x, dz = me.pos.z - o.pos.z, d = Math.hypot(dx, dz); if (d > 0.01 && d < 3.6 && Math.abs(me.pos.y - o.pos.y) < 2.5) { const k = (3.6 - d) / d * 0.5; me.pos.x += dx * k; me.pos.z += dz * k; } } }, 33);
 netAs(() => ({ pos: me.pos, yaw: me.h, sp: Math.abs(me.v || 0) }), (c) => { const k = makeCar(c, false); scene.remove(k.g); return k; });
 loop();
 })();
