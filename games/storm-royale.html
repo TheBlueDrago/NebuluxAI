@@ -159,7 +159,7 @@ function NETLITE(getMe) {
   const open = () => {
     let ws; try { ws = new WebSocket(url); } catch { return; }
     N.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ t: "hi", tok, peer: Math.random().toString(36).slice(2, 10), v: 1 }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: "hi", tok, peer: N.pid || (N.pid = (Math.random().toString(36).slice(2) + "00000000").slice(0, 10)), v: 1 }));
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.t === "ok") { N.up = true; N.tries = 0; ws.send(JSON.stringify({ t: "j", r: N.room })); ws.send(JSON.stringify({ t: "j", r: "nr" })); return; }
@@ -167,7 +167,7 @@ function NETLITE(getMe) {
       if (m.r !== N.room) return;
       if (m.t === "js") { for (const [p, d] of m.peers || []) peer(p, d); } else if (m.t === "u") peer(m.p, m.d); else if (m.t === "x") drop(m.p);
     };
-    ws.onclose = () => { if (N.ws !== ws) return; N.up = false; N.ws = null; for (const p of [...N.peers.keys()]) drop(p); if (N.tries++ < 6) setTimeout(open, 3000 * N.tries); };
+    ws.onclose = () => { if (N.ws !== ws) return; N.up = false; N.ws = null; for (const p of [...N.peers.keys()]) drop(p); if (N.tries++ < 10) setTimeout(open, Math.min(15000, 800 * 2 ** Math.min(4, N.tries)) * (0.7 + Math.random() * 0.6)); };
   };
   open();
   let last = performance.now(), T = 0;
