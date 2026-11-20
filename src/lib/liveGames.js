@@ -31,17 +31,26 @@ export function watchLiveGames(onCounts) {
     onCounts(c, names);
   };
   const soon = () => { clearTimeout(timer); timer = setTimeout(send, 300); };
-  try { ws = new WebSocket(SERVER); } catch { return () => {}; }
-  ws.onopen = () => ws.send(JSON.stringify({ t: "hi", tok: token(), peer: Math.random().toString(36).slice(2, 10), v: 1 }));
-  ws.onmessage = (ev) => {
-    let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.t === "ok") { for (const r of Object.keys(rooms)) ws.send(JSON.stringify({ t: "j", r })); return; }
-    const R = rooms[m.r]; if (!R) return;
-    if (m.t === "js") { R.clear(); for (const [p, d] of m.peers || []) R.set(p, d); soon(); }
-    else if (m.t === "u") { R.set(m.p, m.d); soon(); }
-    else if (m.t === "x") { R.delete(m.p); soon(); }
+  // one ID for this page, and if the connection drops it comes back by itself (soon at first, then less often)
+  const pid = (Math.random().toString(36).slice(2) + "00000000").slice(0, 10);
+  let tries = 0;
+  const open = () => {
+    if (stopped) return;
+    let w; try { w = new WebSocket(SERVER); } catch { return; }
+    ws = w;
+    w.onopen = () => w.send(JSON.stringify({ t: "hi", tok: token(), peer: pid, v: 1 }));
+    w.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.t === "ok") { tries = 0; for (const r of Object.keys(rooms)) w.send(JSON.stringify({ t: "j", r })); return; }
+      const R = rooms[m.r]; if (!R) return;
+      if (m.t === "js") { R.clear(); for (const [p, d] of m.peers || []) R.set(p, d); soon(); }
+      else if (m.t === "u") { R.set(m.p, m.d); soon(); }
+      else if (m.t === "x") { R.delete(m.p); soon(); }
+    };
+    w.onerror = () => {};
+    w.onclose = () => { if (ws !== w || stopped) return; ws = null; if (tries++ < 12) setTimeout(open, Math.min(30000, 1000 * 2 ** Math.min(5, tries)) * (0.7 + Math.random() * 0.6)); };
   };
-  ws.onerror = () => {};
+  open();
   return () => { stopped = true; clearTimeout(timer); try { ws && ws.close(); } catch { /* closed */ } };
 }
 
