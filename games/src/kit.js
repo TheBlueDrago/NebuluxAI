@@ -330,7 +330,7 @@ setInterval(() => {
   let el = document.getElementById('kliveN'); const n = NETK.peers.size;
   if (!n) { if (el) el.remove(); return; }
   if (!el) { el = document.createElement('p'); el.id = 'kliveN'; el.style.cssText = 'margin:8px 0 0;font-weight:800;color:#4ade80'; st.appendChild(el); }
-  el.textContent = n + ' real player' + (n === 1 ? ' is' : 's are') + ' in this game right now';
+  el.textContent = n + ' other real player' + (n === 1 ? ' is' : 's are') + ' in this game right now';
 }, 1000);
 const QCHAT = ["Hi!", "GG", "Nice!", "Follow me", "Watch out", "Oops", "Thanks!"];
 function netSay() {
