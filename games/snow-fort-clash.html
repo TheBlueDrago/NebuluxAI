@@ -466,6 +466,28 @@ onFrame((dt, T) => {
 function loop() { requestAnimationFrame(loop); const dt = Math.min(clock.getDelta(), 0.04); for (let i = 0; i < timeScale; i++) { T += dt; for (const f of frames) f(dt, T); tickMsg(dt); } renderer.render(scene, camera); }
 if (TEST) window.__kit = { speed: (n) => { timeScale = Math.max(1, Math.min(20, n | 0)); }, P, cam, keys, net: NETK, self: () => NET_SELF };
 // ---------- end of kit ----------
+// Big screens (1700 x 950 and up): the HUD and the title / result cards are drawn larger, so a game fills a big
+// monitor like it does a laptop. Each fixed HUD piece grows from the screen corner (or edge middle) it sits at.
+(function kitBigScreen() {
+  const zoomOf = () => { const w = innerWidth, h = innerHeight; return w >= 1700 && h >= 950 ? Math.min(1.8, Math.max(1, Math.min(w / 1440, h / 810))) : 1; };
+  const apply = () => {
+    const z = zoomOf(), W = innerWidth, H = innerHeight;
+    for (const c of document.querySelectorAll('.ov > .c')) c.style.zoom = z === 1 ? '' : z.toFixed(3);
+    for (const el of document.body.children) {
+      if (el.tagName === 'SCRIPT' || el.classList.contains('ov') || el.id === 'touch') continue;
+      if (getComputedStyle(el).position !== 'fixed' && el.tagName !== 'CANVAS') continue;
+      el.style.scale = ''; el.style.transformOrigin = '';
+      if (z === 1) continue;
+      const r = el.getBoundingClientRect(); if (!r.width && !r.height) continue;
+      // the game view itself and wide centre messages stay as they are
+      if (r.width > W * 0.45 || (el.tagName === 'CANVAS' && getComputedStyle(el).position !== 'fixed' && getComputedStyle(el).position !== 'absolute')) continue;
+      const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+      const ax = cx < W / 3 ? 0 : cx > (2 * W) / 3 ? W : W / 2, ay = cy < H / 2 ? 0 : H;
+      el.style.transformOrigin = (ax - el.offsetLeft) + 'px ' + (ay - el.offsetTop) + 'px'; el.style.scale = z.toFixed(3);
+    }
+  };
+  addEventListener('resize', apply); setTimeout(apply, 300); setInterval(() => { if (zoomOf() !== 1) apply(); }, 2000);
+})();
 
 
 // ================= Snow Fort Clash =================
