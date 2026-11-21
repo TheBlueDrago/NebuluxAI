@@ -52,6 +52,14 @@
   body.touch #moves{bottom:auto;top:10px} body.touch .mv{width:62px;height:50px;font-size:9px} body.touch .mv em{font-size:16px}
   body.touch #chat{bottom:170px;width:220px} body.touch #hud{width:200px}
   @media (max-height:480px){h1{font-size:40px} .chars{grid-template-columns:repeat(4,1fr)} .ch ul{display:none}}
+  /* the menu fits: FIGHT! and the private server row stay pinned at the bottom, the cards scroll above them, and on wide screens all six cards fit in one row */
+  #start .c{display:flex;flex-direction:column;max-height:100%;box-sizing:border-box}
+  #start .chars{flex:1 1 auto;min-height:0;overflow:auto;padding:4px}
+  #start #play{position:sticky;bottom:0;z-index:2;align-self:center;box-shadow:0 -12px 24px #0b0b14cc}
+  @media (min-width:1100px){#start .chars{grid-template-columns:repeat(3,1fr)}}
+  @media (min-width:1600px){#start .chars{grid-template-columns:repeat(6,1fr)}}
+  @media (max-height:520px){#start h1{font-size:30px;margin:0}#start .c>p:first-of-type{font-size:12px;margin:4px 0 0}#start .ch ul{display:none}#start .ch{padding:8px}#start .chars{margin-top:8px;gap:8px}#start .keys{display:none}}
+  #start{place-items:stretch center}#start .c{height:100vh;height:100dvh;padding-top:12px;padding-bottom:12px}
 </style>
 </head>
 <body>
