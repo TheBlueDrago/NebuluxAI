@@ -2641,7 +2641,7 @@ function openPods(){
         ?'<div style="display:flex;justify-content:center">'+ICON_COIN.replace("width:20px;height:20px","width:56px;height:56px")+'</div><p class="font-display" style="margin:.375rem 0 0;font-size:1.5rem;color:#fde047">+'+last.n+' coins</p>'
         :'<p style="margin:0;font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:'+RARITY_COLORS[last.def.rarity]+'">New '+last.def.rarity+' fighter!</p><div style="display:flex;justify-content:center;margin-top:.375rem"><canvas id="pod-fig" aria-hidden="true"></canvas></div><p class="font-display" style="margin:.25rem 0 0;font-size:1.5rem">'+last.def.name+'</p><p style="margin:.125rem 0 0;font-size:.8125rem;font-weight:600;color:#ddd6fe">'+last.def.title+'</p>')+'</div>':"");
     if(last&&last.kind==="brawler")registerFigure($("#pod-fig",body),last.def,{size:120,nebulux:false,animated:true});
-    $("#pod-open",body).addEventListener("click",()=>{ const r=openPod(); if(!r)return; SFX.play(r.kind==="brawler"?"win":"gem"); draw(r); });
+    $("#pod-open",body).addEventListener("click",()=>{ const r=openPod(); if(!r){ const t=profile.podTokens!=null?profile.podTokens:0; toast("No pods yet. Every match gives pod tokens (40 for a win, 20 for a loss): 100 fills a pod."); return; } SFX.play(r.kind==="brawler"?"win":"gem"); draw(r); });
   };
   draw(null);
   $(".sheet-close").addEventListener("click",()=>showLobby());
@@ -2659,7 +2659,7 @@ function openQuests(){
     }).join("")+bigBtn("quest-claim",ready?"CLAIM "+profile.quests.list.filter(q=>!q.claimed&&q.n>=q.goal).reduce((n,q)=>n+q.reward,0)+" COINS":"NOTHING TO CLAIM YET",ready>0)+
       '<p style="margin:.75rem 0 0;text-align:center;font-size:.75rem;font-weight:600;color:#c4b5fd">Three new quests every day.</p>'+
       '<div style="'+panelCss+'"><p style="margin:0;font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#67e8f9">Your record</p><p style="margin:.375rem 0 0;font-size:.8125rem;font-weight:600;line-height:1.7;color:#ede9fe">'+fmt(profile.stats.kos)+' KOs · '+fmt(profile.stats.dealt)+' damage · '+profile.stats.mvps+' Star Player awards · best streak '+profile.stats.bestStreak+' wins</p></div>';
-    $("#quest-claim",body).addEventListener("click",()=>{ const n=claimQuests(); if(!n)return; SFX.play("power"); toast("+"+n+" coins"); draw(); });
+    $("#quest-claim",body).addEventListener("click",()=>{ const n=claimQuests(); if(!n){ const q=(profile.quests&&profile.quests.list||[]).filter(x=>!x.claimed).sort((x,y)=>(y.n/y.goal)-(x.n/x.goal))[0]; toast(q?"Not done yet: "+Math.min(q.n,q.goal)+" of "+q.goal+" on your closest quest. Play a match to finish it.":"You have claimed every quest today. New ones come tomorrow."); return; } SFX.play("power"); toast("+"+n+" coins"); draw(); });
   };
   draw();
   $(".sheet-close").addEventListener("click",()=>showLobby());
@@ -2674,7 +2674,7 @@ function openRoad(){
         const n=from+i, got=n<profile.road, can=!got&&profile.trophies>=r.at;
         return '<div style="'+panelCss+';display:flex;align-items:center;gap:.75rem;'+(got?"opacity:.55":can?"box-shadow:inset 0 0 0 2px #fde047":"")+'"><span class="font-display" style="min-width:3.25rem;font-size:1rem;color:#fde047">'+r.at+'</span><span style="flex:1;font-size:.9375rem;font-weight:800">'+roadLabel(r)+'</span><span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:'+(got?"#86efac":can?"#fde047":"#c4b5fd")+'">'+(got?"Claimed":can?"Ready":(r.at-profile.trophies)+" to go")+'</span></div>';
       }).join("")+'</div>';
-    $("#road-claim",body).addEventListener("click",()=>{ const got=claimRoad(); if(!got.length)return; SFX.play("win"); toast("You got "+got.join(", ")+"!"); draw(); });
+    $("#road-claim",body).addEventListener("click",()=>{ const got=claimRoad(); if(!got.length){ const need=15-((profile.trophies||0)%15); toast("Win "+need+" more troph"+(need===1?"y":"ies")+" for the next Star Road reward."); return; } SFX.play("win"); toast("You got "+got.join(", ")+"!"); draw(); });
   };
   draw();
   $(".sheet-close").addEventListener("click",()=>showLobby());
