@@ -2020,13 +2020,42 @@ function drawStorm(ctx,match){
   ctx.setLineDash([]);
   ctx.restore();
 }
+// each map's colours: floor, tile tint, detail kind, bush (dark, light, tuft) and wall (top, bottom, shadow)
+const MAP_LOOK={
+  "Crystal Nebula":{floor:"#4b3a8f",tile:"rgba(255,255,255,0.045)",deco:"crystal",bush:["#6d28d9","#7c3aed","#a78bfa"],wall:["#8d7fd6","#5b4a9e","#241a4d"]},
+  "Asteroid Lanes":{floor:"#3b3f5c",tile:"rgba(255,255,255,0.04)",deco:"crater",bush:["#3f6212","#4d7c0f","#a3e635"],wall:["#9aa3b8","#5d6680","#1e2235"]},
+  "Comet Canyon":{floor:"#7a3b3b",tile:"rgba(255,220,180,0.05)",deco:"pebble",bush:["#9a3412","#c2410c","#fdba74"],wall:["#d4a373","#9c6644","#3b1f14"]},
+  "Nova Gardens":{floor:"#1f5a5a",tile:"rgba(255,255,255,0.05)",deco:"flower",bush:["#15803d","#16a34a","#86efac"],wall:["#7dd3c0","#3f8f80","#0f2e2a"]},
+  "Ring Station":{floor:"#2c3e66",tile:"rgba(170,210,255,0.06)",deco:"panel",bush:["#4338ca","#4f46e5","#a5b4fc"],wall:["#b8c4dc","#6e7fa3","#151d33"]}
+};
+const mapLook=()=>MAP_LOOK[(MAPS[MAP_INDEX]||{}).name]||MAP_LOOK["Crystal Nebula"];
+// the floor details, scattered once per map from the map's own seed (the same on every page)
+const DECO_CACHE={};
+function mapDeco(){ const k=MAP_INDEX; if(DECO_CACHE[k])return DECO_CACHE[k]; const out=[]; let seed=(k+1)*9301;
+  const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  for(let i=0;i<70;i++){ const x=rnd()*WORLD_W, y=rnd()*WORLD_H; if(WALLS.some(w=>x>w.x-20&&x<w.x+w.w+20&&y>w.y-20&&y<w.y+w.h+20))continue; out.push({x,y,r:6+rnd()*14,a:rnd()*6.28,c:rnd()}); }
+  return (DECO_CACHE[k]=out); }
+function drawDeco(ctx,time,kind){
+  for(const d of mapDeco()){
+    ctx.save(); ctx.translate(d.x,d.y); ctx.rotate(d.a);
+    if(kind==="crystal"){ const gl=0.25+0.15*Math.sin(time*2+d.c*6); ctx.fillStyle="rgba(196,181,253,"+gl.toFixed(3)+")"; ctx.beginPath(); ctx.moveTo(0,-d.r); ctx.lineTo(d.r*0.45,0); ctx.lineTo(0,d.r*0.7); ctx.lineTo(-d.r*0.45,0); ctx.closePath(); ctx.fill(); }
+    else if(kind==="crater"){ ctx.fillStyle="rgba(10,12,28,0.28)"; ctx.beginPath(); ctx.ellipse(0,0,d.r*1.3,d.r,0,0,6.283); ctx.fill(); ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(0,-1,d.r*1.3,d.r,0,3.4,6.0); ctx.stroke(); }
+    else if(kind==="pebble"){ ctx.fillStyle="rgba(40,10,8,0.3)"; ctx.beginPath(); ctx.ellipse(0,0,d.r*0.8,d.r*0.5,0,0,6.283); ctx.fill(); ctx.fillStyle="rgba(255,210,170,0.12)"; ctx.beginPath(); ctx.ellipse(-d.r*0.15,-d.r*0.15,d.r*0.45,d.r*0.25,0,0,6.283); ctx.fill(); }
+    else if(kind==="flower"){ const col=d.c<0.33?"#f9a8d4":d.c<0.66?"#fde68a":"#c4b5fd"; ctx.fillStyle=col; for(let i=0;i<5;i++){ const a=i*1.2566; ctx.beginPath(); ctx.arc(Math.cos(a)*d.r*0.35,Math.sin(a)*d.r*0.35,d.r*0.22,0,6.283); ctx.fill(); } ctx.fillStyle="#fef3c7"; ctx.beginPath(); ctx.arc(0,0,d.r*0.16,0,6.283); ctx.fill(); }
+    else if(kind==="panel"){ ctx.strokeStyle="rgba(170,210,255,0.14)"; ctx.lineWidth=2; ctx.strokeRect(-d.r,-d.r*0.6,d.r*2,d.r*1.2); ctx.fillStyle="rgba(103,232,249,"+(0.18+0.12*Math.sin(time*3+d.c*9)).toFixed(3)+")"; ctx.fillRect(-3,-3,6,6); }
+    ctx.restore();
+  }
+}
 function drawGround(ctx,time,mode){
   mode=mode||"gem";
-  ctx.fillStyle=mode==="ball"?"#3d5a3a":"#4b3a8f";
+  const L=mapLook();
+  ctx.fillStyle=mode==="ball"?"#3d5a3a":L.floor;
   ctx.fillRect(0,0,WORLD_W,WORLD_H);
-  ctx.fillStyle="rgba(255,255,255,0.045)";
+  ctx.fillStyle=mode==="ball"?"rgba(255,255,255,0.045)":L.tile;
   const tile=70;
   for(let y=0;y<WORLD_H/tile;y++)for(let x=0;x<WORLD_W/tile;x++){ if((x+y)%2===0)ctx.fillRect(x*tile,y*tile,tile,tile); }
+  if(mode!=="ball")drawDeco(ctx,time,L.deco);
+  { const v=ctx.createRadialGradient(WORLD_W/2,WORLD_H/2,Math.min(WORLD_W,WORLD_H)*0.35,WORLD_W/2,WORLD_H/2,Math.max(WORLD_W,WORLD_H)*0.7); v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,"rgba(5,3,20,0.35)"); ctx.fillStyle=v; ctx.fillRect(0,0,WORLD_W,WORLD_H); }
   pad(ctx,WORLD_W/2,WORLD_H-78,"#155e75","#22d3ee");
   pad(ctx,WORLD_W/2,78,"#7f1d3a","#fb4d6d");
   if(mode==="ball"){
@@ -2051,10 +2080,11 @@ function drawGround(ctx,time,mode){
     ctx.fillStyle="rgba(253,224,71,0.85)";
     ctx.save(); ctx.translate(WORLD_W/2,WORLD_H/2); drawTinyStar(ctx,0,0,34); ctx.restore();
   }
+  const BU=mode==="ball"?MAP_LOOK["Nova Gardens"].bush:L.bush, WA=mode==="ball"?MAP_LOOK["Crystal Nebula"].wall:L.wall;
   for(const b of BUSHES){
-    ctx.fillStyle="#6d28d9"; roundRect(ctx,b.x,b.y,b.w,b.h,18); ctx.fill();
-    ctx.fillStyle="#7c3aed"; roundRect(ctx,b.x+5,b.y+5,b.w-10,b.h-10,14); ctx.fill();
-    ctx.strokeStyle="#a78bfa"; ctx.lineWidth=3;
+    ctx.fillStyle=BU[0]; roundRect(ctx,b.x,b.y,b.w,b.h,18); ctx.fill();
+    ctx.fillStyle=BU[1]; roundRect(ctx,b.x+5,b.y+5,b.w-10,b.h-10,14); ctx.fill();
+    ctx.strokeStyle=BU[2]; ctx.lineWidth=3;
     const tufts=Math.floor((b.w*b.h)/5200);
     for(let i=0;i<tufts;i++){
       const gx=b.x+12+pseudoRand(i*7+b.x)*(b.w-24);
@@ -2064,9 +2094,9 @@ function drawGround(ctx,time,mode){
     }
   }
   for(const w of WALLS){
-    ctx.fillStyle="#241a4d"; roundRect(ctx,w.x-3,w.y+4,w.w+6,w.h+4,12); ctx.fill();
+    ctx.fillStyle=WA[2]; roundRect(ctx,w.x-3,w.y+4,w.w+6,w.h+4,12); ctx.fill();
     const g=ctx.createLinearGradient(w.x,w.y,w.x,w.y+w.h);
-    g.addColorStop(0,"#8d7fd6"); g.addColorStop(1,"#5b4a9e");
+    g.addColorStop(0,WA[0]); g.addColorStop(1,WA[1]);
     ctx.fillStyle=g; roundRect(ctx,w.x,w.y,w.w,w.h,10); ctx.fill();
     ctx.strokeStyle="rgba(20,12,50,0.5)"; ctx.lineWidth=2; ctx.stroke();
     ctx.fillStyle="rgba(255,255,255,0.22)"; roundRect(ctx,w.x+6,w.y+5,w.w-12,7,4); ctx.fill();
@@ -2090,9 +2120,15 @@ function drawCrates(ctx,match,ui){
   });
 }
 function pad(ctx,x,y,fill,ring){
-  ctx.beginPath(); ctx.ellipse(x,y,190,56,0,0,Math.PI*2);
-  ctx.fillStyle=fill; ctx.globalAlpha=0.55; ctx.fill(); ctx.globalAlpha=1;
-  ctx.strokeStyle=ring; ctx.lineWidth=3; ctx.stroke();
+  const w=300, h=96, up=y>WORLD_H/2?-1:1, t=(typeof performance!=="undefined"?performance.now():0)/1000, pulse=0.5+0.5*Math.sin(t*2);
+  ctx.save();
+  ctx.globalAlpha=0.5; ctx.fillStyle=fill; roundRect(ctx,x-w/2,y-h/2,w,h,26); ctx.fill();
+  ctx.globalAlpha=1; ctx.strokeStyle=ring; ctx.lineWidth=3; ctx.shadowColor=ring; ctx.shadowBlur=10+8*pulse; roundRect(ctx,x-w/2,y-h/2,w,h,26); ctx.stroke(); ctx.shadowBlur=0;
+  ctx.globalAlpha=0.22; ctx.strokeStyle=ring; ctx.lineWidth=2; roundRect(ctx,x-w/2+12,y-h/2+12,w-24,h-24,16); ctx.stroke();
+  // chevrons pointing into the arena, lighting up in turn
+  ctx.lineWidth=7; ctx.lineCap="round"; ctx.lineJoin="round";
+  for(let i=0;i<3;i++){ const cy=y+up*(-18+i*18), on=((t*2.2)%3|0)===i; ctx.globalAlpha=on?0.95:0.35; ctx.strokeStyle=ring; ctx.beginPath(); ctx.moveTo(x-30,cy-up*10); ctx.lineTo(x,cy+up*6); ctx.lineTo(x+30,cy-up*10); ctx.stroke(); }
+  ctx.restore();
 }
 function drawMine(ctx,time){
   const pulse=1+Math.sin(time*2.4)*0.05;
