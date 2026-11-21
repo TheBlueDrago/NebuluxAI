@@ -324,6 +324,11 @@ nav{justify-content:center}nav button{border:0;border-radius:8px;padding:8px 16p
 .plus{background:linear-gradient(135deg,#ffffff26,#ffffff0d)!important;color:#fff!important;border:1.5px solid #ffffff55!important;box-shadow:0 6px 18px #0006,0 0 18px #ff4fa333;backdrop-filter:blur(6px);transition:transform .12s,border-color .15s}
 .plus:hover{border-color:#e9f23c!important;transform:translateX(-50%) scale(1.08)}
 
+#set>div{zoom:var(--uiz,1)}
+/* big screens: the sign-in, daily reward and results cards are drawn larger too */
+@media (min-width:1700px) and (min-height:950px){.sib,.sihero,#dly>div,#end .endtop,#end .endbot{zoom:1.3}}
+@media (min-width:2300px) and (min-height:1300px){.sib,.sihero,#dly>div,#end .endtop,#end .endbot{zoom:1.7}}
+
 /* ===== v3 HUD ===== */
 #game{font-family:'Chakra Petch',system-ui,sans-serif}
 #tint{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,#a050ff22 30%,#7a2aff88);opacity:0;transition:opacity .4s}
@@ -3108,8 +3113,11 @@ views.pass = () => {
 };
 
 // ---------- the lobby itself ----------
+// big screens (1700 x 950 and up): the whole lobby is drawn larger, so it fills the screen like it does on a laptop
+function uiZoom() { const w = innerWidth, h = innerHeight; return w >= 1700 && h >= 950 ? Math.min(1.8, Math.max(1, Math.min(w / 1440, h / 810))) : 1; }
 function lobby() {
   ini(); ownFree(); if (S.auto) autoC();
+  { const z = uiZoom(); $("#lobby").style.zoom = z === 1 ? "" : z.toFixed(3); document.documentElement.style.setProperty("--uiz", z.toFixed(3)); }
   const r0 = $("#rail"), sl = r0 ? r0.scrollLeft : 0, dt = dots(); $("#lobby").className = tab;
   $("#lobby").innerHTML = `<header><h1>Nebula Royale</h1><nav>${[["play", "Play"], ["locker", "Locker"], ["shop", innerWidth < 480 || innerHeight < 400 ? "Shop" : "Item Shop"], ["pass", innerWidth < 480 || innerHeight < 400 ? "Pass" : "Battle Pass"], ["quests", "Quests"], ["career", "Career"]].map(([k, n]) => `<button class='${tab == k ? "on" : ""}' data-t=${k} onclick=go(this.dataset.t)>${n}${dt[k] ? "<i class=dot></i>" : ""}</button>`).join("")}</nav><span class=stars>★ ${S.stars}</span><button class=ic onclick=openSet() aria-label=Settings>⚙</button></header>${views[tab]()}`;
   const r = $("#rail"); if (r) r.scrollLeft = sl; try { pvInit(); } catch (e) { console.error(e); }
@@ -7944,7 +7952,7 @@ function hud(dt) {
   // crosshair, hit marker, scope, hurt and storm tint
   const scope = ads && it && it.t == "w" && W[it.id].scope && p.st == "play";
   const spread = it && it.t == "w" ? (W[it.id].s * (ads ? 0.5 : 1) * (1 + (G.bloom || 0) * 1.4) * (p.on ? 1 : 1.8)) * 900 + 6 : 6;
-  $("#xh").style.setProperty("--s", spread.toFixed(1) + "px"); { const on = me && p.st == "ship"; if (HC.ship !== on) { HC.ship = on; $("#game").classList.toggle("onship", on); } } { const ps = $("#ps"); if (ps && !ps.hidden && (HC.psT = (HC.psT || 0) + 1) % 20 == 1) { const hb = $("#hb").getBoundingClientRect(); ps.style.bottom = hb.height && hb.top > innerHeight / 2 ? Math.round(innerHeight - hb.top + 10) + "px" : ""; } } if (HC.xc !== S.xc) { HC.xc = S.xc; $("#xh").style.setProperty("--xc", /^#[0-9a-f]{6}$/.test(S.xc || "") ? S.xc : "#fff"); } $("#xh").style.display = scope || p.st != "play" || !me ? "none" : "block";
+  $("#xh").style.setProperty("--s", spread.toFixed(1) + "px"); if (((HC.hzT = (HC.hzT || 0) + 1) % 90) == 1 && uiZoom() !== 1) hudZoom(); { const on = me && p.st == "ship"; if (HC.ship !== on) { HC.ship = on; $("#game").classList.toggle("onship", on); } } { const ps = $("#ps"); if (ps && !ps.hidden && (HC.psT = (HC.psT || 0) + 1) % 20 == 1) { const hb = $("#hb").getBoundingClientRect(); ps.style.bottom = hb.height && hb.top > innerHeight / 2 ? Math.round(innerHeight - hb.top + 10) + "px" : ""; } } if (HC.xc !== S.xc) { HC.xc = S.xc; $("#xh").style.setProperty("--xc", /^#[0-9a-f]{6}$/.test(S.xc || "") ? S.xc : "#fff"); } $("#xh").style.display = scope || p.st != "play" || !me ? "none" : "block";
   $("#scope").hidden = !scope;
   G.hmT = Math.max(0, (G.hmT || 0) - dt); $("#hm").style.opacity = G.hmT > 0 ? 1 : 0;
   { const B = G.boss, near = B && B.alive && p.alive && Math.hypot(B.x - p.x, B.z - p.z) < 60; let el = $("#bossb"); if (near && !el) { el = document.createElement("div"); el.id = "bossb"; el.innerHTML = "<b>The Warden</b><i><i></i></i>"; $("#game").appendChild(el); } if (el) { el.hidden = !near; if (near) el.lastChild.firstChild.style.width = Math.max(0, ((B.hp + B.sh) / 200) * 100) + "%"; } }
@@ -8130,6 +8138,23 @@ function drawBig() {
   const p = G.p; c.save(); c.translate(X(p.x), Z(p.z)); c.rotate(-yaw); c.fillStyle = "#fff"; c.strokeStyle = "#000"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -12); c.lineTo(8, 8); c.lineTo(0, 4); c.lineTo(-8, 8); c.closePath(); c.fill(); c.stroke(); c.restore();
 }
 function toggleMap() { if (!G || G.stage == "wait") return; G.mapOpen = !G.mapOpen; $("#bigmap").hidden = !G.mapOpen; }
+
+// big screens: the match HUD is drawn larger too. Each piece grows from the screen corner (or edge middle) it sits
+// at, so the layout stays the same, just bigger; the CSS scale property keeps each piece's own transform.
+const HUD_ZOOM_IDS = ["hb", "bars", "mm", "mmn", "alive", "top", "cmp", "kf", "elim", "wp", "pr", "ft", "ps", "lv", "usebar", "spd", "specbar"];
+function hudZoom() {
+  const z = typeof uiZoom == "function" ? uiZoom() : 1, W = innerWidth, H = innerHeight;
+  for (const id of HUD_ZOOM_IDS) {
+    const el = document.getElementById(id); if (!el) continue;
+    el.style.scale = ""; el.style.transformOrigin = "";
+    if (z === 1) continue;
+    const r = el.getBoundingClientRect(); if (!r.width && !r.height) { el.dataset.hz = "1"; continue; }
+    const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    const ax = cx < W / 3 ? 0 : cx > (2 * W) / 3 ? W : W / 2, ay = cy < H / 2 ? 0 : H;
+    el.style.transformOrigin = `${ax - el.offsetLeft}px ${ay - el.offsetTop}px`; el.style.scale = z.toFixed(3); el.dataset.hz = "";
+  }
+}
+addEventListener("resize", () => { try { if (!$("#game").hidden) hudZoom(); } catch (e) { /* not drawn yet */ } });
 
 /* ===== input.js ===== */
 // Controls: keyboard and mouse (the mouse locks to aim; if the page can't lock it, drag to look), and touch.
