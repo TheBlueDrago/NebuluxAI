@@ -31,6 +31,9 @@
   @media (max-height:460px){h1{font-size:36px} .ov p{font-size:13px;margin:6px 0} .big{font-size:17px;padding:8px 24px;margin-top:6px}}
   @media (max-height:360px){.ov .c > p:not(.keys):not([id]){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} h1{font-size:30px;margin:0}}
   *{scrollbar-width:thin;scrollbar-color:#ffffff55 transparent} *::-webkit-scrollbar{width:8px;height:8px} *::-webkit-scrollbar-thumb{background:#ffffff55;border-radius:8px} *::-webkit-scrollbar-track{background:transparent}
+  .ov > .c{background:linear-gradient(165deg,rgba(24,18,52,.72),rgba(10,8,28,.78));border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:22px 30px;box-shadow:0 24px 70px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-sizing:border-box;max-width:min(760px,96vw)}
+  @media (max-height:460px){.ov > .c{padding:12px 18px;border-radius:16px}}
+  @media (max-width:430px){.ov > .c{padding:14px 14px} .ov h1{font-size:34px} #shop{display:grid;grid-template-columns:repeat(3,1fr);gap:6px} #shop > *{font-size:11px;padding:6px 4px;margin:0}}
 
   #start,#over{background:linear-gradient(#29b6f6dd,#01304aee)}
   #over{display:none}
