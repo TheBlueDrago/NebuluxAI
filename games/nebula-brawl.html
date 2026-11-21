@@ -2352,7 +2352,7 @@ function showLobby(fit){
    '<div class="lobby-wrap pt-safe">'+
      '<div class="topbar">'+
        '<button type="button" id="player-chip" class="player-chip" aria-label="Your account" style="border:0;color:inherit;font:inherit;cursor:pointer;text-align:left"><span class="player-avatar font-display">'+escHtml((ACC.name||"P").slice(0,1).toUpperCase())+'<span class="player-level">'+rank.level+'</span></span>'+
-       '<div style="line-height:1.15"><div style="font-size:15px;font-weight:900">'+escHtml(ACC.name||"Player")+'</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#67e8f9">'+rank.cur.name+'</div></div></button>'+
+       '<div style="line-height:1.15;min-width:0"><div style="font-size:15px;font-weight:900;max-width:min(9.5rem,34vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(ACC.name||"Player")+'</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#67e8f9">'+rank.cur.name+'</div></div></button>'+
        '<div style="margin-left:auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end">'+
          '<span class="pill" id="pill-coins">'+ICON_COIN+' '+fmt(profile.coins)+'</span>'+
          '<span class="pill">'+ICON_TROPHY+' '+profile.trophies+'</span>'+
