@@ -169,6 +169,13 @@
   .ammo-pip{ height:.625rem; width:1.75rem; border-radius:999px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.4); }
   .round-btn{ display:flex; align-items:center; justify-content:center; border-radius:999px; border:none; color:#fff; }
   .hidden{ display:none !important; }
+
+  /* the keyboard line at the bottom of a match only where it has room between the two sticks */
+  @media (max-width:1180px){#desktop-hint{display:none}}
+
+  /* scroll bars in the game style: thin and purple, never the plain grey desktop bar */
+  *{scrollbar-width:thin;scrollbar-color:rgba(167,139,250,.55) transparent}
+  *::-webkit-scrollbar{width:8px;height:8px} *::-webkit-scrollbar-thumb{background:rgba(167,139,250,.55);border-radius:8px} *::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
 <body>
